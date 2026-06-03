@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>cmdAbl</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       hsl(0, 0%, 13%);
+      --bg-row:   hsl(0, 0%, 17%);
+      --text:     hsl(0, 0%, 71%);
+      --dim:      hsl(0, 0%, 38%);
+      --accent:   hsl(31, 100%, 67%);
+      --border:   hsl(0, 0%, 8%);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+      font-size: 13px;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body { display: flex; flex-direction: column; }
+
+    /* ── input bar ── */
+    #bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #colon {
+      color: var(--accent);
+      font-size: 15px;
+      font-weight: 700;
+      user-select: none;
+    }
+
+    #input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font: inherit;
+      caret-color: var(--accent);
+    }
+
+    /* ── dropdown ── */
+    #dropdown {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    #dropdown.hidden { display: none; }
+
+    .row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 6px 12px;
+      cursor: default;
+    }
+
+    .row.active {
+      background: var(--bg-row);
+    }
+
+    .row.active .cmd { color: var(--accent); }
+
+    .cmd  { min-width: 80px; font-weight: 600; }
+    .desc { color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  </style>
+</head>
+<body>
+
+  <div id="bar">
+    <span id="colon">:</span>
+    <input id="input" type="text" autocomplete="off" spellcheck="false" />
+  </div>
+
+  <div id="dropdown"></div>
+
+  <script>
+    // Injected by the extension before the dialog opens.
+    // Shape: Array<{ name: string, description: string }>
+    const COMMANDS = /*COMMANDS_PLACEHOLDER*/null;
+
+    const input    = document.getElementById('input');
+    const dropdown = document.getElementById('dropdown');
+
+    let filtered  = [];
+    let activeIdx = 0;
+
+    // ── messaging ──────────────────────────────────────────────────────────
+    function send(value) {
+      const msg = { method: 'close_and_send', params: [value] };
+      if (window.webkit?.messageHandlers?.live) {
+        window.webkit.messageHandlers.live.postMessage(msg);
+      } else if (window.chrome?.webview) {
+        window.chrome.webview.postMessage(msg);
+      }
+    }
+
+    // ── filtering ──────────────────────────────────────────────────────────
+    function filter(query) {
+      const q = query.toLowerCase();
+      if (!q) return COMMANDS;
+      return COMMANDS.filter(c =>
+        c.name.startsWith(q) || c.name.includes(q)
+      );
+    }
+
+    // ── rendering ─────────────────────────────────────────────────────────
+    function render() {
+      const query = input.value;
+      filtered  = filter(query);
+      activeIdx = Math.min(activeIdx, Math.max(filtered.length - 1, 0));
+
+      dropdown.innerHTML = '';
+
+      if (filtered.length === 0) {
+        dropdown.classList.add('hidden');
+        return;
+      }
+
+      dropdown.classList.remove('hidden');
+
+      filtered.forEach(({ name, description }, i) => {
+        const row = document.createElement('div');
+        row.className = 'row' + (i === activeIdx ? ' active' : '');
+        row.innerHTML =
+          `<span class="cmd">${name}</span><span class="desc">${description}</span>`;
+        row.addEventListener('mousedown', e => { e.preventDefault(); send(name); });
+        dropdown.appendChild(row);
+      });
+
+      dropdown.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
+    }
+
+    // ── keyboard ───────────────────────────────────────────────────────────
+    input.addEventListener('input', () => { activeIdx = 0; render(); });
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        send('');
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const name = filtered[activeIdx]?.name ?? input.value.trim();
+        if (name) send(name);
+      } else if (e.key === 'Tab' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (filtered.length) activeIdx = (activeIdx + 1) % filtered.length;
+        render();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (filtered.length) activeIdx = (activeIdx - 1 + filtered.length) % filtered.length;
+        render();
+      }
+    });
+
+    // ── init ───────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      render(); // show all commands immediately
+      input.focus();
+    });
+  </script>
+
+</body>
+</html>
