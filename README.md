@@ -1,19 +1,30 @@
 # cmdAbl
 
 A vim-inspired command palette for Ableton Live. Press `:` while Live is focused to open a
-keyboard-driven command input with fuzzy filtering, tab completion, and flag arguments.
+keyboard-driven command input with fuzzy filtering, tab completion, and POSIX-style flag arguments.
 
-<!-- screenshot placeholder — add assets/images/palette.png -->
-<!-- ![Command palette](assets/images/palette.png) -->
+![Command palette](assets/images/readme/example.jpg)
 
-## How it works
+## Table of Contents
+
+- [How it works](#how-it-works)
+- [Setup](#setup)
+- [Scripts](#scripts)
+- [Development](#development)
+- [Project structure](#project-structure)
+
+---
+
+<details id="how-it-works">
+<summary><b>How it works</b></summary>
+<br>
 
 cmdAbl registers a persistent HTTP server inside the extension host. Karabiner Elements watches
 for `:` while Ableton is frontmost and fires a `curl` request to that server, which opens the
 command palette modal. Commands are registered in TypeScript and injected into the UI at open
 time, so the palette always reflects the live command set.
 
-### Palette keybindings
+**Palette keybindings**
 
 | Key | Action |
 |-----|--------|
@@ -23,7 +34,7 @@ time, so the palette always reflects the live command set.
 | `↑` / `↓` | Navigate the list |
 | `Esc` | Close without executing |
 
-### Command syntax
+**Command syntax**
 
 Commands follow a POSIX-style flag pattern:
 
@@ -33,7 +44,7 @@ commandName [--flag]
 
 Typing a command name followed by a space switches the dropdown into flag-completion mode.
 
-### Built-in commands
+**Built-in commands**
 
 | Command | Description |
 |---------|-------------|
@@ -43,20 +54,26 @@ Typing a command name followed by a space switches the dropdown into flag-comple
 | `accept` | Accept all ghost-note suggestions *(coming soon)* |
 | `clear` | Remove all ghost-note suggestions *(coming soon)* |
 
-## Setup
+</details>
 
-### 1. Configure the Extension Host path
+---
+
+<details id="setup">
+<summary><b>Setup</b></summary>
+<br>
+
+**1. Configure the Extension Host path**
 
 The path to Ableton Live's Extension Host module is stored in `.env` as `EXTENSION_HOST_PATH`.
 The scaffold fills this in automatically; edit it if your install path changes.
 
-### 2. Install dependencies
+**2. Install dependencies**
 
 ```sh
 npm install
 ```
 
-### 3. Run the extension
+**3. Run the extension**
 
 ```sh
 npm start
@@ -64,7 +81,7 @@ npm start
 
 This type-checks, bundles, and loads the extension into Ableton's Extension Host.
 
-### 4. Set up the `:` keyboard shortcut (optional)
+**4. Set up the `:` keyboard shortcut (optional)**
 
 With the extension running, open the palette via right-click → `: cmdAbl` on any clip, track,
 clip slot, or scene. Then run:
@@ -81,7 +98,13 @@ Afterwards, open **Karabiner-Elements → Complex Modifications → Add rule** a
 > If you use a different layout, edit `karabiner/cmdabl.json` and change `"key_code"` to
 > match your key — use Karabiner's Event Viewer to find the correct code.
 
-## Scripts
+</details>
+
+---
+
+<details id="scripts">
+<summary><b>Scripts</b></summary>
+<br>
 
 ```sh
 npm start          # type-check, build (dev), and run in Live's Extension Host
@@ -90,7 +113,13 @@ npm run build:dev  # dev bundle (sourcemaps, not minified)
 npm run package    # production build + create a .ablx archive (includes karabiner/)
 ```
 
-## Development
+</details>
+
+---
+
+<details id="development">
+<summary><b>Development</b></summary>
+<br>
 
 Extensions must export an `activate(context: ActivationContext)` function. All commands are
 registered on the `CommandRegistry` instance in `src/extension.ts`. To add a new command:
@@ -108,7 +137,13 @@ registry.register("mycommand", "description", [
 });
 ```
 
-## Project structure
+</details>
+
+---
+
+<details id="project-structure">
+<summary><b>Project structure</b></summary>
+<br>
 
 ```
 src/
@@ -123,3 +158,5 @@ karabiner/
 assets/
   images/            screenshots for this README
 ```
+
+</details>
