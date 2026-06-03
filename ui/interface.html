@@ -54,12 +54,14 @@
       caret-color: var(--accent);
     }
 
-    /* ── dropdown ── */
-    #dropdown {
-      flex: 1;
-      overflow-y: auto;
+    #mode-badge {
+      font-size: 10px;
+      color: var(--dim);
+      user-select: none;
     }
 
+    /* ── dropdown ── */
+    #dropdown { flex: 1; overflow-y: auto; }
     #dropdown.hidden { display: none; }
 
     .row {
@@ -70,14 +72,11 @@
       cursor: default;
     }
 
-    .row.active {
-      background: var(--bg-row);
-    }
+    .row.active { background: var(--bg-row); }
+    .row.active .label { color: var(--accent); }
 
-    .row.active .cmd { color: var(--accent); }
-
-    .cmd  { min-width: 80px; font-weight: 600; }
-    .desc { color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .label { min-width: 90px; font-weight: 600; }
+    .desc  { color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -85,20 +84,26 @@
   <div id="bar">
     <span id="colon">:</span>
     <input id="input" type="text" autocomplete="off" spellcheck="false" />
+    <span id="mode-badge"></span>
   </div>
 
   <div id="dropdown"></div>
 
   <script>
     // Injected by the extension before the dialog opens.
-    // Shape: Array<{ name: string, description: string }>
+    // Shape: Array<{ name: string, description: string, flags?: Array<{ name: string, description: string }> }>
     const COMMANDS = /*COMMANDS_PLACEHOLDER*/null;
 
-    const input    = document.getElementById('input');
-    const dropdown = document.getElementById('dropdown');
+    const input     = document.getElementById('input');
+    const dropdown  = document.getElementById('dropdown');
+    const modeBadge = document.getElementById('mode-badge');
 
-    let filtered  = [];
+    // Build lookup map for flag completions
+    const cmdMap = Object.fromEntries(COMMANDS.map(c => [c.name, c]));
+
+    let items     = [];   // current completion candidates
     let activeIdx = 0;
+    let mode      = 'command'; // 'command' | 'flag'
 
     // ── messaging ──────────────────────────────────────────────────────────
     function send(value) {
@@ -110,36 +115,68 @@
       }
     }
 
-    // ── filtering ──────────────────────────────────────────────────────────
-    function filter(query) {
-      const q = query.toLowerCase();
-      if (!q) return COMMANDS;
-      return COMMANDS.filter(c =>
-        c.name.startsWith(q) || c.name.includes(q)
-      );
+    // ── parse input into phase ─────────────────────────────────────────────
+    function parse(raw) {
+      const spaceIdx = raw.indexOf(' ');
+      if (spaceIdx === -1) {
+        return { phase: 'command', query: raw.toLowerCase(), cmdName: null };
+      }
+      return {
+        phase: 'flag',
+        query: raw.slice(spaceIdx + 1).toLowerCase(),
+        cmdName: raw.slice(0, spaceIdx),
+      };
     }
 
-    // ── rendering ─────────────────────────────────────────────────────────
+    // ── build completion list ──────────────────────────────────────────────
+    function computeItems(raw) {
+      const { phase, query, cmdName } = parse(raw);
+      mode = phase;
+
+      if (phase === 'command') {
+        return query
+          ? COMMANDS.filter(c => c.name.startsWith(query) || c.name.includes(query))
+          : COMMANDS;
+      }
+
+      // flag phase
+      const cmd = cmdMap[cmdName ?? ''];
+      if (!cmd?.flags?.length) return [];
+      return query
+        ? cmd.flags.filter(f => f.name.startsWith(query) || f.name.includes(query))
+        : cmd.flags;
+    }
+
+    // ── resolve what string to send on selection ───────────────────────────
+    function resolve(item) {
+      if (mode === 'command') return item.name;
+      const spaceIdx = input.value.indexOf(' ');
+      const cmdName  = input.value.slice(0, spaceIdx);
+      return `${cmdName} ${item.name}`;
+    }
+
+    // ── render ─────────────────────────────────────────────────────────────
     function render() {
-      const query = input.value;
-      filtered  = filter(query);
-      activeIdx = Math.min(activeIdx, Math.max(filtered.length - 1, 0));
+      items     = computeItems(input.value);
+      activeIdx = Math.min(activeIdx, Math.max(items.length - 1, 0));
+
+      modeBadge.textContent = mode === 'flag' ? '--flag' : '';
 
       dropdown.innerHTML = '';
 
-      if (filtered.length === 0) {
+      if (!items.length) {
         dropdown.classList.add('hidden');
         return;
       }
 
       dropdown.classList.remove('hidden');
 
-      filtered.forEach(({ name, description }, i) => {
+      items.forEach((item, i) => {
         const row = document.createElement('div');
         row.className = 'row' + (i === activeIdx ? ' active' : '');
         row.innerHTML =
-          `<span class="cmd">${name}</span><span class="desc">${description}</span>`;
-        row.addEventListener('mousedown', e => { e.preventDefault(); send(name); });
+          `<span class="label">${item.name}</span><span class="desc">${item.description}</span>`;
+        row.addEventListener('mousedown', e => { e.preventDefault(); send(resolve(item)); });
         dropdown.appendChild(row);
       });
 
@@ -155,24 +192,20 @@
         send('');
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        const name = filtered[activeIdx]?.name ?? input.value.trim();
-        if (name) send(name);
+        const item = items[activeIdx];
+        const value = item ? resolve(item) : input.value.trim();
+        if (value) send(value);
       } else if (e.key === 'Tab' || e.key === 'ArrowDown') {
         e.preventDefault();
-        if (filtered.length) activeIdx = (activeIdx + 1) % filtered.length;
-        render();
+        if (items.length) { activeIdx = (activeIdx + 1) % items.length; render(); }
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        if (filtered.length) activeIdx = (activeIdx - 1 + filtered.length) % filtered.length;
-        render();
+        if (items.length) { activeIdx = (activeIdx - 1 + items.length) % items.length; render(); }
       }
     });
 
     // ── init ───────────────────────────────────────────────────────────────
-    document.addEventListener('DOMContentLoaded', () => {
-      render(); // show all commands immediately
-      input.focus();
-    });
+    document.addEventListener('DOMContentLoaded', () => { render(); input.focus(); });
   </script>
 
 </body>

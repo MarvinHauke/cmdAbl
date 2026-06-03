@@ -1,17 +1,35 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./commandRegistry.js";
+import { startTriggerServer } from "./httpTrigger.js";
+import { runKarabinerSetup, isKarabinerSetupDone } from "./setup.js";
 import interfaceTemplate from "../ui/interface.html";
+
+const TRIGGER_PORT = 27184;
 
 export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");
   const registry = new CommandRegistry();
 
-  // ── register commands ────────────────────────────────────────────────────
+  // ── built-in commands ────────────────────────────────────────────────────
   registry.register("help", "list all registered commands", () => {
     const lines = registry.list().map(c => `  ${c.name.padEnd(12)} ${c.description}`);
     console.log("cmdAbl commands:\n" + lines.join("\n"));
   });
 
+  registry.register(
+    "cmdabl",
+    "configure cmdAbl",
+    [{ name: "--setup", description: "symlink Karabiner rule and print enable instructions" }],
+    (flags) => {
+      if (flags.includes("--setup")) {
+        runKarabinerSetup();
+      } else {
+        console.log("cmdAbl: no recognised flag. Try: cmdabl --setup");
+      }
+    },
+  );
+
+  // placeholder domain commands — will be implemented in later steps
   registry.register("suggest", "generate ghost-note suggestions for selected clip", () => {
     console.log("suggest: not yet implemented");
   });
@@ -23,6 +41,18 @@ export function activate(activation: ActivationContext) {
   registry.register("clear", "remove all ghost-note suggestions", () => {
     console.log("clear: not yet implemented");
   });
+
+  // ── HTTP trigger server ──────────────────────────────────────────────────
+  // Karabiner (or any external tool) can POST/GET http://127.0.0.1:27184/open
+  // to open the command palette without a context menu.
+  startTriggerServer(TRIGGER_PORT, () => {
+    context.commands.executeCommand("cmdabl.open");
+  });
+
+  // ── startup hint ─────────────────────────────────────────────────────────
+  if (!isKarabinerSetupDone()) {
+    console.log("cmdAbl: Karabiner rule not found. Open the palette and run: cmdabl --setup");
+  }
 
   // ── open command mode ────────────────────────────────────────────────────
   context.commands.registerCommand("cmdabl.open", () => {

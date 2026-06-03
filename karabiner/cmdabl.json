@@ -1,0 +1,33 @@
+{
+  "title": "cmdAbl",
+  "rules": [
+    {
+      "description": "Open cmdAbl command palette with ':' when Ableton Live is focused",
+      "manipulators": [
+        {
+          "type": "basic",
+          "from": {
+            "key_code": "semicolon",
+            "modifiers": {
+              "mandatory": ["left_shift"],
+              "optional": ["any"]
+            }
+          },
+          "to": [
+            {
+              "shell_command": "curl -s http://127.0.0.1:27184/open"
+            }
+          ],
+          "conditions": [
+            {
+              "type": "frontmost_application_if",
+              "bundle_identifiers": [
+                "com\\.ableton\\.live"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
