@@ -195,7 +195,16 @@
         const item = items[activeIdx];
         const value = item ? resolve(item) : input.value.trim();
         if (value) send(value);
-      } else if (e.key === 'Tab' || e.key === 'ArrowDown') {
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        const item = items[activeIdx];
+        if (!item) return;
+        // Fill the selected item into the input; append a space after a command
+        // so the user lands straight in flag-completion mode.
+        input.value = mode === 'command' ? item.name + ' ' : resolve(item);
+        activeIdx = 0;
+        render();
+      } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         if (items.length) { activeIdx = (activeIdx + 1) % items.length; render(); }
       } else if (e.key === 'ArrowUp') {

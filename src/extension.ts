@@ -3,6 +3,7 @@ import { CommandRegistry } from "./commandRegistry.js";
 import { startTriggerServer } from "./httpTrigger.js";
 import { runKarabinerSetup, isKarabinerSetupDone } from "./setup.js";
 import interfaceTemplate from "../ui/interface.html";
+import { spawn } from "node:child_process";
 
 const TRIGGER_PORT = 27184;
 
@@ -11,9 +12,8 @@ export function activate(activation: ActivationContext) {
   const registry = new CommandRegistry();
 
   // ── built-in commands ────────────────────────────────────────────────────
-  registry.register("help", "list all registered commands", () => {
-    const lines = registry.list().map(c => `  ${c.name.padEnd(12)} ${c.description}`);
-    console.log("cmdAbl commands:\n" + lines.join("\n"));
+  registry.register("help", "open the Ableton Live manual", () => {
+    spawn("open", ["https://www.ableton.com/en/manual/"], { detached: true, stdio: "ignore" }).unref();
   });
 
   registry.register(

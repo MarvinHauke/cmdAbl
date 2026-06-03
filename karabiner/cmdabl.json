@@ -7,7 +7,7 @@
         {
           "type": "basic",
           "from": {
-            "key_code": "semicolon",
+            "key_code": "period",
             "modifiers": {
               "mandatory": ["left_shift"],
               "optional": ["any"]
@@ -15,7 +15,7 @@
           },
           "to": [
             {
-              "shell_command": "curl -s http://127.0.0.1:27184/open"
+              "shell_command": "/usr/bin/curl -s http://127.0.0.1:27184/open"
             }
           ],
           "conditions": [
