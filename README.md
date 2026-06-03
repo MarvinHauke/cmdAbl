@@ -1,17 +1,21 @@
 # cmdAbl
 
-A vim-inspired command palette for Ableton Live. Press `:` while Live is focused to open a
+A command palette for Ableton Live.
+
+Press `:` while Live is focused to open a
 keyboard-driven command input with fuzzy filtering, tab completion, and POSIX-style flag arguments.
-
-![Command palette](assets/images/readme/example.jpg)
-
-## Table of Contents
+You are invited to add your own extensions as registered commands.
 
 - [How it works](#how-it-works)
 - [Setup](#setup)
 - [Scripts](#scripts)
 - [Development](#development)
 - [Project structure](#project-structure)
+
+<figure>
+<img src="assets/images/readme/example.jpg" width="80%" alt="Command palette" />
+<figcaption>open the manual with help command</figcaption>
+</figure>
 
 ---
 
@@ -26,13 +30,13 @@ time, so the palette always reflects the live command set.
 
 **Palette keybindings**
 
-| Key | Action |
-|-----|--------|
-| Type | Filter commands / flags |
-| `Tab` | Complete selected item into the input |
-| `Enter` | Execute selected command |
-| `↑` / `↓` | Navigate the list |
-| `Esc` | Close without executing |
+| Key       | Action                                |
+| --------- | ------------------------------------- |
+| Type      | Filter commands / flags               |
+| `Tab`     | Complete selected item into the input |
+| `Enter`   | Execute selected command              |
+| `↑` / `↓` | Navigate the list                     |
+| `Esc`     | Close without executing               |
 
 **Command syntax**
 
@@ -46,13 +50,13 @@ Typing a command name followed by a space switches the dropdown into flag-comple
 
 **Built-in commands**
 
-| Command | Description |
-|---------|-------------|
-| `help` | Open the Ableton Live manual in the browser |
-| `cmdabl --setup` | Symlink the Karabiner rule and print enable instructions |
-| `suggest` | Generate ghost-note suggestions for the selected clip *(coming soon)* |
-| `accept` | Accept all ghost-note suggestions *(coming soon)* |
-| `clear` | Remove all ghost-note suggestions *(coming soon)* |
+| Command          | Description                                                           |
+| ---------------- | --------------------------------------------------------------------- |
+| `help`           | Open the Ableton Live manual in the browser                           |
+| `cmdabl --setup` | Symlink the Karabiner rule and print enable instructions              |
+| `suggest`        | Generate ghost-note suggestions for the selected clip _(coming soon)_ |
+| `accept`         | Accept all ghost-note suggestions _(coming soon)_                     |
+| `clear`          | Remove all ghost-note suggestions _(coming soon)_                     |
 
 </details>
 
@@ -108,8 +112,6 @@ Afterwards, open **Karabiner-Elements → Complex Modifications → Add rule** a
 
 ```sh
 npm start          # type-check, build (dev), and run in Live's Extension Host
-npm run build      # production bundle (minified)
-npm run build:dev  # dev bundle (sourcemaps, not minified)
 npm run package    # production build + create a .ablx archive (includes karabiner/)
 ```
 
@@ -130,11 +132,16 @@ registry.register("mycommand", "description shown in the palette", (flags) => {
 });
 
 // with declared flags for tab-completion:
-registry.register("mycommand", "description", [
-  { name: "--option", description: "what this flag does" },
-], (flags) => {
-  if (flags.includes("--option")) { /* ... */ }
-});
+registry.register(
+  "mycommand",
+  "description",
+  [{ name: "--option", description: "what this flag does" }],
+  (flags) => {
+    if (flags.includes("--option")) {
+      /* ... */
+    }
+  },
+);
 ```
 
 </details>
