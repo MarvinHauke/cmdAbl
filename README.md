@@ -68,10 +68,10 @@ Typing a command name followed by a space switches the dropdown into flag-comple
 
 **Prerequisites**
 
-| Platform | Required |
-| -------- | -------- |
+| Platform | Required                                                                                               |
+| -------- | ------------------------------------------------------------------------------------------------------ |
 | macOS    | [Ableton Live 12](https://www.ableton.com) · [Karabiner-Elements](https://karabiner-elements.pqrs.org) |
-| Windows  | [Ableton Live 12](https://www.ableton.com) · [AutoHotkey v2](https://www.autohotkey.com) |
+| Windows  | [Ableton Live 12](https://www.ableton.com) · [AutoHotkey v2](https://www.autohotkey.com)               |
 
 **1. Install the extension**
 
@@ -93,7 +93,7 @@ A feedback dialog confirms whether the rule was linked or shows an error. Then o
 **Karabiner-Elements → Complex Modifications → Add rule** and enable
 **"Open cmdAbl command palette with ':' when Ableton Live is focused"**.
 
-<video src="assets/images/readme/setup.mov" controls width="80%"></video>
+<video src="assets/images/readme/setup.mp4" controls width="80%"></video>
 
 > **Keyboard layout note:** The rule maps `Shift+Period` (`:` on QWERTZ/German layouts).
 > If you use a different layout, edit `karabiner/cmdabl.json` and change `"key_code"` to
