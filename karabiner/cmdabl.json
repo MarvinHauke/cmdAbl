@@ -24,6 +24,11 @@
               "bundle_identifiers": [
                 "com\\.ableton\\.live"
               ]
+            },
+            {
+              "type": "variable_if",
+              "name": "cmdabl_open",
+              "value": 0
             }
           ]
         }

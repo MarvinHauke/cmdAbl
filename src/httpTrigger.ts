@@ -1,10 +1,12 @@
 import * as http from "node:http";
 
-export function startTriggerServer(port: number, onTrigger: () => void): void {
+export function startTriggerServer(port: number, onTrigger: () => void, getIsOpen: () => boolean): void {
   const server = http.createServer((req, res) => {
     if (req.url === "/open") {
       onTrigger();
       res.writeHead(200).end("ok");
+    } else if (req.url === "/state") {
+      res.writeHead(200).end(getIsOpen() ? "open" : "closed");
     } else {
       res.writeHead(404).end();
     }

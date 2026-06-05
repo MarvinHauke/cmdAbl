@@ -7,9 +7,9 @@ keyboard-driven command input with fuzzy filtering, tab completion, and POSIX-st
 You are invited to add your own extensions as registered commands.
 
 - [How it works](#how-it-works)
-- [Setup](#setup)
-- [Scripts](#scripts)
+- [Installation](#installation)
 - [Development](#development)
+- [Scripts](#scripts)
 - [Project structure](#project-structure)
 
 <figure>
@@ -19,7 +19,7 @@ You are invited to add your own extensions as registered commands.
 
 ---
 
-<details id="how-it-works">
+<details id="how-it-works" open>
 <summary><b>How it works</b></summary>
 <br>
 
@@ -53,7 +53,7 @@ Typing a command name followed by a space switches the dropdown into flag-comple
 | Command          | Description                                                           |
 | ---------------- | --------------------------------------------------------------------- |
 | `help`           | Open the Ableton Live manual in the browser                           |
-| `cmdabl --setup` | Symlink the Karabiner rule and print enable instructions              |
+| `cmdabl --setup` | Install the keyboard trigger rule and show a result dialog            |
 | `suggest`        | Generate ghost-note suggestions for the selected clip _(coming soon)_ |
 | `accept`         | Accept all ghost-note suggestions _(coming soon)_                     |
 | `clear`          | Remove all ghost-note suggestions _(coming soon)_                     |
@@ -62,69 +62,79 @@ Typing a command name followed by a space switches the dropdown into flag-comple
 
 ---
 
-<details id="setup">
-<summary><b>Setup</b></summary>
+<details id="installation" open>
+<summary><b>Installation</b></summary>
 <br>
 
-**1. Configure the Extension Host path**
+**Prerequisites**
 
-The path to Ableton Live's Extension Host module is stored in `.env` as `EXTENSION_HOST_PATH`.
-The scaffold fills this in automatically; edit it if your install path changes.
+| Platform | Required |
+| -------- | -------- |
+| macOS    | [Ableton Live 12](https://www.ableton.com) · [Karabiner-Elements](https://karabiner-elements.pqrs.org) |
+| Windows  | [Ableton Live 12](https://www.ableton.com) · [AutoHotkey v2](https://www.autohotkey.com) |
 
-**2. Install dependencies**
+**1. Install the extension**
 
-```sh
-npm install
-```
+Download the latest `.ablx` file and double-click it — Ableton Live installs and loads the extension automatically.
 
-**3. Run the extension**
+**2. Open the palette**
 
-```sh
-npm start
-```
+Right-click any clip, track, clip slot, or scene and choose **: cmdAbl**.
 
-This type-checks, bundles, and loads the extension into Ableton's Extension Host.
+**3. Set up the `:` keyboard shortcut — macOS**
 
-**4. Set up the `:` keyboard shortcut (optional)**
-
-With the extension running, open the palette via right-click → `: cmdAbl` on any clip, track,
-clip slot, or scene. Then run:
+Make sure [Karabiner-Elements](https://karabiner-elements.pqrs.org) is installed, then run the following command in the palette:
 
 ```
 cmdabl --setup
 ```
 
-This symlinks `karabiner/cmdabl.json` into Karabiner's complex modifications directory.
-Afterwards, open **Karabiner-Elements → Complex Modifications → Add rule** and enable
+A feedback dialog confirms whether the rule was linked or shows an error. Then open
+**Karabiner-Elements → Complex Modifications → Add rule** and enable
 **"Open cmdAbl command palette with ':' when Ableton Live is focused"**.
+
+<video src="assets/images/readme/setup.mov" controls width="80%"></video>
 
 > **Keyboard layout note:** The rule maps `Shift+Period` (`:` on QWERTZ/German layouts).
 > If you use a different layout, edit `karabiner/cmdabl.json` and change `"key_code"` to
 > match your key — use Karabiner's Event Viewer to find the correct code.
 
-</details>
+**3. Set up the `:` keyboard shortcut — Windows**
 
----
+Make sure [AutoHotkey v2](https://www.autohotkey.com) is installed, then run:
 
-<details id="scripts">
-<summary><b>Scripts</b></summary>
-<br>
-
-```sh
-npm start          # type-check, build (dev), and run in Live's Extension Host
-npm run package    # production build + create a .ablx archive (includes karabiner/)
+```
+cmdabl --setup
 ```
 
+A feedback dialog confirms the script was copied to your startup folder. Open `cmdabl.ahk`
+manually to activate it immediately, or restart Windows to auto-start it.
+
 </details>
 
 ---
 
-<details id="development">
+<details id="development" open>
 <summary><b>Development</b></summary>
 <br>
 
-Extensions must export an `activate(context: ActivationContext)` function. All commands are
-registered on the `CommandRegistry` instance in `src/extension.ts`. To add a new command:
+**1. Install dependencies**
+
+```sh
+npm install
+```
+
+**2. Run the extension in dev mode**
+
+```sh
+npm start
+```
+
+This type-checks, bundles, and loads the extension into Ableton's Extension Host with live reload.
+
+**3. Add commands**
+
+All commands are registered on the `CommandRegistry` instance in `src/extension.ts`:
 
 ```ts
 registry.register("mycommand", "description shown in the palette", (flags) => {
@@ -144,11 +154,26 @@ registry.register(
 );
 ```
 
+Extensions must export an `activate(context: ActivationContext)` function.
+
 </details>
 
 ---
 
-<details id="project-structure">
+<details id="scripts" open>
+<summary><b>Scripts</b></summary>
+<br>
+
+```sh
+npm start          # type-check, build (dev), and run in Live's Extension Host
+npm run package    # production build + create a .ablx archive (includes karabiner/ and windows/)
+```
+
+</details>
+
+---
+
+<details id="project-structure" open>
 <summary><b>Project structure</b></summary>
 <br>
 
@@ -156,14 +181,16 @@ registry.register(
 src/
   extension.ts       main entry point — registers commands, starts HTTP server
   commandRegistry.ts typed command registry with flag support
-  httpTrigger.ts     localhost HTTP server for external triggers (Karabiner, etc.)
-  setup.ts           Karabiner symlink setup logic
+  httpTrigger.ts     localhost HTTP server for external triggers (Karabiner, AHK, etc.)
+  setup.ts           platform-specific keyboard trigger setup (macOS + Windows)
 ui/
   interface.html     command palette (self-contained HTML/CSS/JS, inlined at build time)
 karabiner/
-  cmdabl.json        Karabiner Elements complex modification
+  cmdabl.json        Karabiner Elements complex modification (macOS)
+windows/
+  cmdabl.ahk         AutoHotkey v2 script (Windows)
 assets/
-  images/            screenshots for this README
+  images/            screenshots and videos for this README
 ```
 
 </details>
