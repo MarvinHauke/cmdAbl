@@ -1,7 +1,4 @@
-export interface FlagDef {
-  name: string;
-  description: string;
-}
+import type { FlagDef } from "./types.js";
 
 export interface CommandDef {
   name: string;
@@ -38,12 +35,16 @@ export class CommandRegistry {
     return [...this.defs];
   }
 
-  async execute(input: string): Promise<void> {
-    const tokens = input.trim().split(/\s+/);
-    const name = tokens[0] ?? "";
-    const flags = tokens.slice(1);
+  /** Run a command by name with already-parsed flags. */
+  async run(name: string, flags: string[] = []): Promise<void> {
     const handler = this.handlers.get(name);
     if (!handler) throw new Error(`unknown command: "${name}"`);
     await handler(flags);
+  }
+
+  /** Parse a raw "name --flag" string and run it. */
+  async execute(input: string): Promise<void> {
+    const tokens = input.trim().split(/\s+/);
+    await this.run(tokens[0] ?? "", tokens.slice(1));
   }
 }

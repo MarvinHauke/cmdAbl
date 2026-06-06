@@ -89,25 +89,33 @@
 
   <div id="dropdown"></div>
 
+  <!-- Fuse.js, inlined as a `Fuse` global at build time. -->
+  <script>/*FUSE_PLACEHOLDER*/</script>
+
   <script>
-    // Injected by the extension before the dialog opens.
-    // Shape: Array<{ name: string, description: string, flags?: Array<{ name: string, description: string }> }>
-    const COMMANDS = /*COMMANDS_PLACEHOLDER*/null;
+    // Injected by the extension before the dialog opens. PaletteItem[]:
+    //   { id, type, title, subtitle?, keywords?, flags?: [{ name, description }] }
+    const ITEMS = /*ITEMS_PLACEHOLDER*/null;
 
     const input     = document.getElementById('input');
     const dropdown  = document.getElementById('dropdown');
     const modeBadge = document.getElementById('mode-badge');
 
-    // Build lookup map for flag completions
-    const cmdMap = Object.fromEntries(COMMANDS.map(c => [c.name, c]));
+    const itemsById = Object.fromEntries(ITEMS.map(i => [i.id, i]));
+
+    const fuseOpts = { threshold: 0.4, ignoreLocation: true };
+    const itemFuse = new Fuse(ITEMS, { ...fuseOpts, keys: ['title', 'subtitle', 'keywords'] });
 
     let items     = [];   // current completion candidates
     let activeIdx = 0;
     let mode      = 'command'; // 'command' | 'flag'
 
     // ── messaging ──────────────────────────────────────────────────────────
-    function send(value) {
-      const msg = { method: 'close_and_send', params: [value] };
+    // Returns a structured PaletteResult to the host as a JSON string (the
+    // bridge can only carry one string); null/empty closes without acting.
+    function send(result) {
+      const payload = result == null ? '' : JSON.stringify(result);
+      const msg = { method: 'close_and_send', params: [payload] };
       if (window.webkit?.messageHandlers?.live) {
         window.webkit.messageHandlers.live.postMessage(msg);
       } else if (window.chrome?.webview) {
@@ -119,40 +127,49 @@
     function parse(raw) {
       const spaceIdx = raw.indexOf(' ');
       if (spaceIdx === -1) {
-        return { phase: 'command', query: raw.toLowerCase(), cmdName: null };
+        return { phase: 'command', query: raw.trim(), cmdName: null };
       }
       return {
         phase: 'flag',
-        query: raw.slice(spaceIdx + 1).toLowerCase(),
+        query: raw.slice(spaceIdx + 1).trim(),
         cmdName: raw.slice(0, spaceIdx),
       };
     }
 
-    // ── build completion list ──────────────────────────────────────────────
+    // ── build completion list (fuzzy) ──────────────────────────────────────
     function computeItems(raw) {
       const { phase, query, cmdName } = parse(raw);
       mode = phase;
 
       if (phase === 'command') {
-        return query
-          ? COMMANDS.filter(c => c.name.startsWith(query) || c.name.includes(query))
-          : COMMANDS;
+        return query ? itemFuse.search(query).map(r => r.item) : ITEMS;
       }
 
       // flag phase
-      const cmd = cmdMap[cmdName ?? ''];
-      if (!cmd?.flags?.length) return [];
-      return query
-        ? cmd.flags.filter(f => f.name.startsWith(query) || f.name.includes(query))
-        : cmd.flags;
+      const flags = itemsById[cmdName ?? '']?.flags ?? [];
+      if (!flags.length || !query) return flags;
+      const flagFuse = new Fuse(flags, { ...fuseOpts, keys: ['name', 'description'] });
+      return flagFuse.search(query).map(r => r.item);
     }
 
-    // ── resolve what string to send on selection ───────────────────────────
-    function resolve(item) {
-      if (mode === 'command') return item.name;
-      const spaceIdx = input.value.indexOf(' ');
-      const cmdName  = input.value.slice(0, spaceIdx);
-      return `${cmdName} ${item.name}`;
+    // ── row shape differs between phases (PaletteItem vs FlagDef) ────────────
+    function labelOf(item) { return mode === 'command' ? item.title : item.name; }
+    function descOf(item)  { return (mode === 'command' ? item.subtitle : item.description) ?? ''; }
+
+    // ── structured payload for a chosen item ────────────────────────────────
+    function resultFor(item) {
+      if (mode === 'command') return { type: item.type, id: item.id };
+      const cmdName = input.value.slice(0, input.value.indexOf(' '));
+      return { type: 'command', id: cmdName, flags: [item.name] };
+    }
+
+    // ── structured payload for free-typed input (no active item) ─────────────
+    function rawResult() {
+      const raw = input.value.trim();
+      if (!raw) return null;
+      const sp = raw.indexOf(' ');
+      if (sp === -1) return { type: 'command', id: raw };
+      return { type: 'command', id: raw.slice(0, sp), flags: raw.slice(sp + 1).split(/\s+/) };
     }
 
     // ── render ─────────────────────────────────────────────────────────────
@@ -174,9 +191,15 @@
       items.forEach((item, i) => {
         const row = document.createElement('div');
         row.className = 'row' + (i === activeIdx ? ' active' : '');
-        row.innerHTML =
-          `<span class="label">${item.name}</span><span class="desc">${item.description}</span>`;
-        row.addEventListener('mousedown', e => { e.preventDefault(); send(resolve(item)); });
+        // textContent, not innerHTML: item titles may be user data (track names).
+        const label = document.createElement('span');
+        label.className = 'label';
+        label.textContent = labelOf(item);
+        const desc = document.createElement('span');
+        desc.className = 'desc';
+        desc.textContent = descOf(item);
+        row.append(label, desc);
+        row.addEventListener('mousedown', e => { e.preventDefault(); send(resultFor(item)); });
         dropdown.appendChild(row);
       });
 
@@ -189,19 +212,28 @@
     input.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        send('');
+        send(null);
       } else if (e.key === 'Enter') {
         e.preventDefault();
         const item = items[activeIdx];
-        const value = item ? resolve(item) : input.value.trim();
-        if (value) send(value);
+        const result = item ? resultFor(item) : rawResult();
+        if (result) send(result);
       } else if (e.key === 'Tab') {
         e.preventDefault();
         const item = items[activeIdx];
         if (!item) return;
-        // Fill the selected item into the input; append a space after a command
-        // so the user lands straight in flag-completion mode.
-        input.value = mode === 'command' ? item.name + ' ' : resolve(item);
+        if (mode === 'command') {
+          // Only commands have a flag phase; descend into it. Other item types
+          // have nothing more to complete, so selecting them acts immediately.
+          if (item.type === 'command') {
+            input.value = item.id + ' ';
+          } else {
+            send(resultFor(item));
+            return;
+          }
+        } else {
+          input.value = input.value.slice(0, input.value.indexOf(' ')) + ' ' + item.name;
+        }
         activeIdx = 0;
         render();
       } else if (e.key === 'ArrowDown') {

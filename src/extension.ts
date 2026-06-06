@@ -1,5 +1,7 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./commandRegistry.js";
+import { createCommandProvider } from "./providers/commandProvider.js";
+import type { Provider, PaletteResult } from "./types.js";
 import { startTriggerServer } from "./httpTrigger.js";
 import { runSetup, isSetupDone, setKarabinerPaletteOpen } from "./setup.js";
 import interfaceTemplate from "../ui/interface.html";
@@ -10,6 +12,8 @@ const TRIGGER_PORT = 27184;
 export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");
   const registry = new CommandRegistry();
+  const providers: Provider[] = [createCommandProvider(registry)];
+  let isOpen = false;
 
   function showFeedback(message: string): void {
     const escaped = message
@@ -70,27 +74,48 @@ export function activate(activation: ActivationContext) {
   }
 
   // ── open command mode ────────────────────────────────────────────────────
-  let isOpen = false;
+  // Act on the structured payload the webview returns when an item is picked.
+  async function dispatch(raw: string): Promise<void> {
+    let result: PaletteResult;
+    try {
+      result = JSON.parse(raw) as PaletteResult;
+    } catch {
+      console.error(`cmdAbl: malformed palette result: ${raw}`);
+      return;
+    }
+    switch (result.type) {
+      case "command":
+        await registry.run(result.id, result.flags ?? []);
+        break;
+      default:
+        console.warn(`cmdAbl: no handler for item type "${result.type}"`);
+    }
+  }
 
-  context.commands.registerCommand("cmdabl.open", () => {
+  async function openPalette(): Promise<void> {
     if (isOpen) return;
     isOpen = true;
     setKarabinerPaletteOpen(true);
-
-    const html = interfaceTemplate.replace(
-      "/*COMMANDS_PLACEHOLDER*/null",
-      JSON.stringify(registry.list()),
-    );
-    const url = `data:text/html,${encodeURIComponent(html)}`;
-
-    context.ui.showModalDialog(url, 500, 260).then((result) => {
+    try {
+      // Snapshot every provider's items, then let the webview search them.
+      const items = (await Promise.all(providers.map((p) => p.getItems()))).flat();
+      const html = interfaceTemplate.replace(
+        "/*ITEMS_PLACEHOLDER*/null",
+        JSON.stringify(items),
+      );
+      const url = `data:text/html,${encodeURIComponent(html)}`;
+      const result = await context.ui.showModalDialog(url, 500, 260);
+      if (result) await dispatch(result);
+    } catch (e: unknown) {
+      console.error(e instanceof Error ? e.message : String(e));
+    } finally {
       isOpen = false;
       setKarabinerPaletteOpen(false);
-      if (!result) return;
-      registry.execute(result).catch((e: unknown) => {
-        console.error(e instanceof Error ? e.message : String(e));
-      });
-    });
+    }
+  }
+
+  context.commands.registerCommand("cmdabl.open", () => {
+    void openPalette();
   });
 
   const scopes = [
