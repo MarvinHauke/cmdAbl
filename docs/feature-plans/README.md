@@ -28,3 +28,4 @@ tweaks, or single-file changes — those don't need a design doc, just a commit 
 | # | Title | Status | Summary |
 |---|---|---|---|
 | [0001](0001-path-addressed-objects-and-commands.md) | Path-addressed objects & Linux-style commands | Draft | Address any Live object (tracks, devices, Drum Rack chains, …) by path (`/vermona/kick`), drive them with Linux-style commands (`mute`, `rm`, `select`, …) supporting flags and multiple targets, and a bidirectional bridge so the palette can read data the Extensions SDK doesn't expose. |
+| [0002](0002-command-feedback-pattern.md) | Structured command-feedback pattern | Draft | Give every command a structured, exit-code-like result (`CommandResult`) rendered through one consistent policy — replacing today's scattered modal/console/throw mix — and generalize it to multi-target commands' partial-success reporting. |

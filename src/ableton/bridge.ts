@@ -1,4 +1,5 @@
 import * as dgram from "node:dgram";
+import type { TrackScope } from "../types.js";
 
 // The Extensions SDK can't change Live's selection, so cmdAbl talks to its
 // companion Remote Script over a local UDP socket (see remote-script/cmdAbl).
@@ -16,7 +17,15 @@ function send(payload: Record<string, unknown>): void {
   });
 }
 
-/** Ask the Remote Script to select the track at the given index in song.tracks. */
-export function selectTrack(index: number): void {
-  send({ cmd: "select_track", index });
+/**
+ * Ask the Remote Script to select the track at `index` within the named
+ * collection (song.tracks / .return_tracks / .master_track — see TrackScope).
+ */
+export function selectTrack(scope: TrackScope, index: number): void {
+  send({ cmd: "select_track", scope, index });
+}
+
+/** Ask the Remote Script to select and reveal a device on a track in the named collection. */
+export function selectDevice(scope: TrackScope, trackIndex: number, deviceIndex: number): void {
+  send({ cmd: "select_device", scope, trackIndex, deviceIndex });
 }

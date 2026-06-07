@@ -1,9 +1,9 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./commandRegistry.js";
 import { createCommandProvider } from "./providers/commandProvider.js";
-import { createTrackProvider } from "./providers/trackProvider.js";
-import { resolveTrackIndex } from "./ableton/resolve.js";
-import { selectTrack } from "./ableton/bridge.js";
+import { createObjectProvider } from "./providers/objectProvider.js";
+import { resolveRef } from "./ableton/resolve.js";
+import { selectTrack, selectDevice } from "./ableton/bridge.js";
 import type { Provider, PaletteResult } from "./types.js";
 import { startTriggerServer } from "./httpTrigger.js";
 import { runSetup, isSetupDone, setKarabinerPaletteOpen } from "./setup.js";
@@ -17,7 +17,7 @@ export function activate(activation: ActivationContext) {
   const registry = new CommandRegistry();
   const providers: Provider[] = [
     createCommandProvider(registry),
-    createTrackProvider(context),
+    createObjectProvider(context),
   ];
   let isOpen = false;
 
@@ -80,19 +80,21 @@ export function activate(activation: ActivationContext) {
       case "command":
         await registry.run(result.id, result.flags ?? []);
         break;
-      case "track": {
+      case "track":
+      case "device": {
         if (result.action !== "select") {
-          console.warn(`cmdAbl: unknown track action "${result.action}"`);
+          console.warn(`cmdAbl: unknown ${result.type} action "${result.action}"`);
           break;
         }
         // Selection lives in the LOM, not the Extensions SDK, so we hand the
-        // track's current index to the companion Remote Script over UDP.
-        const index = resolveTrackIndex(context, result);
-        if (index === -1) {
-          showFeedback("cmdAbl: that track is no longer available.");
+        // object's current route to the companion Remote Script over UDP.
+        const resolved = resolveRef(context, result);
+        if (!resolved) {
+          showFeedback(`cmdAbl: that ${result.type} is no longer available.`);
           break;
         }
-        selectTrack(index);
+        if (resolved.kind === "track") selectTrack(resolved.scope, resolved.route[0]);
+        else selectDevice(resolved.scope, resolved.route[0], resolved.route[1]);
         break;
       }
       default:

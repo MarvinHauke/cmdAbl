@@ -94,7 +94,7 @@
 
   <script>
     // Injected by the extension before the dialog opens. PaletteItem[]:
-    //   { id, type, title, subtitle?, keywords?, flags?: [{ name, description }] }
+    //   { id, type, title, subtitle?, keywords?, path?, route?, flags?: [{ name, description }] }
     const ITEMS = /*ITEMS_PLACEHOLDER*/null;
 
     const input     = document.getElementById('input');
@@ -104,7 +104,9 @@
     const itemsById = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 
     const fuseOpts = { threshold: 0.4, ignoreLocation: true };
-    const itemFuse = new Fuse(ITEMS, { ...fuseOpts, keys: ['title', 'subtitle', 'keywords'] });
+    // 'path' lets a bare "/vermona/kick"-style query fuzzy-match a Live
+    // object's address directly, on top of matching its bare name.
+    const itemFuse = new Fuse(ITEMS, { ...fuseOpts, keys: ['title', 'subtitle', 'keywords', 'path'] });
 
     let items     = [];   // current completion candidates
     let activeIdx = 0;
@@ -165,11 +167,11 @@
         const cmdName = input.value.slice(0, input.value.indexOf(' '));
         return { type: 'command', id: cmdName, flags: [item.name] };
       }
-      // Command-phase item (command, track, …). Pass through action/index so
-      // the host can route and re-resolve Live objects.
+      // Command-phase item (command, track, device, …). Pass through
+      // action/route so the host can route and re-resolve Live objects.
       const result = { type: item.type, id: item.id };
       if (item.action !== undefined) result.action = item.action;
-      if (item.index !== undefined) result.index = item.index;
+      if (item.route !== undefined) result.route = item.route;
       return result;
     }
 
@@ -235,9 +237,13 @@
         // Tab only autocompletes the highlighted item into the input — it never
         // executes. The user commits with Enter (and can edit / add flags first).
         if (mode === 'command') {
-          // Commands get a trailing space so you land in flag completion;
-          // other items fill their name so you can review before Enter.
-          input.value = item.type === 'command' ? item.id + ' ' : item.title;
+          // Commands get a trailing space so you land in flag completion. Live
+          // objects fill their *path*, not their bare name — names collide
+          // constantly (multiple devices/tracks called "DefaultTracks", "EQ
+          // Eight", …), so completing to the name would just re-match every
+          // same-named object and strand you on an arbitrary one of them. The
+          // path is what's actually unique enough to land back on this object.
+          input.value = item.type === 'command' ? item.id + ' ' : (item.path ?? item.title);
         } else {
           input.value = input.value.slice(0, input.value.indexOf(' ')) + ' ' + item.name;
         }

@@ -11,6 +11,15 @@ export interface FlagDef {
 
 export type PaletteItemType = "command" | "track" | "device" | "clip" | "scene";
 
+/**
+ * Regular tracks, return tracks, and the main ("Master") track are three
+ * separate, ungroupable collections in the LOM (song.tracks / .returnTracks /
+ * .mainTrack) — re-resolving or selecting a track needs to know which one its
+ * route indexes into. Devices inherit their track's scope. Defaults to
+ * "regular" when absent (every Phase-1 item implicitly was).
+ */
+export type TrackScope = "regular" | "return" | "master";
+
 export interface PaletteItem {
   /**
    * Identifier for the underlying thing. For commands this is the command
@@ -29,8 +38,16 @@ export interface PaletteItem {
   flags?: FlagDef[];
   /** What to do with the item (e.g. "toggleMute"). Non-command items. */
   action?: string;
-  /** Position in its source collection; fallback for re-resolution. */
-  index?: number;
+  /** Display/address path from the song root, e.g. "/Vermona/Kick". Live objects only. */
+  path?: string;
+  /**
+   * Index chain into the track collection named by `scope`, e.g. [2, 1] =
+   * <scope-collection>[2].devices[1]. Fallback for re-resolution when the
+   * handle id no longer matches anything live.
+   */
+  route?: number[];
+  /** Which track collection `route`'s first index resolves against. Tracks/devices only. */
+  scope?: TrackScope;
 }
 
 /**
@@ -44,8 +61,10 @@ export interface PaletteResult {
   flags?: string[];
   /** Non-command action to perform (e.g. "toggleMute" on a track). */
   action?: string;
-  /** Position fallback for re-resolving the object. */
-  index?: number;
+  /** Index chain fallback for re-resolving the object — see PaletteItem.route. */
+  route?: number[];
+  /** See PaletteItem.scope. */
+  scope?: TrackScope;
 }
 
 export interface Provider {
