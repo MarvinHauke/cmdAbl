@@ -101,7 +101,7 @@ A feedback dialog confirms whether the rule was linked or shows an error. Then o
 **Karabiner-Elements → Complex Modifications → Add rule** and enable
 **"Open cmdAbl command palette with ':' when Ableton Live is focused"**.
 
-<video src="assets/images/readme/setup.mp4" controls width="80%"></video>
+<img src="assets/images/readme/setup.gif" width="80%" alt="Linking the cmdAbl Karabiner rule">
 
 > **Keyboard layout note:** The rule maps `Shift+Period` (`:` on QWERTZ/German layouts).
 > If you use a different layout, edit `karabiner/cmdabl.json` and change `"key_code"` to
