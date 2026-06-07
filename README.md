@@ -198,6 +198,10 @@ npm start          # type-check, build (dev), and run in Live's Extension Host
 npm run package    # production build + create a .ablx archive (includes karabiner/ and windows/)
 ```
 
+A [GitHub Actions workflow](.github/workflows/package-release.yml) runs `npm run package` on
+every push to `main` and publishes the resulting `.ablx` as a GitHub Release whenever
+`package.json`'s `version` hasn't been released yet — bump the version to cut a release.
+
 </details>
 
 ---
