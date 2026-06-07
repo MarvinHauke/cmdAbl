@@ -82,8 +82,19 @@ class cmdAbl(ControlSurface):
             )
             return
         try:
-            song.view.selected_track = tracks[index]
+            track = tracks[index]
+            self._unfold_parents(track)
+            song.view.selected_track = track
         except Exception:
             self.log_message(
                 "cmdAbl bridge: select failed:\n%s" % traceback.format_exc()
             )
+
+    def _unfold_parents(self, track):
+        # A track inside a folded Group Track is hidden in the UI even when
+        # selected, so walk up the chain of enclosing groups and unfold each.
+        group = track.group_track
+        while group:
+            if group.is_foldable and group.fold_state:
+                group.fold_state = 0
+            group = group.group_track
