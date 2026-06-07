@@ -12,7 +12,11 @@ export interface FlagDef {
 export type PaletteItemType = "command" | "track" | "device" | "clip" | "scene";
 
 export interface PaletteItem {
-  /** Stable identifier. For commands this is the command name. */
+  /**
+   * Identifier for the underlying thing. For commands this is the command
+   * name; for Live objects it is the host handle id (as a string). Not a
+   * permanent reference — objects are re-resolved at execute time.
+   */
   id: string;
   type: PaletteItemType;
   /** Primary label shown in the palette. */
@@ -23,6 +27,10 @@ export interface PaletteItem {
   keywords?: string[];
   /** Completable flags — commands only; drives the flag-completion phase. */
   flags?: FlagDef[];
+  /** What to do with the item (e.g. "toggleMute"). Non-command items. */
+  action?: string;
+  /** Position in its source collection; fallback for re-resolution. */
+  index?: number;
 }
 
 /**
@@ -34,8 +42,10 @@ export interface PaletteResult {
   type: PaletteItemType;
   id: string;
   flags?: string[];
-  /** Reserved for non-command actions (e.g. "mute" on a track). */
+  /** Non-command action to perform (e.g. "toggleMute" on a track). */
   action?: string;
+  /** Position fallback for re-resolving the object. */
+  index?: number;
 }
 
 export interface Provider {

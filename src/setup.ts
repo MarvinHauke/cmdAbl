@@ -129,6 +129,85 @@ Write-Output 'Next: open cmdabl.ahk manually to activate now, or restart to auto
   return ((result.stdout ?? "") + (result.stderr ?? "")).trim() || "Setup complete.";
 }
 
+// ── Remote Script bridge ─────────────────────────────────────────────────────
+// Copies the companion Remote Script (which enables track selection) into Live's
+// User Library. Selecting it as a Control Surface and restarting Live can't be
+// automated — Live has no API for either — so we just install the files.
+
+function remoteScriptSourcePath(): string {
+  return path.resolve(__dirname, "../remote-script/cmdAbl");
+}
+
+const MAC_REMOTE_SCRIPTS_DIR = path.join(
+  process.env["HOME"] ?? "~",
+  "Music/Ableton/User Library/Remote Scripts",
+);
+
+function runMacRemoteScriptSetup(): string {
+  const source = remoteScriptSourcePath();
+  const target = path.join(MAC_REMOTE_SCRIPTS_DIR, "cmdAbl");
+
+  const script = `
+if [ ! -d "$CMDABL_RS_SOURCE" ]; then
+  echo "ERROR: Remote Script source not found at $CMDABL_RS_SOURCE"
+  exit 1
+fi
+mkdir -p "$CMDABL_RS_TARGET"
+cp -R "$CMDABL_RS_SOURCE"/. "$CMDABL_RS_TARGET"/
+echo "OK: Remote Script installed to $CMDABL_RS_TARGET"
+echo "Next: restart Live, then Settings -> Link, Tempo & MIDI -> Control Surface -> cmdAbl"
+`.trim();
+
+  const result = spawnSync("bash", ["-c", script], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      CMDABL_RS_SOURCE: source,
+      CMDABL_RS_TARGET: target,
+    },
+  });
+
+  return ((result.stdout ?? "") + (result.stderr ?? "")).trim() || "Setup complete.";
+}
+
+const WIN_REMOTE_SCRIPTS_DIR = path.join(
+  process.env["USERPROFILE"] ?? "",
+  "Documents\\Ableton\\User Library\\Remote Scripts",
+);
+
+function runWinRemoteScriptSetup(): string {
+  const source = remoteScriptSourcePath();
+  const target = path.join(WIN_REMOTE_SCRIPTS_DIR, "cmdAbl");
+
+  const script = `
+if (-not (Test-Path $env:CMDABL_RS_SOURCE)) {
+  Write-Output "ERROR: Remote Script source not found at $env:CMDABL_RS_SOURCE"
+  exit 1
+}
+New-Item -ItemType Directory -Force -Path $env:CMDABL_RS_TARGET | Out-Null
+Copy-Item -Path (Join-Path $env:CMDABL_RS_SOURCE '*') -Destination $env:CMDABL_RS_TARGET -Recurse -Force
+Write-Output "OK: Remote Script installed to $env:CMDABL_RS_TARGET"
+Write-Output 'Next: restart Live, then Settings -> Link, Tempo & MIDI -> Control Surface -> cmdAbl'
+`.trim();
+
+  const result = spawnSync("powershell", ["-NonInteractive", "-Command", script], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      CMDABL_RS_SOURCE: source,
+      CMDABL_RS_TARGET: target,
+    },
+  });
+
+  return ((result.stdout ?? "") + (result.stderr ?? "")).trim() || "Setup complete.";
+}
+
+function runRemoteScriptSetup(): string {
+  if (process.platform === "darwin") return runMacRemoteScriptSetup();
+  if (process.platform === "win32") return runWinRemoteScriptSetup();
+  return "Unsupported platform.";
+}
+
 // ── Karabiner variable ───────────────────────────────────────────────────────
 
 export function setKarabinerPaletteOpen(open: boolean): void {
@@ -157,7 +236,15 @@ export function isSetupDone(): boolean {
 }
 
 export function runSetup(): string {
-  if (process.platform === "darwin") return runKarabinerSetup();
-  if (process.platform === "win32") return runAhkSetup();
-  return "Unsupported platform — only macOS and Windows are supported.";
+  if (process.platform !== "darwin" && process.platform !== "win32") {
+    return "Unsupported platform — only macOS and Windows are supported.";
+  }
+  const keyboard = process.platform === "darwin" ? runKarabinerSetup() : runAhkSetup();
+  return [
+    "— Keyboard trigger —",
+    keyboard,
+    "",
+    "— Remote Script bridge —",
+    runRemoteScriptSetup(),
+  ].join("\n");
 }

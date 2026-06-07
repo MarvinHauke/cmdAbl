@@ -10,7 +10,7 @@
     "build": "tsc --noEmit && tsx build.ts --production",
     "build:dev": "tsc --noEmit && tsx build.ts",
     "start": "npm run build:dev && extensions-cli run",
-    "package": "npm run build && extensions-cli package --include karabiner --include windows"
+    "package": "npm run build && extensions-cli package --include karabiner --include windows --include remote-script"
   },
   "dependencies": {
     "@ableton-extensions/sdk": "file:./vendor/ableton-extensions-sdk-1.0.0-beta.0.tgz",

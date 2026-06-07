@@ -1,6 +1,9 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./commandRegistry.js";
 import { createCommandProvider } from "./providers/commandProvider.js";
+import { createTrackProvider } from "./providers/trackProvider.js";
+import { resolveTrackIndex } from "./ableton/resolve.js";
+import { selectTrack } from "./ableton/bridge.js";
 import type { Provider, PaletteResult } from "./types.js";
 import { startTriggerServer } from "./httpTrigger.js";
 import { runSetup, isSetupDone, setKarabinerPaletteOpen } from "./setup.js";
@@ -12,7 +15,10 @@ const TRIGGER_PORT = 27184;
 export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");
   const registry = new CommandRegistry();
-  const providers: Provider[] = [createCommandProvider(registry)];
+  const providers: Provider[] = [
+    createCommandProvider(registry),
+    createTrackProvider(context),
+  ];
   let isOpen = false;
 
   function showFeedback(message: string): void {
@@ -48,19 +54,6 @@ export function activate(activation: ActivationContext) {
     },
   );
 
-  // placeholder domain commands — will be implemented in later steps
-  registry.register("suggest", "generate ghost-note suggestions for selected clip", () => {
-    console.log("suggest: not yet implemented");
-  });
-
-  registry.register("accept", "accept all ghost-note suggestions", () => {
-    console.log("accept: not yet implemented");
-  });
-
-  registry.register("clear", "remove all ghost-note suggestions", () => {
-    console.log("clear: not yet implemented");
-  });
-
   // ── HTTP trigger server ──────────────────────────────────────────────────
   // Karabiner (or any external tool) can POST/GET http://127.0.0.1:27184/open
   // to open the command palette without a context menu.
@@ -87,6 +80,21 @@ export function activate(activation: ActivationContext) {
       case "command":
         await registry.run(result.id, result.flags ?? []);
         break;
+      case "track": {
+        if (result.action !== "select") {
+          console.warn(`cmdAbl: unknown track action "${result.action}"`);
+          break;
+        }
+        // Selection lives in the LOM, not the Extensions SDK, so we hand the
+        // track's current index to the companion Remote Script over UDP.
+        const index = resolveTrackIndex(context, result);
+        if (index === -1) {
+          showFeedback("cmdAbl: that track is no longer available.");
+          break;
+        }
+        selectTrack(index);
+        break;
+      }
       default:
         console.warn(`cmdAbl: no handler for item type "${result.type}"`);
     }

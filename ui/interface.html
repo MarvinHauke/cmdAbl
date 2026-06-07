@@ -124,16 +124,19 @@
     }
 
     // ── parse input into phase ─────────────────────────────────────────────
+    // Only switch to flag completion when the first token is a command that
+    // actually has flags. Otherwise stay in command phase so names containing
+    // spaces (e.g. a track called "Opal Lead") keep fuzzy-matching.
     function parse(raw) {
       const spaceIdx = raw.indexOf(' ');
-      if (spaceIdx === -1) {
-        return { phase: 'command', query: raw.trim(), cmdName: null };
+      if (spaceIdx !== -1) {
+        const cmdName = raw.slice(0, spaceIdx);
+        const cmd = itemsById[cmdName];
+        if (cmd?.flags?.length) {
+          return { phase: 'flag', query: raw.slice(spaceIdx + 1).trim(), cmdName };
+        }
       }
-      return {
-        phase: 'flag',
-        query: raw.slice(spaceIdx + 1).trim(),
-        cmdName: raw.slice(0, spaceIdx),
-      };
+      return { phase: 'command', query: raw.trim(), cmdName: null };
     }
 
     // ── build completion list (fuzzy) ──────────────────────────────────────
@@ -158,9 +161,16 @@
 
     // ── structured payload for a chosen item ────────────────────────────────
     function resultFor(item) {
-      if (mode === 'command') return { type: item.type, id: item.id };
-      const cmdName = input.value.slice(0, input.value.indexOf(' '));
-      return { type: 'command', id: cmdName, flags: [item.name] };
+      if (mode === 'flag') {
+        const cmdName = input.value.slice(0, input.value.indexOf(' '));
+        return { type: 'command', id: cmdName, flags: [item.name] };
+      }
+      // Command-phase item (command, track, …). Pass through action/index so
+      // the host can route and re-resolve Live objects.
+      const result = { type: item.type, id: item.id };
+      if (item.action !== undefined) result.action = item.action;
+      if (item.index !== undefined) result.index = item.index;
+      return result;
     }
 
     // ── structured payload for free-typed input (no active item) ─────────────
@@ -222,15 +232,12 @@
         e.preventDefault();
         const item = items[activeIdx];
         if (!item) return;
+        // Tab only autocompletes the highlighted item into the input — it never
+        // executes. The user commits with Enter (and can edit / add flags first).
         if (mode === 'command') {
-          // Only commands have a flag phase; descend into it. Other item types
-          // have nothing more to complete, so selecting them acts immediately.
-          if (item.type === 'command') {
-            input.value = item.id + ' ';
-          } else {
-            send(resultFor(item));
-            return;
-          }
+          // Commands get a trailing space so you land in flag completion;
+          // other items fill their name so you can review before Enter.
+          input.value = item.type === 'command' ? item.id + ' ' : item.title;
         } else {
           input.value = input.value.slice(0, input.value.indexOf(' ')) + ' ' + item.name;
         }

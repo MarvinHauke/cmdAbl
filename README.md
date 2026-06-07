@@ -50,13 +50,21 @@ Typing a command name followed by a space switches the dropdown into flag-comple
 
 **Built-in commands**
 
-| Command          | Description                                                           |
-| ---------------- | --------------------------------------------------------------------- |
-| `help`           | Open the Ableton Live manual in the browser                           |
-| `cmdabl --setup` | Install the keyboard trigger rule and show a result dialog            |
-| `suggest`        | Generate ghost-note suggestions for the selected clip _(coming soon)_ |
-| `accept`         | Accept all ghost-note suggestions _(coming soon)_                     |
-| `clear`          | Remove all ghost-note suggestions _(coming soon)_                     |
+| Command          | Description                                                |
+| ---------------- | --------------------------------------------------------- |
+| `help`           | Open the Ableton Live manual in the browser               |
+| `cmdabl --setup` | Install the keyboard trigger rule and show a result dialog |
+
+**Live objects**
+
+The palette also fuzzy-searches the current Set. Type part of a track name and
+hit enter to select that track. The track list is snapshotted each time the
+palette opens.
+
+> **Note:** selecting a track requires the companion **cmdAbl Remote Script**
+> (the Extensions SDK cannot change Live's selection). See _Remote Script
+> bridge_ under Installation. Without it, the palette still opens and runs
+> commands — only track selection is a no-op.
 
 </details>
 
@@ -109,6 +117,27 @@ cmdabl --setup
 
 A feedback dialog confirms the script was copied to your startup folder. Open `cmdabl.ahk`
 manually to activate it immediately, or restart Windows to auto-start it.
+
+**4. Remote Script bridge (enables track selection)**
+
+Selecting a track from the palette needs a small companion Remote Script,
+because Live's Extensions SDK can't change the selection.
+
+`cmdabl --setup` (from step 3) **installs it for you** — it copies the Remote
+Script into Live's User Library alongside setting up the keyboard trigger:
+
+- **macOS:** `~/Music/Ableton/User Library/Remote Scripts/cmdAbl`
+- **Windows:** `~/Documents/Ableton/User Library/Remote Scripts/cmdAbl`
+
+Two manual steps remain (Live exposes no API for either):
+
+1. **Restart Live** so it picks up the new Remote Script.
+2. Open **Settings → Link, Tempo & MIDI → MIDI**, and under **Control Surface**
+   pick **cmdAbl** (leave Input/Output set to _None_).
+
+Live's log will show `cmdAbl bridge listening on 127.0.0.1:27185` once it's
+active. Without it, the palette still opens and runs commands — only track
+selection is a no-op.
 
 </details>
 

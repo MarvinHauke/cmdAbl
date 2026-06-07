@@ -9,3 +9,7 @@ logs/
 
 .env
 .serena/
+
+# Python
+__pycache__/
+*.pyc
