@@ -1,5 +1,5 @@
 import type { Device, ExtensionContext, Track } from "@ableton-extensions/sdk";
-import type { PaletteResult, TrackScope } from "../types.js";
+import type { PaletteResult, TrackScope } from "../../types.js";
 
 export type ResolvedObject =
   | { kind: "track"; object: Track<"1.0.0">; scope: TrackScope; route: [number] }

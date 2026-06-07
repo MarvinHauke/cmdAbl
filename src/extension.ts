@@ -1,24 +1,28 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./commandRegistry.js";
 import { createCommandProvider } from "./providers/commandProvider.js";
-import { createObjectProvider } from "./providers/objectProvider.js";
-import { resolveRef } from "./ableton/resolve.js";
-import { selectTrack, selectDevice } from "./ableton/bridge.js";
 import type { Provider, PaletteResult } from "./types.js";
+import type { Module, ModuleApi, ResultHandler } from "./modules/types.js";
 import { startTriggerServer } from "./httpTrigger.js";
 import { runSetup, isSetupDone, setKarabinerPaletteOpen } from "./setup.js";
 import interfaceTemplate from "../ui/interface.html";
 import { spawn } from "node:child_process";
 
+import * as gotoModule from "./modules/goto/index.js";
+import * as muteModule from "./modules/mute/index.js";
+import * as soloModule from "./modules/solo/index.js";
+
 const TRIGGER_PORT = 27184;
+
+// cmdAbl's "default config" — bundled in the same .ablx, activated the same
+// way third-party extensions eventually will be (see docs/feature-plans/0003).
+const DEFAULT_MODULES: Module[] = [gotoModule, muteModule, soloModule];
 
 export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");
   const registry = new CommandRegistry();
-  const providers: Provider[] = [
-    createCommandProvider(registry),
-    createObjectProvider(context),
-  ];
+  const providers: Provider[] = [createCommandProvider(registry)];
+  const resultHandlers = new Map<string, ResultHandler>();
   let isOpen = false;
 
   function showFeedback(message: string): void {
@@ -37,22 +41,33 @@ export function activate(activation: ActivationContext) {
   }
 
   // ── built-in commands ────────────────────────────────────────────────────
-  registry.register("help", "open the Ableton Live manual", () => {
-    spawn("open", ["https://www.ableton.com/en/manual/"], { detached: true, stdio: "ignore" }).unref();
-  });
-
   registry.register(
     "cmdabl",
     "configure cmdAbl",
-    [{ name: "--setup", description: "install keyboard trigger rule (Karabiner on macOS, AutoHotkey on Windows)" }],
+    [
+      { name: "--setup", description: "install keyboard trigger rule (Karabiner on macOS, AutoHotkey on Windows)" },
+      { name: "--help", description: "open the Ableton Live manual" },
+    ],
     (flags) => {
       if (flags.includes("--setup")) {
         showFeedback(runSetup());
+      } else if (flags.includes("--help")) {
+        spawn("open", ["https://www.ableton.com/en/manual/"], { detached: true, stdio: "ignore" }).unref();
       } else {
         showFeedback("cmdAbl: no recognised flag. Try: cmdabl --setup");
       }
     },
   );
+
+  // ── default modules ──────────────────────────────────────────────────────
+  const moduleApi: ModuleApi = {
+    context,
+    registry,
+    registerProvider: (provider) => providers.push(provider),
+    registerResultHandler: (action, handler) => resultHandlers.set(action, handler),
+    showFeedback,
+  };
+  for (const mod of DEFAULT_MODULES) mod.activate(moduleApi);
 
   // ── HTTP trigger server ──────────────────────────────────────────────────
   // Karabiner (or any external tool) can POST/GET http://127.0.0.1:27184/open
@@ -76,30 +91,15 @@ export function activate(activation: ActivationContext) {
       console.error(`cmdAbl: malformed palette result: ${raw}`);
       return;
     }
-    switch (result.type) {
-      case "command":
-        await registry.run(result.id, result.flags ?? []);
-        break;
-      case "track":
-      case "device": {
-        if (result.action !== "select") {
-          console.warn(`cmdAbl: unknown ${result.type} action "${result.action}"`);
-          break;
-        }
-        // Selection lives in the LOM, not the Extensions SDK, so we hand the
-        // object's current route to the companion Remote Script over UDP.
-        const resolved = resolveRef(context, result);
-        if (!resolved) {
-          showFeedback(`cmdAbl: that ${result.type} is no longer available.`);
-          break;
-        }
-        if (resolved.kind === "track") selectTrack(resolved.scope, resolved.route[0]);
-        else selectDevice(resolved.scope, resolved.route[0], resolved.route[1]);
-        break;
-      }
-      default:
-        console.warn(`cmdAbl: no handler for item type "${result.type}"`);
+    if (result.type === "command") {
+      await registry.run(result.id, result.flags ?? []);
+      return;
     }
+    // Non-command items (Live objects) are routed by `action` — modules
+    // declare what an item should *do*, independent of its `type`.
+    const handler = result.action ? resultHandlers.get(result.action) : undefined;
+    if (handler) await handler(result);
+    else console.warn(`cmdAbl: no handler for "${result.type}" action "${result.action}"`);
   }
 
   async function openPalette(): Promise<void> {
@@ -128,15 +128,7 @@ export function activate(activation: ActivationContext) {
     void openPalette();
   });
 
-  const scopes = [
-    "AudioClip",
-    "MidiClip",
-    "AudioTrack",
-    "MidiTrack",
-    "ClipSlot",
-    "Scene",
-  ] as const;
-
+  const scopes = ["AudioClip", "MidiClip", "AudioTrack", "MidiTrack", "ClipSlot", "Scene"] as const;
   for (const scope of scopes) {
     void context.ui.registerContextMenuAction(scope, ": cmdAbl", "cmdabl.open");
   }

@@ -1,7 +1,7 @@
 {
-    "name": "cmdabl",
-    "author": "MarvinHauke",
-    "entry": "dist/extension.js",
-    "version": "1.0.0",
-    "minimumApiVersion": "1.0.0"
+  "name": "cmdabl",
+  "author": "MarvinHauke",
+  "entry": "dist/extension.js",
+  "version": "0.0.1",
+  "minimumApiVersion": "1.0.0"
 }

@@ -168,10 +168,11 @@
         return { type: 'command', id: cmdName, flags: [item.name] };
       }
       // Command-phase item (command, track, device, …). Pass through
-      // action/route so the host can route and re-resolve Live objects.
+      // action/route/scope so the host can route and re-resolve Live objects.
       const result = { type: item.type, id: item.id };
       if (item.action !== undefined) result.action = item.action;
       if (item.route !== undefined) result.route = item.route;
+      if (item.scope !== undefined) result.scope = item.scope;
       return result;
     }
 
