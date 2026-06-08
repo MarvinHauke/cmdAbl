@@ -8,6 +8,7 @@ import { runSetup, isSetupDone, setKarabinerPaletteOpen } from "./setup.js";
 import interfaceTemplate from "../ui/interface.html";
 import { spawn } from "node:child_process";
 
+import * as historyModule from "./modules/history/index.js";
 import * as gotoModule from "./modules/goto/index.js";
 import * as muteModule from "./modules/mute/index.js";
 import * as soloModule from "./modules/solo/index.js";
@@ -16,13 +17,16 @@ const TRIGGER_PORT = 27184;
 
 // cmdAbl's "default config" — bundled in the same .ablx, activated the same
 // way third-party extensions eventually will be (see docs/feature-plans/0003).
+// `historyModule` is activated separately, before this list (see below), so
+// its provider claims the very first slot in `providers`/`ITEMS`.
 const DEFAULT_MODULES: Module[] = [gotoModule, muteModule, soloModule];
 
 export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");
   const registry = new CommandRegistry();
-  const providers: Provider[] = [createCommandProvider(registry)];
+  const providers: Provider[] = [];
   const resultHandlers = new Map<string, ResultHandler>();
+  const commandRunListeners: Array<(invocation: string) => void> = [];
   let isOpen = false;
 
   function showFeedback(message: string): void {
@@ -65,8 +69,15 @@ export function activate(activation: ActivationContext) {
     registry,
     registerProvider: (provider) => providers.push(provider),
     registerResultHandler: (action, handler) => resultHandlers.set(action, handler),
+    onCommandRun: (listener) => commandRunListeners.push(listener),
     showFeedback,
   };
+  // history first: claims providers[0], so its provider's items land at the
+  // very front of `ITEMS` — ahead of even the static command list — making
+  // the most recently run invocation literally the first row in the
+  // empty-query palette view (`ui/interface.html`: `query ? ... : ITEMS`).
+  historyModule.activate(moduleApi);
+  providers.push(createCommandProvider(registry));
   for (const mod of DEFAULT_MODULES) mod.activate(moduleApi);
 
   // ── HTTP trigger server ──────────────────────────────────────────────────
@@ -93,6 +104,12 @@ export function activate(activation: ActivationContext) {
     }
     if (result.type === "command") {
       await registry.run(result.id, result.flags ?? []);
+      // Report invocations that carry arguments to history listeners — the
+      // webview already normalizes "canned" full-invocation items (history
+      // entries) into this same {id, flags} shape before sending, so this
+      // sees fresh and re-run invocations identically.
+      const invocation = [result.id, ...(result.flags ?? [])].join(" ");
+      if (invocation.includes(" ")) for (const listener of commandRunListeners) listener(invocation);
       return;
     }
     // Non-command items (Live objects) are routed by `action` — modules

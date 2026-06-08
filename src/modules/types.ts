@@ -20,6 +20,13 @@ export interface ModuleApi {
    * item should *do*, independent of its `type` ("track"/"device"/…).
    */
   registerResultHandler(action: string, handler: ResultHandler): void;
+  /**
+   * Notified after any command runs successfully — fresh or re-run — with its
+   * full canonical invocation string (e.g. "mute /vermona/kick, /vermona/snare").
+   * Bare invocations with no arguments are not reported. The only window a
+   * module gets into *every* command run regardless of who registered it.
+   */
+  onCommandRun(listener: (invocation: string) => void): void;
   /** Show a small modal with a message and a "Close" button. */
   showFeedback(message: string): void;
 }

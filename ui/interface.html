@@ -126,16 +126,25 @@
     }
 
     // ── parse input into phase ─────────────────────────────────────────────
-    // Only switch to flag completion when the first token is a command that
-    // actually has flags. Otherwise stay in command phase so names containing
-    // spaces (e.g. a track called "Opal Lead") keep fuzzy-matching.
+    // Once the first token names an actual registered command, everything
+    // after it is *that command's argument text* — not a fresh fuzzy query
+    // against the whole palette (which would let e.g. "mute Microtonic"
+    // resolve to selecting the Microtonic track instead of running `mute`
+    // with "Microtonic" as its argument). Commands with declared completable
+    // flags get fuzzy-matched within those flags ('flag' phase); commands
+    // that take raw arguments (mute/solo/…) get no completion at all
+    // ('args' phase) — Enter falls through to rawResult(), which parses the
+    // literal typed text. Otherwise stay in 'command' phase so names
+    // containing spaces (e.g. a track called "Opal Lead") keep fuzzy-matching.
     function parse(raw) {
       const spaceIdx = raw.indexOf(' ');
       if (spaceIdx !== -1) {
         const cmdName = raw.slice(0, spaceIdx);
         const cmd = itemsById[cmdName];
-        if (cmd?.flags?.length) {
-          return { phase: 'flag', query: raw.slice(spaceIdx + 1).trim(), cmdName };
+        if (cmd?.type === 'command') {
+          const rest = raw.slice(spaceIdx + 1);
+          if (cmd.flags?.length) return { phase: 'flag', query: rest.trim(), cmdName };
+          return { phase: 'args', query: rest, cmdName };
         }
       }
       return { phase: 'command', query: raw.trim(), cmdName: null };
@@ -146,8 +155,19 @@
       const { phase, query, cmdName } = parse(raw);
       mode = phase;
 
+      if (phase === 'args') return []; // no completion — literal pass-through via rawResult()
+
       if (phase === 'command') {
-        return query ? itemFuse.search(query).map(r => r.item) : ITEMS;
+        if (!query) return ITEMS;
+        // Drop "canned full invocation" items (command-type, multi-word id —
+        // e.g. a history entry "mute A, B") that the user has already typed
+        // past — e.g. typing "mute A, B, C" after running "mute A, B" would
+        // otherwise leave the shorter, stale row fuzzy-matched and active, so
+        // Enter would silently run the old invocation instead of the new one.
+        // Forward-completable matches (entry.startsWith(query)) stay.
+        return itemFuse.search(query).map(r => r.item).filter(item =>
+          !(item.type === 'command' && item.id.includes(' ')
+            && query.length > item.id.length && query.startsWith(item.id)));
       }
 
       // flag phase
@@ -166,6 +186,15 @@
       if (mode === 'flag') {
         const cmdName = input.value.slice(0, input.value.indexOf(' '));
         return { type: 'command', id: cmdName, flags: [item.name] };
+      }
+      // A "canned full invocation" (command-type, multi-word id — e.g. a
+      // history entry "mute A, B"): split it exactly like raw typed input
+      // (rawResult, below) so it runs through the very same {id, flags} path
+      // a fresh invocation would — the host never needs to know it came from
+      // a stored entry rather than the keyboard.
+      if (item.type === 'command' && item.id.includes(' ')) {
+        const sp = item.id.indexOf(' ');
+        return { type: 'command', id: item.id.slice(0, sp), flags: item.id.slice(sp + 1).split(/\s+/) };
       }
       // Command-phase item (command, track, device, …). Pass through
       // action/route/scope so the host can route and re-resolve Live objects.
