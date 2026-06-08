@@ -181,6 +181,9 @@ the palette:
 | `pakabl upgrade <id>@<version>`  | Re-install a specific version                                               |
 | `pakabl uninstall <id>`          | Remove an installed extension                                               |
 
+<img src="assets/images/readme/pakabl_list.png" width="80%" alt="pakabl list — browsing and managing curated extensions">
+<figcaption><code>pakabl list</code>: each entry's button reflects its install status (Install / Update / Uninstall), with a Repo button to jump to its source.</figcaption>
+
 As with any `.ablx`, **restart Live** after installing, upgrading, or uninstalling for the
 change to take effect.
 
