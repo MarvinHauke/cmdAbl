@@ -12,6 +12,7 @@ import * as historyModule from "./modules/history/index.js";
 import * as gotoModule from "./modules/goto/index.js";
 import * as muteModule from "./modules/mute/index.js";
 import * as soloModule from "./modules/solo/index.js";
+import * as pakablModule from "./modules/pakabl/index.js";
 
 const TRIGGER_PORT = 27184;
 
@@ -19,7 +20,7 @@ const TRIGGER_PORT = 27184;
 // way third-party extensions eventually will be (see docs/feature-plans/0003).
 // `historyModule` is activated separately, before this list (see below), so
 // its provider claims the very first slot in `providers`/`ITEMS`.
-const DEFAULT_MODULES: Module[] = [gotoModule, muteModule, soloModule];
+const DEFAULT_MODULES: Module[] = [gotoModule, muteModule, soloModule, pakablModule];
 
 export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");

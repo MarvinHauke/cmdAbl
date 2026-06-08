@@ -1,0 +1,86 @@
+[
+  {
+    "id": "federico-pepe.arrangement-helper",
+    "name": "Arrangement Helper",
+    "version": "0.0.8",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/Arrangement-Helper-0.0.8.ablx"
+  },
+  {
+    "id": "federico-pepe.basic-pitch",
+    "name": "Basic Pitch",
+    "version": "1.0.0",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/Basic-Pitch-1.0.0.ablx"
+  },
+  {
+    "id": "federico-pepe.bird-game",
+    "name": "bird-game",
+    "version": "1.0.0",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/bird-game-1.0.0.ablx"
+  },
+  {
+    "id": "federico-pepe.chord-progression-helper",
+    "name": "Chord Progression Helper",
+    "version": "0.5.1",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/Chord-Progression-Helper-0.5.1.ablx"
+  },
+  {
+    "id": "federico-pepe.chord-voicing-helper",
+    "name": "Chord Voicing Helper",
+    "version": "1.0.2",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/Chord-Voicing-Helper-1.0.2.ablx"
+  },
+  {
+    "id": "federico-pepe.chromaflux",
+    "name": "ChromaFlux",
+    "version": "0.0.7",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/ChromaFlux-0.0.7.ablx"
+  },
+  {
+    "id": "federico.doom",
+    "name": "Doom",
+    "version": "0.0.2",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/Doom-0.0.2.ablx"
+  },
+  {
+    "id": "federico-pepe.duplicate-track",
+    "name": "Duplicate Track",
+    "version": "0.0.7",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/Duplicate-Track-0.0.7.ablx"
+  },
+  {
+    "id": "federico-pepe.freesound-sampler",
+    "name": "Freesound Sampler",
+    "version": "0.1.0",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/Freesound-Sampler-0.1.0.ablx"
+  },
+  {
+    "id": "federico-pepe.session-to-arrangement-bridge",
+    "name": "Session to Arrangement Bridge",
+    "version": "0.0.8",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/Session-to-Arrangement-Bridge-0.0.8.ablx"
+  },
+  {
+    "id": "federico-pepe.snake",
+    "name": "Snake",
+    "version": "0.0.7",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/Snake-0.0.7.ablx"
+  },
+  {
+    "id": "federico-pepe.track-creator",
+    "name": "Track Creator",
+    "version": "0.0.6",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/Track-Creator-0.0.6.ablx"
+  },
+  {
+    "id": "federico-pepe.transpose-clips",
+    "name": "Transpose Clips",
+    "version": "0.1.0",
+    "url": "https://raw.githubusercontent.com/federico-pepe/ableton-live-extensions/main/download/Transpose-Clips-0.1.0.ablx"
+  },
+  {
+    "id": "alex-walsh.device-manager",
+    "name": "Device Manager",
+    "version": "1.0.0",
+    "url": "https://github.com/itscloverdale/ableton-device-manager/releases/download/v1.0.0/Device-Manager-1.0.0.ablx"
+  }
+]
