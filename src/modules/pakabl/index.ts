@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import type { ModuleApi } from "../types.js";
-import { EXTENSIONS_DIR, downloadFile, unzipInto, readJsonFile } from "./platform.js";
+import { EXTENSIONS_DIR, downloadFile, unzipInto, readJsonFile, openUrl, removeDir } from "./platform.js";
 
 // `context.environment.storageDirectory` is `string | undefined` in the SDK
 // and comes back undefined in practice — so pakabl keeps its own cache/tmp
@@ -95,6 +95,111 @@ async function install(api: ModuleApi, id: string | undefined): Promise<void> {
   api.showFeedback(`pakabl: installed ${entry.name} v${entry.version} — restart Live to load it`);
 }
 
+async function uninstall(api: ModuleApi, id: string | undefined): Promise<void> {
+  if (!id) {
+    api.showFeedback("pakabl: usage: pakabl uninstall <id>");
+    return;
+  }
+
+  const installed = installedManifest(id);
+  if (!installed) {
+    api.showFeedback(`pakabl: "${id}" is not installed`);
+    return;
+  }
+
+  const result = removeDir(path.join(EXTENSIONS_DIR, id));
+  if (!result.ok) {
+    api.showFeedback(`pakabl: failed to uninstall ${installed.name}\n${result.output}`);
+    return;
+  }
+
+  api.showFeedback(`pakabl: uninstalled ${installed.name} v${installed.version} — restart Live to unload it`);
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// The index only stores each entry's `.ablx` download URL, but that's always
+// either a GitHub Release asset or a raw.githubusercontent.com file — both of
+// which embed "<owner>/<repo>" right after the host, so the repo page can be
+// derived without adding a redundant field to every index entry.
+function repoUrl(downloadUrl: string): string | undefined {
+  const m = downloadUrl.match(
+    /^https:\/\/(?:github\.com|raw\.githubusercontent\.com)\/([^/]+)\/([^/]+)\//,
+  );
+  return m ? `https://github.com/${m[1]}/${m[2]}` : undefined;
+}
+
+// Browse the cached index — each row's primary button reflects the entry's
+// install status (mirroring the same status check `install` already performs
+// via `installedManifest`): not installed → Install, installed at the index's
+// version → Uninstall, installed at a different version → Update. Same
+// `data:text/html` modal-dialog approach as `showFeedback` (extension.ts);
+// every action round-trips through the one `close_and_send` channel the SDK
+// exposes (closing the dialog), then `list` dispatches to the existing
+// install/uninstall/upgrade functions exactly as if the user had typed the
+// equivalent `pakabl …` command.
+async function list(api: ModuleApi): Promise<void> {
+  const index = loadIndex();
+  if (!index) {
+    api.showFeedback("pakabl: no index cached — run \"pakabl update\" first");
+    return;
+  }
+
+  const BTN = "padding:4px 12px;margin-right:6px;cursor:pointer";
+  const rows = index
+    .map((entry) => {
+      const installed = installedManifest(entry.id);
+      const action = !installed
+        ? `install:${entry.id}`
+        : installed.version === entry.version
+          ? `uninstall:${entry.id}`
+          : `update:${entry.id}`;
+      const label = !installed ? "Install" : installed.version === entry.version ? "Uninstall" : "Update";
+
+      const repo = repoUrl(entry.url);
+      const repoButton = repo ? `<button onclick="send('repo:${repo}')" style="${BTN}">Repo</button>` : "";
+
+      return (
+        `<div style="padding:8px 4px;border-bottom:1px solid #333">` +
+        `<div>${escapeHtml(entry.name)} <span style="color:#888">v${escapeHtml(entry.version)} · ${escapeHtml(entry.id)}</span></div>` +
+        `<div style="margin-top:6px">` +
+        `<button onclick="send('${action}')" style="${BTN}">${label}</button>` +
+        `${repoButton}` +
+        `</div>` +
+        `</div>`
+      );
+    })
+    .join("");
+
+  const html =
+    `<!DOCTYPE html><html><body style="font-family:monospace;background:#1e1e1e;color:#d4d4d4;margin:0;padding:12px">` +
+    `<div style="max-height:420px;overflow-y:auto">${rows}</div>` +
+    `<button onclick="send('')" style="margin-top:10px;${BTN}">Close</button>` +
+    `<script>` +
+    `function send(value){const m={method:'close_and_send',params:[value]};` +
+    `if(window.webkit?.messageHandlers?.live)window.webkit.messageHandlers.live.postMessage(m);` +
+    `else if(window.chrome?.webview)window.chrome.webview.postMessage(m);}` +
+    `</script>` +
+    `</body></html>`;
+
+  const result = await api.context.ui.showModalDialog(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`, 560, 480);
+  if (!result) return;
+
+  if (result.startsWith("install:")) {
+    await install(api, result.slice("install:".length));
+  } else if (result.startsWith("uninstall:")) {
+    await uninstall(api, result.slice("uninstall:".length));
+  } else if (result.startsWith("update:")) {
+    const id = result.slice("update:".length);
+    const entry = index.find((e) => e.id === id);
+    if (entry) await upgrade(api, `${entry.id}@${entry.version}`);
+  } else if (result.startsWith("repo:")) {
+    openUrl(result.slice("repo:".length));
+  }
+}
+
 async function update(api: ModuleApi): Promise<void> {
   const dl = downloadFile(CURATED_INDEX_URL, INDEX_CACHE_PATH);
   if (!dl.ok) {
@@ -145,18 +250,21 @@ async function upgrade(api: ModuleApi, idAtVersion: string | undefined): Promise
   api.showFeedback(`pakabl: upgraded ${entry.name} to v${version} — restart Live to reload it`);
 }
 
-/** `pakabl install <id>` / `pakabl update` / `pakabl upgrade <id>@<version>` — download
- *  confirmed `.ablx` extensions from a curated index and unpack them into Live's Extensions
- *  folder (the same place the user already drops hand-installed extensions). */
+/** `pakabl install <id>` / `uninstall <id>` / `update` / `upgrade <id>@<version>` / `list` —
+ *  download confirmed `.ablx` extensions from a curated index and (un)pack them into Live's
+ *  Extensions folder (the same place the user already drops hand-installed extensions). */
 export function activate(api: ModuleApi): void {
   api.registry.register("pakabl", "install and manage cmdAbl extensions", async (flags) => {
     const [sub, arg] = flags;
     if (sub === "install") await install(api, arg);
+    else if (sub === "uninstall") await uninstall(api, arg);
     else if (sub === "update") await update(api);
     else if (sub === "upgrade") await upgrade(api, arg);
+    else if (sub === "list") await list(api);
     else {
       api.showFeedback(
-        "pakabl: usage\n  pakabl install <id>\n  pakabl update\n  pakabl upgrade <id>@<version>",
+        "pakabl: usage\n  pakabl install <id>\n  pakabl uninstall <id>\n  pakabl update\n" +
+          "  pakabl upgrade <id>@<version>\n  pakabl list",
       );
     }
   });

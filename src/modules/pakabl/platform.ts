@@ -30,6 +30,14 @@ function run(mac: string, win: string, env: Record<string, string>): { ok: boole
   };
 }
 
+// ── open URL ─────────────────────────────────────────────────────────────────
+// `open` ships with macOS; `Start-Process` is a PowerShell built-in — same
+// "shell out, no new dependency" approach as the rest of this module.
+
+export function openUrl(url: string): void {
+  run(`open "$CMDABL_URL"`, `Start-Process $env:CMDABL_URL`, { CMDABL_URL: url });
+}
+
 // ── download ─────────────────────────────────────────────────────────────────
 // curl ships with macOS/Linux; Invoke-WebRequest is built into PowerShell —
 // no new dependency, same "shell out" approach setup.ts already established.
@@ -53,6 +61,19 @@ export function unzipInto(archivePath: string, destDir: string): { ok: boolean; 
     `New-Item -ItemType Directory -Force -Path $env:CMDABL_DEST | Out-Null
 Expand-Archive -Path $env:CMDABL_ARCHIVE -DestinationPath $env:CMDABL_DEST -Force`,
     { CMDABL_ARCHIVE: archivePath, CMDABL_DEST: destDir },
+  );
+}
+
+// ── remove directory ─────────────────────────────────────────────────────────
+// Used by `pakabl uninstall` to delete an installed extension's folder —
+// `rm -rf`/`Remove-Item -Recurse -Force` are idempotent (safe even if the
+// path is already gone).
+
+export function removeDir(dirPath: string): { ok: boolean; output: string } {
+  return run(
+    `rm -rf "$CMDABL_DIR"`,
+    `Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $env:CMDABL_DIR`,
+    { CMDABL_DIR: dirPath },
   );
 }
 

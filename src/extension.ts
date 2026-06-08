@@ -42,7 +42,7 @@ export function activate(activation: ActivationContext) {
       `else if(window.chrome?.webview)window.chrome.webview.postMessage(m)" ` +
       `style="padding:4px 14px;cursor:pointer">Close</button>` +
       `</body></html>`;
-    void context.ui.showModalDialog(`data:text/html,${encodeURIComponent(html)}`, 500, 180);
+    void context.ui.showModalDialog(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`, 500, 180);
   }
 
   // ── built-in commands ────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ export function activate(activation: ActivationContext) {
         "/*ITEMS_PLACEHOLDER*/null",
         JSON.stringify(items),
       );
-      const url = `data:text/html,${encodeURIComponent(html)}`;
+      const url = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
       const result = await context.ui.showModalDialog(url, 500, 260);
       if (result) await dispatch(result);
     } catch (e: unknown) {
