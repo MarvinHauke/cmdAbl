@@ -1,8 +1,24 @@
 # pakabl — an extension/package system for cmdAbl
 
-**Status:** Draft (2026-06-07) — triggered by a vision doc for "pakabl," a package manager
-that would let users install third-party extensions that register new commands and providers
-into cmdAbl's palette.
+**Status:** In Progress — pivoted from the plan as written (updated 2026-06-08) — triggered
+by a vision doc for "pakabl," a package manager that would let users install third-party
+extensions that register new commands and providers into cmdAbl's palette.
+
+**Where things stand — the shipped design diverged from this plan's central architecture.**
+`src/modules/pakabl/index.ts` implements `pakabl install/uninstall/update/upgrade/list`
+against the curated index (`pakabl/index.json`, `CURATED_INDEX_URL`) — but it works by
+**downloading and unpacking complete, independently-built `.ablx` packages** into Live's
+extensions directory and telling the user to restart Live to load them
+(`downloadAndUnpack`/`installedManifest`), *not* by dynamically loading third-party code into
+cmdAbl's own process and registering it through `CommandRegistry`/`Provider` as the `CmdAblAPI`
+facade below describes. This sidesteps Step 0's load-bearing question ("can the Extension Host
+load code at runtime?") entirely — installed extensions run as their own separate Live
+extensions, indistinguishable from one a user installed by hand, rather than as in-process
+pakabl-API citizens of cmdAbl's palette. The "indistinguishable in the palette" goal and the
+`CmdAblAPI`/`ableton-cue-templates` porting analysis below describe a design that was not
+pursued; if pakabl returns to that direction later, treat Steps 0–1 as still open. The curated
+allowlist mechanism (Step 2's trust model) *did* ship, just pointed at `.ablx` downloads
+instead of source loads.
 
 ## Context
 

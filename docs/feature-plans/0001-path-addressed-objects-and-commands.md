@@ -1,10 +1,22 @@
 # Path-addressed objects & Linux-style commands
 
-**Status:** Draft (2026-06-07) — triggered by two findings while working on track search
-(Phase 1): Drum Rack chains/pads aren't addressable at all (they look like tracks in Live's
-UI but are a different object type the palette never sees), and a desire to drive the palette
-the way a shell drives a filesystem — `mute /vermona/kick`, multi-target `rm`, flags — rather
-than one fuzzy-searchable flat list with one action each.
+**Status:** In Progress (updated 2026-06-08) — triggered by two findings while working on
+track search (Phase 1): Drum Rack chains/pads aren't addressable at all (they look like
+tracks in Live's UI but are a different object type the palette never sees), and a desire to
+drive the palette the way a shell drives a filesystem — `mute /vermona/kick`, multi-target
+`rm`, flags — rather than one fuzzy-searchable flat list with one action each.
+
+**Where things stand:** Phase 2 has effectively shipped — `src/ableton/objectTree.ts`
+(`ObjectNode`/`LiveRef`/`assignPaths`/`buildObjectTree`) and `src/modules/goto/{resolve,snapshot}.ts`
+(`resolveByRoute`/`resolveRef`) are this section's `ObjectNode`/`route`/`resolveRef` design,
+covering tracks, group-track children, and devices. Phase 3 has landed *partially*: `mute`/
+`solo` (`src/modules/{mute,solo}/index.ts` via the shared `registerTrackToggleCommand` in
+`src/modules/trackToggleCommand.ts`) support comma-separated multi-target `/path` syntax —
+but `rm`, a generalized `select`, and the `-d`/`-c` kind-disambiguation flags described below
+are not yet implemented. Phase 4 (bidirectional bridge + Drum Rack chain provider) has not
+been started — `src/ableton/bridge.ts` is still the fire-and-forget one-way channel described
+in §2, and `"chain"` only appears as a forward-looking comment/placeholder in `objectTree.ts`/
+`resolve.ts`/`types.ts`, not as working code.
 
 ## Context
 
@@ -112,6 +124,15 @@ structure path arguments resolve against (§4).
 The UDP bridge (`src/ableton/bridge.ts` ↔ `remote-script/cmdAbl/cmdabl.py`) is currently
 fire-and-forget and one-way (extension → script). Reading `Chain.name` — and any future
 "SDK can't, LOM can" need — requires request/response:
+
+> **Naming source matters**: the display name for a Drum Rack pad must come from the
+> `DrumChain`/`Chain` itself (the name the user sees and edits in Session/Drum Rack view —
+> "Kick", "Snare", …), *not* from its first device. Naively reading "the name of whatever's
+> first in the chain" surfaces irritating defaults like "Default Track" or "External
+> Instrument" instead of the pad's actual name. Whatever the Remote Script query (`chain_names`
+> below) reads, it must read the chain's own name property — confirm this resolves correctly
+> against a Drum Rack with custom-named, non-default-instrument pads before considering Phase 4
+> done; a chain whose first device is an "External Instrument" is exactly the case to test.
 
 - Extension sends `{"cmd": "query", "id": <reqId>, "what": "chain_names", "route": [...]}`.
 - The Remote Script already has the sender's address from `recvfrom()`

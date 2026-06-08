@@ -1,8 +1,14 @@
 # Structured command-feedback pattern
 
-**Status:** Draft (2026-06-07) — triggered by inconsistent ad-hoc feedback in `dispatch()`
-plus the realization that 0001's Phase 3 multi-target commands (`mute /a /b /c`) make
-*partial* success the normal case, not an edge case.
+**Status:** Draft (updated 2026-06-08) — triggered by inconsistent ad-hoc feedback in
+`dispatch()` plus the realization that 0001's Phase 3 multi-target commands (`mute /a /b /c`)
+make *partial* success the normal case, not an edge case.
+
+**Where things stand:** Untouched — `extension.ts`'s `showFeedback`/`console.*`/`throw` mix
+described below is still exactly the current state; no `CommandResult`/`presentResult()` exists
+yet. `mute`/`solo` (0001 Phase 3) have landed with multi-target paths, which is this plan's
+trigger condition — worth picking back up now that the "partial success is the normal case"
+scenario it anticipates is live in the codebase.
 
 ## Context
 
