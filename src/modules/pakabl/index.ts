@@ -2,6 +2,14 @@ import * as path from "node:path";
 import type { ModuleApi } from "../types.js";
 import { EXTENSIONS_DIR, downloadFile, unzipInto, readJsonFile } from "./platform.js";
 
+// `context.environment.storageDirectory` is `string | undefined` in the SDK
+// and comes back undefined in practice — so pakabl keeps its own cache/tmp
+// data in a sibling folder of EXTENSIONS_DIR, which it already proved it can
+// write to (that's where installs land). A leading dot keeps Live from
+// mistaking it for an installed extension (no manifest.json inside).
+const DATA_DIR = path.join(EXTENSIONS_DIR, ".pakabl");
+const INDEX_CACHE_PATH = path.join(DATA_DIR, "index.json");
+
 // Hosted alongside cmdAbl itself — one repo to maintain, versioned together,
 // fetched via the raw-file URL pattern confirmed working during this project's
 // research (raw.githubusercontent.com/<owner>/<repo>/<branch>/<path>).
@@ -24,15 +32,8 @@ interface InstalledManifest {
   version: string;
 }
 
-function indexCachePath(api: ModuleApi): string | undefined {
-  const dir = api.context.environment.storageDirectory;
-  return dir ? path.join(dir, "pakabl", "index.json") : undefined;
-}
-
-function loadIndex(api: ModuleApi): IndexEntry[] | undefined {
-  const cachePath = indexCachePath(api);
-  if (!cachePath) return undefined;
-  return readJsonFile<IndexEntry[]>(cachePath);
+function loadIndex(): IndexEntry[] | undefined {
+  return readJsonFile<IndexEntry[]>(INDEX_CACHE_PATH);
 }
 
 function installedManifest(id: string): InstalledManifest | undefined {
@@ -42,8 +43,7 @@ function installedManifest(id: string): InstalledManifest | undefined {
 // Shared by install/upgrade — download the entry's `.ablx` and unzip it into
 // place, overwriting any existing install (unzipInto is idempotent: -o/-Force).
 function downloadAndUnpack(api: ModuleApi, entry: IndexEntry): boolean {
-  const cacheDir = api.context.environment.storageDirectory;
-  const tmpPath = path.join(cacheDir ?? EXTENSIONS_DIR, "pakabl", "tmp", `${entry.id}.ablx`);
+  const tmpPath = path.join(DATA_DIR, "tmp", `${entry.id}.ablx`);
 
   const dl = downloadFile(entry.url, tmpPath);
   if (!dl.ok) {
@@ -66,7 +66,7 @@ async function install(api: ModuleApi, id: string | undefined): Promise<void> {
     return;
   }
 
-  const index = loadIndex(api);
+  const index = loadIndex();
   if (!index) {
     api.showFeedback("pakabl: no index cached — run \"pakabl update\" first");
     return;
@@ -96,19 +96,13 @@ async function install(api: ModuleApi, id: string | undefined): Promise<void> {
 }
 
 async function update(api: ModuleApi): Promise<void> {
-  const cachePath = indexCachePath(api);
-  if (!cachePath) {
-    api.showFeedback("pakabl: no storage directory available to cache the index");
-    return;
-  }
-
-  const dl = downloadFile(CURATED_INDEX_URL, cachePath);
+  const dl = downloadFile(CURATED_INDEX_URL, INDEX_CACHE_PATH);
   if (!dl.ok) {
     api.showFeedback(`pakabl: failed to refresh the index\n${dl.output}`);
     return;
   }
 
-  const index = readJsonFile<IndexEntry[]>(cachePath);
+  const index = loadIndex();
   if (!index) {
     api.showFeedback("pakabl: refreshed file is not a valid index");
     return;
@@ -127,7 +121,7 @@ async function upgrade(api: ModuleApi, idAtVersion: string | undefined): Promise
   const id = idAtVersion.slice(0, at);
   const version = idAtVersion.slice(at + 1);
 
-  const index = loadIndex(api);
+  const index = loadIndex();
   if (!index) {
     api.showFeedback("pakabl: no index cached — run \"pakabl update\" first");
     return;
