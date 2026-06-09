@@ -21,15 +21,22 @@ const fuseBundle = await esbuild.build({
 });
 const fuseSource = fuseBundle.outputFiles[0].text;
 
-// esbuild inlines interface.html as a string (the `text` loader). Hook the
-// load so the Fuse bundle is injected into the page's placeholder first.
+// Shared CSS injected into every HTML template (same pattern as the Fuse bundle above).
+const sharedCss = fs.readFileSync("ui/shared.css", "utf8");
+
+// esbuild inlines all ui/*.html files as strings (the `text` loader). Hook the
+// load so build-time placeholders are replaced before bundling:
+//   interface.html  — Fuse.js bundle + shared CSS
+//   all other .html — shared CSS only
 const htmlInlinePlugin: esbuild.Plugin = {
   name: "html-inline",
   setup(build) {
-    build.onLoad({ filter: /interface\.html$/ }, (args) => {
-      const html = fs
-        .readFileSync(args.path, "utf8")
-        .replace("/*FUSE_PLACEHOLDER*/", () => fuseSource);
+    build.onLoad({ filter: /\.html$/ }, (args) => {
+      let html = fs.readFileSync(args.path, "utf8");
+      if (args.path.endsWith("interface.html")) {
+        html = html.replace("/*FUSE_PLACEHOLDER*/", () => fuseSource);
+      }
+      html = html.replace("/*SHARED_CSS_PLACEHOLDER*/", () => sharedCss);
       return { contents: html, loader: "text" };
     });
   },

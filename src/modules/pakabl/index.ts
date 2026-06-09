@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import type { ModuleApi } from "../types.js";
 import { EXTENSIONS_DIR, downloadFile, unzipInto, readJsonFile, openUrl, removeDir } from "./platform.js";
+import pakablListTemplate from "../../../ui/pakabl-list.html";
 
 // `context.environment.storageDirectory` is `string | undefined` in the SDK
 // and comes back undefined in practice — so pakabl keeps its own cache/tmp
@@ -116,10 +117,6 @@ async function uninstall(api: ModuleApi, id: string | undefined): Promise<void> 
   api.showFeedback(`pakabl: uninstalled ${installed.name} v${installed.version} — restart Live to unload it`);
 }
 
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 // The index only stores each entry's `.ablx` download URL, but that's always
 // either a GitHub Release asset or a raw.githubusercontent.com file — both of
 // which embed "<owner>/<repo>" right after the host, so the repo page can be
@@ -131,15 +128,19 @@ function repoUrl(downloadUrl: string): string | undefined {
   return m ? `https://github.com/${m[1]}/${m[2]}` : undefined;
 }
 
-// Browse the cached index — each row's primary button reflects the entry's
-// install status (mirroring the same status check `install` already performs
-// via `installedManifest`): not installed → Install, installed at the index's
-// version → Uninstall, installed at a different version → Update. Same
-// `data:text/html` modal-dialog approach as `showFeedback` (extension.ts);
-// every action round-trips through the one `close_and_send` channel the SDK
-// exposes (closing the dialog), then `list` dispatches to the existing
-// install/uninstall/upgrade functions exactly as if the user had typed the
-// equivalent `pakabl …` command.
+interface ListEntry {
+  id: string;
+  name: string;
+  version: string;
+  installedVersion: string | null;
+  repoUrl: string | undefined;
+}
+
+// Browse the cached index — each row's primary button reflects install status:
+// not installed → Install, at index version → Uninstall, at different version → Update.
+// Every action round-trips through the one `close_and_send` channel the SDK exposes
+// (closing the dialog), then `list` dispatches to the existing install/uninstall/upgrade
+// functions exactly as if the user had typed the equivalent `pakabl …` command.
 async function list(api: ModuleApi): Promise<void> {
   const index = loadIndex();
   if (!index) {
@@ -147,42 +148,21 @@ async function list(api: ModuleApi): Promise<void> {
     return;
   }
 
-  const BTN = "padding:4px 12px;margin-right:6px;cursor:pointer";
-  const rows = index
-    .map((entry) => {
-      const installed = installedManifest(entry.id);
-      const action = !installed
-        ? `install:${entry.id}`
-        : installed.version === entry.version
-          ? `uninstall:${entry.id}`
-          : `update:${entry.id}`;
-      const label = !installed ? "Install" : installed.version === entry.version ? "Uninstall" : "Update";
+  const entries: ListEntry[] = index.map((entry) => {
+    const installed = installedManifest(entry.id);
+    return {
+      id: entry.id,
+      name: entry.name,
+      version: entry.version,
+      installedVersion: installed?.version ?? null,
+      repoUrl: repoUrl(entry.url),
+    };
+  });
 
-      const repo = repoUrl(entry.url);
-      const repoButton = repo ? `<button onclick="send('repo:${repo}')" style="${BTN}">Repo</button>` : "";
-
-      return (
-        `<div style="padding:8px 4px;border-bottom:1px solid #333">` +
-        `<div>${escapeHtml(entry.name)} <span style="color:#888">v${escapeHtml(entry.version)} · ${escapeHtml(entry.id)}</span></div>` +
-        `<div style="margin-top:6px">` +
-        `<button onclick="send('${action}')" style="${BTN}">${label}</button>` +
-        `${repoButton}` +
-        `</div>` +
-        `</div>`
-      );
-    })
-    .join("");
-
-  const html =
-    `<!DOCTYPE html><html><body style="font-family:monospace;background:#1e1e1e;color:#d4d4d4;margin:0;padding:12px">` +
-    `<div style="max-height:420px;overflow-y:auto">${rows}</div>` +
-    `<button onclick="send('')" style="margin-top:10px;${BTN}">Close</button>` +
-    `<script>` +
-    `function send(value){const m={method:'close_and_send',params:[value]};` +
-    `if(window.webkit?.messageHandlers?.live)window.webkit.messageHandlers.live.postMessage(m);` +
-    `else if(window.chrome?.webview)window.chrome.webview.postMessage(m);}` +
-    `</script>` +
-    `</body></html>`;
+  const html = pakablListTemplate.replace(
+    "/*ENTRIES_PLACEHOLDER*/null",
+    JSON.stringify(entries),
+  );
 
   const result = await api.context.ui.showModalDialog(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`, 560, 480);
   if (!result) return;

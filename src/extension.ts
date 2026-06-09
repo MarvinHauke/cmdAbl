@@ -6,6 +6,7 @@ import type { Module, ModuleApi, ResultHandler } from "./modules/types.js";
 import { startTriggerServer } from "./httpTrigger.js";
 import { runSetup, isSetupDone, setKarabinerPaletteOpen } from "./setup.js";
 import interfaceTemplate from "../ui/interface.html";
+import feedbackTemplate from "../ui/feedback.html";
 import { spawn } from "node:child_process";
 
 import * as historyModule from "./modules/history/index.js";
@@ -31,17 +32,7 @@ export function activate(activation: ActivationContext) {
   let isOpen = false;
 
   function showFeedback(message: string): void {
-    const escaped = message
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-    const html = `<!DOCTYPE html><html><body style="font-family:monospace;padding:16px;background:#1e1e1e;color:#d4d4d4;margin:0">` +
-      `<pre style="white-space:pre-wrap;font-size:13px;margin:0 0 12px">${escaped}</pre>` +
-      `<button onclick="const m={method:'close_and_send',params:['']};` +
-      `if(window.webkit?.messageHandlers?.live)window.webkit.messageHandlers.live.postMessage(m);` +
-      `else if(window.chrome?.webview)window.chrome.webview.postMessage(m)" ` +
-      `style="padding:4px 14px;cursor:pointer">Close</button>` +
-      `</body></html>`;
+    const html = feedbackTemplate.replace("/*MESSAGE_PLACEHOLDER*/null", JSON.stringify(message));
     void context.ui.showModalDialog(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`, 500, 180);
   }
 
