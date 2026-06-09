@@ -64,6 +64,37 @@ export function activate(activation: ActivationContext) {
     },
   );
 
+  // ── spike 0a (revised), CONCLUDED — BLOCKED ON UPSTREAM SDK SUPPORT ────────
+  // Probed "type a third-party extension's name into cmdAbl and have it run"
+  // via context.commands.executeCommand (see docs/feature-plans/0003 Step 0).
+  // Result: registerCommand/executeCommand are scoped per calling extension —
+  // Track Creator's "track-creator.open" is registered and works via its own
+  // context-menu entry, but executeCommand("track-creator.open") from cmdAbl
+  // in the same host throws "Command track-creator.open is not registered".
+  // There is currently no SDK path for cross-extension command invocation;
+  // filed as a feature request on Ableton's extensions Discord (2026-06-08).
+  // Left in place as a ready-to-go re-test for if/when such an API ships.
+  registry.register(
+    "spike-run-track-creator",
+    "(spike 0a, BLOCKED on SDK support — see 0003 Step 0) try to launch federico-pepe.track-creator via context.commands.executeCommand",
+    () => {
+      try {
+        context.commands.executeCommand("track-creator.open");
+        showFeedback(
+          "cmdAbl spike: called executeCommand(\"track-creator.open\").\n\n" +
+            "If Track Creator's modal opened, cross-extension command invocation\n" +
+            "works — cmdAbl can run an independently-installed extension by name\n" +
+            "with no code-loading and no filesystem access.",
+        );
+      } catch (e: unknown) {
+        showFeedback(
+          "cmdAbl spike: executeCommand(\"track-creator.open\") threw:\n\n" +
+            (e instanceof Error ? e.message : String(e)),
+        );
+      }
+    },
+  );
+
   // ── default modules ──────────────────────────────────────────────────────
   const moduleApi: ModuleApi = {
     context,

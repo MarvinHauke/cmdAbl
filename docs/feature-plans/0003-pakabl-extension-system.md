@@ -206,15 +206,35 @@ only makes sense once the one before it is proven:
 
 ### Step 0 — Spike: can the Extension Host load code at runtime at all?
 
-Write the smallest possible probe: from `activate()`, dynamically `import()`/`require()` a
-hand-placed file at an absolute path under `context.environment.storageDirectory`, and confirm
-it actually executes inside Live (a log line, or a throwaway palette command it registers).
-This single experiment determines pakabl's entire shape:
-- **Works** → pakabl can be a real runtime loader, roughly as the vision doc describes.
-- **Doesn't** → "extensions" has to mean something else: source-level plugins woven into the
-  build (still gives `activate(api)` ergonomics, resolved at build time instead of runtime),
-  or a separate companion process talked to over the existing UDP-bridge pattern
-  (`bridge.ts`/`cmdabl.py`) instead of in-process loading.
+**Status: concluded — blocked on upstream SDK support, not on us.**
+
+The spike was pivoted (with reasoning recorded in [[runner-module-spike]]/Serena memory) from
+"can the host `import()` arbitrary code at runtime" to "can cmdAbl invoke a command an
+*independently installed* extension already registered with Live" — the filesystem-sandbox
+finding in §6 of the `ableton-extension` skill's `concepts.md` makes runtime code-loading off
+disk a dead end regardless (extensions may only touch `storageDirectory`/`tempDirectory`).
+
+That revised spike produced a **definitive negative result**: `Commands.registerCommand`/
+`executeCommand` look like a flat global string namespace but are scoped per calling extension.
+Confirmed concretely — Track Creator's `"track-creator.open"` is registered and works via its
+own context-menu entry, but `executeCommand("track-creator.open")` from cmdAbl, running in the
+very same Extension Host, throws `Command track-creator.open is not registered`. There is
+**no SDK-level path today** for one independently-installed extension to invoke another's
+functionality — this isn't a workaround-able quirk, it's a hard wall.
+
+**Filed as a feature request** on Ableton's extensions Discord (2026-06-08): asking for an
+opt-in mechanism for authors to mark specific commands as externally invocable (manifest
+allowlist, registration flag, naming convention, or some combination), plus a scoped
+`executeExternalCommand(extensionId, commandId, ...)`-style API — see
+`docs/feature-plans/0003-runner-spike-forum-post.md` for the posted text.
+
+**Consequence for pakabl/runner:** the "type an installed extension's name and run it" vision
+is **on hold pending upstream SDK changes**. The spike's throwaway probe
+(`spike-run-track-creator` in `src/extension.ts`) is left in place, clearly marked as blocked,
+as a ready-to-go re-test the moment such an API ships. Until then, "extensions" for pakabl
+purposes has to mean something else — source-level plugins woven into the build (still gives
+`activate(api)` ergonomics, resolved at build time instead of runtime), or a separate companion
+process talked to over the existing UDP-bridge pattern (`bridge.ts`/`cmdabl.py`).
 
 ### Step 1 — MVP: local-folder loader + API, no installation automation
 
