@@ -35,8 +35,8 @@ Two things now push past that shape:
    on `RackDevice.chains` (`Track.devices[i].chains`), a completely different branch of the
    object model that `snapshotTracks` never walks. They're invisible to search and selection
    today, and — a real constraint, not just a gap — **the Extensions SDK
-   (`@ableton-extensions/sdk@1.0.0-beta.0`) doesn't expose `Chain.name` at all** (verified
-   against `node_modules/@ableton-extensions/sdk/dist/index.d.mts:911-935`: `Chain`/
+   (`@ableton-extensions/sdk@1.0.0-beta.1`) doesn't expose `Chain.name` at all** (verified
+   against `node_modules/@ableton-extensions/sdk/dist/index.d.mts:913-946`: `Chain`/
    `DrumChain` only expose `devices`, `mixer`, `insertDevice`/`deleteDevice`/
    `duplicateDevice`, and for drum chains `receivingNote`). Only the Remote Script's LOM
    access can read a pad's display name ("Kick", "Snare", …).

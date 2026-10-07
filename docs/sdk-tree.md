@@ -129,7 +129,7 @@ context
 │
 ├── .resources                            Resources
 │   ├── .importIntoProject(filePath)      → Promise<string>  — copies file into project bundle, returns new path
-│   └── .renderPreFxAudio(track, start, end)  → Promise<string>  — WAV path in tempDirectory
+│   └── .renderPreFxAudio(track, start, end)  → Promise<string>  — audio file path in tempDirectory (WAV or AIFF, per Live's Record File Type)
 │
 ├── .ui                                   Ui
 │   ├── .registerContextMenuAction(scope, title, commandId)  → Promise<unregisterFn>
