@@ -197,29 +197,28 @@ change to take effect.
 <summary><b>Adding your extension to pakabl</b></summary>
 <br>
 
-`pakabl`'s curated list is just a JSON file in this repo, [`pakabl/index.json`](pakabl/index.json),
-fetched by `pakabl update` and read by `pakabl list`/`install`/`upgrade`. To get your own
-extension listed, open a pull request adding an entry:
+`pakabl`'s list is **generated** — don't edit [`pakabl/index.json`](pakabl/index.json) by hand.
+A daily GitHub Action ([`pakabl-index.yml`](.github/workflows/pakabl-index.yml), script
+[`scripts/pakabl-crawl.ts`](scripts/pakabl-crawl.ts)) reads the approved repos in
+[`pakabl/sources.json`](pakabl/sources.json), finds each repo's newest `.ablx` (latest GitHub
+Release asset or a committed `.ablx` file), reads the `manifest.json` inside it, and opens a PR
+with the refreshed index. `pakabl update` in Live then fetches the merged file.
+
+To get your extension listed, open a PR adding one line to `pakabl/sources.json`:
 
 ```json
-{
-  "id": "your-author-slug.your-extension-slug",
-  "name": "Your Extension",
-  "version": "1.0.0",
-  "url": "https://github.com/<owner>/<repo>/releases/download/v1.0.0/<file>.ablx"
-}
+{ "repo": "<owner>/<repo>" }
 ```
 
-| Field     | Meaning                                                                                                                                                                                |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`      | **Must match the folder name Live creates when it installs your `.ablx`** — `<author-slug>.<name-slug>`, i.e. your `manifest.json`'s `author` and `name` fields, lowercased with spaces replaced by hyphens (e.g. author `"Marvin Hauke"` + name `"cmdabl"` → `marvinhauke.cmdabl`). `pakabl install`/`upgrade` use this id both to look your entry up and to detect/compare an existing install — a mismatch means version checks silently fail. Double-check against the actual installed folder name on disk, not just a guess from the pattern (one curated entry has author `"Federico"` rather than `"Federico Pepe"`, producing `federico.doom` instead of the expected `federico-pepe.doom`). |
-| `name`    | Free-form display name shown in `pakabl list` and feedback messages — usually your `manifest.json`'s `name`.                                                                            |
-| `version` | The exact version string from your `manifest.json`. `pakabl install` compares this against an existing install to report "already installed" vs. "update available", and `upgrade`/`update` (via `pakabl list`'s "Update" button) re-validate against it before downloading — keep it in sync with each release. |
-| `url`     | A direct, stable download link to the `.ablx` for that version — either a GitHub Release asset (`.../releases/download/<tag>/<file>.ablx`) or a raw repo file (`https://raw.githubusercontent.com/<owner>/<repo>/<branch>/<path>/<file>.ablx`). Both are fetched identically with a plain HTTP GET; `pakabl list`'s "Repo" button also derives your project's GitHub page from this URL, so it must point at a `github.com` or `raw.githubusercontent.com` path that starts with `<owner>/<repo>/…`. |
+Requirements: the repo publishes a built `.ablx` (Release asset or committed file) whose
+`manifest.json` has `name`, `author`, `version` and a `minimumApiVersion` starting with `1.`.
+The extension id is derived as `<author-slug>.<name-slug>` from that manifest (author `"Federico
+Pepe"` + name `"Track Creator"` → `federico-pepe.track-creator`), which matches the folder Live
+installs it under. Use `"exclude": ["<id>"]` on a source to skip one of its extensions.
 
-Bump `version` (and add a new `url`) in the same PR whenever you cut a new release — `pakabl
-update` only ever overwrites its cache with whatever the index currently says, so an out-of-date
-entry means users get stuck on an old version or a version-mismatch nudge toward `upgrade`.
+Repos tagged with the GitHub topic `ableton-extension` or `ableton-extensions` that ship an
+`.ablx` show up automatically in [`pakabl/candidates.json`](pakabl/candidates.json) — the review
+queue; adding a repo to `sources.json` is what approves it.
 
 </details>
 

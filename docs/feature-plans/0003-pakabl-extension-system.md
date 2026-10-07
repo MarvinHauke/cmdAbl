@@ -199,6 +199,13 @@ it to the loader.
   a network dependency to `pakabl search`/`install`; bundled JSON is simpler and matches "a
   small, maintained list" for v1.
 
+**Index maintenance (updated 2026-10-08):** `pakabl/index.json` is no longer hand-edited. A
+scheduled workflow (`.github/workflows/pakabl-index.yml`, `scripts/pakabl-crawl.ts`) rebuilds it
+from the approved repos in `pakabl/sources.json` (versions/ids read from each `.ablx`'s own
+`manifest.json`) and opens a PR; GitHub-topic search results that aren't approved yet land in
+`pakabl/candidates.json`. Curation stays the trust mechanism — a repo is only listed once it is
+in `sources.json`. This replaces the manual-index assumption in Step 2 below.
+
 ## Phased rollout
 
 Re-sequenced from the original vision doc around actual risk and dependency order — each step
