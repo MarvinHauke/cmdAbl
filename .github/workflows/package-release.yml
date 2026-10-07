@@ -23,6 +23,15 @@ jobs:
         with:
           node-version: 24
 
+      - name: Check package.json and manifest.json versions match
+        run: |
+          pkg="$(node -p "require('./package.json').version")"
+          man="$(node -p "require('./manifest.json').version")"
+          if [ "$pkg" != "$man" ]; then
+            echo "::error::package.json ($pkg) and manifest.json ($man) versions differ — bump both."
+            exit 1
+          fi
+
       - run: npm ci
       - run: npm run package
 
