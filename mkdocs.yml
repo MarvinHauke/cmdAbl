@@ -7,10 +7,30 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
+  font:
+    text: Inter
+    code: JetBrains Mono
+  palette:
+    # Dark first (matches the palette UI in Live); the toggle switches to light.
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
   features:
     - navigation.sections
     - content.code.copy
     - search.suggest
+
+extra_css:
+  - stylesheets/cmdabl.css
 
 # Only the guides are published for now. Everything else under docs/ stays repo-only
 # (docs/sdk-tree.md summarizes Ableton's SDK and is not for a public site).
