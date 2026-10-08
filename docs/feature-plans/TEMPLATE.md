@@ -11,6 +11,9 @@ Add a row to docs/feature-plans/README.md's index table pointing at the new file
 
 **Status:** Draft (YYYY-MM-DD) — one line on what triggered this plan.
 
+**Parent:** [NNNN](NNNN-parent-plan.md) — the umbrella plan this belongs to (omit for top-level plans).
+**Depends on:** other plans that must land first (omit if none).
+
 ## Context
 
 What's true today, and what's pushing for change? Link the specific files/behaviors that are

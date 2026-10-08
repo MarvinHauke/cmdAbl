@@ -1,6 +1,6 @@
 # CI
 
-[`ci.yml`](../../.github/workflows/ci.yml) checks that cmdAbl builds and packages. It never
+[`ci.yml`](https://github.com/MarvinHauke/cmdAbl/blob/main/.github/workflows/ci.yml) checks that cmdAbl builds and packages. It never
 publishes anything and never changes a version.
 
 **Runs on:** every pull request, every push to `features` or `main`, weekly (to catch

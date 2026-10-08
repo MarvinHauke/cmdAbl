@@ -1,0 +1,34 @@
+site_name: cmdAbl
+site_description: A command palette for Ableton Live
+site_url: https://marvinhauke.github.io/cmdAbl/
+repo_url: https://github.com/MarvinHauke/cmdAbl
+repo_name: MarvinHauke/cmdAbl
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - content.code.copy
+    - search.suggest
+
+# Only the guides are published for now. Everything else under docs/ stays repo-only
+# (docs/sdk-tree.md summarizes Ableton's SDK and is not for a public site).
+exclude_docs: |
+  sdk-tree.md
+  feature-plans/
+
+nav:
+  - Home: index.md
+  - Guides:
+      - Overview: guides/README.md
+      - Releasing cmdAbl: guides/release-cmdabl.md
+      - pakabl index: guides/pakabl-index.md
+      - CI: guides/ci.md
+
+markdown_extensions:
+  - tables
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.superfences
