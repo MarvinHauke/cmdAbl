@@ -1,0 +1,71 @@
+/* cmdAbl docs theme — mirrors the palette in ui/shared.css (Ableton-style dark greys,
+   monospace, one orange accent). Dark is the default; light keeps the same accent, darkened
+   for contrast on white. */
+
+:root {
+  --cmdabl-orange: hsl(31, 100%, 67%);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color:           hsl(0, 0%, 13%);
+  --md-default-bg-color--light:    hsl(0, 0%, 17%);
+  --md-default-fg-color:           hsl(0, 0%, 71%);
+  --md-default-fg-color--light:    hsl(0, 0%, 55%);
+  --md-default-fg-color--lighter:  hsl(0, 0%, 38%);
+  --md-default-fg-color--lightest: hsl(0, 0%, 22%);
+
+  --md-primary-fg-color:           hsl(0, 0%, 17%);
+  --md-primary-bg-color:           hsl(0, 0%, 85%);
+  --md-accent-fg-color:            var(--cmdabl-orange);
+
+  --md-typeset-color:              hsl(0, 0%, 71%);
+  --md-typeset-a-color:            var(--cmdabl-orange);
+  --md-typeset-table-color:        hsl(0, 0%, 22%);
+
+  --md-code-bg-color:              hsl(0, 0%, 9%);
+  --md-code-fg-color:              hsl(0, 0%, 80%);
+  --md-code-hl-color:              hsla(31, 100%, 67%, 0.15);
+
+  --md-footer-bg-color:            hsl(0, 0%, 9%);
+  --md-footer-bg-color--dark:      hsl(0, 0%, 7%);
+}
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:           hsl(0, 0%, 17%);
+  --md-primary-bg-color:           hsl(0, 0%, 90%);
+  --md-accent-fg-color:            hsl(31, 100%, 38%);
+  --md-typeset-a-color:            hsl(31, 100%, 38%);
+  --md-code-bg-color:              hsl(0, 0%, 95%);
+}
+
+/* Monospace chrome, like the palette itself; body prose stays in the proportional font. */
+.md-header, .md-tabs, .md-nav, .md-typeset h1, .md-typeset h2, .md-typeset h3, .md-typeset h4 {
+  font-family: var(--md-code-font-family);
+}
+.md-typeset h1 { font-weight: 600; letter-spacing: -0.01em; color: var(--md-default-fg-color); }
+.md-typeset h2 { border-bottom: 1px solid var(--md-default-fg-color--lightest); padding-bottom: 0.2em; }
+
+/* The ":" prompt that opens the palette in Live. */
+.md-header__title .md-ellipsis:first-child::before,
+.md-nav__title .md-ellipsis::before {
+  content: ": ";
+  color: var(--md-accent-fg-color);
+}
+
+.md-header { box-shadow: none; border-bottom: 1px solid var(--md-default-fg-color--lightest); }
+
+.md-typeset table:not([class]) {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 2px;
+  font-size: 0.72rem;
+}
+.md-typeset table:not([class]) th {
+  background: var(--md-default-bg-color--light);
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset code { border-radius: 2px; }
+.md-typeset pre > code { border-left: 2px solid var(--md-accent-fg-color); }
+
+.md-nav__item .md-nav__link--active { color: var(--md-accent-fg-color); }
+.md-search__input { border-radius: 2px; }
