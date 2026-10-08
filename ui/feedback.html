@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>cmdAbl</title>
+  <style>
+    /*SHARED_CSS_PLACEHOLDER*/
+
+    body { padding: 16px; }
+    #msg { white-space: pre-wrap; font-size: 13px; margin: 0 0 12px; }
+  </style>
+</head>
+<body>
+
+  <pre id="msg"></pre>
+  <button id="close">Close</button>
+
+  <script>
+    // Injected at runtime — the raw feedback message string.
+    const MESSAGE = /*MESSAGE_PLACEHOLDER*/null;
+
+    function send(value) {
+      const m = { method: 'close_and_send', params: [value] };
+      if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
+      else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('msg').textContent = MESSAGE ?? '';
+      document.getElementById('close').addEventListener('click', () => send(''));
+    });
+  </script>
+
+</body>
+</html>

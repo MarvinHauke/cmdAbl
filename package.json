@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "main": "dist/extension.js",
   "engines": {
-    "node": ">=24.14.1"
+    "node": ">=24.16.0"
   },
   "type": "module",
   "scripts": {
@@ -13,13 +13,13 @@
     "package": "npm run build && extensions-cli package --include karabiner --include windows --include remote-script"
   },
   "dependencies": {
-    "@ableton-extensions/sdk": "file:./vendor/ableton-extensions-sdk-1.0.0-beta.0.tgz",
+    "@ableton-extensions/sdk": "file:./vendor/ableton-extensions-sdk-1.0.0-beta.1.tgz",
     "fuse.js": "^7.4.2"
   },
   "devDependencies": {
-    "@ableton-extensions/cli": "file:./vendor/ableton-extensions-cli-1.0.0-beta.0.tgz",
+    "@ableton-extensions/cli": "file:./vendor/ableton-extensions-cli-1.0.0-beta.1.tgz",
     "@types/node": "^24.1.0",
-    "esbuild": "0.28.0",
+    "esbuild": "0.28.2",
     "tsx": "^4.19.0",
     "typescript": "^5.9.3",
     "vite": "^6.0.0"

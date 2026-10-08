@@ -1,0 +1,30 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       hsl(0, 0%, 13%);
+  --bg-row:   hsl(0, 0%, 17%);
+  --text:     hsl(0, 0%, 71%);
+  --dim:      hsl(0, 0%, 38%);
+  --accent:   hsl(31, 100%, 67%);
+  --border:   hsl(0, 0%, 8%);
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  background: transparent;
+  border: 1px solid var(--dim);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+button:hover { border-color: var(--text); color: #fff; }

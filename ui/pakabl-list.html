@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>pakabl</title>
+  <style>
+    /*SHARED_CSS_PLACEHOLDER*/
+
+    :root { --danger: hsl(0, 60%, 55%); }
+
+    html, body { height: 100%; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
+
+    /* ── header ── */
+    #bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #colon { color: var(--accent); font-size: 15px; font-weight: 700; user-select: none; }
+    #title { font-weight: 600; }
+
+    /* ── list ── */
+    #list { flex: 1; overflow-y: auto; }
+
+    .entry {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .entry-name { font-weight: 600; }
+
+    .entry-meta {
+      margin-top: 3px;
+      font-size: 11px;
+      color: var(--dim);
+    }
+    .entry-meta .version { color: var(--accent); }
+
+    .entry-actions { margin-top: 8px; display: flex; gap: 6px; }
+
+    .btn-install { border-color: var(--accent); color: var(--accent); }
+    .btn-install:hover { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+    .btn-uninstall:hover { border-color: var(--danger); color: var(--danger); }
+
+    .btn-update { border-color: hsl(200, 70%, 55%); color: hsl(200, 70%, 55%); }
+    .btn-update:hover { background: hsl(200, 70%, 55%); color: var(--bg); border-color: hsl(200, 70%, 55%); }
+
+    /* ── footer ── */
+    #footer {
+      padding: 8px 12px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="bar">
+    <span id="colon">:</span>
+    <span id="title">pakabl — extension index</span>
+  </div>
+
+  <div id="list"></div>
+
+  <div id="footer">
+    <button onclick="send('')">Close</button>
+  </div>
+
+  <script>
+    // Injected at runtime before the dialog opens. ListEntry[]:
+    //   { id, name, version, installedVersion: string|null, repoUrl: string|undefined }
+    const ENTRIES = /*ENTRIES_PLACEHOLDER*/null;
+
+    function send(value) {
+      const m = { method: 'close_and_send', params: [value] };
+      if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
+      else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const list = document.getElementById('list');
+
+      for (const entry of ENTRIES) {
+        const { id, name, version, installedVersion, repoUrl } = entry;
+
+        const div = document.createElement('div');
+        div.className = 'entry';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'entry-name';
+        nameEl.textContent = name;
+
+        const metaEl = document.createElement('div');
+        metaEl.className = 'entry-meta';
+        const versionSpan = document.createElement('span');
+        versionSpan.className = 'version';
+        versionSpan.textContent = 'v' + version;
+        metaEl.append(versionSpan, document.createTextNode(' · ' + id));
+
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'entry-actions';
+
+        if (!installedVersion) {
+          const btn = document.createElement('button');
+          btn.className = 'btn-install';
+          btn.textContent = 'Install';
+          btn.onclick = () => send('install:' + id);
+          actionsEl.append(btn);
+        } else if (installedVersion === version) {
+          const btn = document.createElement('button');
+          btn.className = 'btn-uninstall';
+          btn.textContent = 'Uninstall';
+          btn.onclick = () => send('uninstall:' + id);
+          actionsEl.append(btn);
+        } else {
+          const btn = document.createElement('button');
+          btn.className = 'btn-update';
+          btn.textContent = 'Update  v' + installedVersion + ' → v' + version;
+          btn.onclick = () => send('update:' + id);
+          actionsEl.append(btn);
+        }
+
+        if (repoUrl) {
+          const btn = document.createElement('button');
+          btn.textContent = 'Repo';
+          btn.onclick = () => send('repo:' + repoUrl);
+          actionsEl.append(btn);
+        }
+
+        div.append(nameEl, metaEl, actionsEl);
+        list.appendChild(div);
+      }
+    });
+  </script>
+
+</body>
+</html>

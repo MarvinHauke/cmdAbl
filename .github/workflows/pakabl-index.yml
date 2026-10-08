@@ -1,0 +1,48 @@
+name: pakabl index
+
+# Regenerates pakabl/index.json (newest .ablx per approved source in pakabl/sources.json)
+# and pakabl/candidates.json (topic-search finds awaiting approval), then opens a PR if
+# anything changed. Merging that PR is what makes `pakabl update` in Live pick it up.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - run: npm ci
+
+      - name: Crawl
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npx tsx scripts/pakabl-crawl.ts
+
+      - name: Open PR if the index changed
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: pakabl/index-update
+          commit-message: "pakabl: refresh extension index"
+          title: "pakabl: refresh extension index"
+          body: |
+            Automated crawl of `pakabl/sources.json`.
+
+            - `pakabl/index.json` — newest `.ablx` per approved extension.
+            - `pakabl/candidates.json` — repos not yet approved. To approve one, add its
+              `repo` to `pakabl/sources.json`.
+          add-paths: |
+            pakabl/index.json
+            pakabl/candidates.json
+          delete-branch: true
