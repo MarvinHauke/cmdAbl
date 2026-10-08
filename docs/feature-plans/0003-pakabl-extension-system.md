@@ -1,5 +1,7 @@
 # pakabl — an extension/package system for cmdAbl
 
+**Depends on:** [0005](0005-command-tree-and-module-authoring.md) — the `pakabl` subcommands (`install`, `uninstall`, `update`, `upgrade`, `list`) migrate to the declarative command tree.
+
 **Status:** In Progress — pivoted from the plan as written (updated 2026-06-08) — triggered
 by a vision doc for "pakabl," a package manager that would let users install third-party
 extensions that register new commands and providers into cmdAbl's palette.

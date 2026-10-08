@@ -1,5 +1,7 @@
 # Structured command-feedback pattern
 
+**Parent:** [0004](0004-command-platform.md) — Phase A (`CommandResult`) is a prerequisite for the command tree in [0005](0005-command-tree-and-module-authoring.md); every handler returns this result type.
+
 **Status:** Draft (updated 2026-06-08) — triggered by inconsistent ad-hoc feedback in
 `dispatch()` plus the realization that 0001's Phase 3 multi-target commands (`mute /a /b /c`)
 make *partial* success the normal case, not an edge case.
