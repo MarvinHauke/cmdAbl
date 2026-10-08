@@ -1,7 +1,7 @@
 # Guides
 
 Task-oriented manuals for working on cmdAbl. (Design docs live in
-[`../feature-plans/`](../feature-plans/README.md).)
+[`../feature-plans/`](https://github.com/MarvinHauke/cmdAbl/blob/main/docs/feature-plans/README.md).)
 
 | Guide | Use it when |
 |---|---|

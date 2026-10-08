@@ -10,7 +10,7 @@ yet. Nothing bumps the version for you.
    the Git tag comes from `package.json`.)
 2. Commit on a branch and open a PR into `main`. [CI](ci.md) builds it and attaches the `.ablx`.
 3. **Merge the PR.**
-4. [`package-release.yml`](../../.github/workflows/package-release.yml) runs on the push to
+4. [`package-release.yml`](https://github.com/MarvinHauke/cmdAbl/blob/main/.github/workflows/package-release.yml) runs on the push to
    `main`: it builds the `.ablx`, checks whether the tag `v<version>` exists, and if not
    creates the GitHub Release `v<version>` with the `.ablx` attached and generated notes. If
    the tag already exists it skips publishing.

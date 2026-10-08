@@ -1,6 +1,6 @@
 # pakabl index
 
-`pakabl list` shows what's in [`pakabl/index.json`](../../pakabl/index.json). That file is
+`pakabl list` shows what's in [`pakabl/index.json`](https://github.com/MarvinHauke/cmdAbl/blob/main/pakabl/index.json). That file is
 **generated** — never edit it by hand.
 
 ```
@@ -25,7 +25,7 @@ and approve pull requests**. Without it the workflow can't open its PR.
 
 Fully automatic until the merge:
 
-1. The [`pakabl index`](../../.github/workflows/pakabl-index.yml) workflow runs daily
+1. The [`pakabl index`](https://github.com/MarvinHauke/cmdAbl/blob/main/.github/workflows/pakabl-index.yml) workflow runs daily
    (04:17 UTC), or run it now: Actions → **pakabl index** → **Run workflow** (`main`), or
    `gh workflow run pakabl-index.yml`.
 2. If anything changed, it opens a PR **"pakabl: refresh extension index"** from the branch
@@ -41,9 +41,9 @@ You don't have to approve the CI run on that PR. GitHub marks runs started for b
 
 ## Workflow B — adding a new extension
 
-1. Find it in [`pakabl/candidates.json`](../../pakabl/candidates.json) (it appears in the next
+1. Find it in [`pakabl/candidates.json`](https://github.com/MarvinHauke/cmdAbl/blob/main/pakabl/candidates.json) (it appears in the next
    index PR), or pick any GitHub repo that publishes an `.ablx`.
-2. Open a PR that adds one line to [`pakabl/sources.json`](../../pakabl/sources.json):
+2. Open a PR that adds one line to [`pakabl/sources.json`](https://github.com/MarvinHauke/cmdAbl/blob/main/pakabl/sources.json):
    ```json
    { "repo": "<owner>/<repo>" }
    ```
