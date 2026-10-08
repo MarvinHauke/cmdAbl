@@ -6,6 +6,12 @@
     "url": "https://github.com/itscloverdale/ableton-device-manager/releases/download/v1.0.0/Device-Manager-1.0.0.ablx"
   },
   {
+    "id": "ben-casey.bbencut",
+    "name": "BBenCut",
+    "version": "1.0.0",
+    "url": "https://github.com/bencodec/BBenCut/releases/download/1.0.0/BBenCut-1.0.0.ablx"
+  },
+  {
     "id": "federico-pepe.arrangement-helper",
     "name": "Arrangement Helper",
     "version": "0.0.8",
