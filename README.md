@@ -105,7 +105,7 @@ palette opens.
 
 **1. Install the extension**
 
-Download the latest `.ablx` file and double-click it — Ableton Live installs and loads the extension automatically.
+Download the latest `.ablx` from the [Releases page](https://github.com/MarvinHauke/cmdAbl/releases/latest) and double-click it — Ableton Live installs and loads the extension automatically.
 
 **2. Open the palette**
 
@@ -197,28 +197,24 @@ change to take effect.
 <summary><b>Adding your extension to pakabl</b></summary>
 <br>
 
-`pakabl`'s list is **generated** — don't edit [`pakabl/index.json`](pakabl/index.json) by hand.
-A daily GitHub Action ([`pakabl-index.yml`](.github/workflows/pakabl-index.yml), script
-[`scripts/pakabl-crawl.ts`](scripts/pakabl-crawl.ts)) reads the approved repos in
-[`pakabl/sources.json`](pakabl/sources.json), finds each repo's newest `.ablx` (latest GitHub
-Release asset or a committed `.ablx` file), reads the `manifest.json` inside it, and opens a PR
-with the refreshed index. `pakabl update` in Live then fetches the merged file.
+The list `pakabl` shows is [`pakabl/index.json`](pakabl/index.json). It is generated and
+kept up to date automatically from a set of approved GitHub repos, so you don't edit it by hand.
 
-To get your extension listed, open a PR adding one line to `pakabl/sources.json`:
+To get your extension listed, open a pull request that adds one line to
+[`pakabl/sources.json`](pakabl/sources.json):
 
 ```json
 { "repo": "<owner>/<repo>" }
 ```
 
-Requirements: the repo publishes a built `.ablx` (Release asset or committed file) whose
-`manifest.json` has `name`, `author`, `version` and a `minimumApiVersion` starting with `1.`.
-The extension id is derived as `<author-slug>.<name-slug>` from that manifest (author `"Federico
-Pepe"` + name `"Track Creator"` → `federico-pepe.track-creator`), which matches the folder Live
-installs it under. Use `"exclude": ["<id>"]` on a source to skip one of its extensions.
+Requirements: the repo publishes a built `.ablx` (as a GitHub Release asset or a committed
+file) whose `manifest.json` has `name`, `author`, `version` and a `minimumApiVersion` starting
+with `1.`. The extension id shown in `pakabl list` is `<author-slug>.<name-slug>` from that
+manifest (author `"Federico Pepe"` + name `"Track Creator"` → `federico-pepe.track-creator`).
+New versions you publish are picked up automatically.
 
-Repos tagged with the GitHub topic `ableton-extension` or `ableton-extensions` that ship an
-`.ablx` show up automatically in [`pakabl/candidates.json`](pakabl/candidates.json) — the review
-queue; adding a repo to `sources.json` is what approves it.
+Tagging your repo with the GitHub topic `ableton-extension` also makes it show up as a
+candidate for review. Details of the process: [pakabl index guide](docs/guides/pakabl-index.md).
 
 </details>
 
@@ -279,9 +275,8 @@ npm start          # type-check, build (dev), and run in Live's Extension Host
 npm run package    # production build + create a .ablx archive (includes karabiner/ and windows/)
 ```
 
-A [GitHub Actions workflow](.github/workflows/package-release.yml) runs `npm run package` on
-every push to `main` and publishes the resulting `.ablx` as a GitHub Release whenever
-`package.json`'s `version` hasn't been released yet — bump the version to cut a release.
+Maintainers: how a release is cut, how the pakabl list is refreshed, and what CI does are
+described in the [guides](docs/guides/README.md).
 
 </details>
 
@@ -297,6 +292,12 @@ src/
   commandRegistry.ts typed command registry with flag support
   httpTrigger.ts     localhost HTTP server for external triggers (Karabiner, AHK, etc.)
   setup.ts           platform-specific keyboard trigger setup (macOS + Windows)
+  modules/           built-in commands (goto, mute, solo, history, pakabl)
+  ableton/           object tree and Remote Script bridge
+remote-script/       companion Remote Script (track/device selection)
+pakabl/              extension list: sources.json (approved repos), generated index.json
+scripts/             pakabl-crawl.ts — regenerates the pakabl list
+docs/                guides/ (maintainer how-tos), feature-plans/, sdk-tree.md
 ui/
   interface.html     command palette (self-contained HTML/CSS/JS, inlined at build time)
 karabiner/
