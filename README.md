@@ -6,6 +6,8 @@ Press `:` while Live is focused to open a
 keyboard-driven command input with fuzzy filtering, tab completion, and POSIX-style flag arguments.
 You are invited to add your own extensions as registered commands.
 
+📖 **Documentation and guides:** https://marvinhauke.github.io/cmdAbl/
+
 - [How it works](#how-it-works)
 - [Installation](#installation)
 - [Adding your extension to pakabl](#pakabl-index)
@@ -214,7 +216,7 @@ manifest (author `"Federico Pepe"` + name `"Track Creator"` → `federico-pepe.t
 New versions you publish are picked up automatically.
 
 Tagging your repo with the GitHub topic `ableton-extension` also makes it show up as a
-candidate for review. Details of the process: [pakabl index guide](docs/guides/pakabl-index.md).
+candidate for review. Details of the process: [pakabl index guide](https://marvinhauke.github.io/cmdAbl/guides/pakabl-index/).
 
 </details>
 
@@ -276,7 +278,7 @@ npm run package    # production build + create a .ablx archive (includes karabin
 ```
 
 Maintainers: how a release is cut, how the pakabl list is refreshed, and what CI does are
-described in the [guides](docs/guides/README.md).
+described in the [guides](https://marvinhauke.github.io/cmdAbl/guides/).
 
 </details>
 
