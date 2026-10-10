@@ -2,7 +2,7 @@
   {
     "repo": "madisonrickert/ablevsep",
     "description": "Separate any audio clip into stems with any of MVSEP's 100+ models, right inside Ableton Live",
-    "stars": 54,
+    "stars": 55,
     "pushed": "2026-07-13",
     "ablx": [
       "AbleVSEP-1.2.0.ablx"
@@ -66,7 +66,7 @@
     "repo": "ntworm/rc-surface",
     "description": "Source-available Ableton Live extension that turns any phone into a wireless MIDI + multi-sensor controller. PolyForm Noncommercial.",
     "stars": 11,
-    "pushed": "2026-09-30",
+    "pushed": "2026-10-08",
     "ablx": [
       "RC-Surface-1.0.2.ablx"
     ]
@@ -75,7 +75,7 @@
     "repo": "SamKuler/live-smith",
     "description": "An AI agent for Ableton Live",
     "stars": 11,
-    "pushed": "2026-10-04",
+    "pushed": "2026-10-10",
     "ablx": [
       "Live-Smith-0.3.0.ablx"
     ]
@@ -117,6 +117,15 @@
     ]
   },
   {
+    "repo": "norakorra/soundfont-importer",
+    "description": "Convert .sf2 SoundFonts into native Ableton Live Sampler presets and restore functionality removed from Ableton Live 11.",
+    "stars": 4,
+    "pushed": "2026-07-22",
+    "ablx": [
+      "SoundFont-Importer-v1.0.0.ablx"
+    ]
+  },
+  {
     "repo": "daveasays/soulreaktive-DriftRandomizer",
     "description": "Ableton Live Extension — Randomizer for Drift synth",
     "stars": 3,
@@ -132,15 +141,6 @@
     "pushed": "2026-07-09",
     "ablx": [
       "Drum-Rack-Separation-0.1.0.ablx"
-    ]
-  },
-  {
-    "repo": "norakorra/soundfont-importer",
-    "description": "Convert .sf2 SoundFonts into native Ableton Live Sampler presets and restore functionality removed from Ableton Live 11.",
-    "stars": 3,
-    "pushed": "2026-07-22",
-    "ablx": [
-      "SoundFont-Importer-v1.0.0.ablx"
     ]
   },
   {
