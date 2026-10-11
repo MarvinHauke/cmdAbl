@@ -222,6 +222,19 @@ _Last updated: 2026-10-11._
   that clears the "dialog open" state, to learn whether a new dialog can open after a hang
   without restarting. The checks after a hang stay: Undo entry in the Edit menu, Cmd+Z,
   switching apps.
+- Built in `689e673`: log lines `run start: <typed line>` and
+  `run: <canonical line> -> <code|cancelled|threw> (<ms> ms)`; `dialog open: X (N ms after the
+  previous dialog closed)` and `dialog closed: X (…, open for N ms)`; and
+  `curl -X POST http://127.0.0.1:27184/reset` (local only, refuses requests with an `Origin`
+  header, `GET` answers 405). `/reset` is temporary and only for after a hang: on a healthy
+  dialog it drops the result and the next trigger opens a second modal over the first; queued
+  messages are lost; `pakabl list` opens outside the queue, so a hang there answers "no dialog
+  was open".
+- Live test: (1) after a restart, `mute <track>` and an unknown command show the `run start`,
+  `run:` and timed `dialog` lines; (2) with nothing open, `POST /reset` answers "no dialog was
+  open" and `GET /reset` answers 405; (3) after the next real hang, before restarting: Undo
+  entry, Cmd+Z, app switch, then `POST /reset`, press `:`, and report whether a palette appears
+  plus the log from the last `run start:` line on.
 - Candidate fixes, kept until a hang can be tied to a cause: run the handler one macrotask after
   a dialog closes (cmdabl-core); drop the outer `withinTransaction` for a single-track write.
 
@@ -256,7 +269,7 @@ _Last updated: 2026-10-11._
 | Docs workflow's build job gets its own check name (`docs-build`) | cmdabl-core | committed `e23c043`, reviewed; the next pull-request run on GitHub is the proof (three checks: `build`, `gitleaks`, `docs-build`) |
 | `arm` refuses group tracks before writing | cmdabl-modules | committed `aa98b7a`, reviewed; needs the Live test. It avoids one possible trigger; it does not explain the hang |
 | Why a dialog never appears after a write to a group track's `arm` (transaction, rejected write) | cmdabl-bridge | findings in (no code changed), see "Dialog hang" above; the user's experiment did not reproduce it |
-| Evidence for the next dialog hang: log line per command run, manual `/reset` on the trigger server | cmdabl-core | task out |
+| Evidence for the next dialog hang: log line per command run, manual `/reset` on the trigger server | cmdabl-core | committed `689e673`, reviewed; needs the Live test (see "Dialog hang" above) |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
