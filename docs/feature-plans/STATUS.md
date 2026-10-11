@@ -156,11 +156,13 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
 
 1. Remote Script step 2 (first `cmdabl --setup`, restart Live, `npm start`; `cmdabl --bridge` →
    0.2.0 with `hello, select` seen; `goto` on a track, a device, a return track and the main
-   track seen 2026-10-12; `goto <typo>` → exit 3 in 30 ms): `cmdabl --help` lists `--bridge`;
-   `goto` on a track in a folded group (fold the group first; it unfolds and selects); a track row and a device
-   row picked in the palette; `find <pattern>` with several hits, then `next` / `prev`; control
-   surface disabled → `goto x` says "not running", no pick list; is `goto` noticeably slower?;
-   the first command right after `npm start` must not report "not running" wrongly;
+   track seen 2026-10-12; `goto <typo>` → exit 3 in 30 ms): a track in a folded group and
+   "not running" without a pick list with the control surface disabled also seen):
+   `cmdabl --help` lists `--bridge`; a track row and a device
+   row picked in the palette; `find <pattern>` with several hits, then `next` / `prev`; is `goto` noticeably slower?;
+   the first command right after `npm start` must not report "not running" or "nothing
+   matches" wrongly (one report of "nothing matches" right after a start had a typo in the log,
+   `goto mciro` — repeat with a correct name);
    `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open: answer, speed.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
