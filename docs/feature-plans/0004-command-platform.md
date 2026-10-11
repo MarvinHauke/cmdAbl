@@ -10,7 +10,8 @@ one result type first; both are prerequisites, so they are planned together and 
 0004  Command platform (this plan)
  ├─ 0002  Structured command-feedback pattern   — one result type + one rendering policy
  ├─ 0005  Command tree & module authoring        — strict hierarchy, registration API, docs
- └─ 0006  Completion engine                      — client-side engine over the tree
+ ├─ 0006  Completion engine                      — client-side engine over the tree
+ └─ 0007  UI surfaces                            — replaceable palette, pick list, messages
 ```
 
 Related but separate: [0001](0001-path-addressed-objects-and-commands.md) provides *path
@@ -22,6 +23,7 @@ arguments* and the `rm`/`select` commands, which are built on top of this platfo
 | [0002](0002-command-feedback-pattern.md) Phase A | Shipped (B/C open) | Handler return type (`CommandResult`) — must exist before 0005 fixes the handler contract |
 | [0005](0005-command-tree-and-module-authoring.md) | In Progress (parser, tree registration, resolver, pick list; `goto`/`mute`/`solo`/`arm`/`find` migrated) | Everything below: the tree is what completion walks |
 | [0006](0006-completion-engine.md) | Draft | Replaces the flat fuzzy palette |
+| [0007](0007-ui-surfaces.md) | In Progress (contract shipped) | Lets the UI be themed or replaced without touching core or modules |
 
 ## Context
 
@@ -58,6 +60,21 @@ returns one result type, and the palette completes any position in any command f
   is serializable data so this stays possible later.
 - New Live-object commands (`rm`, `select`, chains, `find`) — they are *consumers* of this
   platform and stay in 0001 / a future `find` plan.
+
+## What the core consists of
+
+Updated 2026-10-11 as the pieces landed. Core is what must always be present:
+
+- extension entry + context-menu entries, HTTP trigger server
+- command registry, tokenizer, parser (`src/core/`)
+- **resolver** — path arguments become Live objects before a handler runs (`resolveArgs.ts`,
+  `src/ableton/resolvePath.ts`, the object tree)
+- **pick list** — the platform's answer to an ambiguous address (`pick.ts`)
+- **UI contract** — `prompt` / `select` / `notify` (`ui.ts`, plan 0007) with the default pages
+- result presenter, module manifest
+- two commands: `help`, `cmdabl`
+
+Everything else is a module (`src/modules/index.ts`).
 
 ## Principles
 

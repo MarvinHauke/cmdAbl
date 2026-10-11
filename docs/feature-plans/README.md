@@ -30,7 +30,8 @@ tweaks, or single-file changes — those don't need a design doc, just a commit 
 0004  Command platform (umbrella)
  ├─ 0002  Structured command-feedback pattern
  ├─ 0005  Command tree & module authoring
- └─ 0006  Completion engine
+ ├─ 0006  Completion engine
+ └─ 0007  UI surfaces (replaceable palette, pick list, messages)
 0001  Path-addressed objects & commands   (consumer of 0004: path arguments, rm/select)
 0003  pakabl extension system             (consumer of 0005: subcommands migrate)
 ```
@@ -47,3 +48,4 @@ Build order: 0002 Phase A → 0005 → migrate commands → 0006 → 0001 Phase 
 | [0004](0004-command-platform.md) | Command platform (umbrella) | Draft | Umbrella for a declarative command tree, one result type and a completion engine; lists the migration of existing commands and the build order of its children (0002, 0005, 0006). |
 | [0005](0005-command-tree-and-module-authoring.md) | Command tree & module authoring | In Progress (tree registration, resolver and pick list shipped) | Strict command → subcommand → option/argument hierarchy (POSIX/GNU style), platform-owned parsing, registration API with validation, completer snapshots, and the module-authoring concept that will become a guide. Parent: 0004. |
 | [0006](0006-completion-engine.md) | Completion engine | Draft | Client-side, tree-driven completion for every token position: Tab descends one level, ghost text for the best match, fuzzy search scoped to the current level. Replaces the flat fuzzy palette. Parent: 0004. |
+| [0007](0007-ui-surfaces.md) | UI surfaces | In Progress (contract shipped) | The platform talks to three surfaces — `prompt`, `select`, `notify` — defined by data in / one value out, so the palette, pick list and messages can be themed or replaced (Neovim's `vim.ui.select` idea). Parent: 0004. |
