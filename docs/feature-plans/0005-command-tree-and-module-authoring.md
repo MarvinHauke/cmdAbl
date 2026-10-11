@@ -210,7 +210,7 @@ Taken from comparing a ChatGPT architecture proposal with this plan (full table 
   - `--` ends option parsing for everything after it, `--help` included.
   - A lone `-` is a word, so a track called `Kick - Sub` works unquoted.
   - A positional that starts with a dash is quoted in the remembered line.
-  - The parser stays strict otherwise: `mute /Bass -6dB` is "unknown option `-6dB`" and needs
+  - The parser stays strict otherwise (confirmed by the user, 2026-10-11): `mute /Bass -6dB` is "unknown option `-6dB`" and needs
     quotes or `--`; the error says so. Letting path arguments swallow unknown dash-words would
     turn typos into "nothing matches". *Deferred, not rejected* — revisit with completion
     (0006), which quotes names for the user.

@@ -109,6 +109,12 @@ _Last updated: 2026-10-11._
   commands. Both change a contract — **waiting for the user's decision**.
 - `pakabl list` inlined downloaded index data unescaped (`</script>` in a name breaks the page).
   Task out to cmdabl-modules, using core's `inlineJson`.
+- **`Space` does not mark in the pick list** for the user (after `1b305f6`). Not reproduced; the
+  page logic reads correctly. To rule out first: was `npm start` restarted (the pages are inlined
+  at build time), and was it a multi-select command (`mute`/`solo`/`arm`, not `goto`/`find`)?
+  cmdabl-ui is making the key check robust against webview differences.
+- The first `↓` skipping the first row feels odd. Changing: in a multi-select pick the first
+  arrow only enters the list.
 
 ### In progress (tasks out, 2026-10-11)
 
@@ -124,6 +130,8 @@ _Last updated: 2026-10-11._
 | Child processes get an allowlisted environment instead of all of `process.env` (`src/setup.ts`, pakabl's `platform.ts`) | cmdabl-core, then cmdabl-modules | committed `c28c70d` (setup and `cmdabl --help`) + `e1674bf` (pakabl), reviewed; no spawn passes the whole environment any more; needs the Live test (steps 13 and 14). `cmdabl --help` off macOS now returns exit code 5 with the URL instead of spawning `open`; Windows untested |
 | `pakabl list` page sends `repo:<id>` instead of a URL (one line in `ui/pakabl-list.html`) | cmdabl-modules (host), cmdabl-ui (page) | committed `82beafd` + `4a479ce`; needs the Live test: the Repo button opens the extension's GitHub page (step 13) |
 | Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | committed `1b305f6`, reviewed; keys checked with a scripted browser run, the look is unchecked; needs the Live test (step 15 above). Dialog height for the extra line: cmdabl-core, committed `bd13a52`, reviewed |
+| Pick list: first arrow enters the list without moving; robust `Space` detection | cmdabl-ui | sent |
+| Secret scan in CI (gitleaks or equivalent, pinned; allowlist for test fixtures; `docs/guides/ci.md`) | cmdabl-core | sent |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
@@ -133,8 +141,8 @@ _Last updated: 2026-10-11._
   rows of the empty palette, marked `(history)` — at most 20, in memory only.
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
 - Object items in the palette routed through `goto` (0005).
-- Unquoted names with a dash-word (`mute /Bass -6dB`): stay strict, or let path arguments take
-  them? Strict for now (0005, "Dash rules") — the user should weigh in.
+
+Decided by the user: the parser stays strict for dash-words in unquoted names (0005, "Dash rules").
 
 ### Secrets (rule from the user, 2026-10-11)
 
