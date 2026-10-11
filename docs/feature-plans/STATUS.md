@@ -113,7 +113,7 @@ _Last updated: 2026-10-11._
 17. Messages (`1b6d254`, `b6b208a`):
     - ~~`man foo` (one line) → a small window, no scrollbar; `Esc` and `Enter` close; the long
       path in `cmdabl --setup` wraps.~~ Passed in Live.
-    - `help` and `cmdabl --help` → every line on one row, the last line visible, no scrollbar
+    - `cmdabl --help` → passed in Live. `help` → every line on one row, the last line visible, no scrollbar
       (failed with `b6b208a`; corrected in `5e6b339`).
     - `cmdabl --setup` → "Remote Script is linked to … (nothing to copy)", no `cp:` line.
     - Where a scrollbar does appear, it is thin and dim (`158502d`).
@@ -168,6 +168,10 @@ _Last updated: 2026-10-11._
   window is about 1.5 px too low (the fixed height around the text is about 66.5 px in Live, not
   65), the scrollbar then narrows the text and the long line wraps. The scrollbar is still a
   white native one in the message page and in `pakabl list`; `158502d` has no visible effect.
+- **Confirmed in Live after `ac885e2` and `63bba87`:** `cmdabl --help` shows all six lines on one
+  row each without a scrollbar; the scrollbar in `pakabl list` is slim and dim (the dark colour
+  scheme and the single rule family work in Live's webview). Still to look at: `help`, a long
+  pick list, the palette dropdown, caret and selection.
 
 ### In progress (tasks out, 2026-10-11)
 
