@@ -162,8 +162,8 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    `cmdabl --bridge` → 0.2.0 with `hello, select`; `goto` on a track, a device, a return track,
    the main track and a track in a folded group; "not running" without a pick list when the
    control surface is disabled; the first command right after `npm start` finds its track;
-   `find`, `next`, `prev`; `goto` does not feel slower. Open: `cmdabl --help` lists `--bridge`;
-   a track row and a device row picked in the palette;
+   `find`, `next`, `prev`; `goto` does not feel slower; a track row and a device row picked in
+   the palette. Open: `cmdabl --help` lists `--bridge`;
    `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open: answer, speed.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
