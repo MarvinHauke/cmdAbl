@@ -128,7 +128,8 @@ _Last updated: 2026-10-11._
   and in the unit tests. Suspected, unverified: the `URL` global is missing in the host's context.
   Task out to cmdabl-core: validate without the global, never swallow the reason, log at startup
   which web globals the host has. If confirmed, it belongs in `docs/sdk-tree.md` as a constraint.
-  Until fixed, `man` opens nothing on macOS.
+  Fixed in `827f326` (plain string check, no `URL` global; reviewed) — **the cause is still a
+  hypothesis** until the startup log line `cmdAbl: host globals: …` has been read in Live.
 
 ### In progress (tasks out, 2026-10-11)
 
