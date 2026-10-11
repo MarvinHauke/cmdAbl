@@ -95,8 +95,8 @@ _Last updated: 2026-10-11._
     - A very long track name: the line stays on one row, clipped.
     - A pick with two rows: no scrollbar, nothing cut off (`bd13a52`).
 16. `man` and `cmdabl --help` (`fcb7296`, `69452e9`):
-    - `man ableton` → the Live manual opens, no message; `man Ableton` → the same.
-    - `man cmdabl` → the docs site.
+    - ~~`man ableton` → the Live manual opens; `man cmdabl` → the docs site.~~ Passed in Live
+      after `827f326`. Still open: `man Ableton` (capital letter) → the same.
     - `man` → usage with the topics; `man foo` → `no manual for "foo"` and the topics;
       `man ableton extra` → a usage error.
     - `help` lists `man`; a successful `man ableton` is in the history and re-runs.
@@ -105,6 +105,7 @@ _Last updated: 2026-10-11._
 ### Found in the Live test (2026-10-11, still running)
 
 - Passed so far: `help`, pick list for `goto` and `find`, `find -t`, `next`/`prev`, `pakabl list`.
+  Later the same day: `Space` marking and the command line with `mute`; `man ableton`, `man cmdabl`.
 - The `help` window is too small (text wraps at 500×180) — see "Dialog size" in 0007.
 - Open decision: do `next`/`prev` stay once the pick list has a follow mode? Kept until the spike.
 - **Palette stuck "open"**: after some tests (last command probably `mute`) the palette could not
