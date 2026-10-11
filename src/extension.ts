@@ -63,6 +63,11 @@ export function activate(activation: ActivationContext) {
     context.commands.executeCommand("cmdabl.open");
   }, () => isOpen);
 
+  // The Karabiner rule only fires while `cmdabl_open` is 0. If a previous host
+  // was stopped with the palette open, the flag would stay at 1 and ":" would
+  // silently do nothing — so start from a known state.
+  setKarabinerPaletteOpen(false);
+
   // ── startup hint ─────────────────────────────────────────────────────────
   if (!isSetupDone()) {
     console.log("cmdAbl: keyboard trigger not configured. Open the palette and run: cmdabl --setup");
