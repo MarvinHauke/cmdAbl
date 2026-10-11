@@ -90,7 +90,7 @@ _Last updated: 2026-10-11._
       the line; `Esc` cancels without a history entry. A mouse click marks in a multi-select list.
     - `goto vermona` (single-select): `Space` after `↓` still types a space.
     - A very long track name: the line stays on one row, clipped.
-    - A pick with two rows: no scrollbar, nothing cut off (needs the height change from core).
+    - A pick with two rows: no scrollbar, nothing cut off (`bd13a52`).
 
 ### Found in the Live test (2026-10-11, still running)
 
@@ -123,7 +123,7 @@ _Last updated: 2026-10-11._
 | pakabl hardening: validate ids before unzip and delete, open only repo URLs from the index, fail on a missing page placeholder | cmdabl-modules | committed `9dc9ec7`, reviewed; needs the Live test (step 13 above). Behaviour changes: pakabl errors are failing results now (no history entry); `pakabl uninstall` refuses folder names outside the id shape, e.g. hand-installed ones |
 | Child processes get an allowlisted environment instead of all of `process.env` (`src/setup.ts`, pakabl's `platform.ts`) | cmdabl-core, then cmdabl-modules | committed `c28c70d` (setup and `cmdabl --help`) + `e1674bf` (pakabl), reviewed; no spawn passes the whole environment any more; needs the Live test (steps 13 and 14). `cmdabl --help` off macOS now returns exit code 5 with the URL instead of spawning `open`; Windows untested |
 | `pakabl list` page sends `repo:<id>` instead of a URL (one line in `ui/pakabl-list.html`) | cmdabl-modules (host), cmdabl-ui (page) | committed `82beafd` + `4a479ce`; needs the Live test: the Repo button opens the extension's GitHub page (step 13) |
-| Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | committed `1b305f6`, reviewed; keys checked with a scripted browser run, the look is unchecked; needs the Live test (step 15 above). Dialog height for the extra line: sent to cmdabl-core |
+| Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | committed `1b305f6`, reviewed; keys checked with a scripted browser run, the look is unchecked; needs the Live test (step 15 above). Dialog height for the extra line: cmdabl-core, committed `bd13a52`, reviewed |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
