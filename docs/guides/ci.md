@@ -23,6 +23,15 @@ Open a green run in the Actions tab → **Artifacts** → `cmdabl-ablx`.
 | Red at `npm run package` | A real build/type error — see the log |
 | `action_required` | GitHub holds runs triggered by bot-created PRs (e.g. the pakabl index PR) until someone clicks **Approve and run**. Optional for PRs that only change generated JSON. |
 
+## Required checks
+
+The ruleset "Protect main" requires the checks `build` (from CI) and `gitleaks` (from the secret
+scan). GitHub matches a check by its job name, so job names must stay unique across workflows:
+the docs workflow's job is named `docs-build` for that reason. A required check must also come
+from a workflow that runs on every pull request: `docs.yml` has a `paths` filter, so its job must
+never be made required (on a pull request that touches no docs it would not run and the check would
+wait forever).
+
 ## Pinned actions
 
 Third-party actions (everything outside `actions/*`, e.g. `peter-evans/create-pull-request`) are

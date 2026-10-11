@@ -27,6 +27,8 @@ concurrency:
 
 jobs:
   build:
+    # A required check is matched by job name; CI's `build` is the required one.
+    name: docs-build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
