@@ -1,6 +1,6 @@
 import { ExitCode, fail, type CommandResult } from "../types.js";
 import { type CommandNode, type Invocation, usage } from "./commandTree.js";
-import { tokenize } from "./tokenize.js";
+import { tokenize, type Token } from "./tokenize.js";
 
 // Turns a typed line into a matched leaf plus a (not yet resolved) invocation.
 // Modules never parse: this is the only place raw input is interpreted.
@@ -21,6 +21,11 @@ function findChild<P>(nodes: CommandNode<P, any>[], word: string): CommandNode<P
   return nodes.find((n) => n.name === word || n.aliases?.includes(word));
 }
 
+/** An option starts with an unquoted dash; quotes later in the token (`--to="a b"`) are fine. */
+function startsOption(input: string, token: Token): boolean {
+  return input[token.start] === "-" && token.value.startsWith("-");
+}
+
 export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]): ParseOutcome<P> {
   const tokenized = tokenize(input);
   if (!tokenized.ok) return error(ExitCode.USAGE, tokenized.error);
@@ -34,7 +39,7 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
   let i = 0;
   while (i < tokens.length) {
     const token = tokens[i]!;
-    if (!token.quoted && token.value.startsWith("-")) break; // options start here
+    if (startsOption(input, token)) break; // options start here
     const child = findChild(nodes, token.value);
     if (!child) break;
     node = child;
@@ -68,7 +73,7 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
   for (let k = 0; k < rest.length; k++) {
     const token = rest[k]!;
     const text = token.value;
-    if (optionsEnded || token.quoted || !text.startsWith("-") || text === "-") {
+    if (optionsEnded || !startsOption(input, token) || text === "-") {
       positionals.push(text);
       continue;
     }

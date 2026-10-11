@@ -269,7 +269,9 @@ test("run: the remembered line is canonical — unique paths, each object once",
   assert.equal(c.line, 'goto "/Opal Lead"');
   registry.add({ name: "say", summary: "text", args: [{ name: "word", kind: "text" }], options: [{ name: "to", takesValue: true, summary: "target" }], run: () => {} });
   const d = await runLine('say --to="a b" Hello', d2);
-  assert.equal(d.line, 'say --to="a b" Hello');
+  assert.equal(d.line, 'say --to="a b" Hello'); // re-parses: a quote inside --name= is not a quoted token
+  assert.equal((await runLine(d.line!, d2)).line, d.line);
+  assert.equal((await runLine('say "--to"', d2)).result.code, ExitCode.OK); // quoted dash is a word
 });
 
 test("run: the preview shows uniquely resolved text as its path, once", async () => {
