@@ -341,6 +341,9 @@ Plans: 0001 Phase 4, decisions in 0004. Today the bridge is fire-and-forget over
    - **Layout approved** (0001 §8): `ops/` and `routes.py` in the script, `bridgeOps.ts` with
      typed functions in the extension. Step 2 is out: cmdabl-bridge (move into the layout, then
      `select` with read-back), cmdabl-core (`requires: ["bridge"]`), then cmdabl-modules (`goto`).
+     `requires` is built (`25b467a`, reviewed, 135 unit tests; details in 0005, "`requires` as
+     built"); no command declares it yet. For the Live test once `goto` does: the first command
+     typed right after `npm start` must not report "not running" wrongly.
    - Live test list of step 1, for reference (first `cmdabl --setup`, then restart Live and `npm start`):
      (1) `goto` still selects a track and a device; (2) `cmdabl --bridge` shows the version and
      N ms; (3) with the palette open, `curl http://127.0.0.1:27184/bridge` — does it answer, how

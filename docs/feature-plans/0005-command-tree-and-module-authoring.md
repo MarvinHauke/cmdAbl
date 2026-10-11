@@ -220,6 +220,21 @@ Taken from comparing a ChatGPT architecture proposal with this plan (full table 
     whether numbers get a special case when the first `number` argument exists, and say it in
     the authoring guide.
 
+## `requires` as built (2026-10-11, `25b467a`)
+
+- The check runs in `runLine` right after parsing and `--help`, before paths are resolved and
+  before any pick list: `<cmd> --help` and usage errors work without the Remote Script, and
+  nobody is asked to pick for a command that cannot run.
+- Unavailable → the bridge's own code 5 and text (not installed / outdated / not running); the
+  handler is not called and nothing is remembered.
+- Deliberate: with the script missing, `goto <typo>` answers "not running" (5) rather than
+  "not found" (3) — the first thing to fix is the script.
+- `requires` is allowed on commands only, not on groups; an unknown requirement is a startup
+  problem.
+- Not built: marking unavailable commands when the palette opens. When it is, it uses the
+  cached bridge state only, so opening never waits for a timeout. `--help` does not name the
+  requirement yet.
+
 ## Import boundaries (2026-10-11, enforced by `src/architecture.test.ts`)
 
 - A module does not import another module's folder, `src/extension`, `src/httpTrigger` or a
