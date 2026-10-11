@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import type { ModuleApi } from "../types.js";
 import { EXTENSIONS_DIR, downloadFile, unzipInto, readJsonFile, openUrl, removeDir } from "./platform.js";
+import { buildListPage } from "./listPage.js";
 import pakablListTemplate from "../../../ui/pakabl-list.html";
 
 // `context.environment.storageDirectory` is `string | undefined` in the SDK
@@ -159,10 +160,7 @@ async function list(api: ModuleApi): Promise<void> {
     };
   });
 
-  const html = pakablListTemplate.replace(
-    "/*ENTRIES_PLACEHOLDER*/null",
-    JSON.stringify(entries),
-  );
+  const html = buildListPage(pakablListTemplate, entries);
 
   const result = await api.context.ui.showModalDialog(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`, 560, 480);
   if (!result) return;
