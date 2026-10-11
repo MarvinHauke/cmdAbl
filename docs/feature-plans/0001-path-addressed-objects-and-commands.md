@@ -400,6 +400,36 @@ missing script cannot delay opening it. A module never opens a socket or parses 
 6. `selection` read for follow mode.
 7. `cmdabl setup` (today `cmdabl --setup`) version check and restart hint.
 
+### 8. Code layout (approved by the user 2026-10-11)
+
+Measured in Live after step 1: a `hello` round trip takes 14 ms, and 24 ms with the palette
+open — the script keeps answering while a dialog is open, so no faster drain is needed (D1, D2).
+After `cmdabl --setup` Live must be restarted before the new script answers.
+
+Remote Script (`remote-script/cmdAbl/`):
+
+| File | Job |
+|---|---|
+| `__init__.py` | entry point for Live |
+| `cmdabl.py` | the control surface: socket, read per tick, hand over. No operation logic |
+| `protocol.py` | message format, errors, `hello`. No Live imports |
+| `routes.py` | turn `{scope, route}` into a Live object; reports `stale` / `out_of_range` |
+| `ops/__init__.py` | the list of operations; `hello` reports exactly this list |
+| `ops/select.py`, `ops/tracks.py`, `ops/chains.py`, `ops/selection.py` | one file per group |
+
+Operations get the song passed in and import nothing from Live, so they are tested with fake
+objects in `tests/remote-script/` (`fake_live.py`, one test file per operation file). The old
+one-way `cmd` messages are removed in step 2, when `goto` uses `select`.
+
+Extension (`src/ableton/`): `bridgeProtocol.ts` (message types, error → exit code),
+`bridgeClient.ts`, `bridgeFake.ts`, `bridge.ts` (transport, fake, access) and `bridgeOps.ts`
+with one typed function per operation (`select()`, `trackFacts()`, …). Modules call the typed
+functions only, never `request("name", …)` with loose arguments.
+
+Rules for every new operation: one handler in `ops/`, one typed function in `bridgeOps.ts`, a
+test on each side; described in §4 before it is built, and the script `VERSION` goes up with it;
+only selecting and reading until the access token exists.
+
 ## Phased rollout
 
 Three shippable increments, each independently testable (mirrors the existing Phase 0/1/2

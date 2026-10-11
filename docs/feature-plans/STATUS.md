@@ -333,7 +333,15 @@ Plans: 0001 Phase 4, decisions in 0004. Today the bridge is fire-and-forget over
      "Remote Script 0.1.0 is running (protocol v1, N ms; operations: …)" or the bridge's failure
      (exit 5); `GET /bridge` on the trigger server reports the same as plain text — temporary,
      like `POST /reset`; both refuse requests from a browser page.
-   - **Live test of step 1** (first `cmdabl --setup`, then restart Live and `npm start`):
+   - **Step 1 seen in Live (user, 2026-10-11):** `cmdabl --bridge` → "Remote Script 0.1.0 is
+     running (protocol v1, 14 ms; operations: hello)"; `GET /bridge` with the palette open →
+     available, 24 ms. The script answers while a dialog is open (check 2 of the spike in 0006).
+     Live must be restarted after `cmdabl --setup`; re-selecting the control surface was not
+     enough. Not reported yet: old `goto` path, disabled control surface, `--help`.
+   - **Layout approved** (0001 §8): `ops/` and `routes.py` in the script, `bridgeOps.ts` with
+     typed functions in the extension. Step 2 is out: cmdabl-bridge (move into the layout, then
+     `select` with read-back), cmdabl-core (`requires: ["bridge"]`), then cmdabl-modules (`goto`).
+   - Live test list of step 1, for reference (first `cmdabl --setup`, then restart Live and `npm start`):
      (1) `goto` still selects a track and a device; (2) `cmdabl --bridge` shows the version and
      N ms; (3) with the palette open, `curl http://127.0.0.1:27184/bridge` — does it answer, how
      fast; the same with a pick list and a message open; (4) control surface disabled in Live's
