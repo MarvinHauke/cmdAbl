@@ -73,6 +73,7 @@ your own:
 | `solo`    | `solo <track>…` toggles solo per track; `unsolo <track>…` always unsolos |
 | `arm`     | `arm <track>…` toggles record arm per track; `unarm <track>…` always disarms |
 | `history` | Remembers your last 20 invocations and re-offers them as rerunnable entries |
+| `man`     | `man <topic>` opens a manual in the browser: `man ableton` (Live reference manual), `man cmdabl` (this documentation) |
 | `pakabl`  | Install/update/uninstall community extensions — see _Install more extensions with `pakabl`_ |
 
 **Addressing tracks and devices**
