@@ -169,13 +169,12 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    `find`, `next`, `prev`; `goto` does not feel slower; a track row and a device row picked in
    the palette. Open: `cmdabl --help` lists `--bridge`;
    `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open: answer, speed.
-1b. Remote Script step 3 (`cmdabl --setup`, restart Live, `npm start`): `cmdabl --bridge` →
-   0.3.0 with `hello, select, track_facts`; `arm` on the MIDI track with the missing input
-   device → refused with the message, nothing armed; `arm` on a normal track toggles on and off;
-   group, return, main → refused as before; `arm` on several tracks with one greyed out →
-   "k/n done", one undo step; control surface disabled → `arm` as before; after each `arm`,
-   `:` still opens the palette (a bridge round trip now sits between dialog close and the
-   write — relevant to hang hypothesis H2).
+1b. Remote Script step 3. Seen 2026-10-12 with script 0.3.0 (`hello, select, track_facts`;
+   20 round trips min 4 / median 51 / max 100 ms): `arm` toggles a normal track, refuses group,
+   return and main, "k/n done" with one undo, and the palette kept opening after every `arm`.
+   **Not working: `arm` on the MIDI track with the missing input device still gives no
+   message** (see "Known issues"). Open: the log lines of the task below, to see which facts
+   Live reports for that track.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
@@ -265,9 +264,17 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
 
 ### Other
 
-- **`arm` on a MIDI track whose input device is missing** (arm button greyed out) shows no error,
-  also with the read-back of `e885674` (user, 2026-10-11): the SDK accepts the write and shows no
-  difference. Detecting it needs Remote Script replies (`can_be_armed`), roadmap step 2.4.
+- **`arm` on a MIDI track whose input device is missing** (arm button greyed out) shows no error:
+  neither with the SDK read-back (`e885674`) nor with `track_facts` (`7e4d787`, user 2026-10-12).
+  Live's Log.txt shows no script error, so Live most likely reports `can_be_armed` as true for
+  it (not yet seen as a value; task out to cmdabl-modules: log the facts and the read-back).
+  The user considers this Live's intended behaviour. If the log confirms it: a documented limit.
+- Live's Log.txt shows a `SyntaxError` at startup for `import ableton-live-midi-remote-scripts`:
+  a folder of that name in a Remote Scripts directory, not cmdAbl. Harmless; the user may
+  remove or rename the folder.
+- `cmdabl --bridge` took 2–3 s with nothing visible (user: looks like a hang). Task out to
+  cmdabl-core: the command pings once and answers at once; the 20-round-trip measurement
+  stays on `GET /bridge` only.
 - **Exclusive Arm / Solo**: `arm /a /b` arms both tracks although "Exclusive: Arm" is on, and
   `solo` likewise with "Exclusive: Solo"; a write through the API does not apply the exclusive
   rule. Accepted by the user (2026-10-12); `arm /a` therefore does not disarm other tracks.
