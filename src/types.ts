@@ -9,7 +9,11 @@ export interface FlagDef {
   description: string;
 }
 
-export type PaletteItemType = "command" | "track" | "device" | "clip" | "scene";
+/**
+ * "chain" is a rack chain or Drum Rack pad (route [track, device, chain]); the
+ * object tree's NodeKind is an Extract of this type.
+ */
+export type PaletteItemType = "command" | "track" | "device" | "chain" | "clip" | "scene";
 
 /**
  * Regular tracks, return tracks, and the main ("Master") track are three
