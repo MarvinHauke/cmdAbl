@@ -1,7 +1,9 @@
 import type { ModuleApi } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { trackFor } from "../ableton/trackLookup.js";
-import { armDecision, armRefusal, isGroupNode, nextTrackValue, notChanged, type TrackSetValue } from "./trackSetValue.js";
+import { getBridge } from "../ableton/bridge.js";
+import { loadArmFacts } from "./armFacts.js";
+import { armDecision, armRefusal, factsRefusal, isGroupNode, nextTrackValue, notChanged, type TrackSetValue } from "./trackSetValue.js";
 import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../types.js";
 
 // Shared by mute/unmute, solo/unsolo and arm/unarm. Two modes:
@@ -17,6 +19,10 @@ import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../t
 // Those are refused up front, without a write. For anything else Live may
 // refuse, the value is read back after the transaction and a write that did
 // not take is reported. `mute` and `solo` stay legitimate on group tracks.
+// When the Remote Script is reachable, `arm` also asks Live (`track_facts`) up
+// front and refuses tracks Live greys out (a MIDI track without an input
+// device); without the script it behaves as above. The command does not
+// require the script.
 //
 // The tracks arrive already resolved (the platform turns paths into objects
 // and asks the user when an address is ambiguous), so this only writes.
@@ -32,18 +38,23 @@ export function registerTrackSetCommand(
     name,
     summary,
     args: [{ name: "track", kind: "path", kinds: ["track"], variadic: true }],
-    run: (invocation): CommandResult => {
+    run: async (invocation): Promise<CommandResult> => {
       const nodes = (invocation.args[0] ?? []) as ObjectNode[];
       const outcomes: TargetOutcome[] = [];
       const written: WrittenArm[] = [];
 
+      // Arming asks Live what it knows about the tracks first (one request,
+      // before any write) — only when the Remote Script is there; otherwise
+      // the SDK-only path below. Disarming needs no facts.
+      const facts = prop === "arm" && value !== false ? await loadArmFacts(getBridge(), nodes) : undefined;
+
       // One transaction = one undo step for the whole command.
       api.context.withinTransaction(() => {
-        for (const node of nodes) {
+        nodes.forEach((node, index) => {
           const track = trackFor(api.context, node);
           if (!track) {
             outcomes.push({ path: node.path, ok: false, code: ExitCode.NOT_FOUND, message: "track is gone" });
-            continue;
+            return;
           }
           try {
             if (prop === "arm") {
@@ -54,11 +65,17 @@ export function registerTrackSetCommand(
               const decision = armDecision(node.scope, wantedOnUnarmable, isGroup);
               if (decision === "refuse") {
                 outcomes.push({ path: node.path, ok: false, message: armRefusal(isGroup) });
-                continue;
+                return;
               }
               if (decision === "skip") {
                 outcomes.push({ path: node.path, ok: true });
-                continue;
+                return;
+              }
+              // Live's own answer; the stricter of it and the local check wins.
+              const objection = factsRefusal(facts?.[index]);
+              if (objection) {
+                outcomes.push({ path: node.path, ok: false, message: objection });
+                return;
               }
               const wanted = nextTrackValue(track.arm, value);
               written.push({ node, wanted, outcome: outcomes.length });
@@ -70,7 +87,7 @@ export function registerTrackSetCommand(
           } catch (e: unknown) {
             outcomes.push({ path: node.path, ok: false, message: e instanceof Error ? e.message : String(e) });
           }
-        }
+        });
       });
 
       if (prop === "arm") verifyArm(api, written, outcomes);
