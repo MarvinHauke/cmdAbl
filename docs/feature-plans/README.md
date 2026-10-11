@@ -24,6 +24,9 @@ tweaks, or single-file changes — those don't need a design doc, just a commit 
   surfaces new constraints, edit the doc — that's the point of keeping it in the repo next to
   the code instead of in a chat transcript.
 
+Progress across all plans — what is merged, what awaits a test in Live, what is next — is
+tracked in [`STATUS.md`](STATUS.md).
+
 ## Hierarchy
 
 ```
