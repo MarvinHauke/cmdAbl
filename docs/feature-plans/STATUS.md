@@ -344,6 +344,13 @@ Plans: 0001 Phase 4, decisions in 0004. Today the bridge is fire-and-forget over
      `requires` is built (`25b467a`, reviewed, 135 unit tests; details in 0005, "`requires` as
      built"); no command declares it yet. For the Live test once `goto` does: the first command
      typed right after `npm start` must not report "not running" wrongly.
+   - Layout move and `select` built by cmdabl-bridge (`50ced39`, `84f8865`, reviewed; 137 unit
+     tests, 16 Python tests): script 0.2.0 with `routes.py`, `ops/`, `legacy.py` (the old
+     one-way messages, until `goto` has moved); `select(bridge, node)` in
+     `src/ableton/bridgeOps.ts` compares the name first, unfolds parents, reads back. Task out
+     to cmdabl-modules: `goto` (and what `find`/`next`/`prev` use) calls it and declares
+     `requires`. Unverified until the Live test: read-back equality in Live, the main track's
+     name, selecting a rack chain. Needs `cmdabl --setup` and a restart of Live.
    - Live test list of step 1, for reference (first `cmdabl --setup`, then restart Live and `npm start`):
      (1) `goto` still selects a track and a device; (2) `cmdabl --bridge` shows the version and
      N ms; (3) with the palette open, `curl http://127.0.0.1:27184/bridge` — does it answer, how
