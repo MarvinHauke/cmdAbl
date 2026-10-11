@@ -8,7 +8,9 @@ the first op that changes or deletes something must require it.
 """
 
 from .select import select
+from .tracks import track_facts
 
 OPS = {
     "select": select,
+    "track_facts": track_facts,
 }

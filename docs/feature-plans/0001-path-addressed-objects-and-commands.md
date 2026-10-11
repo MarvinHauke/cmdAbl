@@ -301,7 +301,7 @@ Reply: `{"v": 1, "id": "<same>", "ok": true, "result": { … }}` or
   - a timeout *after* a successful `hello`, for a request that changes Live → **unknown end
     state**, exit code 1 ("no answer; check Live");
   - a timeout on a read → exit code 1, nothing changed.
-- No retries for writes. `bridge.ts` retries a read once.
+- No retries (reads included; a read that times out is reported, the caller may ask again).
 - **Script rules**: every op handler is wrapped (nothing raises into Live); every parseable
   request with an `id` gets exactly one reply; unparseable or id-less datagrams are logged and
   dropped; routes and argument types are validated before any LOM access; the script never caches
@@ -344,7 +344,7 @@ says what it points at (1 = track, 2 = device on the track, 3 = chain, 4 = devic
 | Op | Args | Result |
 |---|---|---|
 | `select` | `{scope, route, expectName}` | `{name}` once the script read the selection back (track: `song.view.selected_track`; device: `track.view.selected_device`; a chain route selects the chain in its rack's view); `stale` / `out_of_range`; if the read-back differs: `failed` |
-| `track_facts` | `{scope, route}` (length 1) | `{can_be_armed, is_foldable, is_grouped, arm}` — `arm` is `null` unless `can_be_armed` (reading it raises otherwise) |
+| `track_facts` | `{targets: [{scope, route, expectName?}, …]}` (routes of length 1, at most 20) | `{tracks: [{can_be_armed, is_foldable, is_grouped, arm} (+ `name` only without `expectName`) \| {error: {code, text}}, …]}` in the order given — several tracks in one reply (one request per command); `arm` is `null` unless `can_be_armed` (reading it raises otherwise); a stale or missing target is its own `error` entry, the others are still answered |
 | `chains` | `{scope, route, offset?, limit?}` (a device) | `{kind: "rack"\|"drum", total, chains: [{index, name, note?}]}` |
 | `select_chain` | `{scope, route, expectName}` (a chain or, for a Drum Rack, the pad) | `{name}`; differs from `select` only in the Drum Rack pad lookup — folded into `select` if that needs no extra logic |
 | `selection` | `{}` | `{scope, route, name}` for track, plus `device`/`chain` when set |

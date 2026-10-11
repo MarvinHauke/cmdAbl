@@ -73,13 +73,25 @@ class FakeTrackView(object):
 
 
 class FakeTrack(object):
-    def __init__(self, name, devices=None, group=None, foldable=False):
+    def __init__(self, name, devices=None, group=None, foldable=False, can_be_armed=True, arm=False):
         self.name = name
         self.devices = devices or []
         self.group_track = group
         self.is_foldable = foldable
         self.fold_state = 0
         self.view = FakeTrackView()
+        self.can_be_armed = can_be_armed
+        self._arm = arm
+
+    @property
+    def is_grouped(self):
+        return self.group_track is not None
+
+    @property
+    def arm(self):
+        if not self.can_be_armed:
+            raise RuntimeError("arm is not available on this track")
+        return self._arm
 
 
 class FakeSongView(object):
