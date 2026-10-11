@@ -1,11 +1,14 @@
-// Size of the message dialog, from its text. The numbers were measured on
-// ui/feedback.html (headless Chrome, not Live's webview): 18 px per line,
-// 65 px of fixed height around the text, about 7.83 px per character, and a
-// text width of window width − 32 px. Change them together with the page.
+// Size of the message dialog, from its text. The numbers are those of
+// ui/feedback.html in Live's webview (measured in Live 12.4.15b6 on
+// 2026-10-11; headless Chrome had said 7.83 px per character, which made
+// the longest line wrap): 18 px per line, 65 px of fixed content height
+// around the text (the requested height is the content height, the title band
+// is extra), about 8.05 px per character, and a text width of window width −
+// 32 px. Change them together with the page.
 
 export const NOTIFY_LINE_HEIGHT = 18;
 export const NOTIFY_FIXED_HEIGHT = 65;
-export const NOTIFY_CHAR_WIDTH = 7.83;
+export const NOTIFY_CHAR_WIDTH = 8.05;
 export const NOTIFY_HORIZONTAL_CHROME = 32;
 /** Extra width so the longest line does not sit exactly on the edge. */
 export const NOTIFY_WIDTH_MARGIN = 8;
@@ -29,7 +32,10 @@ export function notifySize(text: string): { width: number; height: number } {
   // this count, and characters wider than one cell (CJK, emoji, a fallback font
   // for the check marks) count as one; the page absorbs both by scrolling.
   const perLine = notifyCharsPerLine(width);
-  const rows = lines.reduce((sum, l) => sum + Math.max(1, Math.ceil(l.length / perLine)), 0);
+  let rows = lines.reduce((sum, l) => sum + Math.max(1, Math.ceil(l.length / perLine)), 0);
+  // Where a line wraps the estimate can be off by one: leave a line of slack.
+  // Unwrapped text stays tight.
+  if (lines.some((l) => l.length > perLine)) rows += 1;
   const height = Math.min(Math.max(NOTIFY_FIXED_HEIGHT + NOTIFY_LINE_HEIGHT * rows, NOTIFY_MIN_HEIGHT), NOTIFY_MAX_HEIGHT);
   return { width, height };
 }

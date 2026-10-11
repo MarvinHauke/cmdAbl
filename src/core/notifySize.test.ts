@@ -22,13 +22,31 @@ test("notifySize: a help-style listing is not wrapped", () => {
   assert.equal(height, 65 + 18 * 6); // one row per line
 });
 
+test("notifySize: a 66-character line gets a width that fits it, with no slack row", () => {
+  const line = "x".repeat(66);
+  const { width, height } = notifySize(`${line}\nshort\nshort`);
+  assert.ok(width >= Math.ceil(66 * 8.05) + 32 + 8, `width ${width}`);
+  assert.ok(notifyCharsPerLine(width) >= 66);
+  assert.equal(height, 65 + 18 * 3);
+});
+
+test("notifySize: the cmdabl usage text fits the maximum width without wrapping", async () => {
+  const { cmdablUsage } = await import("./builtins.js");
+  const text = cmdablUsage();
+  const longest = Math.max(...text.split("\n").map((l) => l.length));
+  const { width, height } = notifySize(text);
+  assert.ok(longest * 8.05 + 40 <= 760, `longest line ${longest} characters`);
+  assert.ok(notifyCharsPerLine(width) >= longest);
+  assert.equal(height, 65 + 18 * text.split("\n").length);
+});
+
 test("notifySize: a 150-character path stays at 760 and wraps", () => {
   const path = "/" + "a".repeat(149);
   const { width, height } = notifySize(path);
   assert.equal(width, 760);
   const rows = Math.ceil(150 / notifyCharsPerLine(760));
   assert.equal(rows, 2);
-  assert.equal(height, Math.max(110, 65 + 18 * rows)); // the minimum height applies
+  assert.equal(height, 65 + 18 * (rows + 1)); // one line of slack where a line wraps
 });
 
 test("notifySize: 60 lines are capped at 420", () => {

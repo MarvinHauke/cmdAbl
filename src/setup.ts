@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import { spawnSync, spawn } from "node:child_process";
 import { childEnv } from "./core/childEnv.js";
+import { isSameDirectory } from "./core/samePath.js";
 
 // ── macOS / Karabiner-Elements ───────────────────────────────────────────────
 
@@ -145,9 +146,18 @@ const MAC_REMOTE_SCRIPTS_DIR = path.join(
   "Music/Ableton/User Library/Remote Scripts",
 );
 
+/** The User Library folder already is the repository's folder (a link): there is nothing to copy. */
+function linkedRemoteScriptMessage(source: string): string {
+  return [
+    `OK: Remote Script is linked to ${source} (nothing to copy)`,
+    "Next: restart Live, then Settings -> Link, Tempo & MIDI -> Control Surface -> cmdAbl",
+  ].join("\n");
+}
+
 function runMacRemoteScriptSetup(): string {
   const source = remoteScriptSourcePath();
   const target = path.join(MAC_REMOTE_SCRIPTS_DIR, "cmdAbl");
+  if (isSameDirectory(source, target)) return linkedRemoteScriptMessage(source);
 
   const script = `
 if [ ! -d "$CMDABL_RS_SOURCE" ]; then
@@ -179,6 +189,7 @@ const WIN_REMOTE_SCRIPTS_DIR = path.join(
 function runWinRemoteScriptSetup(): string {
   const source = remoteScriptSourcePath();
   const target = path.join(WIN_REMOTE_SCRIPTS_DIR, "cmdAbl");
+  if (isSameDirectory(source, target)) return linkedRemoteScriptMessage(source);
 
   const script = `
 if (-not (Test-Path $env:CMDABL_RS_SOURCE)) {
