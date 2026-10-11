@@ -73,6 +73,9 @@
   <div id="list"></div>
   <div id="hint"></div>
 
+  <!-- Shared matcher, inlined as a `CmdMatch` global at build time. -->
+  <script>/*MATCH_PLACEHOLDER*/</script>
+
   <script>
     // Injected by the extension: { title, multi, preview?, items: [{ label, detail?, value? }] }
     const PICK = /*PICK_PLACEHOLDER*/null;
@@ -94,6 +97,10 @@
     let visible  = [];          // indexes into PICK.items, after filtering
     let active   = 0;           // position within `visible`
 
+    // Every typed word must occur in the label (any order); better fuzzy hits first.
+    const allIndexes = PICK.items.map((_, i) => i);
+    const filterIndexes = CmdMatch.filterer(allIndexes, i => PICK.items[i].label);
+
     function send(indexes) {
       const payload = indexes && indexes.length ? JSON.stringify(indexes) : '';
       const msg = { method: 'close_and_send', params: [payload] };
@@ -102,10 +109,7 @@
     }
 
     function render() {
-      const needle = filter.value.trim().toLowerCase();
-      visible = PICK.items
-        .map((_, i) => i)
-        .filter(i => !needle || PICK.items[i].label.toLowerCase().includes(needle));
+      visible = filterIndexes(filter.value);
       active = Math.min(active, Math.max(visible.length - 1, 0));
 
       list.innerHTML = '';

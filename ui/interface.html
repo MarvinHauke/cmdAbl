@@ -73,8 +73,8 @@
 
   <div id="dropdown"></div>
 
-  <!-- Fuse.js, inlined as a `Fuse` global at build time. -->
-  <script>/*FUSE_PLACEHOLDER*/</script>
+  <!-- Shared matcher, inlined as a `CmdMatch` global at build time. -->
+  <script>/*MATCH_PLACEHOLDER*/</script>
 
   <script>
     // Injected by the extension before the dialog opens. PaletteItem[]:
@@ -87,10 +87,10 @@
 
     const itemsById = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 
-    const fuseOpts = { threshold: 0.4, ignoreLocation: true };
     // 'path' lets a bare "/vermona/kick"-style query fuzzy-match a Live
     // object's address directly, on top of matching its bare name.
-    const itemFuse = new Fuse(ITEMS, { ...fuseOpts, keys: ['title', 'subtitle', 'keywords', 'path'] });
+    const itemRank = CmdMatch.ranker(ITEMS, ['title', 'subtitle', 'keywords', 'path']);
+    const flagRanks = new Map();   // flags array -> ranker, built once per command
 
     let items     = [];   // current completion candidates
     let activeIdx = 0;
@@ -149,7 +149,7 @@
         // otherwise leave the shorter, stale row fuzzy-matched and active, so
         // Enter would silently run the old invocation instead of the new one.
         // Forward-completable matches (entry.startsWith(query)) stay.
-        return itemFuse.search(query).map(r => r.item).filter(item =>
+        return itemRank(query).filter(item =>
           !(item.type === 'command' && item.id.includes(' ')
             && query.length > item.id.length && query.startsWith(item.id)));
       }
@@ -157,8 +157,8 @@
       // flag phase
       const flags = itemsById[cmdName ?? '']?.flags ?? [];
       if (!flags.length || !query) return flags;
-      const flagFuse = new Fuse(flags, { ...fuseOpts, keys: ['name', 'description'] });
-      return flagFuse.search(query).map(r => r.item);
+      if (!flagRanks.has(flags)) flagRanks.set(flags, CmdMatch.ranker(flags, ['name', 'description']));
+      return flagRanks.get(flags)(query);
     }
 
     // ── row shape differs between phases (PaletteItem vs FlagDef) ────────────
