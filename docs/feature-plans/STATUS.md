@@ -46,7 +46,11 @@ _Last updated: 2026-10-11._
    - `mute a b` with one already muted → both flip; one undo reverts both.
    - `mute /a /a` → flips once.
    - `unsolo /x` on a track that is not soloed → nothing changes; same for `unmute`.
-   - `arm` on a return or the main track → a failure message, no crash.
+   - `arm` on an audio and on a MIDI track → armed, **no message**; `arm` again → disarmed.
+   - `arm` on a return or the main track → "cannot be armed"; `unarm` there → no message.
+   - `arm` on a group track → "did not change".
+   - `arm /a /b` on two ordinary tracks → both armed, no message (with Live's Exclusive Arm
+     preference on, only one stays armed and the other is reported — expected).
    - Re-run `mute /x` from history → toggles back (intended).
 5. `mute /Opal Lead` (unquoted space) and `mute /a, /b` (comma form) still work.
 6. ~~`find vermona` → pick list; then `next` / `prev` step through the matches.~~ Passed.
@@ -208,7 +212,7 @@ _Last updated: 2026-10-11._
 | Themed scrollbar in the dialogs (`ui/shared.css`) | cmdabl-ui | committed `158502d`, reviewed; checked in headless Chrome for the message and pick pages only; needs the Live test (thin dim scrollbar, no white track, in all four pages) |
 | Message height: fixed part 65 → 72 px | cmdabl-core | committed `ac885e2`, reviewed; needs the Live test: `cmdabl --help` shows six lines without a scrollbar |
 | Scrollbar still white in Live: `color-scheme: dark`, one rule family per engine, better integration | cmdabl-ui | committed `63bba87`, reviewed; verified in headless Chrome only, **not in Live's webview**; needs the Live test (slim dim bar in all four pages, caret and selection still readable, no white flash on open) |
-| `arm` reports tracks that cannot be armed; manual search pinned to `/live-manual/12` | cmdabl-modules | sent |
+| `arm` reports tracks that cannot be armed; manual search pinned to `/live-manual/12` | cmdabl-modules | committed `e885674` + `9edd84f`, reviewed; needs the Live test (step 4). The read-back after arming is unverified against the SDK: if ordinary tracks report "did not change", it comes out again (one function) |
 | Docs workflow's build job gets its own check name (`docs-build`) | cmdabl-core | committed `e23c043`, reviewed; the next pull-request run on GitHub is the proof (three checks: `build`, `gitleaks`, `docs-build`) |
 
 ### Candidates (not ordered yet — order them with the user after the test)
