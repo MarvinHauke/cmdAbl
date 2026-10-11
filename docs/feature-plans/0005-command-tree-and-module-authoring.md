@@ -228,8 +228,7 @@ Taken from comparing a ChatGPT architecture proposal with this plan (full table 
 - `src/core/` does not import modules, `httpTrigger` or `extension`.
 - `src/ableton/` does not import modules, `core/ui` or `extension`.
 - Only `src/core/ui.ts` calls `showModalDialog`.
-- Known exceptions, listed in the test: the `find` match tests sit in `src/core/run.test.ts`
-  (they belong in `src/modules/find/`), and `pakabl list` opens its own dialog until the `page`
+- One known exception, listed in the test: `pakabl list` opens its own dialog until the `page`
   surface exists.
 
 ## Verification
