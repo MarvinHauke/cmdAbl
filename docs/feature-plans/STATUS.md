@@ -94,6 +94,13 @@ _Last updated: 2026-10-11._
       `Space` types a space.
     - A very long track name: the line stays on one row, clipped.
     - A pick with two rows: no scrollbar, nothing cut off (`bd13a52`).
+16. `man` and `cmdabl --help` (`fcb7296`, `69452e9`):
+    - `man ableton` → the Live manual opens, no message; `man Ableton` → the same.
+    - `man cmdabl` → the docs site.
+    - `man` → usage with the topics; `man foo` → `no manual for "foo"` and the topics;
+      `man ableton extra` → a usage error.
+    - `help` lists `man`; a successful `man ableton` is in the history and re-runs.
+    - `cmdabl --help` and bare `cmdabl` show the usage text; `cmdabl --foo` adds `unknown flag`.
 
 ### Found in the Live test (2026-10-11, still running)
 
@@ -135,7 +142,8 @@ _Last updated: 2026-10-11._
 | Secret scan in CI (`.github/workflows/secret-scan.yml`, gitleaks 8.30.1 pinned by checksum, `docs/guides/ci.md`) | cmdabl-core | committed `1092e4e`, reviewed. Full history scanned locally: 0 findings. **Only the first CI run after a push shows whether the workflow works** — then check the push run and start one manual run |
 | Pin `peter-evans/create-pull-request` in `pakabl-index.yml` to a commit SHA | cmdabl-core | committed `a5e1adc` (v7.0.11), reviewed; the next manual run of the index workflow after a push is the check |
 | `cmdabl --help` prints usage instead of opening the Ableton manual; `openUrl` in its own file | cmdabl-core | committed `fcb7296`, reviewed. The usage text points to `man cmdabl` — **do not push before the `man` module is in**. Live: `cmdabl --help` and bare `cmdabl` show the usage, `cmdabl --foo` adds `unknown flag`, `cmdabl --setup` unchanged |
-| New module `man`: `man ableton` (Live manual), `man cmdabl` (docs site) | cmdabl-modules | sent, starts after core |
+| New module `man`: `man ableton` (Live manual), `man cmdabl` (docs site) | cmdabl-modules | committed `69452e9`, reviewed; needs the Live test (step 16). On Windows `man` answers with the URL (exit 5) until core's `openUrl` has a Windows opener |
+| pakabl's Repo button opens through core's `openUrl` (macOS); the Windows branch stays, with an https check | cmdabl-modules | committed `931615b`, reviewed; Windows untested |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
@@ -145,6 +153,10 @@ _Last updated: 2026-10-11._
   rows of the empty palette, marked `(history)` — at most 20, in memory only.
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
 - Object items in the palette routed through `goto` (0005).
+- An `enum` argument kind with declared choices (0005 mentions it for pakabl ids): `man` would
+  then show `usage: man <ableton|cmdabl>` instead of `man [topic]`, and get completion.
+- A Windows opener in core's `openUrl` (`man` and `cmdabl` answer with the URL there today;
+  pakabl keeps its own `Start-Process` branch until then).
 - Search in the Ableton manual: `man ableton <words>`. The online manual has no search of its own
   (checked 2026-10-11; chapters are `/en/live-manual/12/<chapter>/#<section>`). Options: (a) open
   a web search limited to the manual; (b) ship an index of chapter and section titles, match the
