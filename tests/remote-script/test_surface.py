@@ -60,6 +60,17 @@ class Surface(unittest.TestCase):
         reply, addr = s._socket.sent[0]
         self.assertEqual(addr, ("127.0.0.1", 5))
         self.assertEqual(reply["result"]["ops"], sorted(list(OPS) + ["hello"]))
+        self.assertIn("select", reply["result"]["ops"])
+
+    def test_select_over_the_socket_replies_with_the_read_back(self):
+        t = FakeTrack("T")
+        song = FakeSong(tracks=[t])
+        req = b'{"v":1,"id":"s","op":"select","args":{"scope":"regular","route":[0],"expectName":"T"}}'
+        s = surface(song, [(req, ("h", 1))])
+        s._drain_socket()
+        reply, _ = s._socket.sent[0]
+        self.assertEqual(reply["result"], {"name": "T"})
+        self.assertIs(song.view.selected_track, t)
 
     def test_legacy_select_track_still_works_and_unfolds(self):
         group = FakeTrack("G", foldable=True)

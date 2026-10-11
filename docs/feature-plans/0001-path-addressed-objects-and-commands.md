@@ -363,10 +363,10 @@ says what it points at (1 = track, 2 = device on the track, 3 = chain, 4 = devic
 
 ### 5. What modules see
 
-`src/ableton/bridge.ts` exposes async functions that never throw and return
-`BridgeResult<T> = {ok: true, value: T} | {ok: false, code: 1 | 5, text: string}`:
-`bridge.available()`, `bridge.select(node)`, `bridge.trackFacts(node)`, `bridge.chains(node)`,
-`bridge.selection()`. `requires: ["bridge"]` makes the platform await `available()` before the handler (it sends
+`src/ableton/bridgeClient.ts` gives the `Bridge` (`available()`, `ping()`, `state()`); the typed
+operations are functions in `src/ableton/bridgeOps.ts` that take it: `select(bridge, node)`,
+`trackFacts(bridge, node)`, `chains(bridge, node)`, `selection(bridge)`. All are async, never throw and return
+`BridgeResult<T> = {ok: true, value: T} | {ok: false, code: 1 | 5, text: string}`. `requires: ["bridge"]` makes the platform await `available()` before the handler (it sends
 `hello` when the state is unknown, up to the timeout); no answer → exit code 5 with the install
 hint, the handler is not run. Only the palette uses the cached state (unknown = not marked) and never waits for `hello`, so a
 missing script cannot delay opening it. A module never opens a socket or parses a reply.
