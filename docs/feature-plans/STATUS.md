@@ -154,17 +154,17 @@ Everything not yet confirmed by the user. Restart `npm start` first. Passed (use
 `help` lists the commands, pick list for `goto`/`find`, `mute` multi-select with one undo, the
 toggles incl. `arm` on audio/MIDI/return/main/group tracks.
 
-1. Remote Script step 2 (first `cmdabl --setup`, restart Live, `npm start`; `cmdabl --bridge` →
-   0.2.0 with `hello, select` seen; `goto` on a track, a device, a return track and the main
-   track seen 2026-10-12; `goto <typo>` → exit 3 in 30 ms): a track in a folded group and
-   "not running" without a pick list with the control surface disabled also seen):
-   `cmdabl --help` lists `--bridge`; a track row and a device
-   row picked in the palette; `find <pattern>` with several hits, then `next` / `prev`; is `goto` noticeably slower?;
-   the first command right after `npm start` must not report "not running" or "nothing
-   matches" wrongly (one report of "nothing matches" right after a start had a typo in the log,
-   `goto mciro` — repeat with a correct name);
+1. Remote Script step 2 (first `cmdabl --setup`, restart Live, `npm start`). Seen 2026-10-12:
+   `cmdabl --bridge` → 0.2.0 with `hello, select`; `goto` on a track, a device, a return track,
+   the main track and a track in a folded group; "not running" without a pick list when the
+   control surface is disabled. Open: `cmdabl --help` lists `--bridge`; a track row and a device
+   row picked in the palette; `find <pattern>` with several hits, then `next` / `prev`; is
+   `goto` noticeably slower?; the first command right after `npm start` must not report "not
+   running" or "nothing matches" wrongly (one report of "nothing matches" right after a start
+   had a typo in the log, `goto mciro` — repeat with a correct name);
    `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open: answer, speed.
-2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open `POST /reset` answers "no
+2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
+   `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
    the Edit menu, Cmd+Z, switch apps, `POST /reset`, press `:`, report whether a palette appears
    plus the log from the last `run start:` line on.
