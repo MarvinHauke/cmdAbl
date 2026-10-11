@@ -61,7 +61,8 @@ _Last updated: 2026-10-11._
 |---|---|---|
 | `mute`/`solo`/`arm` toggle again; `un…` stay as "off" (0005) | cmdabl-modules | committed `145fd98` + `083c288`, reviewed; needs the Live test (step 4 above) |
 | `SelectRequest.preview` and `items[].value` for the command line in the pick list (0007 §4) | cmdabl-core | committed `900f89d`, reviewed (also escapes `<` in the data inlined into all three dialogs); the line itself is not visible until the page task is done |
-| Remembered line fully canonical: unique paths, each object once (0005) | cmdabl-core | committed `b09108c` + `972b67a` (option parsing fix; its review is requested). `b09108c` alone has one failing test — squash before merging if a clean history matters |
+| Remembered line fully canonical: unique paths, each object once (0005) | cmdabl-core | committed `b09108c` + `972b67a` (option parsing fix, reviewed OK). `b09108c` alone has one failing test — squash before merging if a clean history matters |
+| Dash handling: quote leading-dash words in the remembered line, `--` ends options, lone `-` is a word, hint in "unknown option" (0005) | cmdabl-core | sent |
 | Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | waiting — the user starts it with `scripts/agents.sh ui`; needs the core task first |
 
 ### Candidates (not ordered yet — order them with the user after the test)
@@ -72,6 +73,8 @@ _Last updated: 2026-10-11._
   rows of the empty palette, marked `(history)` — at most 20, in memory only.
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
 - Object items in the palette routed through `goto` (0005).
+- Unquoted names with a dash-word (`mute /Bass -6dB`): stay strict, or let path arguments take
+  them? Strict for now (0005, "Dash rules") — the user should weigh in.
 
 ## Next, in order
 

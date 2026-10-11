@@ -206,6 +206,19 @@ Taken from comparing a ChatGPT architecture proposal with this plan (full table 
   "everything matching".
 - **An option starts with an unquoted dash** (`--to="a b"` is an option, a fully quoted `"--x"`
   is a word), so a remembered line with a spaced option value parses again.
+- **Dash rules** (architect, after the review of `972b67a`):
+  - `--` ends option parsing for everything after it, `--help` included.
+  - A lone `-` is a word, so a track called `Kick - Sub` works unquoted.
+  - A positional that starts with a dash is quoted in the remembered line.
+  - The parser stays strict otherwise: `mute /Bass -6dB` is "unknown option `-6dB`" and needs
+    quotes or `--`; the error says so. Letting path arguments swallow unknown dash-words would
+    turn typos into "nothing matches". *Deferred, not rejected* — revisit with completion
+    (0006), which quotes names for the user.
+  - Combined shorts (`-dt`) are not supported. Deferred until a command has shorts that are
+    used together (`find -t|-d` are alternatives).
+  - An unquoted `-1` is an unknown option; a negative value needs quotes or `--`. Decide
+    whether numbers get a special case when the first `number` argument exists, and say it in
+    the authoring guide.
 
 ## Verification
 
