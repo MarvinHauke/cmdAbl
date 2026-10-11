@@ -1,11 +1,16 @@
 import type { ExtensionContext, Track } from "@ableton-extensions/sdk";
 import type { PaletteItemType, TrackScope } from "../types.js";
+import { getBridge } from "./bridge.js";
+import { findRacks, getChainNameCache, type ChainNameCache } from "./chainNames.js";
 
 // Generalizes the Phase 1 track-only snapshot into a tree of every addressable
 // object with a stable place in Live's hierarchy: tracks (incl. group-track
-// children, return tracks, and the main/master track) and their devices today;
-// chains and other kinds slot in later
+// children, return tracks, and the main/master track), their devices and the
+// chains of rack devices; other kinds slot in later
 // (see docs/feature-plans/0001-path-addressed-objects-and-commands.md).
+// Chain names come from the Remote Script through a cache (chainNames.ts): the
+// build never waits for the script; without a cached name a rack simply has
+// no chain nodes.
 //
 // Two things are deliberately kept distinct:
 //   - `path`  is the *display/address* hierarchy ("/Vermona/Kick") — it follows
@@ -19,7 +24,7 @@ import type { PaletteItemType, TrackScope } from "../types.js";
 // Shares its labels with PaletteItemType so a tree node converts straight into
 // a PaletteItem/PaletteResult without a translation layer — "track"/"device"
 // mean the same thing on both sides of that boundary.
-export type NodeKind = Extract<PaletteItemType, "track" | "device">;
+export type NodeKind = Extract<PaletteItemType, "track" | "device" | "chain">;
 
 /** Enough to re-resolve the live object later (handles aren't permanent — see resolve.ts). */
 export interface LiveRef {
@@ -35,9 +40,28 @@ export interface ObjectNode extends LiveRef {
   children: ObjectNode[];
 }
 
-export function buildObjectTree(context: ExtensionContext<"1.0.0">): ObjectNode[] {
+export interface BuildOptions {
+  /** Where chain names come from. Default: the shared cache (refreshed in the background). `null` = no chain nodes. */
+  chainNames?: ChainNameCache | null;
+}
+
+/**
+ * Build the tree from the SDK. Note: with the default options a build may send a
+ * datagram (a background `chains` refresh through getBridge()); tests pass
+ * `chainNames: null` or their own cache.
+ */
+export function buildObjectTree(context: ExtensionContext<"1.0.0">, options: BuildOptions = {}): ObjectNode[] {
   const song = context.application.song;
   const tracks = song.tracks;
+  const cache = options.chainNames === undefined ? getChainNameCache() : options.chainNames;
+  if (cache && options.chainNames === undefined) {
+    // Stale-while-revalidate: the next build sees what this one asks for.
+    try {
+      void cache.scheduleRefresh(findRacks(song), getBridge());
+    } catch {
+      // never fail a tree build because of the bridge
+    }
+  }
 
   interface Entry {
     track: Track<"1.0.0">;
@@ -49,7 +73,7 @@ export function buildObjectTree(context: ExtensionContext<"1.0.0">): ObjectNode[
   // Pass 1: a node per regular track with its devices as children. Sub-tracks
   // are nested in pass 2 once every node exists to nest them under.
   tracks.forEach((track, index) => {
-    const node = buildTrackNode(track, index, "regular");
+    const node = buildTrackNode(track, index, "regular", cache);
     entries.set(node.handleId, { track, subTracks: [], node });
   });
 
@@ -71,15 +95,15 @@ export function buildObjectTree(context: ExtensionContext<"1.0.0">): ObjectNode[
   // Return tracks and the main ("Master") track live in their own collections
   // entirely outside song.tracks — they're always top-level and can't be
   // grouped, so they need no pass-2 nesting.
-  const returnRoots = song.returnTracks.map((track, index) => buildTrackNode(track, index, "return"));
-  const mainRoot = buildTrackNode(song.mainTrack, 0, "master");
+  const returnRoots = song.returnTracks.map((track, index) => buildTrackNode(track, index, "return", cache));
+  const mainRoot = buildTrackNode(song.mainTrack, 0, "master", cache);
 
   const allRoots = [...roots, ...returnRoots, mainRoot];
   assignPaths(allRoots, "");
   return allRoots;
 }
 
-function buildTrackNode(track: Track<"1.0.0">, trackIndex: number, scope: TrackScope): ObjectNode {
+function buildTrackNode(track: Track<"1.0.0">, trackIndex: number, scope: TrackScope, cache: ChainNameCache | null): ObjectNode {
   return {
     handleId: track.handle.id.toString(),
     route: [trackIndex],
@@ -87,16 +111,44 @@ function buildTrackNode(track: Track<"1.0.0">, trackIndex: number, scope: TrackS
     scope,
     name: track.name,
     path: "",
-    children: track.devices.map((device, deviceIndex) => ({
-      handleId: device.handle.id.toString(),
-      route: [trackIndex, deviceIndex],
-      kind: "device" as const,
-      scope,
-      name: device.name,
-      path: "",
-      children: [],
-    })),
+    children: track.devices.map((device, deviceIndex) => {
+      const route = [trackIndex, deviceIndex];
+      const handleId = device.handle.id.toString();
+      return {
+        handleId,
+        route,
+        kind: "device" as const,
+        scope,
+        name: device.name,
+        path: "",
+        children: chainNodes(device, route, handleId, scope, cache),
+      };
+    }),
   };
+}
+
+/** The chains of a rack device, named from the cache; none when the names are unknown or out of date. */
+function chainNodes(
+  device: object,
+  route: number[],
+  handleId: string,
+  scope: TrackScope,
+  cache: ChainNameCache | null,
+): ObjectNode[] {
+  const chains = (device as { chains?: unknown }).chains;
+  if (!cache || !Array.isArray(chains)) return [];
+  const chainIds = chains.map((c: { handle: { id: { toString(): string } } }) => c.handle.id.toString());
+  const entry = cache.get(scope, route, handleId, chainIds);
+  if (!entry) return [];
+  return chains.map((_chain: unknown, chainIndex: number) => ({
+    handleId: chainIds[chainIndex]!,
+    route: [...route, chainIndex],
+    kind: "chain" as const,
+    scope,
+    name: entry.names[chainIndex] ?? "",
+    path: "",
+    children: [],
+  }));
 }
 
 /**
