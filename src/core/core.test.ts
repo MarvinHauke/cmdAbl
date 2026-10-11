@@ -153,6 +153,19 @@ test("parse: variadic, quoting and --", () => {
   assert.deepEqual(run(`mute "-quoted"`).args, [["-quoted"]]);
 });
 
+test("parse: option values, escaped dashes and quoteIfNeeded round-trip", () => {
+  assert.deepEqual(run(`pakabl install --ref "a b" x`).options, { ref: "a b" });
+  assert.deepEqual(run(`pakabl install -f x`).options, { force: true });
+  assert.deepEqual(run("mute \\-1").args, [["-1"]]);
+  // Values with quotes, backslashes or a leading dash survive quoteIfNeeded → parse.
+  for (const value of ['a "b" c', "it's", "back\\slash", "-x", "--to"]) {
+    assert.deepEqual(run(`mute ${quoteIfNeeded(value)}`).args, [[value]], value);
+    assert.deepEqual(run(`pakabl install --ref=${quoteIfNeeded(value)} x`).options, { ref: value }, value);
+  }
+  // `--` ends option parsing, help included.
+  assert.equal(parse("mute -- --help", tree).kind, "run");
+});
+
 test("parse: optional argument may be absent", () => {
   assert.deepEqual(run("note").args, [[]]);
   assert.deepEqual(run("note hi").args, [["hi"]]);

@@ -13,7 +13,7 @@ export interface Token {
   start: number;
   /** Offset just past the token's last character (including a closing quote). */
   end: number;
-  /** True if any part of the token was quoted — a quoted "-x" is never an option. */
+  /** True if any part of the token was quoted (whether it is an option is decided by its first raw character, see parse.ts). */
   quoted: boolean;
 }
 
@@ -65,6 +65,7 @@ export function tokenize(input: string): TokenizeResult {
 
 /** Quote a value for insertion into a command line if it needs it. */
 export function quoteIfNeeded(value: string): string {
-  if (value !== "" && !/[\s"'\\]/.test(value)) return value;
+  // A leading dash is quoted too, or the word would re-parse as an option.
+  if (value !== "" && !value.startsWith("-") && !/[\s"'\\]/.test(value)) return value;
   return `"${value.replace(/(["\\])/g, "\\$1")}"`;
 }

@@ -271,7 +271,9 @@ test("run: the remembered line is canonical — unique paths, each object once",
   const d = await runLine('say --to="a b" Hello', d2);
   assert.equal(d.line, 'say --to="a b" Hello'); // re-parses: a quote inside --name= is not a quoted token
   assert.equal((await runLine(d.line!, d2)).line, d.line);
-  assert.equal((await runLine('say "--to"', d2)).result.code, ExitCode.OK); // quoted dash is a word
+  const dash = await runLine('say "-x"', d2);
+  assert.equal(dash.line, 'say "-x"'); // a leading dash is quoted so it re-parses as a word
+  assert.equal((await runLine(dash.line!, d2)).result.code, ExitCode.OK);
 });
 
 test("run: the preview shows uniquely resolved text as its path, once", async () => {

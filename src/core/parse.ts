@@ -53,7 +53,9 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
 
   const isGroup = (node.children?.length ?? 0) > 0;
   const rest = tokens.slice(i);
-  const wantsHelp = rest.some((t) => !t.quoted && (t.value === "--help" || t.value === "-h"));
+  const endOfOptions = rest.findIndex((t) => !t.quoted && t.value === "--");
+  const optionTokens = endOfOptions < 0 ? rest : rest.slice(0, endOfOptions);
+  const wantsHelp = optionTokens.some((t) => !t.quoted && (t.value === "--help" || t.value === "-h"));
   if (wantsHelp) return { kind: "help", node, path };
 
   if (isGroup) {
