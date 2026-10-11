@@ -9,6 +9,7 @@ import { registerBuiltins } from "./core/builtins.js";
 import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
 import { pickNodes } from "./core/pick.js";
+import { createDialogQueue } from "./core/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type Ui } from "./core/ui.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
 import { MODULES } from "./modules/index.js";
@@ -19,7 +20,9 @@ export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");
   const registry = new CommandRegistry();
   // Every dialog goes through this — the platform never opens an HTML page itself.
-  const ui: Ui = createDefaultUi(context);
+  // One queue: a dialog never opens while another is open (see core/dialogQueue.ts).
+  const dialogs = createDialogQueue();
+  const ui: Ui = createDefaultUi(context, dialogs);
   const providers: { provider: Provider; priority: number }[] = [];
   const resultHandlers = new Map<string, ResultHandler>();
   const commandRunListeners: Array<(invocation: string) => void> = [];
@@ -70,7 +73,7 @@ export function activate(activation: ActivationContext) {
   // to open the command palette without a context menu.
   startTriggerServer(TRIGGER_PORT, () => {
     context.commands.executeCommand("cmdabl.open");
-  }, () => isOpen);
+  }, () => isOpen || dialogs.describe() !== null);
 
   // The Karabiner rule only fires while `cmdabl_open` is 0. If a previous host
   // was stopped with the palette open, the flag would stay at 1 and ":" would
@@ -123,7 +126,12 @@ export function activate(activation: ActivationContext) {
   }
 
   async function openPalette(): Promise<void> {
-    if (isOpen) return;
+    const shown = dialogs.describe();
+    if (isOpen || shown) {
+      // "isOpen but nothing shown" means a command is still running — the case to diagnose.
+      console.log(`cmdAbl: trigger ignored: ${shown ?? "a command is still running (no dialog open)"}`);
+      return;
+    }
     isOpen = true;
     setKarabinerPaletteOpen(true);
     try {
@@ -137,9 +145,13 @@ export function activate(activation: ActivationContext) {
       console.error(e instanceof Error ? e.message : String(e));
     } finally {
       isOpen = false;
-      setKarabinerPaletteOpen(false);
+      // A message may still be on screen: the flag is reset when the last dialog closes.
+      if (dialogs.describe() === null) setKarabinerPaletteOpen(false);
     }
   }
+  dialogs.onIdle(() => {
+    if (!isOpen) setKarabinerPaletteOpen(false);
+  });
 
   context.commands.registerCommand("cmdabl.open", () => {
     void openPalette();
