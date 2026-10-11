@@ -203,6 +203,37 @@ test("parse: help", () => {
 
 // ── presenter ───────────────────────────────────────────────────────────────
 
+test("presentResult: successes first, reasons indented, a parenthesis starts a line", () => {
+  const shown: string[] = [];
+  presentResult(fail(ExitCode.FAILURE, "arm: 2 of 4 done", [
+    { path: "/Sub 37 Midi", ok: false, message: "Live did not arm it: its arm button is disabled (e.g. the input device is not available)" },
+    { path: "/Sub37 Audio", ok: true },
+    { path: "/Group", ok: false, message: "group tracks cannot be armed" },
+    { path: "/Bass", ok: true },
+    { path: "/Odd", ok: false },
+  ]), (t) => shown.push(t));
+  assert.deepEqual(shown, [
+    [
+      "cmdAbl: arm: 2 of 4 done",
+      "  ✓ /Sub37 Audio",
+      "  ✓ /Bass",
+      "  × /Sub 37 Midi",
+      "      Live did not arm it: its arm button is disabled",
+      "      (e.g. the input device is not available)",
+      "  × /Group",
+      "      group tracks cannot be armed",
+      "  × /Odd",
+    ].join("\n"),
+  ]);
+});
+
+test("presentResult: an all-success result lists no targets; a message without details is unchanged", () => {
+  const shown: string[] = [];
+  presentResult(ok("muted 2", [{ path: "/a", ok: true }, { path: "/b", ok: true }]), (t) => shown.push(t));
+  presentResult(fail(ExitCode.NOT_FOUND, "nothing matches"), (t) => shown.push(t));
+  assert.deepEqual(shown, ["muted 2", "cmdAbl: nothing matches"]);
+});
+
 test("presentResult: silent success, messages, failures with details", () => {
   const shown: string[] = [];
   const show = (t: string) => shown.push(t);
@@ -212,7 +243,7 @@ test("presentResult: silent success, messages, failures with details", () => {
     { path: "/a", ok: true },
     { path: "/b", ok: false, message: "not found" },
   ]), show);
-  assert.deepEqual(shown, ["done", "cmdAbl: muted 1/2\n  ✓ /a\n  ✗ /b — not found"]);
+  assert.deepEqual(shown, ["done", "cmdAbl: muted 1/2\n  ✓ /a\n  × /b\n      not found"]);
 });
 
 test("cmdablUsage: lists every registered flag and points to man and help", async () => {
