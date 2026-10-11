@@ -152,6 +152,7 @@ _Last updated: 2026-10-11._
 | `cmdabl --help` prints usage instead of opening the Ableton manual; `openUrl` in its own file | cmdabl-core | committed `fcb7296`, reviewed. The usage text points to `man cmdabl` — **do not push before the `man` module is in**. Live: `cmdabl --help` and bare `cmdabl` show the usage, `cmdabl --foo` adds `unknown flag`, `cmdabl --setup` unchanged |
 | New module `man`: `man ableton` (Live manual), `man cmdabl` (docs site) | cmdabl-modules | committed `69452e9`, reviewed; needs the Live test (step 16). On Windows `man` answers with the URL (exit 5) until core's `openUrl` has a Windows opener |
 | pakabl's Repo button opens through core's `openUrl` (macOS); the Windows branch stays, with an https check | cmdabl-modules | committed `931615b`, reviewed; Windows untested |
+| `man ableton <words>`: DuckDuckGo search limited to the manual (`site:ableton.com inurl:live-manual`; the user chose the engine) | cmdabl-modules | sent |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
@@ -161,6 +162,13 @@ _Last updated: 2026-10-11._
   rows of the empty palette, marked `(history)` — at most 20, in memory only.
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
 - Object items in the palette routed through `goto` (0005).
+- An `enum` argument kind with declared choices (0005 mentions it for pakabl ids): `man` would
+  then show `usage: man <ableton|cmdabl>` instead of `man [topic]`, and get completion.
+- A Windows opener in core's `openUrl` (`man` and `cmdabl` answer with the URL there today;
+  pakabl keeps its own `Start-Process` branch until then).
+- A section index for the Ableton manual: match `man ableton <words>` against chapter and section
+  titles and open the section directly, with the pick list on several hits (needs a pick list for
+  things other than Live objects — a `ModuleApi` change). The web search below is the first step.
 - An `enum` argument kind with declared choices (0005 mentions it for pakabl ids): `man` would
   then show `usage: man <ableton|cmdabl>` instead of `man [topic]`, and get completion.
 - A Windows opener in core's `openUrl` (`man` and `cmdabl` answer with the URL there today;
