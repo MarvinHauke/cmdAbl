@@ -328,13 +328,17 @@ Plans: 0001 Phase 4, decisions in 0004. Today the bridge is fire-and-forget over
      the `Bridge` interface, a UDP client (500 ms timeout, cached `hello`), a fake, and a check
      of the installed script file (missing / outdated / current). No command uses it yet, so it
      cannot be seen in Live until the diagnostic below exists. The old `goto` path is unchanged.
-   - Task out to cmdabl-core: `cmdabl --bridge` (state, script version, round-trip time) and a
-     temporary `GET /bridge` on the trigger server, to time a `hello` while a dialog is open;
-     the Python tests in CI.
-   - Live test once that is in (after `cmdabl --setup` and a restart of Live): `goto` still
-     selects a track and a device; `cmdabl --bridge` shows the version and the time; control
-     surface disabled → "not running"; `curl http://127.0.0.1:27184/bridge` with the palette
-     open → does it answer, and how fast.
+   - Built in `e4fa6f3` + `730fbfb` (cmdabl-core, reviewed; 132 unit tests, 6 Python tests, now
+     also in CI from `tests/remote-script/`): `cmdabl --bridge` reports
+     "Remote Script 0.1.0 is running (protocol v1, N ms; operations: …)" or the bridge's failure
+     (exit 5); `GET /bridge` on the trigger server reports the same as plain text — temporary,
+     like `POST /reset`; both refuse requests from a browser page.
+   - **Live test of step 1** (first `cmdabl --setup`, then restart Live and `npm start`):
+     (1) `goto` still selects a track and a device; (2) `cmdabl --bridge` shows the version and
+     N ms; (3) with the palette open, `curl http://127.0.0.1:27184/bridge` — does it answer, how
+     fast; the same with a pick list and a message open; (4) control surface disabled in Live's
+     settings → "not running"; (5) `cmdabl --help` lists `--bridge`. Step 2 (`select` with
+     read-back, `requires` in `goto`) starts after this test.
    - Undo History: no call in the LOM documentation or the SDK types opens the panel (from the
      documents, not tried in Live). The idea is dropped unless Ableton adds one.
 2. Availability: the extension knows whether the script is installed, running and of a matching
