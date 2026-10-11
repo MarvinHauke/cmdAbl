@@ -12,7 +12,7 @@ export function startTriggerServer(
   getIsOpen: () => boolean,
   /** POST /reset: manual diagnostic after a dialog hang; returns a short description of what it did. */
   onReset: () => string = () => "not supported",
-  /** GET /bridge: one timed hello to the Remote Script; answers a plain-text line. */
+  /** GET /bridge: timed hellos to the Remote Script (min / median / max); answers a plain-text line. */
   onBridge: () => Promise<string> = async () => "not supported",
 ): void {
   const server = http.createServer((req, res) => {

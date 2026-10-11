@@ -9,7 +9,7 @@ import { reportBridge, type BridgeProbe } from "./bridgeStatus.js";
 
 const CMDABL_FLAGS = [
   { name: "--setup", description: "install keyboard trigger rule (Karabiner on macOS, AutoHotkey on Windows)" },
-  { name: "--bridge", description: "check the connection to the Remote Script (one hello, timed)" },
+  { name: "--bridge", description: "time 20 round trips to the Remote Script (min / median / max)" },
   { name: "--help", description: "show this usage text" },
 ];
 
@@ -29,6 +29,8 @@ export function cmdablUsage(): string {
 export interface BuiltinsDeps {
   /** The Remote Script bridge, for `cmdabl --bridge`. */
   bridge?: () => BridgeProbe;
+  /** Test hook: pause and randomness of the round-trip measurement. */
+  bridgeReport?: Parameters<typeof reportBridge>[2];
 }
 
 export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps = {}): void {
@@ -48,7 +50,7 @@ export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps =
       if (flags.includes("--setup")) return ok(runSetup());
       if (flags.includes("--bridge")) {
         if (!deps.bridge) return fail(ExitCode.UNAVAILABLE, "the Remote Script bridge is not available in this build");
-        return (await reportBridge(deps.bridge())).result;
+        return (await reportBridge(deps.bridge(), undefined, deps.bridgeReport)).result;
       }
       if (flags.includes("--help")) return ok(cmdablUsage());
       const unknown = flags.find((f) => f.startsWith("-"));

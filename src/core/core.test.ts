@@ -227,15 +227,17 @@ test("cmdablUsage: lists every registered flag and points to man and help", asyn
 test("cmdabl --bridge: reports the bridge's answer, the usage lists the flag", async () => {
   const { registerBuiltins, cmdablUsage } = await import("./builtins.js");
   const { CommandRegistry } = await import("../commandRegistry.js");
+  const { SCRIPT_VERSION } = await import("../ableton/bridgeProtocol.js");
   assert.match(cmdablUsage(), /--bridge/);
   const run = async (answer: Parameters<typeof registerBuiltins>[1]) => {
     const registry = new CommandRegistry();
-    registerBuiltins(registry, answer);
+    registerBuiltins(registry, { ...answer, bridgeReport: { sleep: async () => {} } });
     return registry.run("cmdabl", ["--bridge"]);
   };
-  const good = await run({ bridge: () => ({ ping: async () => ({ ok: true, value: { script: "0.1.0", v: 1, ops: ["hello"] } }) }) });
+  const good = await run({ bridge: () => ({ ping: async () => ({ ok: true, value: { script: SCRIPT_VERSION, v: 1, ops: ["hello"] } }) }) });
   assert.equal(good.code, ExitCode.OK);
-  assert.match(good.message ?? "", /^Remote Script 0\.1\.0 is running \(protocol v1, \d+ ms; operations: hello\)$/);
+  assert.ok((good.message ?? "").startsWith(`Remote Script ${SCRIPT_VERSION} is running`));
+  assert.match(good.message ?? "", /^Remote Script \S+ is running \(protocol v1; 20 round trips: min \d+ ms, median \d+ ms, max \d+ ms; operations: hello\)$/);
   const down = await run({ bridge: () => ({ ping: async () => ({ ok: false, code: 5, text: "Remote Script not running" }) }) });
   assert.equal(down.code, ExitCode.UNAVAILABLE);
   assert.equal(down.message, "Remote Script not running");
