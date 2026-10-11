@@ -43,13 +43,7 @@ interface Exception {
   why: string;
 }
 
-const EXCEPTIONS: Exception[] = [
-  {
-    file: "src/core/run.test.ts",
-    target: "src/modules/find/matches",
-    why: "the MatchList/matchesPattern tests sit in run.test.ts; they belong in src/modules/find/ (a test-only import, no production code crosses the boundary)",
-  },
-];
+const EXCEPTIONS: Exception[] = [];
 
 /** Every relative import of one file: `from "…"`, bare `import "…"`, dynamic `import("…")`. */
 export function importSpecifiers(source: string): string[] {
