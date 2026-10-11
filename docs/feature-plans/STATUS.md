@@ -184,6 +184,11 @@ refs and the working tree on 2026-10-11: clean.
   or `.ablx` names changes.
 - **First-party actions by tag**: `actions/*` are pinned by tag (`@v4`, …) in the four older
   workflows; pin them by SHA when convenient. The third-party one is being pinned now.
+- **pakabl index workflow permissions**: the crawl step runs over third-party repositories and
+  their `.ablx` files with a token that may write (`contents`, `pull-requests`), because the
+  permissions are set for the whole workflow. Split into a read-only crawl job that uploads the
+  two JSON files and a second job that only opens the pull request. Fits together with the
+  index-noise fix above.
 - **CI runner image**: `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19; the crawler needs `unzip`.
   Pin `ubuntu-24.04` in the workflows or verify after the switch.
 - **Old remote branches** `features` and `feature/path-addressed-objects`: the user has not decided
