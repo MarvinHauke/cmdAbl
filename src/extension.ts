@@ -18,6 +18,11 @@ const TRIGGER_PORT = 27184;
 
 export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");
+  // What this host provides, as types only (no values): evidence for "works in
+  // Node but not here" bugs. Keep it; the answer belongs in docs/sdk-tree.md.
+  const g = globalThis as Record<string, unknown>;
+  const globals = ["URL", "URLSearchParams", "fetch", "structuredClone", "AbortController", "TextEncoder", "crypto"];
+  console.log(`cmdAbl: host globals: ${globals.map((n) => `${n}=${typeof g[n]}`).join(", ")}`);
   const registry = new CommandRegistry();
   // Every dialog goes through this — the platform never opens an HTML page itself.
   // One queue: a dialog never opens while another is open (see core/dialogQueue.ts).

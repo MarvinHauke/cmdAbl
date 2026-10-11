@@ -3,6 +3,15 @@ import { childEnv } from "./childEnv.js";
 import { ok, fail, ExitCode, type CommandResult } from "../types.js";
 
 /**
+ * A plain string check, no `URL` global (the Extension Host's globals are not
+ * guaranteed): `https://`, a host that starts with a letter or digit, and no
+ * whitespace, control, quote, angle-bracket, backtick or backslash characters.
+ */
+export function isHttpsUrl(url: string): boolean {
+  return /^https:\/\/[A-Za-z0-9][^\s\x00-\x1f\x7f"'<>`\\]*$/.test(url);
+}
+
+/**
  * Open a URL in the default browser. Only `https:` URLs are accepted. Only
  * macOS has a launcher we can rely on (`open`); elsewhere the URL is handed to
  * the user (exit 5). A launch that fails is a result, never an unhandled
@@ -18,28 +27,23 @@ export function openUrl(
   const platform = deps.platform ?? process.platform;
   const spawn = deps.spawn ?? nodeSpawn;
 
-  let parsed: URL | undefined;
-  try {
-    parsed = new URL(url);
-  } catch {
-    parsed = undefined;
-  }
-  if (!parsed || parsed.protocol !== "https:") {
-    return Promise.resolve(fail(ExitCode.FAILURE, `refusing to open "${url}": only https: URLs are opened`));
+  if (!isHttpsUrl(url)) {
+    return Promise.resolve(fail(ExitCode.FAILURE, `refusing to open "${url}": not a plain https:// URL`));
   }
   if (platform !== "darwin") {
     return Promise.resolve(fail(ExitCode.UNAVAILABLE, `cannot open a browser here; open it by hand: ${url}`));
   }
   return new Promise((resolve) => {
     try {
-      const child = spawn("open", [parsed.href], { detached: true, stdio: "ignore", env: childEnv() });
+      const child = spawn("open", [url], { detached: true, stdio: "ignore", env: childEnv() });
       child.once("error", (e) => resolve(fail(ExitCode.FAILURE, `cannot open ${url}: ${e.message}`)));
       child.once("spawn", () => {
         child.unref();
         resolve(ok());
       });
     } catch (e: unknown) {
-      resolve(fail(ExitCode.FAILURE, `cannot open ${url}: ${e instanceof Error ? e.message : String(e)}`));
+      const reason = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+      resolve(fail(ExitCode.FAILURE, `cannot open ${url}: ${reason}`));
     }
   });
 }
