@@ -155,8 +155,9 @@ Everything not yet confirmed by the user. Restart `npm start` first. Passed (use
 toggles incl. `arm` on audio/MIDI/return/main/group tracks.
 
 1. Remote Script step 2 (first `cmdabl --setup`, restart Live, `npm start`; `cmdabl --bridge` →
-   0.2.0 with `hello, select` seen): `cmdabl --help` lists `--bridge`; `goto` on a track, a
-   device, a return track, the main track, a track in a folded group; a track row and a device
+   0.2.0 with `hello, select` seen; `goto` on a track, a device, a return track and the main
+   track seen 2026-10-12; `goto <typo>` → exit 3 in 30 ms): `cmdabl --help` lists `--bridge`;
+   `goto` on a track in a folded group (fold the group first; it unfolds and selects); a track row and a device
    row picked in the palette; `find <pattern>` with several hits, then `next` / `prev`; control
    surface disabled → `goto x` says "not running", no pick list; is `goto` noticeably slower?;
    the first command right after `npm start` must not report "not running" wrongly;
