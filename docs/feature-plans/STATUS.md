@@ -65,6 +65,11 @@ _Last updated: 2026-10-11._
 - Passed so far: `help`, pick list for `goto` and `find`, `find -t`, `next`/`prev`, `pakabl list`.
 - The `help` window is too small (text wraps at 500×180) — see "Dialog size" in 0007.
 - Open decision: do `next`/`prev` stay once the pick list has a follow mode? Kept until the spike.
+- **Palette stuck "open"**: after some tests (last command probably `mute`) the palette could not
+  be opened until `npm start` was restarted; `/state` answered `open`, no window was visible, no
+  log captured. Suspected, unverified: a message dialog (`notify`, not covered by `isOpen`) was
+  still up when the palette was triggered. Task out to cmdabl-core: one dialog at a time, "open"
+  covers messages, log lines for open/close.
 
 ### In progress (tasks out, 2026-10-11)
 
