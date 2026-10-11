@@ -113,7 +113,7 @@ multi-select.
 - Transport: the page sends `POST /pick/highlight` to the local server with a per-dialog token;
   the host debounces (~80 ms) and calls the bridge.
 - Open: `Esc` cannot restore the previous selection until the Remote Script can reply
-  (STATUS.md, "Next"). Phase 1 leaves the selection where it is, phase 2 restores it.
+  (STATUS.md, "Roadmap to 0.1.0", step 2). Phase 1 leaves the selection where it is, phase 2 restores it.
 - Open: whether `next`/`prev` are still needed once follow mode exists. Kept until the spike is
   decided — they need no open window and are what a keymap binds to a key.
 
