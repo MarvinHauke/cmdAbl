@@ -23,6 +23,13 @@ Open a green run in the Actions tab → **Artifacts** → `cmdabl-ablx`.
 | Red at `npm run package` | A real build/type error — see the log |
 | `action_required` | GitHub holds runs triggered by bot-created PRs (e.g. the pakabl index PR) until someone clicks **Approve and run**. Optional for PRs that only change generated JSON. |
 
+## Pinned actions
+
+Third-party actions (everything outside `actions/*`, e.g. `peter-evans/create-pull-request`) are
+pinned to a commit SHA with the version in a trailing comment, because a tag can be moved to
+different code and these jobs run with write permissions. To update a pin, look up the tag's commit
+with `git ls-remote --tags <repo-url> <tag>` and change the SHA and the version comment together.
+
 ## Secret scan
 
 [`secret-scan.yml`](https://github.com/MarvinHauke/cmdAbl/blob/main/.github/workflows/secret-scan.yml)
