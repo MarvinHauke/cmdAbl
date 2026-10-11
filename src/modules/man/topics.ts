@@ -17,13 +17,16 @@ export function encodeQuery(text: string): string {
   return encodeURIComponent(text).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
 }
 
-// The manual has no search of its own. `site:` is only documented by
-// DuckDuckGo for a bare domain, hence `inurl:` for the manual's path.
-const ABLETON_SCOPE = "site:ableton.com inurl:live-manual";
+// The manual has no search of its own, so words are sent to a web search
+// scoped to the manual's path. The engine lives here only: changing it is a
+// one-line edit. Ecosia documents `site:` (provider-dependent), not `inurl:`,
+// so the manual's path goes into `site:`.
+export const SEARCH_ENGINE = { name: "Ecosia", urlPrefix: "https://www.ecosia.org/search?q=" } as const;
+const ABLETON_SCOPE = "site:ableton.com/en/live-manual";
 
 export function abletonSearchUrl(words: string[]): string {
   const typed = words.join(" ").trim().replace(/\s+/g, " ");
-  return `https://duckduckgo.com/?q=${encodeQuery(`${typed} ${ABLETON_SCOPE}`)}`;
+  return `${SEARCH_ENGINE.urlPrefix}${encodeQuery(`${typed} ${ABLETON_SCOPE}`)}`;
 }
 
 export const TOPICS: Readonly<Record<string, ManTopic>> = {
