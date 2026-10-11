@@ -24,7 +24,7 @@ _Last updated: 2026-10-11._
 | Parser | tokenizer, command tree, validator, parser, `registry.add` / `api.commands.add` | implicitly, through the commands below |
 | Resolver | paths → Live objects before the handler; `#n` for same-named siblings | `goto` not-found / ambiguous seen |
 | Pick list | shown for ambiguous paths; `Tab` multi-select for multi-target commands | shown for `goto` and `find`; multi-select **not confirmed yet** |
-| Commands | `goto`, `mute`/`unmute`, `solo`/`unsolo`, `arm`/`unarm` (one undo step) | `goto` yes; the rest **changing** (toggle again, see below) |
+| Commands | `goto`; `mute`/`solo`/`arm` toggle per track, `unmute`/`unsolo`/`unarm` switch off (one undo step, duplicate targets count once) | `goto` yes; the toggles **no** (rebuilt in `145fd98`) |
 | `find` | `find <words> [-t\|-d]`, `next`, `prev` | **yes** (`find`, `-t`, `next`, `prev`) |
 | `pakabl` | `pakabl list` unchanged | yes |
 | UI contract | `prompt` / `select` / `notify` in `src/core/ui.ts` | no (no behaviour change intended) |
@@ -35,9 +35,14 @@ _Last updated: 2026-10-11._
 
 1. `help` lists the commands, including `goto`, `find`, `arm`.
 2. `goto vermona` → pick list; `Enter` selects; `Esc` does nothing and adds no history entry.
-3. `mute vermona` → pick list; mark two with `Tab`; `Enter` mutes both; one undo reverts both.
-4. After the toggle change lands: `solo /x` twice → on, off; `mute a b` with one already muted →
-   both flip; one undo reverts all; `unsolo /x` on a track that is not soloed changes nothing.
+3. `mute vermona` → pick list; mark two with `Tab`; `Enter` flips both; one undo reverts both.
+4. Toggles (`145fd98`):
+   - `solo /x` twice → on, then off.
+   - `mute a b` with one already muted → both flip; one undo reverts both.
+   - `mute /a /a` → flips once.
+   - `unsolo /x` on a track that is not soloed → nothing changes; same for `unmute`.
+   - `arm` on a return or the main track → a failure message, no crash.
+   - Re-run `mute /x` from history → toggles back (intended).
 5. `mute /Opal Lead` (unquoted space) and `mute /a, /b` (comma form) still work.
 6. `find vermona` → pick list; then `next` / `prev` step through the matches.
 7. A resolved command re-run from history asks nothing.
@@ -54,7 +59,7 @@ _Last updated: 2026-10-11._
 
 | Task | Agent | State |
 |---|---|---|
-| `mute`/`solo`/`arm` toggle again; `un…` stay as "off" (0005) | cmdabl-modules | sent |
+| `mute`/`solo`/`arm` toggle again; `un…` stay as "off" (0005) | cmdabl-modules | committed `145fd98`, reviewed; needs the Live test (step 4 above) |
 | `SelectRequest.preview` and `items[].value` for the command line in the pick list (0007 §4) | cmdabl-core | sent |
 | Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | waiting — the user starts it with `scripts/agents.sh ui`; needs the core task first |
 
