@@ -1,7 +1,7 @@
 import type { ModuleApi } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { trackFor } from "../ableton/trackLookup.js";
-import { armDecision, nextTrackValue, notChanged, type TrackSetValue } from "./trackSetValue.js";
+import { armDecision, armRefusal, isGroupNode, nextTrackValue, notChanged, type TrackSetValue } from "./trackSetValue.js";
 import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../types.js";
 
 // Shared by mute/unmute, solo/unsolo and arm/unarm. Two modes:
@@ -11,10 +11,12 @@ import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../t
 //    `arm`), so one command switches a track on and off. Re-running a toggle
 //    from history therefore toggles back — that is intended.
 //
-// `arm` is special: a return or main track cannot be armed, and Live (via the
-// SDK) neither throws nor changes anything when asked. Those are refused up
-// front; for anything else Live may refuse (a group track), the value is read
-// back after the transaction and a write that did not take is reported.
+// `arm` is special: a return, main or group track cannot be armed, and asking
+// Live (via the SDK) is not a harmless no-op — it neither throws nor takes
+// effect, and a write to a group track left the extension's dialogs hanging.
+// Those are refused up front, without a write. For anything else Live may
+// refuse, the value is read back after the transaction and a write that did
+// not take is reported. `mute` and `solo` stay legitimate on group tracks.
 //
 // The tracks arrive already resolved (the platform turns paths into objects
 // and asks the user when an address is ambiguous), so this only writes.
@@ -44,20 +46,26 @@ export function registerTrackSetCommand(
             continue;
           }
           try {
-            const wanted = nextTrackValue(track[prop], value);
             if (prop === "arm") {
-              const decision = armDecision(node.scope, wanted);
+              // A track that cannot be armed is decided without touching it:
+              // not even a read — it is off, so toggling or arming means "on".
+              const isGroup = isGroupNode(node);
+              const wantedOnUnarmable = value === "toggle" ? true : value;
+              const decision = armDecision(node.scope, wantedOnUnarmable, isGroup);
               if (decision === "refuse") {
-                outcomes.push({ path: node.path, ok: false, message: "cannot be armed" });
+                outcomes.push({ path: node.path, ok: false, message: armRefusal(isGroup) });
                 continue;
               }
               if (decision === "skip") {
                 outcomes.push({ path: node.path, ok: true });
                 continue;
               }
+              const wanted = nextTrackValue(track.arm, value);
               written.push({ node, wanted, outcome: outcomes.length });
+              track.arm = wanted;
+            } else {
+              track[prop] = nextTrackValue(track[prop], value);
             }
-            track[prop] = wanted;
             outcomes.push({ path: node.path, ok: true });
           } catch (e: unknown) {
             outcomes.push({ path: node.path, ok: false, message: e instanceof Error ? e.message : String(e) });
