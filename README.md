@@ -67,11 +67,24 @@ your own:
 
 | Module    | Capability                                                                 |
 | --------- | -------------------------------------------------------------------------- |
-| `goto`    | Surfaces tracks/devices in the palette and selects them via the Remote Script bridge; `goto <path>` does the same from typed input. Same-named siblings are addressed as `/Drums/Kick`, `/Drums/Kick#2` |
-| `mute`    | `mute <path>[, <path> …]` — toggle mute on one or more tracks by path       |
-| `solo`    | `solo <path>[, <path> …]` — toggle solo on one or more tracks by path       |
+| `goto`    | `goto <path>` selects a track or device (via the Remote Script bridge); tracks/devices are also listed in the palette |
+| `find`    | `find <pattern> [-t\|-d]` — every track/device whose path contains the pattern; `next` / `prev` step through the matches |
+| `mute`    | `mute <track>…` / `unmute <track>…` — set mute on one or more tracks        |
+| `solo`    | `solo <track>…` / `unsolo <track>…`                                         |
+| `arm`     | `arm <track>…` / `unarm <track>…` — record-arm tracks                       |
 | `history` | Remembers your last 20 invocations and re-offers them as rerunnable entries |
 | `pakabl`  | Install/update/uninstall community extensions — see _Install more extensions with `pakabl`_ |
+
+**Addressing tracks and devices**
+
+Commands take paths such as `/Drums/Kick`. A path may be partial (`kick`), and names with
+spaces need no quotes for a single target (`goto /Opal Lead`). Same-named siblings are told
+apart by an ordinal: `/Drums/Kick`, `/Drums/Kick#2`.
+
+When a path matches more than one object, cmdAbl shows a **pick list** instead of guessing:
+type to filter, `↑`/`↓` to move, `Enter` to choose, `Esc` to cancel. Commands that take several
+tracks (`mute`, `solo`, `arm`, …) let you mark several with `Tab`. The resolved command is what
+lands in the history, so re-running it never asks again.
 
 **Live objects**
 

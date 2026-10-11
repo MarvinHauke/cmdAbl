@@ -20,7 +20,7 @@ arguments* and the `rm`/`select` commands, which are built on top of this platfo
 | Child | Status | Needed for |
 |---|---|---|
 | [0002](0002-command-feedback-pattern.md) Phase A | Shipped (B/C open) | Handler return type (`CommandResult`) — must exist before 0005 fixes the handler contract |
-| [0005](0005-command-tree-and-module-authoring.md) | In Progress (step 1: types, validator, tokenizer, parser) | Everything below: the tree is what completion walks |
+| [0005](0005-command-tree-and-module-authoring.md) | In Progress (parser, tree registration, resolver, pick list; `goto`/`mute`/`solo`/`arm`/`find` migrated) | Everything below: the tree is what completion walks |
 | [0006](0006-completion-engine.md) | Draft | Replaces the flat fuzzy palette |
 
 ## Context

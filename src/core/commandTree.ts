@@ -1,4 +1,5 @@
 import type { CommandResult } from "../types.js";
+import type { NodeKind } from "../ableton/objectTree.js";
 
 // The declarative command tree — the single source of truth for execution,
 // help and completion (docs/feature-plans/0005-command-tree-and-module-authoring.md).
@@ -17,8 +18,16 @@ export interface ArgDef {
   kind: ArgKind;
   /** Default true. Optional arguments must come after required ones. */
   required?: boolean;
-  /** Takes all remaining tokens. Only allowed on the last argument. */
+  /** Takes all remaining tokens as separate values. Only allowed on the last argument. */
   variadic?: boolean;
+  /**
+   * Takes the rest of the line as ONE value (tokens joined by a space), so a
+   * single-target command works without quoting: `goto /Opal Lead/Reverb`.
+   * Only allowed on the last argument; not combinable with `variadic`.
+   */
+  rest?: boolean;
+  /** `path` arguments: which kinds of objects may match. Default: all. */
+  kinds?: NodeKind[];
   /**
    * How many objects ONE token may resolve to (`path` arguments). "one"
    * (default): zero matches → not found, several → ambiguous. "all": every
@@ -135,6 +144,11 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
       if (arg.variadic && index !== args.length - 1) {
         problems.push(`${at}: only the last argument may be variadic ("${arg.name}")`);
       }
+      if (arg.rest && index !== args.length - 1) {
+        problems.push(`${at}: only the last argument may take the rest of the line ("${arg.name}")`);
+      }
+      if (arg.rest && arg.variadic) problems.push(`${at}: "${arg.name}" cannot be both rest and variadic`);
+      if (arg.kinds && arg.kind !== "path") problems.push(`${at}: kinds only applies to path arguments ("${arg.name}")`);
       if (arg.multiple === "all" && arg.kind !== "path") {
         problems.push(`${at}: multiple: "all" only applies to path arguments ("${arg.name}")`);
       }

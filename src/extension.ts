@@ -7,6 +7,9 @@ import { startTriggerServer } from "./httpTrigger.js";
 import { isSetupDone, setKarabinerPaletteOpen } from "./setup.js";
 import { registerBuiltins } from "./core/builtins.js";
 import { presentResult } from "./core/present.js";
+import { runLine } from "./core/run.js";
+import { pickNodes } from "./core/pick.js";
+import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
 import { MODULES } from "./modules/index.js";
 import interfaceTemplate from "../ui/interface.html";
 import feedbackTemplate from "../ui/feedback.html";
@@ -19,6 +22,14 @@ export function activate(activation: ActivationContext) {
   const providers: { provider: Provider; priority: number }[] = [];
   const resultHandlers = new Map<string, ResultHandler>();
   const commandRunListeners: Array<(invocation: string) => void> = [];
+  const pickListeners: Array<(candidates: ObjectNode[], chosen: ObjectNode[] | null) => void> = [];
+
+  /** The one pick list — used by the platform for ambiguous addresses and by modules. */
+  async function pick(title: string, candidates: ObjectNode[], multi = false): Promise<ObjectNode[] | null> {
+    const chosen = await pickNodes(context, { title, candidates, multi });
+    for (const listener of pickListeners) listener(candidates, chosen);
+    return chosen;
+  }
   let isOpen = false;
 
   function showFeedback(message: string): void {
@@ -33,6 +44,9 @@ export function activate(activation: ActivationContext) {
   const moduleApi: ModuleApi = {
     context,
     registry,
+    commands: { add: (command) => void registry.add(command) },
+    pick,
+    onPick: (listener) => pickListeners.push(listener),
     registerProvider: (provider, priority = 0) => providers.push({ provider, priority }),
     registerResultHandler: (action, handler) => resultHandlers.set(action, handler),
     onCommandRun: (listener) => commandRunListeners.push(listener),
@@ -65,14 +79,19 @@ export function activate(activation: ActivationContext) {
       return;
     }
     if (result.type === "command") {
-      const outcome = await registry.run(result.id, result.flags ?? []);
-      present(outcome);
-      // Report successful invocations that carry arguments to history
-      // listeners — the webview already normalizes "canned" full-invocation
-      // items (history entries) into this same {id, flags} shape, so this sees
-      // fresh and re-run invocations identically. Failed runs aren't recorded.
-      const invocation = [result.id, ...(result.flags ?? [])].join(" ");
-      if (outcome.code === ExitCode.OK && invocation.includes(" ")) {
+      // Older webview payloads carried {id, flags}; the raw line keeps quotes intact.
+      const line = result.line ?? [result.id, ...(result.flags ?? [])].join(" ");
+      const outcome = await runLine(line, {
+        registry,
+        liveNodes: () => flattenObjectTree(buildObjectTree(context)),
+        pick: ({ title, candidates, multi }) => pick(title, candidates, multi),
+      });
+      if (outcome.cancelled) return;
+      present(outcome.result);
+      // History gets successful invocations that carry arguments, in their
+      // resolved form ("mute /Vermona MIDI"), so a re-run is never ambiguous.
+      const invocation = outcome.line ?? line;
+      if (outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
         for (const listener of commandRunListeners) listener(invocation);
       }
       return;

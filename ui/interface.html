@@ -167,7 +167,7 @@
     function resultFor(item) {
       if (mode === 'flag') {
         const cmdName = input.value.slice(0, input.value.indexOf(' '));
-        return { type: 'command', id: cmdName, flags: [item.name] };
+        return { type: 'command', id: cmdName, line: cmdName + ' ' + item.name };
       }
       // A "canned full invocation" (command-type, multi-word id — e.g. a
       // history entry "mute A, B"): split it exactly like raw typed input
@@ -176,11 +176,12 @@
       // a stored entry rather than the keyboard.
       if (item.type === 'command' && item.id.includes(' ')) {
         const sp = item.id.indexOf(' ');
-        return { type: 'command', id: item.id.slice(0, sp), flags: item.id.slice(sp + 1).split(/\s+/) };
+        return { type: 'command', id: item.id.slice(0, sp), line: item.id };
       }
       // Command-phase item (command, track, device, …). Pass through
       // action/route/scope so the host can route and re-resolve Live objects.
       const result = { type: item.type, id: item.id };
+      if (item.type === 'command') result.line = item.id;
       if (item.action !== undefined) result.action = item.action;
       if (item.route !== undefined) result.route = item.route;
       if (item.scope !== undefined) result.scope = item.scope;
@@ -192,8 +193,8 @@
       const raw = input.value.trim();
       if (!raw) return null;
       const sp = raw.indexOf(' ');
-      if (sp === -1) return { type: 'command', id: raw };
-      return { type: 'command', id: raw.slice(0, sp), flags: raw.slice(sp + 1).split(/\s+/) };
+      // The host parses the raw line (quotes and all); `id` is just the first word.
+      return { type: 'command', id: sp === -1 ? raw : raw.slice(0, sp), line: raw };
     }
 
     // ── render ─────────────────────────────────────────────────────────────

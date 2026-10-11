@@ -1,0 +1,71 @@
+import type { ModuleApi } from "../types.js";
+import { buildObjectTree, flattenObjectTree, type NodeKind } from "../../ableton/objectTree.js";
+import { resolvePath, uniquePath } from "../../ableton/resolvePath.js";
+import { selectNode } from "../../ableton/select.js";
+import { ExitCode, fail, type CommandResult } from "../../types.js";
+import { MatchList } from "./matches.js";
+
+/**
+ * `find <pattern> [-t|-d]` — grep for the Live Set: every track/device whose
+ * path contains the pattern. One match is selected directly; several are shown
+ * in the pick list. `next` / `prev` then step through the matches.
+ *
+ * The only module that keeps state (the last match list) — in memory only.
+ */
+export function activate(api: ModuleApi): void {
+  const matches = new MatchList();
+  const liveNodes = () => flattenObjectTree(buildObjectTree(api.context));
+
+  // Any pick list — including the one an ambiguous `goto` shows — becomes the
+  // list `next`/`prev` walk.
+  api.onPick((candidates, chosen) => {
+    const all = liveNodes();
+    const paths = candidates.map((n) => uniquePath(all, n));
+    const current = chosen?.[0] ? candidates.findIndex((n) => n.handleId === chosen[0]!.handleId) : -1;
+    matches.set(paths, current);
+  });
+
+  api.commands.add({
+    name: "find",
+    summary: "find tracks and devices whose path contains a pattern",
+    options: [
+      { name: "tracks", short: "t", summary: "only tracks" },
+      { name: "devices", short: "d", summary: "only devices" },
+    ],
+    args: [{ name: "pattern", kind: "text", rest: true }],
+    run: async (invocation): Promise<CommandResult | void> => {
+      const pattern = String(invocation.args[0]?.[0] ?? "").toLowerCase();
+      const kinds: NodeKind[] = invocation.options.tracks
+        ? ["track"]
+        : invocation.options.devices
+          ? ["device"]
+          : ["track", "device"];
+      const all = liveNodes();
+      const hits = all.filter((n) => kinds.includes(n.kind) && n.path.toLowerCase().includes(pattern));
+      if (hits.length === 0) return fail(ExitCode.NOT_FOUND, `find: nothing matches "${pattern}"`);
+
+      if (hits.length === 1) {
+        matches.set([uniquePath(all, hits[0]!)], 0);
+        selectNode(hits[0]!);
+        return;
+      }
+      const chosen = await api.pick(`find: "${pattern}" — ${hits.length} matches`, hits);
+      if (chosen?.[0]) selectNode(chosen[0]);
+    },
+  });
+
+  const stepCommand = (name: string, delta: 1 | -1, summary: string) =>
+    api.commands.add({
+      name,
+      summary,
+      run: (): CommandResult | void => {
+        const entry = matches.step(delta);
+        if (!entry) return fail(ExitCode.NOT_FOUND, `${name}: no matches to step through — run "find <pattern>" first`);
+        const found = resolvePath(liveNodes(), entry.path);
+        if (found.length !== 1) return fail(ExitCode.NOT_FOUND, `${name}: "${entry.path}" is no longer there`);
+        selectNode(found[0]!);
+      },
+    });
+  stepCommand("next", 1, "go to the next match of the last find");
+  stepCommand("prev", -1, "go to the previous match of the last find");
+}

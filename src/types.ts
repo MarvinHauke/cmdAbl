@@ -58,6 +58,8 @@ export interface PaletteItem {
 export interface PaletteResult {
   type: PaletteItemType;
   id: string;
+  /** Commands: the raw typed line, parsed by the host (quotes intact). */
+  line?: string;
   flags?: string[];
   /** Non-command action to perform (e.g. "toggleMute" on a track). */
   action?: string;

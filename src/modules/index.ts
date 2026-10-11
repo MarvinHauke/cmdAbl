@@ -4,6 +4,8 @@ import * as historyModule from "./history/index.js";
 import * as gotoModule from "./goto/index.js";
 import * as muteModule from "./mute/index.js";
 import * as soloModule from "./solo/index.js";
+import * as armModule from "./arm/index.js";
+import * as findModule from "./find/index.js";
 import * as pakablModule from "./pakabl/index.js";
 
 /**
@@ -12,4 +14,12 @@ import * as pakablModule from "./pakabl/index.js";
  * Order is irrelevant: provider ordering is declared via `registerProvider`'s
  * `priority`, not by activation order.
  */
-export const MODULES: Module[] = [historyModule, gotoModule, muteModule, soloModule, pakablModule];
+export const MODULES: Module[] = [
+  historyModule,
+  gotoModule,
+  findModule,
+  muteModule,
+  soloModule,
+  armModule,
+  pakablModule,
+];

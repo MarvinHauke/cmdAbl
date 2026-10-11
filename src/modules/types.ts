@@ -4,14 +4,26 @@
 // through executeCommand (see docs/feature-plans/0003-pakabl-extension-system.md).
 
 import type { ExtensionContext } from "@ableton-extensions/sdk";
-import type { CommandRegistry } from "../commandRegistry.js";
+import type { Command, CommandRegistry } from "../commandRegistry.js";
+import type { ObjectNode } from "../ableton/objectTree.js";
 import type { PaletteResult, Provider } from "../types.js";
 
 export type ResultHandler = (result: PaletteResult) => void | Promise<void>;
 
 export interface ModuleApi {
   context: ExtensionContext<"1.0.0">;
+  /** Older registration path — commands here parse their own raw tokens. Prefer `commands.add`. */
   registry: CommandRegistry;
+  /**
+   * Declare a command. The platform parses the line, resolves `path`
+   * arguments to Live objects (asking the user to pick when ambiguous) and
+   * only then calls `run` — see docs/feature-plans/0005.
+   */
+  commands: { add(command: Command): void };
+  /** Show the pick list; resolves with the chosen objects, or null if cancelled. */
+  pick(title: string, candidates: ObjectNode[], multi?: boolean): Promise<ObjectNode[] | null>;
+  /** Notified whenever a pick list was shown, with what was offered and what was chosen. */
+  onPick(listener: (candidates: ObjectNode[], chosen: ObjectNode[] | null) => void): void;
   /**
    * Contribute searchable items to the palette snapshot. Lower `priority` sorts
    * earlier in the empty-query list (default 0; commands are 0, history is

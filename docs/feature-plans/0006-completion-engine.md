@@ -77,6 +77,22 @@ to one of:
 `parse()`, `computeItems()`, `resultFor()`, `rawResult()` and the `command|flag|args` modes in
 `ui/interface.html`; `PaletteItem.flags` and `FlagDef` become part of the tree (`src/types.ts`).
 
+## Related: pick list, keymap and navigation mode (2026-10-11)
+
+- The **pick list** (`ui/pick.html`) already covers "several things match": it is the platform's
+  answer to an ambiguous address and supports multi-select for multi-target commands. The
+  completion engine should reuse its row/marking behaviour rather than invent another list.
+- **Keymap (planned):** all UI keys go through named actions (`up`, `down`, `confirm`, `cancel`,
+  `complete`, `mark`) with defaults plus a user `keymap.json`; a key may also be bound to a
+  command line. While a dialog is open every key reaches the webview, not Live; with it closed,
+  keys go to Live and only Karabiner/AutoHotkey can intercept them.
+- **Navigation mode (planned, spike first):** keep a dialog open like vim's normal mode and map
+  single keys to commands (`n` → `next`). The SDK channel only delivers one string on close, so
+  this needs the dialog loaded from the local server (`http://127.0.0.1:27184/…`, allowed by the
+  SDK) talking to it via `fetch`, guarded by a per-session token. To verify first: whether the
+  webview may fetch localhost, whether SDK/bridge calls work while a modal is open, and whether
+  Live repaints behind it.
+
 ## Open questions
 
 - Prototype ghost text on a plain `<input>` overlay vs. a `contenteditable`; settle by trying.

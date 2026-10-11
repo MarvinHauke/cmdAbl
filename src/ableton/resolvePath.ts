@@ -36,17 +36,41 @@ function matchesStructurally(node: ObjectNode, query: Segment[], ignoreCase: boo
   });
 }
 
-export function resolvePath(nodes: ObjectNode[], query: string, kinds?: NodeKind[]): ObjectNode[] {
+/** Rules 1–2 only: the query has to name the object's full path. */
+export function resolveStructural(nodes: ObjectNode[], query: string, kinds?: NodeKind[]): ObjectNode[] {
   const candidates = kinds ? nodes.filter((n) => kinds.includes(n.kind)) : nodes;
-  const trimmed = query.trim();
-  if (!trimmed) return [];
-  const segments = splitPath(trimmed);
-
+  const segments = splitPath(query.trim());
+  if (!segments.length) return [];
   for (const ignoreCase of [false, true]) {
     const hits = candidates.filter((n) => matchesStructurally(n, segments, ignoreCase));
     if (hits.length) return hits;
   }
+  return [];
+}
 
+export function resolvePath(nodes: ObjectNode[], query: string, kinds?: NodeKind[]): ObjectNode[] {
+  const structural = resolveStructural(nodes, query, kinds);
+  if (structural.length) return structural;
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const candidates = kinds ? nodes.filter((n) => kinds.includes(n.kind)) : nodes;
   const needle = trimmed.toLowerCase();
   return candidates.filter((n) => n.path.toLowerCase().includes(needle));
+}
+
+/**
+ * An address that resolves to exactly this node. A node's own path is not
+ * always enough: "/Drums/Kick" also matches its sibling "/Drums/Kick#2", so the
+ * first of several same-named siblings is written with an explicit "#1".
+ */
+export function uniquePath(nodes: ObjectNode[], node: ObjectNode): string {
+  if (resolveStructural(nodes, node.path).length <= 1) return node.path;
+  const parts = node.path.split("/");
+  return parts
+    .map((part, i) => {
+      if (i === 0 || /#\d+$/.test(part)) return part;
+      const prefix = parts.slice(0, i + 1).join("/");
+      return resolveStructural(nodes, prefix).length > 1 ? `${part}#1` : part;
+    })
+    .join("/");
 }

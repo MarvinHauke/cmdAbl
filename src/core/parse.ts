@@ -109,6 +109,10 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
     if (def.variadic) {
       args.push(positionals.slice(p));
       p = positionals.length;
+    } else if (def.rest) {
+      const joined = positionals.slice(p).join(" ");
+      args.push(joined ? [joined] : []);
+      p = positionals.length;
     } else if (p < positionals.length) {
       args.push([positionals[p++]!]);
     } else {
