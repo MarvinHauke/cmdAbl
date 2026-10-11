@@ -123,6 +123,12 @@ _Last updated: 2026-10-11._
   single-select; with `mute` marking and the command line work in Live.
 - The first `↓` skipping the first row felt odd. Changed in `d8ca020`: in a multi-select pick the
   first arrow only enters the list.
+- **`man ableton` refuses a valid URL** (`refusing to open "https://www.ableton.com/en/manual/"`).
+  `new URL()` in `src/core/openUrl.ts` fails in the Extension Host although it works in plain Node
+  and in the unit tests. Suspected, unverified: the `URL` global is missing in the host's context.
+  Task out to cmdabl-core: validate without the global, never swallow the reason, log at startup
+  which web globals the host has. If confirmed, it belongs in `docs/sdk-tree.md` as a constraint.
+  Until fixed, `man` opens nothing on macOS.
 
 ### In progress (tasks out, 2026-10-11)
 
