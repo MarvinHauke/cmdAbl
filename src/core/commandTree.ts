@@ -74,7 +74,13 @@ export interface CommandNode<P = unknown, V = string> {
   options?: OptionDef[];
   /** Leaf node: positional arguments, in order. */
   args?: ArgDef[];
-  /** Optional companions the command needs; checked before `run` (code 5 if absent). */
+  /**
+   * Companions the command cannot work without. The platform checks them
+   * right after parsing — before resolving or asking the user to pick — and
+   * ends the run with the companion's own code and text (exit 5: not
+   * installed / outdated / not running) without calling `run`. "bridge" is the
+   * Remote Script. Leaf nodes only.
+   */
   requires?: "bridge"[];
   /** Removes or irreversibly changes something — such commands may not fan out via `multiple: "all"`. */
   destructive?: boolean;
@@ -116,6 +122,10 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
     if (isGroup && node.run) problems.push(`${at}: a node has either children or run, not both`);
     if (!isGroup && !node.run) problems.push(`${at}: a leaf needs run (or children to be a group)`);
     if (isGroup && node.args?.length) problems.push(`${at}: a group cannot declare arguments`);
+    if (isGroup && node.requires?.length) problems.push(`${at}: requires belongs on the runnable node, not on a group`);
+    for (const need of node.requires ?? []) {
+      if (need !== "bridge") problems.push(`${at}: unknown requirement "${String(need)}"`);
+    }
 
     const optionNames = new Set<string>();
     const optionShorts = new Set<string>();

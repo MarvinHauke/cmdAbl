@@ -241,3 +241,11 @@ test("cmdabl --bridge: reports the bridge's answer, the usage lists the flag", a
   assert.equal(down.message, "Remote Script not running");
   assert.equal((await run({})).code, ExitCode.UNAVAILABLE);
 });
+
+test("validateTree: requires must be a known companion on a runnable node", () => {
+  const leaf = (extra: object): CommandNode<void, string> => ({ name: "x", summary: "s", run: () => {}, ...extra });
+  assert.deepEqual(validateTree([leaf({ requires: ["bridge"] })]), []);
+  assert.match(validateTree([leaf({ requires: ["nope"] })]).join("\n"), /unknown requirement "nope"/);
+  const group: CommandNode<void, string> = { name: "g", summary: "s", requires: ["bridge"], children: [leaf({})] };
+  assert.match(validateTree([group]).join("\n"), /requires belongs on the runnable node/);
+});

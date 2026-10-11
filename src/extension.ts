@@ -107,6 +107,7 @@ export function activate(activation: ActivationContext) {
       const outcome = await runLine(line, {
         registry,
         liveNodes,
+        bridge: () => getBridge(),
         pick: ({ title, candidates, multi, nodes, preview }) => pick(title, candidates, multi, { nodes, preview }),
       });
       if (outcome.cancelled) return;

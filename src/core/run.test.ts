@@ -304,3 +304,57 @@ test("run: one log line per command with the canonical line, exit code and durat
     "cmdAbl: run: nope -> 1 (12 ms)",
   ]);
 });
+
+test("run: requires bridge — checked before resolving and picking, handler not called when unavailable", async () => {
+  const { createFakeBridge } = await import("../ableton/bridgeFake.js");
+  const { deps, calls, picks, registry } = setup((c) => [c[0]!]);
+  registry.add({
+    name: "needs",
+    summary: "needs the Remote Script",
+    requires: ["bridge"],
+    args: [{ name: "track", kind: "path", kinds: ["track"] }],
+    run: (inv) => {
+      calls.push({ name: "needs", paths: (inv.args[0] ?? []).map((v) => (typeof v === "string" ? v : v.path)) });
+    },
+  });
+
+  // Available: runs like any command (including the pick).
+  const up = createFakeBridge();
+  deps.bridge = () => up;
+  const ran = await runLine("needs vermona", deps);
+  assert.equal(ran.result.code, ExitCode.OK);
+  assert.equal(calls.filter((c) => c.name === "needs").length, 1);
+  assert.equal(picks.length, 1);
+
+  // Not running: the bridge's own code and text, no pick, no handler, no history line.
+  const down = createFakeBridge({ running: false, unavailableText: "Remote Script not running (fake)" });
+  deps.bridge = () => down;
+  const refused = await runLine("needs vermona", deps);
+  assert.equal(refused.result.code, ExitCode.UNAVAILABLE);
+  assert.equal(refused.result.message, "Remote Script not running (fake)");
+  assert.equal(refused.line, undefined);
+  assert.equal(picks.length, 1, "no new pick");
+  assert.equal(calls.filter((c) => c.name === "needs").length, 1, "handler not called again");
+
+  // No bridge wired at all: exit 5, never a throw.
+  delete deps.bridge;
+  assert.equal((await runLine("needs opal", deps)).result.code, ExitCode.UNAVAILABLE);
+
+  // A command without `requires` never asks the bridge.
+  deps.bridge = () => down;
+  assert.equal((await runLine("mute opal", deps)).result.code, ExitCode.OK);
+  assert.equal(down.calls.length, 0);
+});
+
+test("run: a bridge that throws becomes exit 5, not an exception", async () => {
+  const { deps, registry } = setup();
+  registry.add({ name: "needs2", summary: "x", requires: ["bridge"], run: () => {} });
+  deps.bridge = () => ({
+    available: async () => {
+      throw new Error("socket exploded");
+    },
+  });
+  const out = await runLine("needs2", deps);
+  assert.equal(out.result.code, ExitCode.UNAVAILABLE);
+  assert.match(out.result.message ?? "", /socket exploded/);
+});

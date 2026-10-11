@@ -6,6 +6,7 @@ import { helpText, type CommandNode, type Invocation } from "./commandTree.js";
 import { parse } from "./parse.js";
 import { applyPick, normalizeTargets, resolveTargets, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
+import type { Bridge } from "../ableton/bridgeClient.js";
 import type { PickPreview } from "./ui.js";
 
 // The one path every typed line takes: parse → resolve (asking the user to
@@ -14,6 +15,11 @@ import type { PickPreview } from "./ui.js";
 
 export interface RunDeps {
   registry: CommandRegistry;
+  /**
+   * The Remote Script bridge, for commands that declare `requires: ["bridge"]`.
+   * Only `available()` is used (it never throws). Absent: such commands answer exit 5.
+   */
+  bridge?: () => Pick<Bridge, "available">;
   /** Log sink and clock; default console.log and Date.now. */
   log?: (line: string) => void;
   now?: () => number;
@@ -124,6 +130,18 @@ export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome>
   }
 }
 
+/** A failing result when the Remote Script bridge cannot be used, else null. */
+async function bridgeUnavailable(deps: RunDeps): Promise<CommandResult | null> {
+  if (!deps.bridge) return fail(ExitCode.UNAVAILABLE, "the Remote Script bridge is not available in this build");
+  try {
+    const ready = await deps.bridge().available();
+    return ready.ok ? null : fail(ready.code, ready.text);
+  } catch (e: unknown) {
+    // The bridge promises never to throw; nothing may throw at a user action.
+    return fail(ExitCode.UNAVAILABLE, `bridge check failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
 async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   const line = input.trim();
   const { registry } = deps;
@@ -143,6 +161,15 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   }
 
   const { node, invocation } = parsed;
+
+  // Companions first: no point asking the user to pick for a command that cannot run.
+  // A visible choice: with the script missing, a typo in the address answers
+  // "not running" (5) rather than "not found" (3) — "cannot run at all" comes first.
+  if (node.requires?.includes("bridge")) {
+    const unavailable = await bridgeUnavailable(deps);
+    if (unavailable) return { result: unavailable };
+  }
+
   const needsLive = (node.args ?? []).some((def) => def.kind === "path");
   const nodes = needsLive ? deps.liveNodes() : [];
   let targets = normalizeTargets(node, invocation, nodes);
