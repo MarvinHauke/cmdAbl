@@ -266,8 +266,8 @@ from `recvfrom()`. No second fixed port, no TCP, no files.
   reply is kept under 4 KB; `chains` takes `offset`/`limit` and the result carries `total`, so
   a Drum Rack with many long pad names is read in pages. If a reply would still not fit, the
   script answers `too_large`. `sendto` failures are caught and logged, never raised.
-- **[D1] decided:** a faster drain (a self-re-arming `schedule_message`) only if the Live
-  measurement asks for it.
+- **[D1] decided:** a faster drain only if the Live measurement asks for it (options and
+  evidence in §6, "Draining faster"; a re-arming `schedule_message` would *not* be faster).
 
 ### 2. Message format
 
@@ -385,6 +385,53 @@ missing script cannot delay opening it. A module never opens a socket or parses 
 - Two Live instances: the second bind fails (logged). Out of scope.
 - Port 27185 taken: logged on bind failure; the extension sees "unavailable".
 - Windows is out of scope for 0.1.0 (macOS-only).
+
+#### Draining faster than one `update_display` tick
+
+Question: can the script read its socket more often than once per display tick? Researched
+2026-10-11 from the framework bundled with Live 12 (`MIDI Remote Scripts/_Framework`, `ableton/`,
+compiled `.pyc` only — read via `strings` and constant extraction, no sources) and the LOM skill
+docs. **Evidence** = read from those files; **assumption** = not backed here.
+
+1. **Tick rate.** `ControlSurface.update_display` advances its task group by
+   `Defaults.TIMER_DELAY`, which is `0.1` (evidence): the framework itself assumes ~10 Hz, one
+   call per 100 ms. That Live really calls it every 100 ms is the long-standing community value
+   and consistent with our 14 / 24 / 43 ms single measurements (a wait of 0–100 ms); not
+   documented by Ableton in the LOM docs. `cmdabl --bridge` min/median/max over 20 round trips
+   (cmdabl-core) is the measurement that settles it.
+2. **Mechanisms.**
+   - `schedule_message(delay_in_ticks, fn)` — **no gain** (evidence): it adds a `Task.sequence`
+     with a delay to the control surface's task group, and that group is only advanced from
+     `update_display`. Re-arming it every tick is the same 10 Hz.
+   - `Live.Base.Timer(callback=…, interval=<ms>, repeat=<bool>)` with `.start()` / `.stop()` —
+     used by Ableton's own scripts (Push 2 `NotificationComponent` creates it with
+     `int(time * 1000)` as interval, Move's `__init__` with a literal small interval and
+     `repeat=True`; evidence from the bytecode constants). The interval unit is milliseconds
+     (inferred from the Push 2 use). **Assumption:** the callback runs on Live's main thread
+     like `update_display`, and a short interval (10–20 ms) is honoured; neither is documented
+     or measured here.
+   - A Python thread blocking on the socket: not an option — LOM access from another thread is
+     unsafe (LOM skill: "all state modifications MUST happen on the main thread"). A thread may
+     only *read* the socket and queue datagrams, still handing over on a main-thread tick, so it
+     brings nothing over a fast timer.
+3. **Risks and recommendation.** A repeating timer costs one non-blocking `recvfrom` per fire
+   (microseconds when the queue is empty) on Live's main thread; at 20 ms that is 50 wakeups per
+   second against the existing 10 — **assumption**: not measurable as audio dropouts (audio runs
+   on its own thread), but only a Live test can show it. Behaviour while a dialog is open is
+   untested for the timer; for `update_display` it is **measured**: replies still arrive with the
+   palette open (24 ms). Keep the 32-datagram cap per fire. **Recommendation:** do nothing unless
+   the 20-round-trip max is above 100 ms. Then add a `Live.Base.Timer` (interval 20 ms,
+   `repeat=True`, started in `__init__`, stopped in `disconnect`) that calls the same
+   `_drain_socket`, keeping `update_display` as the fallback if the timer cannot be created;
+   Live test: round trip min/median/max, CPU in Live's meter during idle for a minute, the
+   timer stops when the control surface is deselected.
+
+**Rule: one request per command.** A command needs one request to the script in the normal case
+(`hello` is cached); an op that needs several pieces of data returns them in one reply. Checked
+against §4: `select`, `track_facts` and `selection` are one request each. `chains` is paged
+(`offset`/`limit`) for the size rule in §1; a rack with the usual number of named chains fits
+one page (~40 bytes per entry, ~100 per 4 KB page), so the normal case is one request; a very
+large rack needs more, which is the size limit speaking, not a design gap.
 
 ### 7. Build order (each step has a Live test)
 
