@@ -1,6 +1,7 @@
 import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { PaletteItem, PaletteResult } from "../types.js";
 import { parseIndexes } from "./pickResult.js";
+import { inlineJson } from "./inlineJson.js";
 import { createDialogQueue, type DialogQueue } from "./dialogQueue.js";
 import promptTemplate from "../../ui/interface.html";
 import selectTemplate from "../../ui/pick.html";
@@ -60,9 +61,6 @@ export interface Ui {
   select(request: SelectRequest): Promise<number[] | null>;
   notify(request: NotifyRequest): void;
 }
-
-/** JSON for inlining into a <script> block: `<` is escaped so a name like `</script>` cannot end it. */
-const inlineJson = (value: unknown) => JSON.stringify(value).replace(/</g, "\\u003c");
 
 const dataUrl = (html: string) => `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 
