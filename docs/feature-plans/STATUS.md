@@ -12,6 +12,8 @@ _Last updated: 2026-10-11._
   squash-merged at the user's request). The Live test was not finished: the rows marked "no" and
   the open steps of the Live test list below still apply, now against `main`. The version is
   still 0.0.1, so the merge published no release.
+- `docs/roadmap-0.1.0` (from `main`, 2026-10-11): the roadmap below and the Remote Script
+  protocol proposal in 0001. Documents only; merge by pull request when the user asks.
 - `main` is protected since 2026-10-11 by the ruleset "Protect main" (id 24888213): pull request
   required (0 approvals), required checks `build` and `gitleaks`, no force push, no deletion. The
   repository admin may bypass, but only when merging a pull request — a direct push to `main` is
@@ -237,7 +239,7 @@ _Last updated: 2026-10-11._
   plus the log from the last `run start:` line on.
 - `arm` on a MIDI track whose input device is missing (arm button greyed out in Live): no message
   even with the read-back of `e885674` running (user, 2026-10-11). The SDK accepts the write and
-  shows no difference; detecting it needs Remote Script replies (`can_be_armed`), see "Next".
+  shows no difference; detecting it needs Remote Script replies (`can_be_armed`), see "Roadmap to 0.1.0", step 2.
 - Candidate fixes, kept until a hang can be tied to a cause: run the handler one macrotask after
   a dialog closes (cmdabl-core); drop the outer `withinTransaction` for a single-track write.
 
@@ -274,35 +276,6 @@ _Last updated: 2026-10-11._
 | Why a dialog never appears after a write to a group track's `arm` (transaction, rejected write) | cmdabl-bridge | findings in (no code changed), see "Dialog hang" above; the user's experiment did not reproduce it |
 | Evidence for the next dialog hang: log line per command run, manual `/reset` on the trigger server | cmdabl-core | committed `689e673`, reviewed; needs the Live test (see "Dialog hang" above) |
 
-### Candidates (not ordered yet — order them with the user after the test)
-
-- Follow mode for the pick list (0007 §4; needs the spike in 0006).
-- Dialog sizes, the rest: a larger pick list, configurable sizes (0007). `notify` is sized from
-  its text since `b6b208a`.
-- A `history` command: show the list and re-run an entry. Today the entries are only the first
-  rows of the empty palette, marked `(history)` — at most 20, in memory only.
-- Feedback for `next`/`prev` (e.g. `2/5 /path`).
-- Object items in the palette routed through `goto` (0005).
-- A generic `page` surface on `Ui` for module pages (decided, see above); `pakabl list` moves
-  onto it.
-- An `enum` argument kind with declared choices (0005 mentions it for pakabl ids): `man` would
-  then show `usage: man <ableton|cmdabl>` instead of `man [topic]`, and get completion.
-- A Windows opener in core's `openUrl` (`man` and `cmdabl` answer with the URL there today;
-  pakabl keeps its own `Start-Process` branch until then).
-- **Wanted by the user (2026-10-11): index the Ableton manual** instead of sending a query to a
-  search engine, which feels odd to him. A section index for the Ableton manual: match `man ableton <words>` against chapter and section
-  titles and open the section directly, with the pick list on several hits (needs a pick list for
-  things other than Live objects — a `ModuleApi` change). The web search below is the first step.
-- An `enum` argument kind with declared choices (0005 mentions it for pakabl ids): `man` would
-  then show `usage: man <ableton|cmdabl>` instead of `man [topic]`, and get completion.
-- A Windows opener in core's `openUrl` (`man` and `cmdabl` answer with the URL there today;
-  pakabl keeps its own `Start-Process` branch until then).
-- Search in the Ableton manual: `man ableton <words>`. The online manual has no search of its own
-  (checked 2026-10-11; chapters are `/en/live-manual/12/<chapter>/#<section>`). Options: (a) open
-  a web search limited to the manual; (b) ship an index of chapter and section titles, match the
-  words against it and open the section, with the pick list on several hits (needs a pick list
-  for things other than Live objects — a `ModuleApi` change). Waiting for the user's choice.
-
 Decided by the user: the parser stays strict for dash-words in unquoted names (0005, "Dash rules").
 
 ### Secrets (rule from the user, 2026-10-11)
@@ -313,26 +286,86 @@ and the reviewer checks every diff for secret-shaped strings. The architect scan
 be pushed before every push. `.env*`, `.envrc`, `*.pem`, `*.key` are git-ignored. Scan of all
 refs and the working tree on 2026-10-11: clean.
 
-## Next, in order
+## Roadmap to 0.1.0
 
-1. **Live test of PR #9**, fix what it shows, merge.
-2. **Remote Script with replies + Drum Rack pads** (cmdabl-bridge). The user searched for
-   `find vermona kick`: the pads ("Kick", "Snare", …) are chains of a Drum Rack, which are not in
-   the object tree — the SDK exposes chains and their MIDI note but not their names. Recommended
-   and presented to the user, not yet explicitly confirmed: request/response protocol (`hello`
-   with version and op list, request ids, timeout), chains in the tree with real names, pad
-   selection, `select {route, expectName}` read-back. Plans: 0001 Phase 4, decisions in 0004.
-3. **Keymap** (cmdabl-core + cmdabl-ui): UI keys as named actions, defaults plus a user
-   `keymap.json`, keys bindable to command lines. Described in 0006.
-4. **Dialog-channel spike** — decides two features, navigation mode and the pick list's follow
-   mode: can the dialog page `fetch` the local server, does the Remote Script process messages
-   while a modal is open, does Live repaint behind it? Then build, or fall back to global hotkeys
-   via Karabiner/AutoHotkey. The four checks are listed in 0006.
-5. **Rest of 0005**: ports instead of the raw `ModuleApi` context, `requires: ["bridge"]` checks,
-   `pakabl` and `cmdabl` as subcommand groups (`cmdabl setup`, old flag as alias), the
-   command-authoring guide (`docs/guides/adding-a-command.md`).
-6. **0007**: theme file, replacement pages with fallback, `api.ui.register`.
-7. **0006**: tree-driven completion in the palette (ghost text, level-by-level paths).
+0.1.0 means: the first version someone else can install on macOS and rely on. Decided by the user
+on 2026-10-11: 0.1.0 is macOS-only, and the completion engine (0006) comes after it. The order
+below was approved by the user the same day.
+
+### 1. Reliable (blocks everything else)
+
+1. Finish the Live test of the merged work (lists above); fix what it shows.
+2. Dialog hang ("Dialog hang — what is known" above): 0.1.0 does not ship with "only a restart
+   helps". Either the cause is found and fixed, or the palette recovers by itself (a watchdog in
+   `src/core/dialogQueue.ts` that abandons a dialog which never appeared — only buildable once a
+   `/reset` after a real hang has shown that a new dialog can open). If the SDK allows neither:
+   a documented known issue and a report to Ableton.
+3. Remove the temporary `POST /reset`, or turn it into that recovery.
+
+### 2. Remote Script as a two-way channel (cmdabl-bridge) — the main piece
+
+Plans: 0001 Phase 4, decisions in 0004. Today the bridge is fire-and-forget over UDP 27185.
+
+1. Protocol with replies: `hello` (script version, list of operations), request ids, timeout,
+   error replies. A contract change: cmdabl-bridge writes the proposal into 0001, the user
+   confirms it, then it is built.
+2. Availability: the extension knows whether the script is installed, running and of a matching
+   version; commands declare `requires: ["bridge"]` (0005) and answer with exit code 5 and a
+   clear text instead of doing nothing.
+3. Install and update for a user: `cmdabl setup` installs or updates the script, detects a
+   version mismatch after an extension update and says when Live must be restarted.
+4. Operations, in this order: `select` with read-back (`{route, expectName}`); track facts the
+   SDK lacks (`can_be_armed`, "is a group" — `arm` on an unarmable track then reports it); Drum
+   Rack chains and pads with their real names in the object tree, pad selection
+   (`find vermona kick`); reading the current selection (for restoring it later in follow mode).
+5. Unit tests for the protocol on both sides; a Live test list per operation.
+
+### 3. Freeze the command syntax (cmdabl-core, cmdabl-modules) — the rest of 0005
+
+Changing these after a release breaks what users have learned and what is stored in history.
+
+1. `cmdabl` and `pakabl` as subcommand groups (`cmdabl setup`; the old flags stay as aliases).
+2. An `enum` argument kind with declared choices (`man <ableton|cmdabl>`, pakabl ids): usage
+   text and, later, completion come from it.
+3. Object items of the palette run through `goto` (history entry, `next`/`prev` list); removes
+   `registerResultHandler` — a `ModuleApi` change, to be confirmed with the user first.
+4. Ports instead of the raw SDK context in `ModuleApi`, then the command-authoring guide
+   (`docs/guides/adding-a-command.md`).
+
+### 4. Small things that make it feel finished
+
+- A `history` command: show the list and re-run an entry. Today the entries are only the first
+  rows of the empty palette, marked `(history)` — at most 20, in memory only.
+- Feedback for `next`/`prev` (e.g. `2/5 /path`).
+- A generic `page` surface on `Ui` for module pages (decided, see above); `pakabl list` moves
+  onto it and into the dialog queue.
+- A larger maximum size for the pick list (0007).
+- Clean "not supported on this platform" answers everywhere off macOS.
+
+### 5. Release 0.1.0
+
+- User documentation on the docs site: install, `cmdabl setup` (Remote Script, trigger key),
+  command reference, known limits (macOS-only, SDK beta).
+- From "Parked", what affects a release: the runner image before 2026-10-19, index pull requests
+  that start the required checks, the pakabl index noise.
+- Release test: install the packaged `.ablx` into a Live without Developer Mode, run setup, run
+  the full Live test list once.
+- Bump the version in `package.json` and `manifest.json`, merge; the release workflow publishes.
+
+### After 0.1.0 (order to be set then)
+
+- 0.2.0: the completion engine (0006) — ghost text, level-by-level paths; builds on the tree
+  from step 2.
+- Keymap (0006): UI keys as named actions, a user `keymap.json`, keys bindable to command lines.
+- Dialog-channel spike (the four checks in 0006), then follow mode for the pick list (0007 §4)
+  and navigation mode; whether `next`/`prev` stay is decided with it.
+- 0007: theme file, replacement pages with fallback, `api.ui.register`; configurable dialog
+  sizes.
+- **Wanted by the user (2026-10-11): an index of the Ableton manual** for `man ableton <words>`
+  instead of a search-engine query: match the words against chapter and section titles (chapters
+  are `/en/live-manual/12/<chapter>/#<section>`) and open the section, with the pick list on
+  several hits (needs a pick list for things other than Live objects — a `ModuleApi` change).
+- Windows: an opener in core's `openUrl`, a trigger key, Remote Script install paths, a tester.
 
 ## Parked
 
