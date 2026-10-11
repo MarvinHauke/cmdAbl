@@ -53,18 +53,21 @@ class FakeDeviceView(object):
 
 
 class FakeDevice(object):
-    def __init__(self, name, chains=None):
+    def __init__(self, name, chains=None, drum=False):
         self.name = name
         self.view = FakeDeviceView()
         if chains is not None:
             self.chains = chains
+            self.has_drum_pads = drum
         self.devices = []
 
 
 class FakeChain(object):
-    def __init__(self, name, devices=None):
+    def __init__(self, name, devices=None, in_note=None):
         self.name = name
         self.devices = devices or []
+        if in_note is not None:
+            self.in_note = in_note
 
 
 class FakeTrackView(object):

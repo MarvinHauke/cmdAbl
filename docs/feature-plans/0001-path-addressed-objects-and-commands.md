@@ -345,10 +345,14 @@ says what it points at (1 = track, 2 = device on the track, 3 = chain, 4 = devic
 |---|---|---|
 | `select` | `{scope, route, expectName}` | `{name}` once the script read the selection back (track: `song.view.selected_track`; device: `track.view.selected_device`; a chain route selects the chain in its rack's view); `stale` / `out_of_range`; if the read-back differs: `failed` |
 | `track_facts` | `{targets: [{scope, route, expectName?}, …]}` (routes of length 1, at most 20) | `{tracks: [{can_be_armed, is_foldable, is_grouped, arm} (+ `name` only without `expectName`) \| {error: {code, text}}, …]}` in the order given — several tracks in one reply (one request per command); `arm` is `null` unless `can_be_armed` (reading it raises otherwise); a stale or missing target is its own `error` entry, the others are still answered |
-| `chains` | `{scope, route, offset?, limit?}` (a device) | `{kind: "rack"\|"drum", total, chains: [{index, name, note?}]}` |
-| `select_chain` | `{scope, route, expectName}` (a chain or, for a Drum Rack, the pad) | `{name}`; differs from `select` only in the Drum Rack pad lookup — folded into `select` if that needs no extra logic |
+| `chains` | `{targets: [{scope, route, offset?}, …]}` (routes of rack devices, at most 20) | `{racks: [{kind: "rack"\|"drum", total, offset, chains: [{name, note?}], next?} \| {error: {code, text}}, …]}` — all racks of the Set in one request; names are `Chain.name` in `rack.chains` order; an entry that does not fit the 3.4 KB reply budget stops early and carries `next` (ask again with that offset) |
+| ~~`select_chain`~~ | — | folded into `select`: a route of length 3 (or a nested chain) selects the chain in its rack's view; the Drum Rack pad lookup is unverified until Live |
 | `selection` | `{}` | `{scope, route, name}` for track, plus `device`/`chain` when set |
 
+- **Verified in Live (2026-10-12, script 0.3.0):** `can_be_armed` is *true* for a MIDI track whose
+  input device is unavailable (the arm button is greyed out, so the fact does not detect it); the
+  LOM's `arm` stays false after the SDK wrote true — the SDK's read of `arm` is wrong, the LOM's is
+  right, so `arm` is read through `track_facts`. Group, return and main tracks refuse arming.
 - `is_group` is not a LOM property: group tracks are `is_foldable`; `is_grouped` means inside a
   group. Both from the LOM docs, to confirm in Live (also whether a group track is armable).
 - `select` unfolds parent groups first, as `_unfold_parents` does today.
@@ -434,6 +438,47 @@ against §4: `select`, `track_facts` and `selection` are one request each. `chai
 one page (~40 bytes per entry, ~100 per 4 KB page), so the normal case is one request; a very
 large rack needs more, which is the size limit speaking, not a design gap.
 
+#### Chain names in the tree (step 4 design)
+
+The SDK's `Chain` has no `name`, so chain nodes need the script, but the tree is built
+synchronously on every command. The names therefore come from a **cache, refreshed in the
+background** (`src/ableton/chainNames.ts`):
+
+- `findRacks(song)` lists every rack the SDK sees (a device with `chains`, nested ones included)
+  with its route, handle id and chain count.
+- One `chains` request asks for **all racks of the Set** (≤ 20 per request, paged only by the size
+  budget), so a refresh is one round trip, ~14 ms (measured).
+- `buildObjectTree` reads names from the cache and **never waits**: a cached entry is used only
+  while the SDK still shows the same rack (handle id) with the same chain count; otherwise the
+  rack's chains are simply absent. Each build calls `scheduleRefresh` (stale-while-revalidate:
+  not more often than every 2 s, every 10 s while the script is unavailable, never two at once).
+  The palette opening builds the tree, which warms the cache before the user commits a command.
+- A renamed pad is seen after the next refresh; until then `select`'s `expectName` makes a
+  command on the old name answer "the Live Set changed; run the command again".
+- Without the script, or an older one (no `chains` op): the refresh fails quietly, the cache
+  stays empty, no chain nodes and no errors.
+- **Known limit:** the first palette open after the extension starts has a cold cache, so the
+  chains are missing from the palette *list* on that one open (typed paths and `find` build a
+  fresh tree and see them from the second build on). Accepted; `openPalette` does not await a
+  refresh. Revisit if the user notices.
+- **One build behind:** the palette's item list is the snapshot of the build that *starts* the
+  refresh, so chains show in the first palette only after a rack was seen once; a typed path
+  works at once (the command builds again). If it annoys: refresh at activation and after `select`.
+- The throttle delays instead of dropping: a trigger inside the window leaves one trailing refresh.
+- Names are valid only for the exact sequence of the SDK's chain handle ids of that rack (a swap,
+  or a delete plus an add, drops the names until the next refresh). Any future op or SDK command
+  that acts on a chain node must verify the name through the script first (as `select` does).
+- While the script is unavailable each attempt is one `hello` (500 ms) at most every 10 s of
+  activity; it also rewrites the cached state `requires` reads. Harmless.
+- Unverified in Live: `has_drum_pads` and `in_note` on drum chains; names of nested racks (racks
+  inside a chain) are not in the tree.
+- Behaviour changes: `goto <name>` also matches pads (a name shared by a track and a pad asks to
+  pick); `goto` on a chain runs `select` with a route of length 3 (`rack.view.selected_chain`,
+  unverified). A 0.3.0 script keeps working (the op list decides); only `cmdabl --bridge` differs.
+- Chain nodes: `kind: "chain"`, route `[track, device, chain]`, path under the rack
+  (`/Vermona MIDI/Drum Rack/Kick`), no children in step 4 (devices inside chains stay out of the
+  tree; the route scheme already addresses them).
+
 ### 7. Build order (each step has a Live test)
 
 1. Script: `hello` + request/reply plumbing, `VERSION`; extension: socket, pending map, timeout,
@@ -444,7 +489,9 @@ large rack needs more, which is the size limit speaking, not a design gap.
 3. `track_facts`; `arm` on a group / return track reports instead of doing nothing.
 4. `chains` + chain nodes in the tree behind `hello`; a Drum Rack with custom pad names and an
    External Instrument chain (the case from §2).
-5. `select_chain` (pad selection, `find vermona kick`).
+5. ~~`select_chain`~~ folded into step 4: `select` already takes chain routes (rack view); only the
+   Drum Rack pad lookup stays unverified until the Live test (a pad's chain is selected through
+   `rack.view.selected_chain`; if that fails the answer is `unsupported`).
 6. `selection` read for follow mode.
 7. `cmdabl setup` (today `cmdabl --setup`) version check and restart hint.
 

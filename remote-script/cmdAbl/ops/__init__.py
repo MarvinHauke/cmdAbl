@@ -7,10 +7,12 @@ on each side, 0001 §4 first, and VERSION in protocol.py goes up. `expectName` i
 the first op that changes or deletes something must require it.
 """
 
+from .chains import chains
 from .select import select
 from .tracks import track_facts
 
 OPS = {
+    "chains": chains,
     "select": select,
     "track_facts": track_facts,
 }

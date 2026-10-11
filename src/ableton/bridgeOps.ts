@@ -111,3 +111,109 @@ export async function trackFacts(
   }
   return { ok: true, value: out };
 }
+
+/** The chains of one rack device with their real names (0001 §4). */
+export interface RackChains {
+  kind: "rack" | "drum";
+  /** The chain names in `rack.chains` order; `names[i]` belongs to the SDK's `rack.chains[i]`. */
+  names: string[];
+  /** MIDI input note per chain for drum chains, when Live reports it. */
+  notes: Array<number | null>;
+}
+
+/** At most this many racks go into one request. */
+export const CHAINS_PER_REQUEST = 20;
+
+function parseRack(entry: unknown): { chains: RackChains | null; next: number | null; total: number; offset: number } | BridgeResult<never> {
+  const e = entry as Record<string, unknown> | null;
+  if (typeof e !== "object" || e === null) return fail(1, "bad reply from the Remote Script: chains entry");
+  // A stub: the reply budget was spent before this rack; ask again from `next`.
+  if (typeof e.next === "number" && e.kind === undefined && e.chains === undefined) {
+    return { chains: null, next: e.next, total: -1, offset: e.next };
+  }
+  const err = e.error as Record<string, unknown> | undefined;
+  if (err && typeof err === "object") {
+    const text = typeof err.text === "string" ? err.text : "chains failed";
+    return fail(1, err.code === "stale" || err.code === "out_of_range" ? TEXT_STALE : `Remote Script: ${text}`);
+  }
+  const list = e.chains;
+  if (
+    (e.kind !== "rack" && e.kind !== "drum") ||
+    typeof e.total !== "number" ||
+    typeof e.offset !== "number" ||
+    !Array.isArray(list) ||
+    !list.every((c) => typeof c === "object" && c !== null && typeof (c as Record<string, unknown>).name === "string")
+  ) {
+    return fail(1, "bad reply from the Remote Script: chains entry");
+  }
+  const names = list.map((c) => (c as { name: string }).name);
+  const notes = list.map((c) => {
+    const n = (c as { note?: unknown }).note;
+    return typeof n === "number" ? n : null;
+  });
+  const next = typeof e.next === "number" ? e.next : null;
+  return { chains: { kind: e.kind, names, notes }, next, total: e.total, offset: e.offset };
+}
+
+/**
+ * Chain names for one or several racks, in the order given. One request in the
+ * normal case; a rack whose names exceed one datagram is asked for again with
+ * an offset (the 4 KB limit, 0001 §1). Each entry fails alone; the outer result
+ * is the bridge/script outcome. `scope` + `route` address the rack device.
+ * Never throws.
+ */
+export async function chains(
+  bridge: Bridge,
+  racks: Array<Pick<ObjectNode, "scope" | "route">>,
+): Promise<BridgeResult<Array<BridgeResult<RackChains>>>> {
+  const results: Array<BridgeResult<RackChains> | null> = racks.map(() => null);
+  const collected: Array<RackChains | null> = racks.map(() => null);
+  let pending = racks.map((_, i) => ({ index: i, offset: 0 }));
+  for (let round = 0; pending.length > 0 && round < 64; round++) {
+    const next: typeof pending = [];
+    for (let i = 0; i < pending.length; i += CHAINS_PER_REQUEST) {
+      const chunk = pending.slice(i, i + CHAINS_PER_REQUEST);
+      const targets = chunk.map((p) => ({ scope: racks[p.index]!.scope, route: racks[p.index]!.route, offset: p.offset }));
+      const reply = await bridge.request("chains", { targets });
+      if (!reply.ok) return reply;
+      const entries = reply.value.racks;
+      if (!Array.isArray(entries) || entries.length !== chunk.length) {
+        return fail(1, "bad reply from the Remote Script: chains without one entry per rack");
+      }
+      entries.forEach((entry, k) => {
+        const p = chunk[k]!;
+        const parsed = parseRack(entry);
+        if ("ok" in parsed) {
+          results[p.index] = parsed;
+          return;
+        }
+        if (parsed.chains === null) {
+          // unanswered this round: ask again (the round limit bounds a script that never makes progress)
+          next.push({ index: p.index, offset: parsed.next ?? p.offset });
+          return;
+        }
+        if (parsed.offset !== p.offset) {
+          results[p.index] = fail(1, "bad reply from the Remote Script: chains offset differs from the one asked for");
+          return;
+        }
+        const have = collected[p.index];
+        if (have && have.kind !== parsed.chains.kind) {
+          results[p.index] = fail(1, "bad reply from the Remote Script: chains changed between requests");
+          return;
+        }
+        const merged: RackChains = have
+          ? { kind: have.kind, names: [...have.names, ...parsed.chains.names], notes: [...have.notes, ...parsed.chains.notes] }
+          : parsed.chains;
+        collected[p.index] = merged;
+        if (parsed.next !== null && parsed.next > p.offset) next.push({ index: p.index, offset: parsed.next });
+        else if (merged.names.length !== parsed.total) results[p.index] = fail(1, "bad reply from the Remote Script: chains count differs");
+        else results[p.index] = { ok: true, value: merged };
+      });
+    }
+    pending = next;
+  }
+  return {
+    ok: true,
+    value: results.map((r, i) => r ?? (collected[i] ? fail(1, "bad reply from the Remote Script: chains incomplete") : fail(1, "bad reply from the Remote Script: chains missing"))),
+  };
+}

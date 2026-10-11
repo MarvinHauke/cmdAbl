@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chunkTargets, select, trackFacts, REQUEST_BYTES_BUDGET, TRACK_FACTS_PER_REQUEST } from "./bridgeOps.js";
+import { chains, chunkTargets, select, trackFacts, REQUEST_BYTES_BUDGET, TRACK_FACTS_PER_REQUEST } from "./bridgeOps.js";
 import { createFakeBridge } from "./bridgeFake.js";
 import { fail } from "./bridgeProtocol.js";
 
@@ -77,4 +77,50 @@ test("trackFacts fills a left-out name from the node, chunkTargets bounds count 
     assert.ok(bytes <= REQUEST_BYTES_BUDGET + c.length, `chunk of ${c.length} is ${bytes} bytes`);
   }
   assert.equal(chunks.flat().length, 15);
+});
+
+test("chains asks once per request, merges pages and keeps each rack's failure alone", async () => {
+  const calls: Array<Array<{ offset: number }>> = [];
+  const all = ["Kick", "Snare", "Hat", "Clap"];
+  const bridge = createFakeBridge({
+    ops: {
+      chains: (a) => {
+        const targets = a.targets as Array<{ route: number[]; offset: number }>;
+        calls.push(targets.map((t) => ({ offset: t.offset })));
+        const racks = targets.map((t) => {
+          if (t.route[0] === 9) return { error: { code: "unsupported", text: "not a rack device" } };
+          const end = Math.min(t.offset + 2, all.length);
+          const e: Record<string, unknown> = {
+            kind: "drum",
+            total: all.length,
+            offset: t.offset,
+            chains: all.slice(t.offset, end).map((name, i) => ({ name, note: 36 + t.offset + i })),
+          };
+          if (end < all.length) e.next = end;
+          return e;
+        });
+        return { ok: true, value: { racks } };
+      },
+    },
+  });
+  const r = await chains(bridge, [
+    { scope: "regular", route: [0, 0] },
+    { scope: "regular", route: [9, 0] },
+  ]);
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.deepEqual(r.value[0], { ok: true, value: { kind: "drum", names: all, notes: [36, 37, 38, 39] } });
+  assert.equal(r.value[1]!.ok, false);
+  assert.equal(calls.length, 2); // second round only for the paged rack
+  assert.deepEqual(calls[1], [{ offset: 2 }]);
+});
+
+test("chains rejects malformed replies and passes outer failures through", async () => {
+  const odd = createFakeBridge({ ops: { chains: () => ({ ok: true, value: { racks: [{ kind: "rack", total: 1, offset: 0, chains: [{ name: 3 }] }] } }) } });
+  const r = await chains(odd, [{ scope: "regular", route: [0, 0] }]);
+  assert.equal(r.ok && r.value[0]!.ok, false);
+  const short = createFakeBridge({ ops: { chains: () => ({ ok: true, value: { racks: [] } }) } });
+  assert.equal((await chains(short, [{ scope: "regular", route: [0, 0] }])).ok, false);
+  const down = createFakeBridge({ running: false });
+  assert.equal((await chains(down, [{ scope: "regular", route: [0, 0] }])).ok, false);
 });
