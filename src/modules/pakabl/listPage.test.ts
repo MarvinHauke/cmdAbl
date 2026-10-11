@@ -26,3 +26,7 @@ test("$-patterns in the data are kept literally", () => {
   const entries = [{ id: "x", name: "$& $` $' $1 $$", version: "1" }];
   assert.deepEqual(entriesFrom(buildListPage(template, entries)), entries);
 });
+
+test("a template without the placeholder fails loudly", () => {
+  assert.throws(() => buildListPage("<script>const ENTRIES = [];</script>", []), /placeholder/);
+});

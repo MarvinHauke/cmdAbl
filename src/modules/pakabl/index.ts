@@ -2,6 +2,8 @@ import * as path from "node:path";
 import type { ModuleApi } from "../types.js";
 import { EXTENSIONS_DIR, downloadFile, unzipInto, readJsonFile, openUrl, removeDir } from "./platform.js";
 import { buildListPage } from "./listPage.js";
+import { extensionDir, filterValidEntries, isKnownRepoUrl, isValidId, repoUrl } from "./guards.js";
+import { ExitCode, fail, ok, type CommandResult } from "../../types.js";
 import pakablListTemplate from "../../../ui/pakabl-list.html";
 
 // `context.environment.storageDirectory` is `string | undefined` in the SDK
@@ -34,51 +36,56 @@ interface InstalledManifest {
   version: string;
 }
 
-function loadIndex(): IndexEntry[] | undefined {
-  return readJsonFile<IndexEntry[]>(INDEX_CACHE_PATH);
+// Entries with an id that is not `<author-slug>.<name-slug>` are dropped here —
+// the id becomes a path that is unzipped into and deleted — and counted so the
+// commands can say so.
+function loadIndex(): { entries: IndexEntry[]; dropped: number } | undefined {
+  const raw = readJsonFile<unknown>(INDEX_CACHE_PATH);
+  if (!Array.isArray(raw)) return undefined;
+  const { valid, dropped } = filterValidEntries(raw as IndexEntry[]);
+  return { entries: valid, dropped };
 }
 
+const droppedText = (n: number): string =>
+  n > 0 ? `${n} index entr${n === 1 ? "y" : "ies"} with an invalid id or URL ignored` : "";
+
+const badIdResult = (id: string): CommandResult =>
+  fail(ExitCode.USAGE, `pakabl: "${id}" is not a valid extension id (expected <author>.<name>, e.g. federico-pepe.snake)`);
+
 function installedManifest(id: string): InstalledManifest | undefined {
-  return readJsonFile<InstalledManifest>(path.join(EXTENSIONS_DIR, id, "manifest.json"));
+  const dir = extensionDir(EXTENSIONS_DIR, id);
+  return dir ? readJsonFile<InstalledManifest>(path.join(dir, "manifest.json")) : undefined;
 }
 
 // Shared by install/upgrade — download the entry's `.ablx` and unzip it into
 // place, overwriting any existing install (unzipInto is idempotent: -o/-Force).
-function downloadAndUnpack(api: ModuleApi, entry: IndexEntry): boolean {
+function downloadAndUnpack(entry: IndexEntry): CommandResult | undefined {
+  const target = extensionDir(EXTENSIONS_DIR, entry.id);
+  if (!target) return fail(ExitCode.FAILURE, `pakabl: "${entry.id}" does not resolve inside the Extensions folder`);
   const tmpPath = path.join(DATA_DIR, "tmp", `${entry.id}.ablx`);
 
   const dl = downloadFile(entry.url, tmpPath);
   if (!dl.ok) {
-    api.showFeedback(`pakabl: failed to download ${entry.name} v${entry.version}\n${dl.output}`);
-    return false;
+    return fail(ExitCode.FAILURE, `pakabl: failed to download ${entry.name} v${entry.version}\n${dl.output}`);
   }
 
-  const unpack = unzipInto(tmpPath, path.join(EXTENSIONS_DIR, entry.id));
+  const unpack = unzipInto(tmpPath, target);
   if (!unpack.ok) {
-    api.showFeedback(`pakabl: failed to unpack ${entry.name} v${entry.version}\n${unpack.output}`);
-    return false;
+    return fail(ExitCode.FAILURE, `pakabl: failed to unpack ${entry.name} v${entry.version}\n${unpack.output}`);
   }
 
-  return true;
+  return undefined;
 }
 
-async function install(api: ModuleApi, id: string | undefined): Promise<void> {
-  if (!id) {
-    api.showFeedback("pakabl: usage: pakabl install <id>");
-    return;
-  }
+async function install(api: ModuleApi, id: string | undefined): Promise<CommandResult | void> {
+  if (!id) return fail(ExitCode.USAGE, "pakabl: usage: pakabl install <id>");
+  if (!isValidId(id)) return badIdResult(id);
 
-  const index = loadIndex();
-  if (!index) {
-    api.showFeedback("pakabl: no index cached — run \"pakabl update\" first");
-    return;
-  }
+  const loaded = loadIndex();
+  if (!loaded) return fail(ExitCode.FAILURE, "pakabl: no index cached — run \"pakabl update\" first");
 
-  const entry = index.find((e) => e.id === id);
-  if (!entry) {
-    api.showFeedback(`pakabl: "${id}" is not in the curated list`);
-    return;
-  }
+  const entry = loaded.entries.find((e) => e.id === id);
+  if (!entry) return fail(ExitCode.NOT_FOUND, `pakabl: "${id}" is not in the curated list`);
 
   const installed = installedManifest(id);
   if (installed) {
@@ -93,40 +100,24 @@ async function install(api: ModuleApi, id: string | undefined): Promise<void> {
     return;
   }
 
-  if (!downloadAndUnpack(api, entry)) return;
+  const failed = downloadAndUnpack(entry);
+  if (failed) return failed;
   api.showFeedback(`pakabl: installed ${entry.name} v${entry.version} — restart Live to load it`);
 }
 
-async function uninstall(api: ModuleApi, id: string | undefined): Promise<void> {
-  if (!id) {
-    api.showFeedback("pakabl: usage: pakabl uninstall <id>");
-    return;
-  }
+async function uninstall(api: ModuleApi, id: string | undefined): Promise<CommandResult | void> {
+  if (!id) return fail(ExitCode.USAGE, "pakabl: usage: pakabl uninstall <id>");
+  if (!isValidId(id)) return badIdResult(id);
+  const dir = extensionDir(EXTENSIONS_DIR, id);
+  if (!dir) return fail(ExitCode.FAILURE, `pakabl: "${id}" does not resolve inside the Extensions folder`);
 
   const installed = installedManifest(id);
-  if (!installed) {
-    api.showFeedback(`pakabl: "${id}" is not installed`);
-    return;
-  }
+  if (!installed) return fail(ExitCode.NOT_FOUND, `pakabl: "${id}" is not installed`);
 
-  const result = removeDir(path.join(EXTENSIONS_DIR, id));
-  if (!result.ok) {
-    api.showFeedback(`pakabl: failed to uninstall ${installed.name}\n${result.output}`);
-    return;
-  }
+  const result = removeDir(dir);
+  if (!result.ok) return fail(ExitCode.FAILURE, `pakabl: failed to uninstall ${installed.name}\n${result.output}`);
 
   api.showFeedback(`pakabl: uninstalled ${installed.name} v${installed.version} — restart Live to unload it`);
-}
-
-// The index only stores each entry's `.ablx` download URL, but that's always
-// either a GitHub Release asset or a raw.githubusercontent.com file — both of
-// which embed "<owner>/<repo>" right after the host, so the repo page can be
-// derived without adding a redundant field to every index entry.
-function repoUrl(downloadUrl: string): string | undefined {
-  const m = downloadUrl.match(
-    /^https:\/\/(?:github\.com|raw\.githubusercontent\.com)\/([^/]+)\/([^/]+)\//,
-  );
-  return m ? `https://github.com/${m[1]}/${m[2]}` : undefined;
 }
 
 interface ListEntry {
@@ -142,12 +133,10 @@ interface ListEntry {
 // Every action round-trips through the one `close_and_send` channel the SDK exposes
 // (closing the dialog), then `list` dispatches to the existing install/uninstall/upgrade
 // functions exactly as if the user had typed the equivalent `pakabl …` command.
-async function list(api: ModuleApi): Promise<void> {
-  const index = loadIndex();
-  if (!index) {
-    api.showFeedback("pakabl: no index cached — run \"pakabl update\" first");
-    return;
-  }
+async function list(api: ModuleApi): Promise<CommandResult | void> {
+  const loaded = loadIndex();
+  if (!loaded) return fail(ExitCode.FAILURE, "pakabl: no index cached — run \"pakabl update\" first");
+  const index = loaded.entries;
 
   const entries: ListEntry[] = index.map((entry) => {
     const installed = installedManifest(entry.id);
@@ -160,71 +149,73 @@ async function list(api: ModuleApi): Promise<void> {
     };
   });
 
-  const html = buildListPage(pakablListTemplate, entries);
+  let html: string;
+  try {
+    html = buildListPage(pakablListTemplate, entries);
+  } catch (e: unknown) {
+    return fail(ExitCode.FAILURE, `pakabl: cannot build the list page — ${e instanceof Error ? e.message : String(e)}`);
+  }
 
   const result = await api.context.ui.showModalDialog(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`, 560, 480);
-  if (!result) return;
+  const note = droppedText(loaded.dropped);
+  if (!result) return note ? ok(`pakabl: ${note}`) : undefined;
 
+  let outcome: CommandResult | void = undefined;
   if (result.startsWith("install:")) {
-    await install(api, result.slice("install:".length));
+    outcome = await install(api, result.slice("install:".length));
   } else if (result.startsWith("uninstall:")) {
-    await uninstall(api, result.slice("uninstall:".length));
+    outcome = await uninstall(api, result.slice("uninstall:".length));
   } else if (result.startsWith("update:")) {
     const id = result.slice("update:".length);
     const entry = index.find((e) => e.id === id);
-    if (entry) await upgrade(api, `${entry.id}@${entry.version}`);
+    if (entry) outcome = await upgrade(api, `${entry.id}@${entry.version}`);
   } else if (result.startsWith("repo:")) {
-    openUrl(result.slice("repo:".length));
+    // The page is only trusted to name a repo, not to choose what the host
+    // opens: the URL must be one the index itself yields, and https.
+    const url = result.slice("repo:".length);
+    if (!isKnownRepoUrl(url, index)) return fail(ExitCode.FAILURE, "pakabl: not opening a repo URL that is not in the index");
+    openUrl(url);
   }
+  return outcome;
 }
 
-async function update(api: ModuleApi): Promise<void> {
+async function update(api: ModuleApi): Promise<CommandResult | void> {
   const dl = downloadFile(CURATED_INDEX_URL, INDEX_CACHE_PATH);
-  if (!dl.ok) {
-    api.showFeedback(`pakabl: failed to refresh the index\n${dl.output}`);
-    return;
-  }
+  if (!dl.ok) return fail(ExitCode.FAILURE, `pakabl: failed to refresh the index\n${dl.output}`);
 
-  const index = loadIndex();
-  if (!index) {
-    api.showFeedback("pakabl: refreshed file is not a valid index");
-    return;
-  }
+  const loaded = loadIndex();
+  if (!loaded) return fail(ExitCode.FAILURE, "pakabl: refreshed file is not a valid index");
 
-  api.showFeedback(`pakabl: index refreshed (${index.length} extension${index.length === 1 ? "" : "s"})`);
+  const n = loaded.entries.length;
+  api.showFeedback(`pakabl: index refreshed (${n} extension${n === 1 ? "" : "s"})${loaded.dropped > 0 ? ` (${droppedText(loaded.dropped)})` : ""}`);
 }
 
-async function upgrade(api: ModuleApi, idAtVersion: string | undefined): Promise<void> {
+async function upgrade(api: ModuleApi, idAtVersion: string | undefined): Promise<CommandResult | void> {
   if (!idAtVersion || !idAtVersion.includes("@")) {
-    api.showFeedback("pakabl: usage: pakabl upgrade <id>@<version>");
-    return;
+    return fail(ExitCode.USAGE, "pakabl: usage: pakabl upgrade <id>@<version>");
   }
 
   const at = idAtVersion.indexOf("@");
   const id = idAtVersion.slice(0, at);
   const version = idAtVersion.slice(at + 1);
+  if (!isValidId(id)) return badIdResult(id);
 
-  const index = loadIndex();
-  if (!index) {
-    api.showFeedback("pakabl: no index cached — run \"pakabl update\" first");
-    return;
-  }
+  const loaded = loadIndex();
+  if (!loaded) return fail(ExitCode.FAILURE, "pakabl: no index cached — run \"pakabl update\" first");
 
-  const entry = index.find((e) => e.id === id);
-  if (!entry) {
-    api.showFeedback(`pakabl: "${id}" is not in the curated list`);
-    return;
-  }
+  const entry = loaded.entries.find((e) => e.id === id);
+  if (!entry) return fail(ExitCode.NOT_FOUND, `pakabl: "${id}" is not in the curated list`);
 
   if (entry.version !== version) {
-    api.showFeedback(
+    return fail(
+      ExitCode.FAILURE,
       `pakabl: index lists ${entry.name} v${entry.version}, not v${version} — ` +
         `run "pakabl update" or check the version string`,
     );
-    return;
   }
 
-  if (!downloadAndUnpack(api, entry)) return;
+  const failed = downloadAndUnpack(entry);
+  if (failed) return failed;
   api.showFeedback(`pakabl: upgraded ${entry.name} to v${version} — restart Live to reload it`);
 }
 
@@ -234,16 +225,15 @@ async function upgrade(api: ModuleApi, idAtVersion: string | undefined): Promise
 export function activate(api: ModuleApi): void {
   api.registry.register("pakabl", "install and manage cmdAbl extensions", async (flags) => {
     const [sub, arg] = flags;
-    if (sub === "install") await install(api, arg);
-    else if (sub === "uninstall") await uninstall(api, arg);
-    else if (sub === "update") await update(api);
-    else if (sub === "upgrade") await upgrade(api, arg);
-    else if (sub === "list") await list(api);
-    else {
-      api.showFeedback(
-        "pakabl: usage\n  pakabl install <id>\n  pakabl uninstall <id>\n  pakabl update\n" +
-          "  pakabl upgrade <id>@<version>\n  pakabl list",
-      );
-    }
+    if (sub === "install") return install(api, arg);
+    if (sub === "uninstall") return uninstall(api, arg);
+    if (sub === "update") return update(api);
+    if (sub === "upgrade") return upgrade(api, arg);
+    if (sub === "list") return list(api);
+    return fail(
+      ExitCode.USAGE,
+      "pakabl: usage\n  pakabl install <id>\n  pakabl uninstall <id>\n  pakabl update\n" +
+        "  pakabl upgrade <id>@<version>\n  pakabl list",
+    );
   });
 }
