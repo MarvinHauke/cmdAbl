@@ -28,3 +28,18 @@ button {
   border-radius: 2px;
 }
 button:hover { border-color: var(--text); color: #fff; }
+
+/* Scrollbars: thin, dim thumb on the page background, so they do not show up as the
+   system's bright track. The standard properties cover newer webviews (Windows, recent
+   WebKit); the ::-webkit rules cover older WebKit, which ignores them. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--dim) transparent;
+}
+/* 8px: the host keeps this much free in the message width (NOTIFY_WIDTH_MARGIN in
+   src/core/notifySize.ts); change both together. */
+::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text); }
+::-webkit-scrollbar-corner { background: transparent; }
