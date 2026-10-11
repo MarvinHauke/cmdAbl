@@ -22,7 +22,10 @@ export function encodeQuery(text: string): string {
 // one-line edit. Ecosia documents `site:` (provider-dependent), not `inurl:`,
 // so the manual's path goes into `site:`.
 export const SEARCH_ENGINE = { name: "Ecosia", urlPrefix: "https://www.ecosia.org/search?q=" } as const;
-const ABLETON_SCOPE = "site:ableton.com/en/live-manual";
+// The SDK does not expose Live's version: this must follow Live's major
+// version, or the search returns pages of another manual version.
+export const LIVE_MANUAL_VERSION = "12";
+const ABLETON_SCOPE = `site:ableton.com/en/live-manual/${LIVE_MANUAL_VERSION}`;
 
 export function abletonSearchUrl(words: string[]): string {
   const typed = words.join(" ").trim().replace(/\s+/g, " ");

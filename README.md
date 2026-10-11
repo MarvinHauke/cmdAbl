@@ -73,7 +73,7 @@ your own:
 | `solo`    | `solo <track>…` toggles solo per track; `unsolo <track>…` always unsolos |
 | `arm`     | `arm <track>…` toggles record arm per track; `unarm <track>…` always disarms; return and main tracks cannot be armed and are reported as failed |
 | `history` | Remembers your last 20 invocations and re-offers them as rerunnable entries |
-| `man`     | `man <topic>` opens a manual in the browser: `man ableton` (Live reference manual), `man cmdabl` (this documentation). `man ableton <words>` searches the Live manual through Ecosia, e.g. `man ableton warp modes` |
+| `man`     | `man <topic>` opens a manual in the browser: `man ableton` (Live reference manual), `man cmdabl` (this documentation). `man ableton <words>` searches the Live 12 manual through Ecosia, e.g. `man ableton warp modes` |
 | `pakabl`  | Install/update/uninstall community extensions — see _Install more extensions with `pakabl`_ |
 
 **Addressing tracks and devices**
