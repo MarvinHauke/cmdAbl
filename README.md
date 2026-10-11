@@ -55,7 +55,8 @@ Typing a command name followed by a space switches the dropdown into flag-comple
 
 | Command          | Description                                                |
 | ---------------- | --------------------------------------------------------- |
-| `help`           | Open the Ableton Live manual in the browser               |
+| `help`           | List the available commands                               |
+| `cmdabl --help`  | Open the Ableton Live manual in the browser               |
 | `cmdabl --setup` | Install the keyboard trigger rule and show a result dialog |
 | `pakabl list`    | Browse and install community extensions — see _Install more extensions with `pakabl`_ under Installation |
 

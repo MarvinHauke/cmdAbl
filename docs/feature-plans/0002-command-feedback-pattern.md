@@ -2,11 +2,13 @@
 
 **Parent:** [0004](0004-command-platform.md) — Phase A (`CommandResult`) is a prerequisite for the command tree in [0005](0005-command-tree-and-module-authoring.md); every handler returns this result type.
 
-**Status:** Draft (updated 2026-06-08) — triggered by inconsistent ad-hoc feedback in
+**Status:** In Progress — Phase A shipped (updated 2026-10-11); originally drafted 2026-06-08 — triggered by inconsistent ad-hoc feedback in
 `dispatch()` plus the realization that 0001's Phase 3 multi-target commands (`mute /a /b /c`)
 make *partial* success the normal case, not an edge case.
 
-**Where things stand:** Untouched — `extension.ts`'s `showFeedback`/`console.*`/`throw` mix
+**Where things stand (2026-10-11):** Phase A is implemented — `CommandResult`/`ExitCode`/`ok()`/`fail()` in `src/types.ts`, `CommandRegistry.run()` always resolves with a result (unknown command → code 3, throwing handler → code 1), and `src/core/present.ts` is the single rendering point called from `dispatch()`. Modules still call `api.showFeedback` directly and migrate in the rework's step 2; Phase B/C are open. Historical note on the original state:
+
+Untouched — `extension.ts`'s `showFeedback`/`console.*`/`throw` mix
 described below is still exactly the current state; no `CommandResult`/`presentResult()` exists
 yet. `mute`/`solo` (0001 Phase 3) have landed with multi-target paths, which is this plan's
 trigger condition — worth picking back up now that the "partial success is the normal case"
@@ -70,15 +72,28 @@ redesign when 0001 Phase 3 lands.
 ### 1. `CommandResult` — the exit-code analogue
 
 ```ts
-type TargetOutcome = { path: string; ok: boolean; message?: string };
+interface TargetOutcome { path: string; ok: boolean; message?: string }
 
-type CommandResult =
-  | { ok: true;  message?: string; details?: TargetOutcome[] }
-  | { ok: false; message: string;  details?: TargetOutcome[] };
+interface CommandResult {
+  code: number;                 // see ExitCode
+  message?: string;
+  details?: TargetOutcome[];
+}
+
+const ExitCode = {
+  OK: 0,           // success
+  FAILURE: 1,      // ran but failed, incl. partial failure (see details)
+  USAGE: 2,        // bad invocation: missing/unknown arguments or options
+  NOT_FOUND: 3,    // command or addressed object not found
+  AMBIGUOUS: 4,    // an address matched >1 object; candidates in details
+  UNAVAILABLE: 5,  // a required companion (Remote Script, index) is missing
+};
 ```
 
-- `ok` is the binary exit-code (cmdAbl has no use for distinct non-zero codes the way POSIX
-  does — "did it work" is the only distinction that matters to the palette).
+- `code` is the exit status, POSIX-style: `0` is success, anything else is a failure with a
+  named reason. (An earlier draft had only `ok: boolean`; named codes are cheap and let
+  history record only code-0 runs, multi-target commands report partial failure, and tests
+  assert on `code`.)
 - `message` is the human-readable summary: the stdout-on-success / stderr-on-failure
   analogue. Optional on success (silence is valid output), required on failure (a failure
   without an explanation is useless to the user).

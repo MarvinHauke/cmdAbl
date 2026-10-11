@@ -76,6 +76,15 @@ interface Invocation { path: string[]; options: Record<string, string | true>; a
 4. Option names are unique within a node; `help`/`h` are reserved.
 5. Everything except `run` is plain JSON, so the tree can be sent to the webview as is.
 
+### 2b. Path arguments are resolved before the handler runs
+
+An argument of `kind: "path"` is resolved by the platform, never by the module. Resolution
+yields zero, one or many matches: zero → `ExitCode.NOT_FOUND`; many → `ExitCode.AMBIGUOUS` with
+the candidate paths in `details`, unless the argument declares `multiple: "all"`. Handlers
+therefore only ever receive uniquely resolved objects, and `goto`/`mute`/`solo` contain no
+ambiguity handling of their own. Identity is the LOM route, not the display name; duplicate
+sibling names get a deterministic suffix (`/Drums/Kick`, `/Drums/Kick#2`).
+
 ### 3. Candidate data (completers)
 
 An argument names its candidates with `complete: "key"`. Modules register completers, which the
