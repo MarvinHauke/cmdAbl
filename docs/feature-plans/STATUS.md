@@ -97,6 +97,9 @@ _Last updated: 2026-10-11._
 16. `man` and `cmdabl --help` (`fcb7296`, `69452e9`):
     - ~~`man ableton` → the Live manual opens; `man cmdabl` → the docs site.~~ Passed in Live
       after `827f326`. Still open: `man Ableton` (capital letter) → the same.
+    - `man ableton warp modes` → DuckDuckGo opens with results from the Live manual only;
+      `man ableton it's a & b` → the words arrive intact; `man cmdabl foo` → "cmdabl has no
+      search"; the history entry of a search re-runs it.
     - `man` → usage with the topics; `man foo` → `no manual for "foo"` and the topics;
       `man ableton extra` → a usage error.
     - `help` lists `man`; a successful `man ableton` is in the history and re-runs.
@@ -152,7 +155,7 @@ _Last updated: 2026-10-11._
 | `cmdabl --help` prints usage instead of opening the Ableton manual; `openUrl` in its own file | cmdabl-core | committed `fcb7296`, reviewed. The usage text points to `man cmdabl` — **do not push before the `man` module is in**. Live: `cmdabl --help` and bare `cmdabl` show the usage, `cmdabl --foo` adds `unknown flag`, `cmdabl --setup` unchanged |
 | New module `man`: `man ableton` (Live manual), `man cmdabl` (docs site) | cmdabl-modules | committed `69452e9`, reviewed; needs the Live test (step 16). On Windows `man` answers with the URL (exit 5) until core's `openUrl` has a Windows opener |
 | pakabl's Repo button opens through core's `openUrl` (macOS); the Windows branch stays, with an https check | cmdabl-modules | committed `931615b`, reviewed; Windows untested |
-| `man ableton <words>`: DuckDuckGo search limited to the manual (`site:ableton.com inurl:live-manual`; the user chose the engine) | cmdabl-modules | sent |
+| `man ableton <words>`: DuckDuckGo search limited to the manual (`site:ableton.com inurl:live-manual`; the user chose the engine) | cmdabl-modules | committed `0db7d6b`, reviewed; needs the Live test (step 16). Quotes are not passed on (no exact phrase); a word starting with `-` needs `--`; the typed words go to DuckDuckGo |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
