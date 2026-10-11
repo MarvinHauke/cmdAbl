@@ -12,6 +12,10 @@ _Last updated: 2026-10-11._
 - `refactor/core-modules` (draft PR #9): pushed on 2026-10-11 up to `99f5444`; CI, docs and the
   new secret scan are green. Everything below under "Built, not yet merged". Merge after the Live
   test passes.
+- `main` is protected since 2026-10-11 by the ruleset "Protect main" (id 24888213): pull request
+  required (0 approvals), required checks `build` and `gitleaks`, no force push, no deletion. The
+  repository admin may bypass, but only when merging a pull request — a direct push to `main` is
+  refused for everyone.
 - `docs/sdk-tree-check` (local only, no changes yet): parked task, see "Parked".
 - PR #8 `pakabl/index-update` (opened by the daily crawler, not reviewed yet): check the diff —
   if only star counts or push dates in `candidates.json` changed, it is the known noise (see "Parked").
@@ -160,6 +164,10 @@ _Last updated: 2026-10-11._
   scrollbar track is bright white.
 - `cmdabl --setup` prints a raw `cp: … are identical (not copied)` line when the Remote Script
   folder is a symlink to the repo.
+- `5e6b339` in Live: the linked-Remote-Script line is right. `cmdabl --help` still scrolls — the
+  window is about 1.5 px too low (the fixed height around the text is about 66.5 px in Live, not
+  65), the scrollbar then narrows the text and the long line wraps. The scrollbar is still a
+  white native one in the message page and in `pakabl list`; `158502d` has no visible effect.
 
 ### In progress (tasks out, 2026-10-11)
 
@@ -186,6 +194,8 @@ _Last updated: 2026-10-11._
 | Message page: long lines wrap, Close stays visible, `Esc`/`Enter` close; then the window height follows the text | cmdabl-ui, then cmdabl-core | page committed `1b6d254`, reviewed (checked in headless Chrome only; held-key repeats do not close a message; arrows and PageDown scroll the text); window sizing committed `b6b208a`, reviewed (width 500…760, height 110…420; short messages now open smaller); needs the Live test (step 17) |
 | Message sizing with Live's character width (8.05 px); setup reports a linked Remote Script instead of the `cp` line | cmdabl-core | committed `5e6b339`, reviewed; needs the Live test (step 17). The first direct `node:fs` call in host code (`src/core/samePath.ts`, fails soft) — note it in `docs/sdk-tree.md` once Live confirms |
 | Themed scrollbar in the dialogs (`ui/shared.css`) | cmdabl-ui | committed `158502d`, reviewed; checked in headless Chrome for the message and pick pages only; needs the Live test (thin dim scrollbar, no white track, in all four pages) |
+| Message height: fixed part 65 → 72 px | cmdabl-core | sent |
+| Scrollbar still white in Live: `color-scheme: dark`, one rule family per engine, better integration | cmdabl-ui | sent |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
@@ -260,6 +270,10 @@ refs and the working tree on 2026-10-11: clean.
   permissions are set for the whole workflow. Split into a read-only crawl job that uploads the
   two JSON files and a second job that only opens the pull request. Fits together with the
   index-noise fix above.
+- **Index pull requests and the required checks**: a pull request opened by the crawler with the
+  workflow's own token does not start workflows, so PR #8 has no checks and shows as blocked. The
+  admin can still merge it (bypass), or close and reopen it to start the checks. A proper fix is
+  for the crawler to open its pull request with a token that triggers workflows.
 - **CI runner image**: `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19; the crawler needs `unzip`.
   Pin `ubuntu-24.04` in the workflows or verify after the switch.
 - **Old remote branches** `features` and `feature/path-addressed-objects`: the user has not decided
