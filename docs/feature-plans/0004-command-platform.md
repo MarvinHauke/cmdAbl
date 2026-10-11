@@ -19,7 +19,7 @@ arguments* and the `rm`/`select` commands, which are built on top of this platfo
 
 | Child | Status | Needed for |
 |---|---|---|
-| [0002](0002-command-feedback-pattern.md) Phase A | Draft | Handler return type (`CommandResult`) — must exist before 0005 fixes the handler contract |
+| [0002](0002-command-feedback-pattern.md) Phase A | Shipped (B/C open) | Handler return type (`CommandResult`) — must exist before 0005 fixes the handler contract |
 | [0005](0005-command-tree-and-module-authoring.md) | Draft | Everything below: the tree is what completion walks |
 | [0006](0006-completion-engine.md) | Draft | Replaces the flat fuzzy palette |
 
@@ -75,11 +75,36 @@ returns one result type, and the palette completes any position in any command f
 |---|---|---|
 | `cmdabl --setup`, `cmdabl --help` | `cmdabl setup`; `--help` is the universal option on every node | Old `--setup` kept as a deprecated alias for one release |
 | `pakabl install <id>` … `list` | Group `pakabl` with leaf subcommands and typed args (`<id>` enum from the index, `upgrade <id>@<version>`) | Replaces the `if/else` in `pakabl/index.ts` |
-| `mute` / `solo` `<path>[, <path>]` | Leaves with a variadic `path` argument | Multi-target syntax is an open question (below) |
+| `mute` / `solo` `<path>[, <path>]` | `mute`/`unmute`, `solo`/`unsolo` leaves with a variadic `path` argument (`multiple: "all"`); set, not toggle | Multi-target syntax is an open question (below); toggle stays only as a palette item action |
 | `goto` provider + `select` result handler | `goto <path>` leaf (the provider supplies path candidates) | `find` reuses it later |
 | `history` entries | Stay a provider; re-run goes through the normal parser | No new syntax |
 | `spike-run-track-creator` | Remove or hide behind a dev option | Blocked spike, see 0003 Step 0 |
 | `help` | Generated from the tree | |
+
+## Decisions from the external review (2026-10-11)
+
+A ChatGPT proposal ("POSIX-style contracts") was compared with this architecture. It mostly
+restates it; what changed:
+
+| Decision | Items |
+|---|---|
+| **Adopt** | resolve-before-handler (0005 §2b); result codes; handlers return results, only the platform renders; `multiple: one\|all` per argument; destructive commands only with `one`; resolver + object tree are core; bridge protocol with request id, timeout (≥300 ms, `update_display` runs ~10 Hz), `hello` with protocol version `v` and op list; history as module; "swap a command without touching palette/dispatcher/bridge" as acceptance test |
+| **Adopt, modified** | capabilities → coarse `requires: ["bridge"]`; revalidation → `select {route, expectName}` compare-and-set in the Remote Script; unavailable (code 5, no `hello`) vs. unknown end state (code 1, timeout after sending); set-not-toggle commands; `runOverTargets` inside `withinTransaction` (one undo step, no rollback); contract tests with `node:test` over `tsx` for the pure parts (parser, resolver on a fake tree, `presentResult`, `runOverTargets`, request timeout) |
+| **Defer** | typed pipelines (`PipelineValue`, `\|`) until `find` plus a second real chaining workflow exists — keep `CommandResult.details` out of the data channel, a future `value?` is a separate field; **external-process adapter** (use cases are plausible) — keep handlers on ports so it can become a port + module; constraints to check first: the announced stricter OS sandbox, macOS/Windows differences, serializable data exchange |
+| **Reject** | fine-grained capability strings + capability registry; `executionId`/`AbortSignal` (the palette is closed while a command runs); `retrySafe` effects metadata; noun-first naming (`tracks mute`); loading/unloading third-party modules at runtime (SDK-blocked, see 0003) |
+
+**Order change:** modules migrate to ports *and* the final parser contract in one pass — 0005
+steps 1–3 (types/validator/parser, registration API, tree serialization) land before the
+per-module migration, so no module is migrated twice. `cmdabl --setup` becomes `cmdabl setup`
+in that pass (old flag kept as a deprecated alias).
+
+Findings about the plans themselves, now fixed or tracked: 0002 mixed `ok` and `code`
+(fixed); `Invocation.args` carried raw strings (now resolved values, 0005); `TargetOutcome` had
+no per-target code and no place for ambiguity candidates (0002); `ResultHandler` still returns
+`void` and `goto` bypasses the result contract (migrates with the module pass; the item
+should dispatch `goto <path>`); `findTrackByPath` takes the first substring match silently
+(replaced by the resolver, rework step 3); `#n` suffixes are disambiguators resolved at
+execution time, not stable identities (identity is LOM route verified via `expectName`).
 
 ## Phased rollout
 

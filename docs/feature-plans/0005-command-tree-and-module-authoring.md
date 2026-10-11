@@ -55,7 +55,8 @@ interface CommandNode {
   children?: CommandNode[];     // group node: not runnable on its own (prints its help)
   options?: OptionDef[];
   args?: ArgDef[];              // leaf node: positional arguments, in order
-  run?: (inv: Invocation) => CommandResult | Promise<CommandResult>;   // leaf node only
+  requires?: "bridge"[];        // optional companions; checked before the handler (code 5 if absent)
+  run?: (inv: Invocation, ports: Ports) => CommandResult | Promise<CommandResult>;   // leaf node only
 }
 
 interface OptionDef { name: string; short?: string; takesValue?: boolean; summary: string }
@@ -66,7 +67,8 @@ interface ArgDef {
   variadic?: boolean;           // last argument only
   complete?: string;            // key of a completer registered by a module (see 3)
 }
-interface Invocation { path: string[]; options: Record<string, string | true>; args: string[][] }
+// `args` hold *resolved* values: `path` arguments are already LOM-backed nodes (see 2b), never raw strings.
+interface Invocation { path: string[]; options: Record<string, string | true>; args: ResolvedArg[][] }
 ```
 
 **Rules, checked at registration (violations are startup errors, not runtime surprises):**
@@ -92,7 +94,7 @@ platform calls **when the palette opens** and serializes next to the tree:
 
 ```ts
 api.commands.completer("pakabl-ids", () => index.map(e => ({ value: e.id, description: e.name })));
-api.commands.completer("track-path", () => snapshotObjectTree(api.context)); // from 0001
+api.commands.completer("track-path", ({ live }) => live.listPaths()); // via a port, never the raw context
 ```
 
 This replaces `registerProvider` for command arguments (providers remain for non-command palette
@@ -144,6 +146,24 @@ success unless it helps; return `CommandResult` instead of calling `showFeedback
 3. Serialize tree + completer snapshots into the webview payload (used by 0006).
 4. Migrate commands (see 0004 inventory), then remove the adapter.
 5. Write `docs/guides/adding-a-command.md` from section 6 once the API is stable.
+
+## Decisions from the external review (2026-10-11)
+
+Taken from comparing a ChatGPT architecture proposal with this plan (full table in
+[0004](0004-command-platform.md)):
+
+- `ArgDef.multiple?: "one" | "all"` (default `"one"`) — cardinality of *matches per token*;
+  distinct from `variadic` (several tokens). `required: false` allows zero matches. Destructive
+  commands (`rm`) must use `"one"`; the registration validator enforces it.
+- `requires: ["bridge"]` is the only capability concept: coarse, checked before the handler,
+  serialized when the palette opens so unavailable commands can be marked (0006). No capability
+  registry, no `executionId`/`AbortSignal`, no `retrySafe`.
+- Setting commands over toggles: `mute`/`unmute`, `solo`/`unsolo` (idempotent, history re-runs are
+  safe); a toggle remains only as a palette item action.
+- **Acceptance criterion:** a command can be added, replaced or removed without touching the
+  palette, the dispatcher or the bridge (only a LOM-only op needs a new Remote Script function).
+- The node/command contract stays adapter-neutral (handlers use ports, never `child_process`),
+  so an external-process adapter can be added later as a port + module (deferred, see 0004).
 
 ## Verification
 
