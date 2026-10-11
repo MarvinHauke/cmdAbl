@@ -63,8 +63,8 @@ Plans: 0001 "Phase 4 protocol", build order 0001 §7, layout 0001 §8, decisions
      faster drain (0001 §6, `76bbb5d`): the tick is 0.1 s in Live's bundled framework;
      `schedule_message` gives no gain; the one option is a `Live.Base.Timer` at about 20 ms
      (main-thread behaviour and CPU cost unmeasured). No timer for now (see "Decisions").
-   - Next: after the Live test, cmdabl-bridge removes the old one-way messages (`legacy.py`,
-     `src/ableton/select.ts`, `selectTrack`/`selectDevice`).
+   - Tasks out to cmdabl-bridge (2026-10-12): remove the old one-way messages (`legacy.py`,
+     `src/ableton/select.ts`, `selectTrack`/`selectDevice`), then build step 3, `track_facts`.
    - Known gaps, for roadmap steps 3.3/3.4: a failing palette row is shown as a plain message
      (the result handler cannot return a `CommandResult`); a row whose object is gone can fall
      back to the route and select another object (no name in the item); modules call
@@ -157,9 +157,9 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
 1. Remote Script step 2 (first `cmdabl --setup`, restart Live, `npm start`). Seen 2026-10-12:
    `cmdabl --bridge` → 0.2.0 with `hello, select`; `goto` on a track, a device, a return track,
    the main track and a track in a folded group; "not running" without a pick list when the
-   control surface is disabled; the first command right after `npm start` finds its track.
-   Open: `cmdabl --help` lists `--bridge`; a track row and a device row picked in the palette;
-   `find <pattern>` with several hits, then `next` / `prev`; is `goto` noticeably slower?;
+   control surface is disabled; the first command right after `npm start` finds its track;
+   `find`, `next`, `prev`; `goto` does not feel slower. Open: `cmdabl --help` lists `--bridge`;
+   a track row and a device row picked in the palette;
    `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open: answer, speed.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
