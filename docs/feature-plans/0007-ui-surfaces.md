@@ -67,16 +67,19 @@ decides how things look.
 
 ### 4. The pick list: zones, command line, follow mode (from the Live test, 2026-10-11)
 
-**Two zones (built in `1b305f6`, untested in Live; `ui/pick.html` only, no contract change).**
-Besides typed characters, `Backspace`, `Delete`, `←`/`→`, `Home` and `End` also return to the
-filter. The first `↓` enters the list *and* moves to the second row; the first row is marked
-with `Tab`, or with `↓` `↑` `Space`. The page tracks whether the
-*filter* (initial) or the *list* is active:
+**Two zones (built in `1b305f6` and `d8ca020`; `Space` marking and the command line seen
+working in Live with `mute`; `ui/pick.html` only, no contract change).** The page tracks whether
+the *filter* (initial) or the *list* is active:
 
 - In the filter, `Space` types a space, so `vermona midi` can be typed.
 - In the list of a multi-select pick, `Space` marks the active row and moves down one.
-- No key of its own to switch: `↓`/`↑` (and `Ctrl+n`/`Ctrl+p`) move the row and enter the list;
-  any typed character other than `Space` returns to the filter and is inserted there.
+- No key of its own to switch: `↓`/`↑` (and `Ctrl+n`/`Ctrl+p`) enter the list. In a multi-select
+  pick the first arrow only enters it and keeps the active row, so `↓` `Space` marks the first
+  row (the user found skipping it odd); in a single-select pick the arrows move at once.
+- Any typed character other than `Space`, and `Backspace`, `Delete`, `←`/`→`, `Home`, `End`,
+  return to the filter.
+- `Ctrl+Shift+D` toggles a diagnostic in the hint line (the last key event) — for Live tests,
+  not a feature.
 - The same in both zones: `Esc` cancels (closes, nothing runs, no history entry), `Enter`
   confirms, `Tab` marks.
 - The active zone is visible, and the hint line names `Space mark` only in the list. In a
