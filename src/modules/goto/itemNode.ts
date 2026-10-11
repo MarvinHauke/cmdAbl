@@ -8,7 +8,7 @@ import type { PaletteResult } from "../../types.js";
  * already reflected in the fresh tree, so a hit there is the same slot).
  */
 export function findItemNode(nodes: ObjectNode[], item: PaletteResult): ObjectNode | undefined {
-  if (item.type !== "track" && item.type !== "device") return undefined;
+  if (item.type !== "track" && item.type !== "device" && item.type !== "chain") return undefined;
   const byId = nodes.find((n) => n.kind === item.type && n.handleId === item.id);
   if (byId) return byId;
   const route = item.route;

@@ -7,8 +7,8 @@ import { buildObjectTree, flattenObjectTree, type ObjectNode } from "../../ablet
 import { selectNodeResult } from "../selectNode.js";
 
 /**
- * Surfaces the Set's addressable objects (tracks, group tracks, devices) in
- * the palette and selects them through the companion Remote Script's
+ * Surfaces the Set's addressable objects (tracks, group tracks, devices, chains) in
+ * the palette and selects them (tracks, devices, rack chains and drum pads) through the companion Remote Script's
  * request/reply bridge (`select`, with a name check and read-back).
  */
 export function activate(api: ModuleApi): void {

@@ -68,8 +68,8 @@ your own:
 
 | Module    | Capability                                                                 |
 | --------- | -------------------------------------------------------------------------- |
-| `goto`    | `goto <path>` selects a track or device (via the Remote Script bridge); tracks/devices are also listed in the palette |
-| `find`    | `find <pattern> [-t\|-d]` — every track/device whose path contains the pattern; `next` / `prev` step through the matches |
+| `goto`    | `goto <path>` selects a track, device or chain / drum pad (via the Remote Script bridge); they are also listed in the palette |
+| `find`    | `find <pattern> [-t] [-d] [-c]` — every track, device and chain (rack chains, Drum Rack pads) whose path contains the pattern; the flags narrow it to tracks, devices or chains; `next` / `prev` step through the matches |
 | `mute`    | `mute <track>…` toggles mute per track; `unmute <track>…` always unmutes |
 | `solo`    | `solo <track>…` toggles solo per track; `unsolo <track>…` always unsolos |
 | `arm`     | `arm <track>…` toggles record arm per track; `unarm <track>…` always disarms; return, main and group tracks cannot be armed and are reported as failed; with the Remote Script, so are tracks Live greys out (e.g. a MIDI track whose input device is not available — checked after the write, as the Live API cannot tell beforehand; a refused `arm` may leave an extra undo step); a script enabled mid-session is noticed after `cmdabl --bridge` or a `goto` |

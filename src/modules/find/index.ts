@@ -1,14 +1,15 @@
 import type { ModuleApi } from "../types.js";
-import { buildObjectTree, flattenObjectTree, type NodeKind } from "../../ableton/objectTree.js";
+import { buildObjectTree, flattenObjectTree } from "../../ableton/objectTree.js";
 import { resolvePath, uniquePath } from "../../ableton/resolvePath.js";
 import { getBridge } from "../../ableton/bridge.js";
 import { selectNodeResult } from "../selectNode.js";
 import { ExitCode, fail, type CommandResult } from "../../types.js";
 import { matches as matchesPattern } from "../../core/match.js";
 import { MatchList } from "./matches.js";
+import { findKinds } from "./kinds.js";
 
 /**
- * `find <pattern> [-t|-d]` — grep for the Live Set: every track/device whose
+ * `find <pattern> [-t] [-d] [-c]` — grep for the Live Set: every track/device/chain whose
  * path contains every word of the pattern. One match is selected directly; several are shown
  * in the pick list. `next` / `prev` then step through the matches.
  *
@@ -29,20 +30,17 @@ export function activate(api: ModuleApi): void {
 
   api.commands.add({
     name: "find",
-    summary: "find tracks and devices whose path contains a pattern",
+    summary: "find tracks, devices and chains whose path contains a pattern",
     requires: ["bridge"],
     options: [
       { name: "tracks", short: "t", summary: "only tracks" },
       { name: "devices", short: "d", summary: "only devices" },
+      { name: "chains", short: "c", summary: "only chains and drum pads" },
     ],
     args: [{ name: "pattern", kind: "text", rest: true }],
     run: async (invocation): Promise<CommandResult | void> => {
       const pattern = String(invocation.args[0]?.[0] ?? "");
-      const kinds: NodeKind[] = invocation.options.tracks
-        ? ["track"]
-        : invocation.options.devices
-          ? ["device"]
-          : ["track", "device"];
+      const kinds = findKinds(invocation.options);
       const all = liveNodes();
       const hits = all.filter((n) => kinds.includes(n.kind) && matchesPattern(n.path, pattern));
       if (hits.length === 0) return fail(ExitCode.NOT_FOUND, `find: nothing matches "${pattern}"`);
