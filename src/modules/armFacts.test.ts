@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createFakeBridge } from "../ableton/bridgeFake.js";
 import { TEXT_STALE } from "../ableton/bridgeProtocol.js";
-import { loadArmFacts } from "./armFacts.js";
+import { armFactsLines, armReadBackLine, loadArmFacts } from "./armFacts.js";
 import { factsRefusal } from "./trackSetValue.js";
 
 const nodes = [
@@ -26,7 +26,7 @@ test("loadArmFacts: one request for all tracks, entries in order", async () => {
       },
     },
   });
-  const facts = await loadArmFacts(bridge, nodes);
+  const { facts } = await loadArmFacts(bridge, nodes);
   assert.equal(facts?.length, 2);
   assert.equal(bridge.calls.filter((c) => c.op === "track_facts").length, 1);
   assert.equal(facts?.[0]?.ok && facts[0].value.canBeArmed, true);
@@ -35,24 +35,26 @@ test("loadArmFacts: one request for all tracks, entries in order", async () => {
 
 test("loadArmFacts: no script → undefined, no request", async () => {
   const bridge = createFakeBridge({ running: false });
-  assert.equal(await loadArmFacts(bridge, nodes), undefined);
+  assert.equal((await loadArmFacts(bridge, nodes)).facts, undefined);
   assert.equal(bridge.calls.length, 0);
   // now known unavailable: no hello again either
   assert.equal(bridge.state(), "unavailable");
-  assert.equal(await loadArmFacts(bridge, nodes), undefined);
+  const again = await loadArmFacts(bridge, nodes);
+  assert.equal(again.facts, undefined);
+  assert.match(again.reason, /unavailable/);
   assert.equal(bridge.calls.length, 0);
 });
 
 test("loadArmFacts: an outdated script without the op → undefined", async () => {
   const bridge = createFakeBridge({ ops: {} });
-  assert.equal(await loadArmFacts(bridge, nodes), undefined);
+  assert.equal((await loadArmFacts(bridge, nodes)).facts, undefined);
 });
 
 test("loadArmFacts: an entry that fails alone stays an entry", async () => {
   const bridge = createFakeBridge({
     ops: { track_facts: () => ({ ok: true, value: { tracks: [entry(true), { error: { code: "stale", text: "x" } }] } }) },
   });
-  const facts = await loadArmFacts(bridge, nodes);
+  const { facts } = await loadArmFacts(bridge, nodes);
   assert.equal(facts?.[0]?.ok, true);
   assert.deepEqual(facts?.[1], { ok: false, code: 1, text: TEXT_STALE });
 });
@@ -70,4 +72,19 @@ test("factsRefusal: unarmable MIDI track, group, stale entry, missing facts", ()
   assert.equal(factsRefusal({ ok: false, code: 1, text: TEXT_STALE }), TEXT_STALE);
   // any other failed entry: no objection, the SDK-only path decides
   assert.equal(factsRefusal({ ok: false, code: 1, text: "Remote Script: AttributeError" }), undefined);
+});
+
+test("log lines: facts per track, none with a reason, read-back", async () => {
+  const paths = [{ path: "/Drums" }, { path: "/Keys" }];
+  const bridge = createFakeBridge({
+    ops: { track_facts: () => ({ ok: true, value: { tracks: [entry(true), entry(false)] } }) },
+  });
+  assert.deepEqual(armFactsLines(paths, await loadArmFacts(bridge, nodes)), [
+    "cmdAbl: arm facts: /Drums canBeArmed=true isGroup=false isGrouped=false arm=false",
+    "cmdAbl: arm facts: /Keys canBeArmed=false isGroup=false isGrouped=false arm=null",
+  ]);
+  const off = await loadArmFacts(createFakeBridge({ running: false }), nodes);
+  assert.deepEqual(armFactsLines(paths, off), [`cmdAbl: arm facts: none (${off.reason})`]);
+  assert.match(off.reason, /bridge unavailable/);
+  assert.equal(armReadBackLine("/Drums", true, true), "cmdAbl: arm: /Drums wrote true, reads true");
 });

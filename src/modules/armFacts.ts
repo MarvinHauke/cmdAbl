@@ -11,21 +11,48 @@ import type { ObjectNode } from "../ableton/objectTree.js";
  * to every call: a cached "unavailable" skips the request; only an unknown
  * state asks once (the answer is cached by the client).
  */
+export interface ArmFacts {
+  /** One entry per node, in order; undefined when no facts were available. */
+  facts: Array<BridgeResult<TrackFacts>> | undefined;
+  /** Why there are none (empty when there are). For the log only. */
+  reason: string;
+}
+
 export async function loadArmFacts(
   bridge: Bridge,
   nodes: Array<Pick<ObjectNode, "scope" | "route" | "name">>,
-): Promise<Array<BridgeResult<TrackFacts>> | undefined> {
-  if (nodes.length === 0) return undefined;
+): Promise<ArmFacts> {
+  const none = (reason: string): ArmFacts => ({ facts: undefined, reason });
+  if (nodes.length === 0) return none("no tracks");
   try {
     const state = bridge.state();
-    if (state === "unavailable") return undefined;
+    if (state === "unavailable") return none("bridge unavailable (cached)");
     if (state === "unknown") {
       const hello = await bridge.available();
-      if (!hello.ok) return undefined;
+      if (!hello.ok) return none(`bridge unavailable (code ${hello.code})`);
     }
     const reply = await trackFacts(bridge, nodes);
-    return reply.ok && reply.value.length === nodes.length ? reply.value : undefined;
+    if (!reply.ok) return none(`track_facts failed (code ${reply.code})`);
+    if (reply.value.length !== nodes.length) return none("track_facts answered the wrong number of tracks");
+    return { facts: reply.value, reason: "" };
   } catch {
-    return undefined;
+    return none("track_facts threw");
   }
+}
+
+/** Log lines for what `arm` learned: names and booleans only. */
+export function armFactsLines(nodes: Array<Pick<ObjectNode, "path">>, loaded: ArmFacts): string[] {
+  const facts = loaded.facts;
+  if (!facts) return [`cmdAbl: arm facts: none (${loaded.reason})`];
+  return nodes.map((node, i) => {
+    const entry = facts[i];
+    if (!entry) return `cmdAbl: arm facts: ${node.path} missing`;
+    if (!entry.ok) return `cmdAbl: arm facts: ${node.path} failed (code ${entry.code}: ${entry.text})`;
+    const f = entry.value;
+    return `cmdAbl: arm facts: ${node.path} canBeArmed=${f.canBeArmed} isGroup=${f.isGroup} isGrouped=${f.isGrouped} arm=${f.arm}`;
+  });
+}
+
+export function armReadBackLine(path: string, wrote: boolean, reads: unknown): string {
+  return `cmdAbl: arm: ${path} wrote ${wrote}, reads ${String(reads)}`;
 }

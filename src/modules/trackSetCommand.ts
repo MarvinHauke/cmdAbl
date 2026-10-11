@@ -2,7 +2,7 @@ import type { ModuleApi } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { trackFor } from "../ableton/trackLookup.js";
 import { getBridge } from "../ableton/bridge.js";
-import { loadArmFacts } from "./armFacts.js";
+import { armFactsLines, armReadBackLine, loadArmFacts } from "./armFacts.js";
 import { armDecision, armRefusal, factsRefusal, isGroupNode, nextTrackValue, notChanged, type TrackSetValue } from "./trackSetValue.js";
 import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../types.js";
 
@@ -46,7 +46,10 @@ export function registerTrackSetCommand(
       // Arming asks Live what it knows about the tracks first (one request,
       // before any write) — only when the Remote Script is there; otherwise
       // the SDK-only path below. Disarming needs no facts.
-      const facts = prop === "arm" && value !== false ? await loadArmFacts(getBridge(), nodes) : undefined;
+      const loaded = prop === "arm" && value !== false ? await loadArmFacts(getBridge(), nodes) : undefined;
+      const facts = loaded?.facts;
+      // Evidence for what Live reports (names and booleans only).
+      if (loaded) for (const line of armFactsLines(nodes, loaded)) console.log(line);
 
       // One transaction = one undo step for the whole command.
       api.context.withinTransaction(() => {
@@ -117,6 +120,7 @@ function verifyArm(api: ModuleApi, written: WrittenArm[], outcomes: TargetOutcom
     if (!outcome || !outcome.ok) continue; // a write that threw is already a failure
     try {
       const track = trackFor(api.context, w.node);
+      if (track) console.log(armReadBackLine(w.node.path, w.wanted, track.arm));
       if (track && notChanged(w.wanted, track.arm)) {
         outcomes[w.outcome] = {
           path: w.node.path,
