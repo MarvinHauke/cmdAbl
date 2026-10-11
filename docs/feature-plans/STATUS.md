@@ -9,8 +9,9 @@ _Last updated: 2026-10-11._
 ## Where the code is
 
 - `main`: SDK 1.0.0-beta.1, pakabl index crawler, CI, guides, MkDocs site, plans 0004–0006.
-- `refactor/core-modules` (draft PR #9, CI green): everything below under "Built, not yet merged".
-  Merge after the Live test passes.
+- `refactor/core-modules` (draft PR #9): pushed on 2026-10-11 up to `99f5444`; CI, docs and the
+  new secret scan are green. Everything below under "Built, not yet merged". Merge after the Live
+  test passes.
 - `docs/sdk-tree-check` (local only, no changes yet): parked task, see "Parked".
 - PR #8 `pakabl/index-update` (opened by the daily crawler, not reviewed yet): check the diff —
   if only star counts or push dates in `candidates.json` changed, it is the known noise (see "Parked").
@@ -151,7 +152,7 @@ _Last updated: 2026-10-11._
 | `pakabl list` page sends `repo:<id>` instead of a URL (one line in `ui/pakabl-list.html`) | cmdabl-modules (host), cmdabl-ui (page) | committed `82beafd` + `4a479ce`; needs the Live test: the Repo button opens the extension's GitHub page (step 13) |
 | Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | committed `1b305f6`, reviewed; keys checked with a scripted browser run, the look is unchecked; needs the Live test (step 15 above). Dialog height for the extra line: cmdabl-core, committed `bd13a52`, reviewed |
 | Pick list: first arrow enters the list without moving; robust `Space` detection; `Ctrl+Shift+D` key diagnostic | cmdabl-ui | committed `d8ca020`, reviewed; needs the Live test (step 15) |
-| Secret scan in CI (`.github/workflows/secret-scan.yml`, gitleaks 8.30.1 pinned by checksum, `docs/guides/ci.md`) | cmdabl-core | committed `1092e4e`, reviewed. Full history scanned locally: 0 findings. **Only the first CI run after a push shows whether the workflow works** — then check the push run and start one manual run |
+| Secret scan in CI (`.github/workflows/secret-scan.yml`, gitleaks 8.30.1 pinned by checksum, `docs/guides/ci.md`) | cmdabl-core | committed `1092e4e`, reviewed. Full history scanned locally: 0 findings. Verified on GitHub after the push: the push run and the pull-request run (78 commits) scan their ranges, a manual run scans the whole history (117 commits) — no leaks |
 | Pin `peter-evans/create-pull-request` in `pakabl-index.yml` to a commit SHA | cmdabl-core | committed `a5e1adc` (v7.0.11), reviewed; the next manual run of the index workflow after a push is the check |
 | `cmdabl --help` prints usage instead of opening the Ableton manual; `openUrl` in its own file | cmdabl-core | committed `fcb7296`, reviewed. The usage text points to `man cmdabl` — **do not push before the `man` module is in**. Live: `cmdabl --help` and bare `cmdabl` show the usage, `cmdabl --foo` adds `unknown flag`, `cmdabl --setup` unchanged |
 | New module `man`: `man ableton` (Live manual), `man cmdabl` (docs site) | cmdabl-modules | committed `69452e9`, reviewed; needs the Live test (step 16). On Windows `man` answers with the URL (exit 5) until core's `openUrl` has a Windows opener |
