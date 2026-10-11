@@ -67,6 +67,14 @@ _Last updated: 2026-10-11._
     - `pakabl list` still opens and its buttons work.
     - If the palette sticks again: look in the `npm start` log for `dialog open: X` without a
       matching `dialog closed`, or `trigger ignored: a command is still running`.
+13. pakabl (`504a606`, `9dc9ec7`):
+    - `pakabl update` → "index refreshed (16 extensions)", no note about ignored entries.
+    - `pakabl list` → Install, Uninstall, Update and Repo each work.
+    - `pakabl install ../x` and `pakabl uninstall A.b` → "not a valid extension id"; nothing
+      on disk is touched.
+    - `pakabl uninstall some.thing` (not installed) → "not installed".
+    - Install, then uninstall a real extension → its folder appears, then is gone.
+    - `pakabl upgrade federico-pepe.snake@9.9.9` → a version-mismatch failure.
 
 ### Found in the Live test (2026-10-11, still running)
 
@@ -96,7 +104,7 @@ _Last updated: 2026-10-11._
 | Dash handling: quote leading-dash words in the remembered line, `--` ends options, lone `-` is a word, hint in "unknown option" (0005) | cmdabl-core | committed `d7ba529` + `fa31212`, reviewed; needs the Live test (step 11 above) |
 | One dialog at a time, "open" covers messages, open/close log lines | cmdabl-core | committed `6ad8884`, reviewed; needs the Live test (step 12 above). Behaviour change: a trigger while a message is up is ignored |
 | `inlineJson` in its own file; `pakabl list` escapes the index data with it | cmdabl-core, then cmdabl-modules | committed `cc5c62f` + `504a606`, reviewed; Live: `pakabl list` and its buttons as before |
-| pakabl hardening: validate ids before unzip and delete, open only repo URLs from the index, fail on a missing page placeholder | cmdabl-modules | sent |
+| pakabl hardening: validate ids before unzip and delete, open only repo URLs from the index, fail on a missing page placeholder | cmdabl-modules | committed `9dc9ec7`, reviewed; needs the Live test (step 13 above). Behaviour changes: pakabl errors are failing results now (no history entry); `pakabl uninstall` refuses folder names outside the id shape, e.g. hand-installed ones |
 | Child processes get an allowlisted environment instead of all of `process.env` (`src/setup.ts`, pakabl's `platform.ts`) | cmdabl-core, then cmdabl-modules | sent |
 | `pakabl list` page sends `repo:<id>` instead of a URL (one line in `ui/pakabl-list.html`) | cmdabl-ui | waiting, with the pick page task |
 | Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | waiting — the user starts it with `scripts/agents.sh ui`; needs the core task first |
