@@ -201,6 +201,11 @@ Taken from comparing a ChatGPT architecture proposal with this plan (full table 
   `mute opal /Opal Lead` is stored as `mute "/Opal Lead"`. `text` arguments and options stay as
   typed. A history re-run therefore never asks and does not change meaning when a later track
   makes `opal` ambiguous. The pick list's preview follows the same rule.
+  Known consequence, to decide when the first command uses it: an argument declared
+  `multiple: "all"` is remembered as the fixed list of objects it matched at the time, not as
+  "everything matching".
+- **An option starts with an unquoted dash** (`--to="a b"` is an option, a fully quoted `"--x"`
+  is a word), so a remembered line with a spaced option value parses again.
 
 ## Verification
 
