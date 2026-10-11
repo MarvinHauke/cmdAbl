@@ -86,7 +86,12 @@ Plans: 0001 "Phase 4 protocol", build order 0001 §7, layout 0001 §8, decisions
    `cmdabl --setup` installs today, but does not compare versions (0001 §7, step 7); the
    subcommand form is step 3.1.
 4. Operations, in this order: `select` with read-back (built, see 1); track facts (built, see
-   1; `arm` verifies through the script); task out to cmdabl-bridge (2026-10-12): Drum Rack chains
+   1; `arm` verifies through the script); in work (2026-10-12): chain nodes (kind "chain",
+   path `/Track/Rack/Chain`, names from one `chains` request for all racks, cached; the tree
+   build never waits; the first palette open after a start may list no chains yet — accepted;
+   selecting uses `select`, so step 5 needs no new op). Order: cmdabl-core adds "chain" to
+   `PaletteItemType`, cmdabl-bridge wires the tree, cmdabl-modules (`goto`, `find`) and
+   cmdabl-ui (row look) follow. Planned as: Drum Rack chains
    and pads with their real names in the object tree, pad selection (`find vermona kick`);
    reading the current selection (for restoring it later in follow mode).
 5. Unit tests for the protocol on both sides (built for steps 1–2); a Live test list per
