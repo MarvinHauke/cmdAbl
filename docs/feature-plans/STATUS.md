@@ -345,6 +345,11 @@ Changing these after a release breaks what users have learned and what is stored
    `registerResultHandler` — a `ModuleApi` change, to be confirmed with the user first.
 4. Ports instead of the raw SDK context in `ModuleApi`, then the command-authoring guide
    (`docs/guides/adding-a-command.md`).
+5. Leftovers from before the rework (checked 2026-10-11): `pakabl`, `help` and `cmdabl` still
+   use the older `registry.register` path and parse their own flags (goes with 3.1; then remove
+   `ModuleApi.registry`); platform files still outside `src/core/` (`src/commandRegistry.ts`,
+   `src/types.ts`, `src/providers/commandProvider.ts`, `src/setup.ts`) and an empty `src/ui/`
+   folder — move them and extend the import-boundary test. No unused module was found.
 
 ### 4. Small things that make it feel finished
 
