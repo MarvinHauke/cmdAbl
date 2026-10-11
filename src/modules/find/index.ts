@@ -3,11 +3,11 @@ import { buildObjectTree, flattenObjectTree, type NodeKind } from "../../ableton
 import { resolvePath, uniquePath } from "../../ableton/resolvePath.js";
 import { selectNode } from "../../ableton/select.js";
 import { ExitCode, fail, type CommandResult } from "../../types.js";
-import { MatchList } from "./matches.js";
+import { MatchList, matchesPattern } from "./matches.js";
 
 /**
  * `find <pattern> [-t|-d]` — grep for the Live Set: every track/device whose
- * path contains the pattern. One match is selected directly; several are shown
+ * path contains every word of the pattern. One match is selected directly; several are shown
  * in the pick list. `next` / `prev` then step through the matches.
  *
  * The only module that keeps state (the last match list) — in memory only.
@@ -34,14 +34,14 @@ export function activate(api: ModuleApi): void {
     ],
     args: [{ name: "pattern", kind: "text", rest: true }],
     run: async (invocation): Promise<CommandResult | void> => {
-      const pattern = String(invocation.args[0]?.[0] ?? "").toLowerCase();
+      const pattern = String(invocation.args[0]?.[0] ?? "");
       const kinds: NodeKind[] = invocation.options.tracks
         ? ["track"]
         : invocation.options.devices
           ? ["device"]
           : ["track", "device"];
       const all = liveNodes();
-      const hits = all.filter((n) => kinds.includes(n.kind) && n.path.toLowerCase().includes(pattern));
+      const hits = all.filter((n) => kinds.includes(n.kind) && matchesPattern(n.path, pattern));
       if (hits.length === 0) return fail(ExitCode.NOT_FOUND, `find: nothing matches "${pattern}"`);
 
       if (hits.length === 1) {
