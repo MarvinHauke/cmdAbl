@@ -7,7 +7,7 @@ import { buildObjectTree, flattenObjectTree } from "../../ableton/objectTree.js"
 // is short-lived, so the data can't go stale underneath it.
 //
 // The handle id and route are carried through so the object can be
-// re-resolved at execute time (see resolveRef) — handles aren't permanent,
+// re-resolved at execute time (see findItemNode) — handles aren't permanent,
 // and re-walking by id (falling back to the recorded route) recovers the
 // object's current position after a reorder.
 

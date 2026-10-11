@@ -100,7 +100,9 @@ palette opens.
 > **Note:** selecting a track requires the companion **cmdAbl Remote Script**
 > (the Extensions SDK cannot change Live's selection). See _Remote Script
 > bridge_ under Installation. Without it, the palette still opens and runs
-> commands — only track selection is a no-op.
+> commands; `goto`, `find`, `next`, `prev` and picking an object in the palette
+> report "Remote Script not running / not installed / outdated" instead
+> of selecting.
 
 </details>
 

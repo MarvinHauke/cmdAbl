@@ -1,7 +1,8 @@
 import type { ModuleApi } from "../types.js";
 import { buildObjectTree, flattenObjectTree, type NodeKind } from "../../ableton/objectTree.js";
 import { resolvePath, uniquePath } from "../../ableton/resolvePath.js";
-import { selectNode } from "../../ableton/select.js";
+import { getBridge } from "../../ableton/bridge.js";
+import { selectNodeResult } from "../selectNode.js";
 import { ExitCode, fail, type CommandResult } from "../../types.js";
 import { MatchList, matchesPattern } from "./matches.js";
 
@@ -28,6 +29,7 @@ export function activate(api: ModuleApi): void {
   api.commands.add({
     name: "find",
     summary: "find tracks and devices whose path contains a pattern",
+    requires: ["bridge"],
     options: [
       { name: "tracks", short: "t", summary: "only tracks" },
       { name: "devices", short: "d", summary: "only devices" },
@@ -46,11 +48,10 @@ export function activate(api: ModuleApi): void {
 
       if (hits.length === 1) {
         matches.set([uniquePath(all, hits[0]!)], 0);
-        selectNode(hits[0]!);
-        return;
+        return selectNodeResult(getBridge(), hits[0]!);
       }
       const chosen = await api.pick(`find: "${pattern}" — ${hits.length} matches`, hits);
-      if (chosen?.[0]) selectNode(chosen[0]);
+      if (chosen?.[0]) return selectNodeResult(getBridge(), chosen[0]);
     },
   });
 
@@ -58,12 +59,16 @@ export function activate(api: ModuleApi): void {
     api.commands.add({
       name,
       summary,
-      run: (): CommandResult | void => {
+      requires: ["bridge"],
+      run: async (): Promise<CommandResult> => {
         const entry = matches.step(delta);
         if (!entry) return fail(ExitCode.NOT_FOUND, `${name}: no matches to step through — run "find <pattern>" first`);
         const found = resolvePath(liveNodes(), entry.path);
         if (found.length !== 1) return fail(ExitCode.NOT_FOUND, `${name}: "${entry.path}" is no longer there`);
-        selectNode(found[0]!);
+        const outcome = await selectNodeResult(getBridge(), found[0]!);
+        // A failed select must not use up a step: go back so a re-run tries the same match.
+        if (outcome.code !== 0) matches.step(delta === 1 ? -1 : 1);
+        return outcome;
       },
     });
   stepCommand("next", 1, "go to the next match of the last find");
