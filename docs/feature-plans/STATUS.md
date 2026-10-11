@@ -63,8 +63,12 @@ Plans: 0001 "Phase 4 protocol", build order 0001 §7, layout 0001 §8, decisions
      faster drain (0001 §6, `76bbb5d`): the tick is 0.1 s in Live's bundled framework;
      `schedule_message` gives no gain; the one option is a `Live.Base.Timer` at about 20 ms
      (main-thread behaviour and CPU cost unmeasured). No timer for now (see "Decisions").
-   - Tasks out to cmdabl-bridge (2026-10-12): remove the old one-way messages (`legacy.py`,
-     `src/ableton/select.ts`, `selectTrack`/`selectDevice`), then build step 3, `track_facts`.
+   - Old one-way messages removed (`a462647`). Step 3 built: `track_facts` (`1d625db`, script
+     0.3.0; `trackFacts()` in `bridgeOps.ts`: `canBeArmed`, `isGroup`, `isGrouped`, `arm`, one
+     request for up to 20 tracks). Unverified until Live: `can_be_armed` for a MIDI track
+     without its input device, for a group and for the main track. Task out to cmdabl-modules:
+     `arm` uses the facts when the script is there and behaves as today when it is not (`arm`
+     does not require the bridge). Needs `cmdabl --setup` and a restart of Live again.
    - Known gaps, for roadmap steps 3.3/3.4: a failing palette row is shown as a plain message
      (the result handler cannot return a `CommandResult`); a row whose object is gone can fall
      back to the route and select another object (no name in the item); modules call
