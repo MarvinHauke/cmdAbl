@@ -324,11 +324,11 @@ Reply: `{"v": 1, "id": "<same>", "ok": true, "result": { … }}` or
   Live not restarted".
 - **Outdated script**: today's script logs "unknown cmd" and never replies, so `hello` times out.
   When the installed-file check says "installed, old version", the text is "installed script is
-  outdated; run `cmdabl setup`, restart Live" — not "not running". **Behaviour change**: `goto`
+  outdated; run `cmdabl --setup`, restart Live" — not "not running". **Behaviour change**: `goto`
   selects with the old script today and returns exit code 5 after build step 2.
 - **Mismatch**: `v` differs, or an op the extension needs is missing from `ops` → exit code 5 with
-  both versions and "run `cmdabl setup`, restart Live".
-- `cmdabl setup` needs the installed `VERSION` (read from the file, no `hello`), and after
+  both versions and "run `cmdabl --setup`, restart Live".
+- `cmdabl --setup` (renamed to `cmdabl setup` in the syntax freeze, roadmap step 3; the texts above follow the rename) needs the installed `VERSION` (read from the file, no `hello`), and after
   copying always says that Live must be restarted (Python is loaded once per start).
 - The extension sends `hello` lazily on first bridge use and caches the answer for the session;
   the cache is dropped on the first timeout.

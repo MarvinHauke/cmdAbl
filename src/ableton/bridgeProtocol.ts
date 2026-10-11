@@ -25,10 +25,10 @@ export interface HelloInfo {
 }
 
 export const TEXT_STALE = "the Live Set changed; run the command again";
-export const TEXT_OUTDATED = "installed Remote Script is outdated; run `cmdabl setup` and restart Live";
+export const TEXT_OUTDATED = "installed Remote Script is outdated; run `cmdabl --setup` and restart Live";
 export const TEXT_NOT_RUNNING =
   "Remote Script not running (enable cmdAbl as a control surface in Live's preferences, then restart Live)";
-export const TEXT_NOT_INSTALLED = "Remote Script not installed; run `cmdabl setup` and restart Live";
+export const TEXT_NOT_INSTALLED = "Remote Script not installed; run `cmdabl --setup` and restart Live";
 export const TEXT_NO_ANSWER = "the Remote Script did not answer; check Live";
 
 export function fail(code: BridgeFailureCode, text: string): BridgeResult<never> {
