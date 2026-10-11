@@ -12,6 +12,8 @@ _Last updated: 2026-10-11._
 - `refactor/core-modules` (draft PR #9, CI green): everything below under "Built, not yet merged".
   Merge after the Live test passes.
 - `docs/sdk-tree-check` (local only, no changes yet): parked task, see "Parked".
+- PR #8 `pakabl/index-update` (opened by the daily crawler, not reviewed yet): check the diff —
+  if only star counts or push dates in `candidates.json` changed, it is the known noise (see "Parked").
 
 ## Built, not yet merged (PR #9)
 
