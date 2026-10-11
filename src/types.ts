@@ -99,13 +99,17 @@ export type ExitCodeValue = (typeof ExitCode)[keyof typeof ExitCode];
 export interface TargetOutcome {
   path: string;
   ok: boolean;
+  /** Per-target code when it differs from the overall one (e.g. NOT_FOUND inside a FAILURE). */
+  code?: ExitCodeValue;
   message?: string;
 }
 
 export interface CommandResult {
-  code: number;
+  code: ExitCodeValue;
   message?: string;
   details?: TargetOutcome[];
+  /** AMBIGUOUS only: the paths that matched (candidates are not outcomes). */
+  candidates?: string[];
 }
 
 export const ok = (message?: string, details?: TargetOutcome[]): CommandResult => ({
@@ -115,7 +119,7 @@ export const ok = (message?: string, details?: TargetOutcome[]): CommandResult =
 });
 
 export const fail = (
-  code: Exclude<number, 0>,
+  code: Exclude<ExitCodeValue, 0>,
   message: string,
   details?: TargetOutcome[],
 ): CommandResult => ({ code, message, ...(details ? { details } : {}) });
