@@ -56,3 +56,77 @@ export function armFactsLines(nodes: Array<Pick<ObjectNode, "path">>, loaded: Ar
 export function armReadBackLine(path: string, wrote: boolean, reads: unknown): string {
   return `cmdAbl: arm: ${path} wrote ${wrote}, reads ${String(reads)}`;
 }
+
+// ── verify after the write ──────────────────────────────────────────────────
+// The SDK's `arm` can say "armed" for a track Live refused to arm (a MIDI
+// track whose input device is missing: the button is greyed out). The script
+// reads the LOM, which is right. After the write it is asked once more for the
+// written tracks. The write reaches Live before the script's reply (the request
+// is handled on Live's next tick); should a normal track still read its old
+// value, one second look after a short pause decides — so a slow tick is never
+// reported as a failure.
+
+export interface ArmWrite {
+  node: Pick<ObjectNode, "scope" | "route" | "name" | "path">;
+  wanted: boolean;
+}
+
+export interface ArmVerdict {
+  /** ok: the script reads what was written; mismatch: it does not; unknown: no answer for this track. */
+  state: "ok" | "mismatch" | "unknown";
+  /** What the script reads (null cannot be armed, counted as off); undefined when unknown. */
+  actual?: boolean;
+  /** True when the first look mismatched and a second look decided (evidence for the 100 ms pause). */
+  secondLook?: boolean;
+}
+
+/** The current value a toggle starts from: the script's, when it has one, else the SDK's. */
+export function armBase(sdkValue: boolean, entry: BridgeResult<TrackFacts> | undefined): boolean {
+  if (entry?.ok && entry.value.arm !== null) return entry.value.arm;
+  return sdkValue;
+}
+
+export function classifyArm(wanted: boolean, entry: BridgeResult<TrackFacts> | undefined): ArmVerdict {
+  if (!entry || !entry.ok) return { state: "unknown" };
+  const actual = entry.value.arm ?? false;
+  return { state: actual === wanted ? "ok" : "mismatch", actual };
+}
+
+export async function verifyArmWrites(
+  bridge: Bridge,
+  writes: ArmWrite[],
+  options: { sleep?: (ms: number) => Promise<void>; delayMs?: number } = {},
+): Promise<ArmVerdict[]> {
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const unknown = writes.map((): ArmVerdict => ({ state: "unknown" }));
+  if (writes.length === 0) return [];
+  const ask = async (indices: number[]): Promise<Array<BridgeResult<TrackFacts>> | undefined> => {
+    try {
+      const reply = await trackFacts(bridge, indices.map((i) => writes[i]!.node));
+      return reply.ok && reply.value.length === indices.length ? reply.value : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const all = writes.map((_, i) => i);
+  const first = await ask(all);
+  if (!first) return unknown;
+  const verdicts = writes.map((w, i) => classifyArm(w.wanted, first[i]));
+  const again = all.filter((i) => verdicts[i]!.state === "mismatch");
+  if (again.length > 0) {
+    await sleep(options.delayMs ?? 100);
+    const second = await ask(again);
+    if (second) again.forEach((i, k) => (verdicts[i] = { ...classifyArm(writes[i]!.wanted, second[k]), secondLook: true }));
+  }
+  return verdicts;
+}
+
+export function armVerifyLine(path: string, wanted: boolean, verdict: ArmVerdict): string {
+  return `cmdAbl: arm verify: ${path} wanted ${wanted}, script reads ${verdict.actual ?? "?"} -> ${verdict.state}${verdict.secondLook ? " (first look mismatched, second look decided)" : ""}`;
+}
+
+export function armNotChangedText(wanted: boolean): string {
+  return wanted
+    ? "Live did not arm this track (its arm button is disabled, e.g. no input device)"
+    : "Live did not disarm this track";
+}

@@ -2,7 +2,15 @@ import type { ModuleApi } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { trackFor } from "../ableton/trackLookup.js";
 import { getBridge } from "../ableton/bridge.js";
-import { armFactsLines, armReadBackLine, loadArmFacts } from "./armFacts.js";
+import {
+  armBase,
+  armFactsLines,
+  armNotChangedText,
+  armReadBackLine,
+  armVerifyLine,
+  loadArmFacts,
+  verifyArmWrites,
+} from "./armFacts.js";
 import { armDecision, armRefusal, factsRefusal, isGroupNode, nextTrackValue, notChanged, type TrackSetValue } from "./trackSetValue.js";
 import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../types.js";
 
@@ -16,13 +24,15 @@ import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../t
 // `arm` is special: a return, main or group track cannot be armed, and asking
 // Live (via the SDK) is not a harmless no-op — it neither throws nor takes
 // effect, and a write to a group track left the extension's dialogs hanging.
-// Those are refused up front, without a write. For anything else Live may
-// refuse, the value is read back after the transaction and a write that did
-// not take is reported. `mute` and `solo` stay legitimate on group tracks.
-// When the Remote Script is reachable, `arm` also asks Live (`track_facts`) up
-// front and refuses tracks Live greys out (a MIDI track without an input
-// device); without the script it behaves as above. The command does not
-// require the script.
+// Those are refused up front, without a write; so, with the Remote Script, is
+// a track whose facts say `canBeArmed` is false. A MIDI track whose input
+// device is missing is greyed out in Live but still reports itself as armable
+// and the SDK keeps the written value, so that case is caught after the write:
+// with the script, its `arm` is the base of a toggle and is read again after
+// the write; a track that did not take the value is a failure and the SDK is
+// set back to what Live reads (a second undo step may remain). Without the
+// script only the SDK read-back is left. `mute` and `solo` stay legitimate on
+// group tracks. The command does not require the script.
 //
 // The tracks arrive already resolved (the platform turns paths into objects
 // and asks the user when an address is ambiguous), so this only writes.
@@ -43,10 +53,12 @@ export function registerTrackSetCommand(
       const outcomes: TargetOutcome[] = [];
       const written: WrittenArm[] = [];
 
-      // Arming asks Live what it knows about the tracks first (one request,
-      // before any write) — only when the Remote Script is there; otherwise
-      // the SDK-only path below. Disarming needs no facts.
-      const loaded = prop === "arm" && value !== false ? await loadArmFacts(getBridge(), nodes) : undefined;
+      // `arm`/`unarm` ask Live what it knows about the tracks first (one
+      // request, before any write) — only when the Remote Script is there;
+      // otherwise the SDK-only path below. The script's `arm` is the truth a
+      // toggle starts from: the SDK's value can be wrong for a track Live
+      // refused to arm.
+      const loaded = prop === "arm" ? await loadArmFacts(getBridge(), nodes) : undefined;
       const facts = loaded?.facts;
       // Evidence for what Live reports (names and booleans only).
       if (loaded) for (const line of armFactsLines(nodes, loaded)) console.log(line);
@@ -75,12 +87,13 @@ export function registerTrackSetCommand(
                 return;
               }
               // Live's own answer; the stricter of it and the local check wins.
-              const objection = factsRefusal(facts?.[index]);
+              const entry = facts?.[index];
+              const wanted = nextTrackValue(armBase(track.arm, entry), value);
+              const objection = factsRefusal(entry, wanted);
               if (objection) {
                 outcomes.push({ path: node.path, ok: false, message: objection });
                 return;
               }
-              const wanted = nextTrackValue(track.arm, value);
               written.push({ node, wanted, outcome: outcomes.length });
               track.arm = wanted;
             } else {
@@ -94,6 +107,8 @@ export function registerTrackSetCommand(
       });
 
       if (prop === "arm") verifyArm(api, written, outcomes);
+      // With the script's facts, the script's read after the write decides.
+      if (prop === "arm" && facts) await verifyWithScript(api, written, outcomes);
 
       const failed = outcomes.filter((o) => !o.ok);
       if (failed.length === 0) return ok();
@@ -111,8 +126,10 @@ interface WrittenArm {
 
 /**
  * Read `arm` back for the tracks that were written (after the transaction) and
- * turn a value that did not take into a failed target. Kept separate so it can
- * go if read-back turns out to report false failures on ordinary tracks.
+ * turn a value that did not take into a failed target. The SDK's value is
+ * known to be wrong for a track Live refused to arm, so with the script the
+ * script's verify (verifyWithScript) is the real check; this stays the only one
+ * without the script.
  */
 function verifyArm(api: ModuleApi, written: WrittenArm[], outcomes: TargetOutcome[]): void {
   for (const w of written) {
@@ -131,5 +148,43 @@ function verifyArm(api: ModuleApi, written: WrittenArm[], outcomes: TargetOutcom
     } catch (e: unknown) {
       outcomes[w.outcome] = { path: w.node.path, ok: false, message: e instanceof Error ? e.message : String(e) };
     }
+  }
+}
+
+/**
+ * Ask the script what Live reads after the write. A track that does not read
+ * what was written is a failure, and the SDK — which still holds the written
+ * value — is corrected to the script's value in a second transaction (a second
+ * undo step, but never a wrong state). An unanswered track is no objection.
+ */
+async function verifyWithScript(api: ModuleApi, written: WrittenArm[], outcomes: TargetOutcome[]): Promise<void> {
+  const pending = written.filter((w) => outcomes[w.outcome]?.ok);
+  if (pending.length === 0) return;
+  const verdicts = await verifyArmWrites(
+    getBridge(),
+    pending.map((w) => ({ node: w.node, wanted: w.wanted })),
+  );
+  const corrections: Array<{ node: ObjectNode; actual: boolean }> = [];
+  verdicts.forEach((verdict, i) => {
+    const w = pending[i]!;
+    console.log(armVerifyLine(w.node.path, w.wanted, verdict));
+    if (verdict.state !== "mismatch") return;
+    outcomes[w.outcome] = { path: w.node.path, ok: false, message: armNotChangedText(w.wanted) };
+    corrections.push({ node: w.node, actual: verdict.actual ?? false });
+  });
+  if (corrections.length === 0) return;
+  try {
+    api.context.withinTransaction(() => {
+      for (const c of corrections) {
+        try {
+          const track = trackFor(api.context, c.node);
+          if (track) track.arm = c.actual;
+        } catch {
+          /* leave this track; the failure is reported anyway */
+        }
+      }
+    });
+  } catch {
+    /* the report is what matters */
   }
 }

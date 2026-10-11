@@ -2,7 +2,16 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createFakeBridge } from "../ableton/bridgeFake.js";
 import { TEXT_STALE } from "../ableton/bridgeProtocol.js";
-import { armFactsLines, armReadBackLine, loadArmFacts } from "./armFacts.js";
+import {
+  armBase,
+  armFactsLines,
+  armNotChangedText,
+  armReadBackLine,
+  armVerifyLine,
+  classifyArm,
+  loadArmFacts,
+  verifyArmWrites,
+} from "./armFacts.js";
 import { factsRefusal } from "./trackSetValue.js";
 
 const nodes = [
@@ -87,4 +96,89 @@ test("log lines: facts per track, none with a reason, read-back", async () => {
   assert.deepEqual(armFactsLines(paths, off), [`cmdAbl: arm facts: none (${off.reason})`]);
   assert.match(off.reason, /bridge unavailable/);
   assert.equal(armReadBackLine("/Drums", true, true), "cmdAbl: arm: /Drums wrote true, reads true");
+});
+
+// ── verify ──────────────────────────────────────────────────────────────────
+const writes = [
+  { node: { ...nodes[0]!, path: "/Drums" }, wanted: true },
+  { node: { ...nodes[1]!, path: "/Keys" }, wanted: true },
+];
+const wire = (arm: boolean | null) => ({ can_be_armed: true, is_foldable: false, is_grouped: false, arm });
+const noSleep = { sleep: async () => {}, delayMs: 0 };
+
+test("armBase: the script's arm wins over the SDK's; null and failures fall back", () => {
+  const entry = (arm: boolean | null) => ({
+    ok: true as const,
+    value: { name: "a", canBeArmed: true, isGroup: false, isGrouped: false, arm },
+  });
+  assert.equal(armBase(true, entry(false)), false); // SDK stale "true", script says off
+  assert.equal(armBase(false, entry(true)), true);
+  assert.equal(armBase(true, entry(null)), true);
+  assert.equal(armBase(true, { ok: false, code: 1, text: "x" }), true);
+  assert.equal(armBase(true, undefined), true);
+});
+
+test("classifyArm: ok, mismatch, null counts as off, failure is unknown", () => {
+  const entry = (arm: boolean | null) => ({
+    ok: true as const,
+    value: { name: "a", canBeArmed: true, isGroup: false, isGrouped: false, arm },
+  });
+  assert.deepEqual(classifyArm(true, entry(true)), { state: "ok", actual: true });
+  assert.deepEqual(classifyArm(true, entry(false)), { state: "mismatch", actual: false });
+  assert.deepEqual(classifyArm(false, entry(null)), { state: "ok", actual: false });
+  assert.deepEqual(classifyArm(true, { ok: false, code: 1, text: "x" }), { state: "unknown" });
+});
+
+test("verifyArmWrites: both read back as written → ok, one request", async () => {
+  const bridge = createFakeBridge({ ops: { track_facts: () => ({ ok: true, value: { tracks: [wire(true), wire(true)] } }) } });
+  const verdicts = await verifyArmWrites(bridge, writes, noSleep);
+  assert.deepEqual(verdicts.map((v) => v.state), ["ok", "ok"]);
+  assert.equal(bridge.calls.length, 1);
+});
+
+test("verifyArmWrites: a track that stays off is a mismatch (second look included)", async () => {
+  const bridge = createFakeBridge({ ops: { track_facts: (args) => ({
+    ok: true,
+    value: { tracks: (args.targets as Array<{ expectName: string }>).map((t) => (t.expectName === "Keys" ? wire(false) : wire(true))) },
+  }) } });
+  const verdicts = await verifyArmWrites(bridge, writes, noSleep);
+  assert.deepEqual(verdicts.map((v) => v.state), ["ok", "mismatch"]);
+  assert.equal(verdicts[1]!.actual, false);
+  assert.equal(bridge.calls.length, 2); // first look, then only the mismatching track again
+  assert.equal((bridge.calls[1]!.args.targets as unknown[]).length, 1);
+});
+
+test("verifyArmWrites: a slow tick — mismatch first, ok on the second look", async () => {
+  let n = 0;
+  const bridge = createFakeBridge({ ops: { track_facts: () => ({ ok: true, value: { tracks: [wire(++n === 1 ? false : true)] } }) } });
+  const verdicts = await verifyArmWrites(bridge, [writes[0]!], noSleep);
+  assert.deepEqual(verdicts, [{ state: "ok", actual: true, secondLook: true }]);
+});
+
+test("verifyArmWrites: a failing request is no objection", async () => {
+  const off = createFakeBridge({ running: false });
+  assert.deepEqual((await verifyArmWrites(off, writes, noSleep)).map((v) => v.state), ["unknown", "unknown"]);
+  const stale = createFakeBridge({
+    ops: { track_facts: () => ({ ok: true, value: { tracks: [{ error: { code: "stale", text: "x" } }, wire(true)] } }) },
+  });
+  assert.deepEqual((await verifyArmWrites(stale, writes, noSleep)).map((v) => v.state), ["unknown", "ok"]);
+});
+
+test("verify texts and log line", () => {
+  assert.match(
+    armVerifyLine("/a", true, { state: "ok", actual: true, secondLook: true }),
+    /-> ok \(first look mismatched, second look decided\)$/,
+  );
+  assert.match(armNotChangedText(true), /Live did not arm this track/);
+  assert.equal(armNotChangedText(false), "Live did not disarm this track");
+  assert.equal(
+    armVerifyLine("/Sub 37 Midi", true, { state: "mismatch", actual: false }),
+    "cmdAbl: arm verify: /Sub 37 Midi wanted true, script reads false -> mismatch",
+  );
+});
+
+test("factsRefusal: switching off is never refused for a greyed-out track", () => {
+  const off = { ok: true as const, value: { name: "a", canBeArmed: false, isGroup: false, isGrouped: false, arm: null } };
+  assert.equal(factsRefusal(off, false), undefined);
+  assert.match(factsRefusal(off, true) ?? "", /does not allow arming/);
 });

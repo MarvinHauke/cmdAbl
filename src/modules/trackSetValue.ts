@@ -51,11 +51,12 @@ export function notChanged(wanted: boolean, actual: boolean): boolean {
  * silently), or the bridge's own text when that track's entry says the Set
  * changed. Undefined = no objection; also when no facts were available.
  */
-export function factsRefusal(entry: BridgeResult<TrackFacts> | undefined): string | undefined {
+export function factsRefusal(entry: BridgeResult<TrackFacts> | undefined, wantedOn = true): string | undefined {
   if (!entry) return undefined;
   // Only "the Set changed" is an objection; any other failed entry (a read that
   // raised in the script) leaves the track to the SDK-only path.
   if (!entry.ok) return entry.text === TEXT_STALE ? entry.text : undefined;
+  if (!wantedOn) return undefined; // switching off is never refused
   if (entry.value.isGroup) return armRefusal(true);
   if (!entry.value.canBeArmed) return "Live does not allow arming this track (e.g. no input device)";
   return undefined;
