@@ -1,13 +1,19 @@
 // Size of the message dialog, from its text. The numbers are those of
 // ui/feedback.html in Live's webview (measured in Live 12.4.15b6 on
 // 2026-10-11; headless Chrome had said 7.83 px per character, which made
-// the longest line wrap): 18 px per line, 65 px of fixed content height
+// the longest line wrap): 18 px per line, about 66.5 px of fixed content height
 // around the text (the requested height is the content height, the title band
 // is extra), about 8.05 px per character, and a text width of window width −
 // 32 px. Change them together with the page.
 
 export const NOTIFY_LINE_HEIGHT = 18;
-export const NOTIFY_FIXED_HEIGHT = 65;
+/**
+ * Content height around the text: padding, gap and button. About 66.5 px in
+ * Live 12.4.15b6 (measured 2026-10-11; headless Chrome gave 65), plus a margin
+ * so a text that fits never lands within a pixel of overflowing — a scrollbar
+ * takes width, wraps the longest line and hides the last one.
+ */
+export const NOTIFY_FIXED_HEIGHT = 72;
 export const NOTIFY_CHAR_WIDTH = 8.05;
 export const NOTIFY_HORIZONTAL_CHROME = 32;
 /** Extra width so the longest line does not sit exactly on the edge. */
