@@ -168,7 +168,7 @@ _Last updated: 2026-10-11._
 | pakabl's Repo button opens through core's `openUrl` (macOS); the Windows branch stays, with an https check | cmdabl-modules | committed `931615b`, reviewed; Windows untested |
 | `man ableton <words>`: DuckDuckGo search limited to the manual (`site:ableton.com inurl:live-manual`; the user chose the engine) | cmdabl-modules | committed `0db7d6b`, reviewed; needs the Live test (step 16). Quotes are not passed on (no exact phrase); a word starting with `-` needs `--`; the typed words go to DuckDuckGo |
 | Manual search uses Ecosia instead of DuckDuckGo (`site:ableton.com/en/live-manual`; user decision) | cmdabl-modules | committed `ddd15cb`, reviewed; needs the Live test: does Ecosia honour the path in `site:`, and is the English manual (`/en/`) the wanted one? |
-| Message page: long lines wrap, Close stays visible, `Esc`/`Enter` close; then the window height follows the text | cmdabl-ui, then cmdabl-core | sent to cmdabl-ui |
+| Message page: long lines wrap, Close stays visible, `Esc`/`Enter` close; then the window height follows the text | cmdabl-ui, then cmdabl-core | page committed `1b6d254`, reviewed (checked in headless Chrome only; held-key repeats do not close a message; arrows and PageDown scroll the text); window sizing sent to cmdabl-core |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
