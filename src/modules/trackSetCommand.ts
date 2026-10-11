@@ -112,7 +112,7 @@ export function registerTrackSetCommand(
 
       const failed = outcomes.filter((o) => !o.ok);
       if (failed.length === 0) return ok();
-      return fail(ExitCode.FAILURE, `${name}: ${outcomes.length - failed.length}/${outcomes.length} done`, outcomes);
+      return fail(ExitCode.FAILURE, `${name}: ${outcomes.length - failed.length} of ${outcomes.length} done`, outcomes);
     },
   });
 }
