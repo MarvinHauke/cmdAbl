@@ -69,7 +69,14 @@ _Last updated: 2026-10-11._
   be opened until `npm start` was restarted; `/state` answered `open`, no window was visible, no
   log captured. Suspected, unverified: a message dialog (`notify`, not covered by `isOpen`) was
   still up when the palette was triggered. Task out to cmdabl-core: one dialog at a time, "open"
-  covers messages, log lines for open/close.
+  covers messages, log lines for open/close. **The cause stays unverified after that lands**: the
+  queue does not help if a dialog promise never settles; the new log lines are there to tell.
+- **`pakabl list` opens its dialog itself** (`src/modules/pakabl/index.ts`), outside the `Ui`
+  contract and the dialog queue. No collision today. Options: (a) a fourth generic surface
+  (`page`) on `Ui`, reachable through `ModuleApi`; (b) rebuild the list on `select` plus
+  commands. Both change a contract — **waiting for the user's decision**.
+- `pakabl list` inlined downloaded index data unescaped (`</script>` in a name breaks the page).
+  Task out to cmdabl-modules, using core's `inlineJson`.
 
 ### In progress (tasks out, 2026-10-11)
 
