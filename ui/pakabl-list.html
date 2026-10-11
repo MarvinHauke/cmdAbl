@@ -128,7 +128,7 @@
         if (repoUrl) {
           const btn = document.createElement('button');
           btn.textContent = 'Repo';
-          btn.onclick = () => send('repo:' + repoUrl);
+          btn.onclick = () => send('repo:' + id);
           actionsEl.append(btn);
         }
 
