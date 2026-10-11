@@ -351,6 +351,22 @@ Plans: 0001 Phase 4, decisions in 0004. Today the bridge is fire-and-forget over
      to cmdabl-modules: `goto` (and what `find`/`next`/`prev` use) calls it and declares
      `requires`. Unverified until the Live test: read-back equality in Live, the main track's
      name, selecting a rack chain. Needs `cmdabl --setup` and a restart of Live.
+   - `goto`, `find`, `next`, `prev` and the palette's object rows select through it and declare
+     `requires` (`8587279`, cmdabl-modules, reviewed; 142 unit tests). Behaviour change: with an
+     old or missing script they answer "outdated / not installed / not running" instead of
+     doing nothing; a failed selection is a failing result (not remembered).
+   - **Live test of step 2** (first `cmdabl --setup`, restart Live, `npm start`):
+     (1) `cmdabl --bridge` → 0.2.0, operations `hello, select`; (2) `goto` on a track, a device,
+     a return track, the main track, a track in a folded group; (3) a track row and a device row
+     picked in the palette; (4) `find <pattern>` with several hits, then `next` / `prev`;
+     (5) control surface disabled: `goto x` → "not running" and no pick list; (6) is `goto`
+     noticeably slower than before?
+   - After that test: cmdabl-bridge removes the old one-way messages (`legacy.py`,
+     `src/ableton/select.ts`, `selectTrack`/`selectDevice`).
+   - Known gaps, for roadmap steps 3.3/3.4: a failing palette row is shown as a plain message
+     (the result handler cannot return a `CommandResult`); a row whose object is gone can fall
+     back to the route and select another object (no name in the item); modules call
+     `getBridge()` directly instead of getting the bridge through `ModuleApi`.
    - Live test list of step 1, for reference (first `cmdabl --setup`, then restart Live and `npm start`):
      (1) `goto` still selects a track and a device; (2) `cmdabl --bridge` shows the version and
      N ms; (3) with the palette open, `curl http://127.0.0.1:27184/bridge` — does it answer, how
