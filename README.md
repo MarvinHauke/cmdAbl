@@ -55,7 +55,8 @@ Typing a command name followed by a space switches the dropdown into flag-comple
 
 | Command          | Description                                                |
 | ---------------- | --------------------------------------------------------- |
-| `help`           | Open the Ableton Live manual in the browser               |
+| `help`           | List the available commands                               |
+| `cmdabl --help`  | Show the usage of `cmdabl` (documentation: `man cmdabl`)  |
 | `cmdabl --setup` | Install the keyboard trigger rule and show a result dialog |
 | `pakabl list`    | Browse and install community extensions — see _Install more extensions with `pakabl`_ under Installation |
 
@@ -66,11 +67,28 @@ your own:
 
 | Module    | Capability                                                                 |
 | --------- | -------------------------------------------------------------------------- |
-| `goto`    | Surfaces tracks/devices in the palette and selects them via the Remote Script bridge |
-| `mute`    | `mute <path>[, <path> …]` — toggle mute on one or more tracks by path       |
-| `solo`    | `solo <path>[, <path> …]` — toggle solo on one or more tracks by path       |
+| `goto`    | `goto <path>` selects a track or device (via the Remote Script bridge); tracks/devices are also listed in the palette |
+| `find`    | `find <pattern> [-t\|-d]` — every track/device whose path contains the pattern; `next` / `prev` step through the matches |
+| `mute`    | `mute <track>…` toggles mute per track; `unmute <track>…` always unmutes |
+| `solo`    | `solo <track>…` toggles solo per track; `unsolo <track>…` always unsolos |
+| `arm`     | `arm <track>…` toggles record arm per track; `unarm <track>…` always disarms; return, main and group tracks cannot be armed and are reported as failed |
 | `history` | Remembers your last 20 invocations and re-offers them as rerunnable entries |
+| `man`     | `man <topic>` opens a manual in the browser: `man ableton` (Live reference manual), `man cmdabl` (this documentation). `man ableton <words>` searches the Live 12 manual through Ecosia, e.g. `man ableton warp modes` |
 | `pakabl`  | Install/update/uninstall community extensions — see _Install more extensions with `pakabl`_ |
+
+**Addressing tracks and devices**
+
+Commands take paths such as `/Drums/Kick`. A path may be partial (`kick`), and names with
+spaces need no quotes for a single target (`goto /Opal Lead`). Same-named siblings are told
+apart by an ordinal: `/Drums/Kick`, `/Drums/Kick#2`.
+
+When a path matches more than one object, cmdAbl shows a **pick list** instead of guessing:
+type to filter (`Space` types a space), `↑`/`↓` to move, `Enter` to choose, `Esc` to cancel.
+Commands that take several tracks (`mute`, `solo`, `arm`, …) let you mark several with `Tab`, or
+with `Space` once you are in the list (the first `↑`/`↓` only enters it, so `↓` `Space` marks the
+first row; typing a character returns to the filter).
+A line above the filter shows the command `Enter` will run. That resolved command is what lands
+in the history, so re-running it never asks again.
 
 **Live objects**
 
@@ -274,6 +292,7 @@ Extensions must export an `activate(context: ActivationContext)` function.
 
 ```sh
 npm start          # type-check, build (dev), and run in Live's Extension Host
+npm test           # unit tests for the command platform (tokenizer, parser, validator)
 npm run package    # production build + create a .ablx archive (includes karabiner/ and windows/)
 ```
 

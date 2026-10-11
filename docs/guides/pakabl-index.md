@@ -12,7 +12,9 @@ pakabl/sources.json  ──►  scripts/pakabl-crawl.ts  ──►  pakabl/index
 
 For every approved repo the crawler finds the newest `.ablx` (latest GitHub Release asset or a
 committed `.ablx` file), downloads it, and reads the `manifest.json` inside for name, author
-and version. The extension id is `<author-slug>.<name-slug>`. It also searches GitHub for the
+and version. The extension id is `<author-slug>.<name-slug>` (lowercase letters, digits and single dashes
+in each slug). The cmdAbl client ignores index entries whose id does not have that shape or
+whose download URL is not `https://`. The crawler also searches GitHub for the
 topics `ableton-extension` and `ableton-extensions`; repos that ship an `.ablx` and aren't
 approved yet go to `candidates.json`.
 

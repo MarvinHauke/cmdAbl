@@ -18,6 +18,10 @@ yet. Nothing bumps the version for you.
    the next [pakabl index](pakabl-index.md) run (daily, or trigger it manually) opens a PR with
    the new version. Merge it.
 
+When a new major version of Live comes out, set `LIVE_MANUAL_VERSION` in
+`src/modules/man/topics.ts` to it before releasing: `man ableton <words>` searches only that
+version of the manual, because the Extensions SDK does not tell an extension which Live it runs in.
+
 ## Building and installing the `.ablx` locally
 
 ```sh

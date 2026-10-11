@@ -1,7 +1,8 @@
 import type { ModuleApi } from "../types.js";
-import { registerTrackToggleCommand } from "../trackToggleCommand.js";
+import { registerTrackSetCommand } from "../trackSetCommand.js";
 
-/** `mute <path>[, <path> …]` — toggle mute on one or more tracks by address (e.g. "mute /vermona/kick, /vermona/snare"). */
+/** `mute <track>…` toggles, `unmute <track>…` always unmutes — e.g. `mute /vermona/kick /vermona/snare`. */
 export function activate(api: ModuleApi): void {
-  registerTrackToggleCommand(api, "mute", "mute");
+  registerTrackSetCommand(api, "mute", "mute", "toggle", "toggle mute on one or more tracks");
+  registerTrackSetCommand(api, "unmute", "mute", false, "unmute one or more tracks");
 }

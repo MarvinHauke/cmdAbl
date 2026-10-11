@@ -3,7 +3,7 @@
 **Parent:** [0004](0004-command-platform.md)
 **Depends on:** [0002](0002-command-feedback-pattern.md) Phase A (`CommandResult`).
 
-**Status:** Draft (2026-10-08) — defines how commands, subcommands and their arguments are
+**Status:** In Progress — rollout steps 1–2 and resolve-before-handler shipped (2026-10-11); drafted 2026-10-08 — defines how commands, subcommands and their arguments are
 declared, so parsing, help and completion all derive from one structure.
 
 ## Context
@@ -55,7 +55,8 @@ interface CommandNode {
   children?: CommandNode[];     // group node: not runnable on its own (prints its help)
   options?: OptionDef[];
   args?: ArgDef[];              // leaf node: positional arguments, in order
-  run?: (inv: Invocation) => CommandResult | Promise<CommandResult>;   // leaf node only
+  requires?: "bridge"[];        // optional companions; checked before the handler (code 5 if absent)
+  run?: (inv: Invocation, ports: Ports) => CommandResult | Promise<CommandResult>;   // leaf node only
 }
 
 interface OptionDef { name: string; short?: string; takesValue?: boolean; summary: string }
@@ -66,7 +67,8 @@ interface ArgDef {
   variadic?: boolean;           // last argument only
   complete?: string;            // key of a completer registered by a module (see 3)
 }
-interface Invocation { path: string[]; options: Record<string, string | true>; args: string[][] }
+// `args` hold *resolved* values: `path` arguments are already LOM-backed nodes (see 2b), never raw strings.
+interface Invocation { path: string[]; options: Record<string, string | true>; args: ResolvedArg[][] }
 ```
 
 **Rules, checked at registration (violations are startup errors, not runtime surprises):**
@@ -76,6 +78,15 @@ interface Invocation { path: string[]; options: Record<string, string | true>; a
 4. Option names are unique within a node; `help`/`h` are reserved.
 5. Everything except `run` is plain JSON, so the tree can be sent to the webview as is.
 
+### 2b. Path arguments are resolved before the handler runs
+
+An argument of `kind: "path"` is resolved by the platform, never by the module. Resolution
+yields zero, one or many matches: zero → `ExitCode.NOT_FOUND`; many → `ExitCode.AMBIGUOUS` with
+the candidate paths in `details`, unless the argument declares `multiple: "all"`. Handlers
+therefore only ever receive uniquely resolved objects, and `goto`/`mute`/`solo` contain no
+ambiguity handling of their own. Identity is the LOM route, not the display name; duplicate
+sibling names get a deterministic suffix (`/Drums/Kick`, `/Drums/Kick#2`).
+
 ### 3. Candidate data (completers)
 
 An argument names its candidates with `complete: "key"`. Modules register completers, which the
@@ -83,7 +94,7 @@ platform calls **when the palette opens** and serializes next to the tree:
 
 ```ts
 api.commands.completer("pakabl-ids", () => index.map(e => ({ value: e.id, description: e.name })));
-api.commands.completer("track-path", () => snapshotObjectTree(api.context)); // from 0001
+api.commands.completer("track-path", ({ live }) => live.listPaths()); // via a port, never the raw context
 ```
 
 This replaces `registerProvider` for command arguments (providers remain for non-command palette
@@ -130,11 +141,84 @@ success unless it helps; return `CommandResult` instead of calling `showFeedback
 
 ## Phased rollout
 
+**Update (2026-10-11, later):** step 2 and the resolver are in. `CommandRegistry.add(node)`
+(validated, rejects instead of throwing) and `ModuleApi.commands.add`; every typed line goes
+through `src/core/run.ts` (`parse` → `resolveArgs` → pick → `run`), with `register()` kept as the
+legacy path for `pakabl`, `cmdabl` and `help`. The webview now returns the raw line. Two
+`ArgDef` additions came out of real use: `rest` (one value from the remaining words, so
+`goto /Opal Lead` needs no quotes) and `kinds` (which object kinds a path may match).
+Ambiguous addresses open the **pick list** (`src/core/pick.ts`, `ui/pick.html`): single-select
+by default, multi-select when the argument is `variadic`. Migrated: `goto`, `mute`/`unmute`,
+`solo`/`unsolo`, new `arm`/`unarm`, new `find`/`next`/`prev`. Not done yet: ports (handlers still
+close over `ModuleApi`), `requires` checks, subcommand groups for `pakabl`/`cmdabl`, the guide.
+
+**Where things stand (2026-10-11):** step 1 is implemented and unit-tested (`npm test`): `src/core/tokenize.ts` (shared tokenizer), `src/core/commandTree.ts` (node types, `validateTree`, `usage`/`helpText`, `serializeTree`), `src/core/parse.ts` (walks the tree, parses options/arguments, returns run / help / error with exit codes). Nothing is wired into `dispatch()` yet — existing commands still run through the old `register()` path. The comma form `mute /a, /b` is not handled by the tokenizer; it stays with the legacy adapter until `mute` is migrated.
+
 1. Types + validator + tokenizer + parser with unit-level checks (no behavior change).
 2. `api.commands` registration and the `register()` adapter; `dispatch()` runs through the parser.
 3. Serialize tree + completer snapshots into the webview payload (used by 0006).
 4. Migrate commands (see 0004 inventory), then remove the adapter.
 5. Write `docs/guides/adding-a-command.md` from section 6 once the API is stable.
+
+## Decisions from the external review (2026-10-11)
+
+Taken from comparing a ChatGPT architecture proposal with this plan (full table in
+[0004](0004-command-platform.md)):
+
+- `ArgDef.multiple?: "one" | "all"` (default `"one"`) — cardinality of *matches per token*;
+  distinct from `variadic` (several tokens). `required: false` allows zero matches. Destructive
+  commands (`rm`) must use `"one"`; the registration validator enforces it.
+- `requires: ["bridge"]` is the only capability concept: coarse, checked before the handler,
+  serialized when the palette opens so unavailable commands can be marked (0006). No capability
+  registry, no `executionId`/`AbortSignal`, no `retrySafe`.
+- ~~Setting commands over toggles~~ — **reversed by the user after the Live test (2026-10-11):**
+  `mute`, `solo` and `arm` toggle each named track individually, as they did before the rework;
+  `unmute`, `unsolo` and `unarm` stay and always switch off. Consequence, accepted: re-running
+  `solo /a` from history toggles it back.
+- **Acceptance criterion:** a command can be added, replaced or removed without touching the
+  palette, the dispatcher or the bridge (only a LOM-only op needs a new Remote Script function).
+- The node/command contract stays adapter-neutral (handlers use ports, never `child_process`),
+  so an external-process adapter can be added later as a port + module (deferred, see 0004).
+
+## Decisions from the Live test of PR #9 (2026-10-11)
+
+- **Live objects as palette items stay.** Typing a track or device name (or path) without `goto`
+  and pressing Enter selects it — intended, and what 0006 describes for word 0. It still runs
+  through the older route (`goto`'s provider plus `registerResultHandler("select")`), so it
+  bypasses `runLine`: no history entry, no `next`/`prev` list. Clean-up with the rest of this
+  plan: a chosen object item becomes `goto <unique path>` and takes the normal path; then
+  `registerResultHandler` can go (a `ModuleApi` change — ask the user first).
+- **The pick list is an interactive filter, built with pipelines in mind.** Objects in, a subset
+  of objects out (`pickNodes`); a selection is never passed through the platform as text. Its
+  *text form* is the list of unique paths (`uniquePath`), the same form history stores and a
+  future pipe would print or pass on. Pipelines themselves stay deferred (0004). Left open on
+  purpose: whether `find` inside a pipe passes on all matches or opens the pick list
+  (`find … | pick | mute`), and whether a selection can be handed back to the palette to keep
+  typing.
+- **The pick list shows the command it will run** (see 0007, "Command line in the pick list").
+- **The remembered line is fully canonical** (architect, 2026-10-11): `RunOutcome.line` names
+  every resolved `path` target by its unique path, quoted where needed, and each object once —
+  `mute opal /Opal Lead` is stored as `mute "/Opal Lead"`. `text` arguments and options stay as
+  typed. A history re-run therefore never asks and does not change meaning when a later track
+  makes `opal` ambiguous. The pick list's preview follows the same rule.
+  Known consequence, to decide when the first command uses it: an argument declared
+  `multiple: "all"` is remembered as the fixed list of objects it matched at the time, not as
+  "everything matching".
+- **An option starts with an unquoted dash** (`--to="a b"` is an option, a fully quoted `"--x"`
+  is a word), so a remembered line with a spaced option value parses again.
+- **Dash rules** (architect, after the review of `972b67a`):
+  - `--` ends option parsing for everything after it, `--help` included.
+  - A lone `-` is a word, so a track called `Kick - Sub` works unquoted.
+  - A positional that starts with a dash is quoted in the remembered line.
+  - The parser stays strict otherwise (confirmed by the user, 2026-10-11): `mute /Bass -6dB` is "unknown option `-6dB`" and needs
+    quotes or `--`; the error says so. Letting path arguments swallow unknown dash-words would
+    turn typos into "nothing matches". *Deferred, not rejected* — revisit with completion
+    (0006), which quotes names for the user.
+  - Combined shorts (`-dt`) are not supported. Deferred until a command has shorts that are
+    used together (`find -t|-d` are alternatives).
+  - An unquoted `-1` is an unknown option; a negative value needs quotes or `--`. Decide
+    whether numbers get a special case when the first `number` argument exists, and say it in
+    the authoring guide.
 
 ## Verification
 

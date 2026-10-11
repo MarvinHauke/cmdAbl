@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, items: [{ label, detail?, value? }] }. Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes, or '' when cancelled. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark" />
+  <title>cmdAbl</title>
+  <style>
+    /*SHARED_CSS_PLACEHOLDER*/
+
+    html, body { height: 100%; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
+
+    #title { padding: 8px 12px 0; color: var(--dim); font-size: 11px; flex-shrink: 0; }
+
+    #cmd {
+      padding: 6px 12px 0;
+      color: var(--dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+    }
+    #cmd[hidden] { display: none; }
+
+    #bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px 8px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #prompt { color: var(--accent); font-weight: 700; user-select: none; }
+    #filter {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font: inherit;
+      caret-color: var(--accent);
+    }
+
+    #list { flex: 1; overflow-y: auto; }
+    .row { display: flex; align-items: baseline; gap: 10px; padding: 5px 12px; cursor: default; }
+    .row.active { background: var(--bg-row); }
+    .row.active .label { color: var(--accent); }
+    /* Zone indicator: filter active = caret + soft row; list active = strong row, no caret. */
+    body.zone-list #filter { caret-color: transparent; }
+    body.zone-list .row.active { background: var(--border); box-shadow: inset 2px 0 0 var(--accent); }
+    .mark { width: 10px; color: var(--accent); }
+    .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .detail { color: var(--dim); font-size: 11px; }
+
+    #hint {
+      padding: 5px 12px;
+      border-top: 1px solid var(--border);
+      color: var(--dim);
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="title"></div>
+  <div id="cmd" hidden></div>
+  <div id="bar">
+    <span id="prompt">?</span>
+    <input id="filter" type="text" autocomplete="off" spellcheck="false" />
+  </div>
+  <div id="list"></div>
+  <div id="hint"></div>
+
+  <script>
+    // Injected by the extension: { title, multi, preview?, items: [{ label, detail?, value? }] }
+    const PICK = /*PICK_PLACEHOLDER*/null;
+
+    const filter = document.getElementById('filter');
+    const list   = document.getElementById('list');
+    const cmd    = document.getElementById('cmd');
+    const hint   = document.getElementById('hint');
+
+    // Which zone has the keys: 'filter' (initial) or 'list'. DOM focus always stays in
+    // the input; this state is what the key handler acts on.
+    let zone = 'filter';
+    let debug = false;    // toggled with Ctrl+Shift+D: show the last key events in the hint
+    let lastKey = '';     // debug only: the last keydown ...
+    let lastInput = '';   // ... and the last beforeinput, shown together
+    let spaceHandled = false;   // keydown already marked for this Space; skip the backstop
+
+    const marked = new Set();   // indexes into PICK.items
+    let visible  = [];          // indexes into PICK.items, after filtering
+    let active   = 0;           // position within `visible`
+
+    function send(indexes) {
+      const payload = indexes && indexes.length ? JSON.stringify(indexes) : '';
+      const msg = { method: 'close_and_send', params: [payload] };
+      if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(msg);
+      else if (window.chrome?.webview) window.chrome.webview.postMessage(msg);
+    }
+
+    function render() {
+      const needle = filter.value.trim().toLowerCase();
+      visible = PICK.items
+        .map((_, i) => i)
+        .filter(i => !needle || PICK.items[i].label.toLowerCase().includes(needle));
+      active = Math.min(active, Math.max(visible.length - 1, 0));
+
+      list.innerHTML = '';
+      visible.forEach((index, pos) => {
+        const item = PICK.items[index];
+        const row = document.createElement('div');
+        row.className = 'row' + (pos === active ? ' active' : '');
+        const mark = document.createElement('span');
+        mark.className = 'mark';
+        mark.textContent = marked.has(index) ? '●' : '';
+        // textContent, not innerHTML: labels are user data (track names).
+        const label = document.createElement('span');
+        label.className = 'label';
+        label.textContent = item.label;
+        const detail = document.createElement('span');
+        detail.className = 'detail';
+        detail.textContent = item.detail ?? '';
+        row.append(mark, label, detail);
+        row.addEventListener('mousedown', e => {
+          e.preventDefault();
+          if (PICK.multi) { toggle(index); active = pos; zone = 'list'; render(); }
+          else send([index]);
+        });
+        list.appendChild(row);
+      });
+      list.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
+      renderPreview();
+      renderZone();
+    }
+
+    // The line Enter will run: before, the chosen values (ascending index order, as
+    // returned), after. Nothing marked: the active row.
+    function renderPreview() {
+      if (!PICK.preview) return;
+      const chosen = marked.size
+        ? [...marked].sort((a, b) => a - b)
+        : (visible.length ? [visible[active]] : []);
+      const parts = [
+        PICK.preview.before,
+        ...chosen.map(i => PICK.items[i].value ?? PICK.items[i].label),
+        PICK.preview.after,
+      ].filter(part => part);
+      const text = '> ' + parts.join(' ');
+      cmd.textContent = text;   // user data: textContent only
+      cmd.title = text;
+    }
+
+    function renderZone() {
+      document.body.classList.toggle('zone-list', zone === 'list');
+      const text = !PICK.multi
+        ? 'Enter choose · Esc cancel · type to filter'
+        : zone === 'list'
+          ? 'Space mark · Tab mark · Enter confirm · Esc cancel · type to filter'
+          : 'Tab mark · ↓ list · Enter confirm · Esc cancel · type to filter';
+      hint.textContent = debug
+        ? text + ' | ' + ([lastKey, lastInput].filter(x => x).join(' | ') || 'debug: press a key')
+        : text;
+    }
+
+    function toggle(index) {
+      if (marked.has(index)) marked.delete(index); else marked.add(index);
+    }
+
+    // Space in the list zone of a multi-select: mark the active row and move on.
+    function markActive() {
+      if (!visible.length) return;
+      toggle(visible[active]);
+      move(1);
+    }
+
+    // Arrow into the list. A multi-select's first arrow from the filter only switches the
+    // zone (so ↓ Space marks the first row); a single-select has nothing to mark and moves.
+    function arrow(delta) {
+      const entering = zone === 'filter';
+      zone = 'list';
+      if (entering && PICK.multi) renderZone();
+      else move(delta);
+    }
+
+    function move(delta) {
+      if (!visible.length) return;
+      active = (active + delta + visible.length) % visible.length;
+      render();
+    }
+
+    filter.addEventListener('input', () => { active = 0; zone = 'filter'; render(); });
+
+    // Space as the webview may report it: `key` ' ' / 'Spacebar', or only `code` (IME,
+    // dead-key handling report key 'Process' / 'Unidentified').
+    const isSpace = e => e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space';
+
+    // Backstop: if Space slipped past keydown and is about to be inserted, mark instead.
+    filter.addEventListener('beforeinput', e => {
+      if (debug) lastInput = 'beforeinput ' + e.inputType + ' data=' + JSON.stringify(e.data) + ' zone=' + zone;
+      if (e.data === ' ' && e.inputType === 'insertText' && zone === 'list' && PICK.multi) {
+        e.preventDefault();
+        if (spaceHandled) spaceHandled = false;   // keydown marked it already: don't toggle twice
+        else markActive();
+      }
+      if (debug) renderZone();
+    });
+
+    filter.addEventListener('keydown', e => {
+      const ctrl = e.ctrlKey && !e.metaKey && !e.altKey;
+      if (ctrl && e.shiftKey && (e.code === 'KeyD' || e.key === 'D' || e.key === 'd')) {
+        e.preventDefault();
+        debug = !debug;
+        lastKey = lastInput = '';
+        renderZone();
+        return;
+      }
+      spaceHandled = false;
+      if (debug) {
+        lastKey = 'keydown key=' + JSON.stringify(e.key) + ' code=' + e.code + ' zone=' + zone + ' multi=' + !!PICK.multi;
+        lastInput = '';
+      }
+      keydown(e, ctrl);
+      if (debug) renderZone();
+    });
+
+    function keydown(e, ctrl) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        send(null);
+      } else if (e.key === 'ArrowDown' || (ctrl && e.key === 'n')) {
+        e.preventDefault();
+        arrow(1);
+      } else if (e.key === 'ArrowUp' || (ctrl && e.key === 'p')) {
+        e.preventDefault();
+        arrow(-1);
+      } else if (isSpace(e) && zone === 'list' && PICK.multi && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // List zone of a multi-select: Space marks and moves on. Elsewhere it types a space.
+        e.preventDefault();
+        spaceHandled = true;
+        markActive();
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        if (!PICK.multi || !visible.length) return;
+        toggle(visible[active]);
+        move(1);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (marked.size) send([...marked].sort((a, b) => a - b));
+        else if (visible.length) send([visible[active]]);
+      } else if (zone === 'list' && !e.ctrlKey && !e.metaKey && !e.altKey
+                 && (e.key.length === 1 || ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key))) {
+        // A typed character (not Space, handled above) or a caret/edit key goes back to the filter.
+        zone = 'filter';
+        renderZone();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('title').textContent = PICK.title;
+      if (PICK.preview) cmd.hidden = false;
+      render();
+      filter.focus();
+    });
+  </script>
+
+</body>
+</html>

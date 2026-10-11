@@ -19,17 +19,22 @@ export function activate(api: ModuleApi): void {
     entries.length = Math.min(entries.length, MAX_ENTRIES);
   });
 
-  api.registerProvider({
-    getItems: () =>
-      entries.map((invocation) => ({
-        // `id` is the full invocation string ("mute /a, /b"), not a bare
-        // command name — the webview splits any multi-word command id into
-        // {name, flags} the same way it parses raw typed input, so this
-        // re-runs through the exact same path a fresh invocation would.
-        id: invocation,
-        type: "command",
-        title: invocation,
-        subtitle: "(history)",
-      })),
-  });
+  // Negative priority: the most recent invocation is the first row of the
+  // empty-query palette, ahead of the static command list.
+  api.registerProvider(
+    {
+      getItems: () =>
+        entries.map((invocation) => ({
+          // `id` is the full invocation string ("mute /a, /b"), not a bare
+          // command name — the webview splits any multi-word command id into
+          // {name, flags} the same way it parses raw typed input, so this
+          // re-runs through the exact same path a fresh invocation would.
+          id: invocation,
+          type: "command" as const,
+          title: invocation,
+          subtitle: "(history)",
+        })),
+    },
+    -10,
+  );
 }

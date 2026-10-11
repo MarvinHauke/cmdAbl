@@ -77,6 +77,31 @@ to one of:
 `parse()`, `computeItems()`, `resultFor()`, `rawResult()` and the `command|flag|args` modes in
 `ui/interface.html`; `PaletteItem.flags` and `FlagDef` become part of the tree (`src/types.ts`).
 
+## Related: pick list, keymap and navigation mode (2026-10-11)
+
+- The **pick list** (`ui/pick.html`) already covers "several things match": it is the platform's
+  answer to an ambiguous address and supports multi-select for multi-target commands. The
+  completion engine should reuse its row/marking behaviour rather than invent another list.
+- **Keymap (planned):** all UI keys go through named actions (`up`, `down`, `confirm`, `cancel`,
+  `complete`, `mark`) with defaults plus a user `keymap.json`; a key may also be bound to a
+  command line. While a dialog is open every key reaches the webview, not Live; with it closed,
+  keys go to Live and only Karabiner/AutoHotkey can intercept them.
+- **Navigation mode (planned, spike first):** keep a dialog open like vim's normal mode and map
+  single keys to commands (`n` → `next`). The SDK channel only delivers one string on close, so
+  this needs the dialog loaded from the local server (`http://127.0.0.1:27184/…`, allowed by the
+  SDK) talking to it via `fetch`, guarded by a per-session token.
+- **The spike decides two features:** navigation mode and the pick list's follow mode (0007).
+  To verify, in this order:
+  1. May the dialog page `fetch` `http://127.0.0.1:27184` — from a `data:` page (origin `null`,
+     so the server must send CORS headers), or only when the page itself is served from there?
+  2. Does the Remote Script (`update_display`, ~10 Hz) process bridge messages while a modal is open?
+  3. Does Live repaint the selection behind the modal?
+  4. On the side: does `window.resizeTo` do anything in the webview? (Expected: no.)
+- **Two zones in the pick list (precursor, no spike needed):** the list zone of `ui/pick.html`
+  (0007) is where single keys already act instead of typing (`Space` = `mark`). Navigation mode
+  extends that zone with more single-key actions (`j`/`k`, `n` → `next`). `Space` is the default
+  key for `mark`, `Tab` a second one.
+
 ## Open questions
 
 - Prototype ghost text on a plain `<input>` overlay vs. a `contenteditable`; settle by trying.

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark" />
   <title>pakabl</title>
   <style>
     /*SHARED_CSS_PLACEHOLDER*/
@@ -128,7 +129,7 @@
         if (repoUrl) {
           const btn = document.createElement('button');
           btn.textContent = 'Repo';
-          btn.onclick = () => send('repo:' + repoUrl);
+          btn.onclick = () => send('repo:' + id);
           actionsEl.append(btn);
         }
 

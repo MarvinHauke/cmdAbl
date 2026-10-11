@@ -1,0 +1,15 @@
+# gitleaks configuration (see docs/guides/ci.md).
+# Start from the default rules; add narrow exceptions below only for
+# findings that were checked and are not secrets.
+
+title = "cmdAbl"
+
+[extend]
+useDefault = true
+
+# Example of a narrow exception (by path AND rule, never a global pattern):
+#
+# [[allowlists]]
+# description = "Placeholder token in a documentation example"
+# targetRules = ["generic-api-key"]
+# paths = ['''^docs/guides/example\.md$''']
