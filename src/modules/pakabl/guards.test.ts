@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extensionDir, filterValidEntries, isKnownRepoUrl, isValidId, repoUrl } from "./guards.js";
+import { extensionDir, filterValidEntries, isValidId, repoUrl } from "./guards.js";
 
 test("isValidId accepts <author-slug>.<name-slug>", () => {
   for (const id of ["federico-pepe.snake", "marvinhauke.cmdabl", "a.b", "ben-casey.bbencut", "x1.y2-z3"]) {
@@ -44,13 +44,4 @@ test("repoUrl derives the repo page from github release/raw URLs", () => {
   assert.equal(repoUrl("https://github.com/o/r/releases/download/v1/x.ablx"), "https://github.com/o/r");
   assert.equal(repoUrl("https://raw.githubusercontent.com/o/r/main/x.ablx"), "https://github.com/o/r");
   assert.equal(repoUrl("https://example.com/o/r/x.ablx"), undefined);
-});
-
-test("isKnownRepoUrl opens only repo URLs derived from index entries", () => {
-  const entries = [{ url: "https://github.com/o/r/releases/download/v1/x.ablx" }];
-  assert.equal(isKnownRepoUrl("https://github.com/o/r", entries), true);
-  assert.equal(isKnownRepoUrl("https://github.com/o/other", entries), false);
-  assert.equal(isKnownRepoUrl("http://github.com/o/r", entries), false);
-  assert.equal(isKnownRepoUrl("file:///etc/passwd", entries), false);
-  assert.equal(isKnownRepoUrl("", entries), false);
 });

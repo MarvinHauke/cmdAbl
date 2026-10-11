@@ -48,9 +48,3 @@ export function repoUrl(downloadUrl: string): string | undefined {
   const m = downloadUrl.match(/^https:\/\/(?:github\.com|raw\.githubusercontent\.com)\/([^/]+)\/([^/]+)\//);
   return m ? `https://github.com/${m[1]}/${m[2]}` : undefined;
 }
-
-/** True only for an https URL equal to the repo URL of some index entry. */
-export function isKnownRepoUrl(url: string, entries: readonly { url: string }[]): boolean {
-  if (!url.startsWith("https://")) return false;
-  return entries.some((e) => repoUrl(e.url) === url);
-}

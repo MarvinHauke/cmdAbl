@@ -2,7 +2,7 @@ import * as path from "node:path";
 import type { ModuleApi } from "../types.js";
 import { EXTENSIONS_DIR, downloadFile, unzipInto, readJsonFile, openUrl, removeDir } from "./platform.js";
 import { buildListPage } from "./listPage.js";
-import { extensionDir, filterValidEntries, isKnownRepoUrl, isValidId, repoUrl } from "./guards.js";
+import { extensionDir, filterValidEntries, isValidId, repoUrl } from "./guards.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../types.js";
 import pakablListTemplate from "../../../ui/pakabl-list.html";
 
@@ -170,10 +170,14 @@ async function list(api: ModuleApi): Promise<CommandResult | void> {
     const entry = index.find((e) => e.id === id);
     if (entry) outcome = await upgrade(api, `${entry.id}@${entry.version}`);
   } else if (result.startsWith("repo:")) {
-    // The page is only trusted to name a repo, not to choose what the host
-    // opens: the URL must be one the index itself yields, and https.
-    const url = result.slice("repo:".length);
-    if (!isKnownRepoUrl(url, index)) return fail(ExitCode.FAILURE, "pakabl: not opening a repo URL that is not in the index");
+    // The page only names an extension; the host derives the URL itself and
+    // opens it only when it is an https repo URL of an index entry.
+    const id = result.slice("repo:".length);
+    const entry = isValidId(id) ? index.find((e) => e.id === id) : undefined;
+    const url = entry ? repoUrl(entry.url) : undefined;
+    if (!url || !url.startsWith("https://")) {
+      return fail(ExitCode.NOT_FOUND, `pakabl: no repository known for "${id}"`);
+    }
     openUrl(url);
   }
   return outcome;
