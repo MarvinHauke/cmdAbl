@@ -44,10 +44,21 @@ _Last updated: 2026-10-11._
    - `arm` on a return or the main track → a failure message, no crash.
    - Re-run `mute /x` from history → toggles back (intended).
 5. `mute /Opal Lead` (unquoted space) and `mute /a, /b` (comma form) still work.
-6. `find vermona` → pick list; then `next` / `prev` step through the matches.
-7. A resolved command re-run from history asks nothing.
-8. `pakabl list`, `cmdabl --setup` unchanged; an unknown command shows `unknown command`.
+6. ~~`find vermona` → pick list; then `next` / `prev` step through the matches.~~ Passed.
+7. History (`b09108c`, `972b67a`):
+   - `mute opal` with one match → history shows `mute "/Opal Lead"`; the re-run asks nothing.
+   - Add a second track containing "opal", re-run the entry → still the first track, no pick.
+   - `mute /Kick#1 kick`, pick Kick#1 → history shows `mute /Kick#1`.
+   - `goto vermona`, pick a device → the history entry re-runs to the same device.
+8. `cmdabl --setup` unchanged; an unknown command shows `unknown command`.
 9. Check the pick list's size and that the filter field has focus when it opens.
+10. Pick list rows (`900f89d`): with two tracks named `Kick`, `mute kick` shows `/Kick#1` and
+    `/Kick#2`; a track named `a</script>b` does not break the pick list.
+11. Dashes (`d7ba529`, `fa31212`):
+    - A track `Kick - Sub`: `mute /Kick - Sub` works unquoted; history shows it quoted.
+    - A track `Bass -6dB`: `mute /Bass -6dB` → "unknown option" with the quoting hint;
+      `mute "/Bass -6dB"` works.
+    - `find "-d"` is remembered as `find "-d"`; `mute -- --help` does not print help.
 
 ### Found in the Live test (2026-10-11, still running)
 
@@ -62,7 +73,7 @@ _Last updated: 2026-10-11._
 | `mute`/`solo`/`arm` toggle again; `un…` stay as "off" (0005) | cmdabl-modules | committed `145fd98` + `083c288`, reviewed; needs the Live test (step 4 above) |
 | `SelectRequest.preview` and `items[].value` for the command line in the pick list (0007 §4) | cmdabl-core | committed `900f89d`, reviewed (also escapes `<` in the data inlined into all three dialogs); the line itself is not visible until the page task is done |
 | Remembered line fully canonical: unique paths, each object once (0005) | cmdabl-core | committed `b09108c` + `972b67a` (option parsing fix, reviewed OK). `b09108c` alone has one failing test — squash before merging if a clean history matters |
-| Dash handling: quote leading-dash words in the remembered line, `--` ends options, lone `-` is a word, hint in "unknown option" (0005) | cmdabl-core | first two committed in `d7ba529` (not reviewed yet); lone `-` and the hint still open |
+| Dash handling: quote leading-dash words in the remembered line, `--` ends options, lone `-` is a word, hint in "unknown option" (0005) | cmdabl-core | committed `d7ba529` + `fa31212`, reviewed; needs the Live test (step 11 above) |
 | Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | waiting — the user starts it with `scripts/agents.sh ui`; needs the core task first |
 
 ### Candidates (not ordered yet — order them with the user after the test)
