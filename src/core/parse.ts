@@ -53,9 +53,9 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
 
   const isGroup = (node.children?.length ?? 0) > 0;
   const rest = tokens.slice(i);
-  const endOfOptions = rest.findIndex((t) => !t.quoted && t.value === "--");
+  const endOfOptions = rest.findIndex((t) => startsOption(input, t) && t.value === "--");
   const optionTokens = endOfOptions < 0 ? rest : rest.slice(0, endOfOptions);
-  const wantsHelp = optionTokens.some((t) => !t.quoted && (t.value === "--help" || t.value === "-h"));
+  const wantsHelp = optionTokens.some((t) => startsOption(input, t) && (t.value === "--help" || t.value === "-h"));
   if (wantsHelp) return { kind: "help", node, path };
 
   if (isGroup) {
@@ -95,7 +95,8 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
     }
     const def = text.startsWith("--") ? defs.find((d) => d.name === name) : defs.find((d) => d.short === name);
     if (!def) {
-      return error(ExitCode.USAGE, `unknown option "${text}" for "${path.join(" ")}"\nusage: ${usage(node, path)}`);
+      const hint = (node.args?.length ?? 0) > 0 ? "\n(quote it or put -- before it to use it as text)" : "";
+      return error(ExitCode.USAGE, `unknown option "${text}" for "${path.join(" ")}"${hint}\nusage: ${usage(node, path)}`);
     }
 
     if (!def.takesValue) {

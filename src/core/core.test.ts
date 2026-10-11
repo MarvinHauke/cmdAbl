@@ -166,6 +166,16 @@ test("parse: option values, escaped dashes and quoteIfNeeded round-trip", () => 
   assert.equal(parse("mute -- --help", tree).kind, "run");
 });
 
+test("parse: a lone dash is a word; unknown options hint at quoting", () => {
+  assert.deepEqual(run("mute /Kick - Sub").args, [["/Kick", "-", "Sub"]]);
+  const r = parse("mute -6dB", tree);
+  assert.equal(r.kind, "error");
+  if (r.kind === "error") {
+    assert.equal(r.result.code, ExitCode.USAGE);
+    assert.match(r.result.message ?? "", /unknown option "-6dB"[\s\S]*quote it or put -- before it/);
+  }
+});
+
 test("parse: optional argument may be absent", () => {
   assert.deepEqual(run("note").args, [[]]);
   assert.deepEqual(run("note hi").args, [["hi"]]);

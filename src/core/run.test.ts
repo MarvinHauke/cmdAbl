@@ -282,3 +282,28 @@ test("run: the preview shows uniquely resolved text as its path, once", async ()
   // "kick" is ambiguous (picked first); opal and "/Opal Lead" are one object.
   assert.deepEqual(picks[0]!.preview, { before: 'mute "/Opal Lead"', after: "vermona" });
 });
+
+test("run: a lone dash inside an unquoted name, and a word equal to a declared flag", async () => {
+  const dashed = [node("Kick - Sub", "track"), node("Opal Lead", "track")];
+  assignPaths(dashed, "");
+  const { deps, calls, registry } = setup();
+  deps.liveNodes = () => flattenObjectTree(dashed);
+  const out = await runLine("mute /Kick - Sub", deps);
+  assert.equal(out.result.code, ExitCode.OK);
+  assert.deepEqual(calls[0]!.paths, ["/Kick - Sub"]);
+  assert.equal(out.line, 'mute "/Kick - Sub"');
+  assert.equal((await runLine(out.line!, deps)).result.code, ExitCode.OK);
+  assert.deepEqual(calls[1]!.paths, ["/Kick - Sub"]); // the re-run hits the same track
+
+  registry.add({
+    name: "find2",
+    summary: "text arg and a flag",
+    args: [{ name: "pattern", kind: "text" }],
+    options: [{ name: "devices", short: "d", summary: "devices only" }],
+    run: () => {},
+  });
+  const word = await runLine('find2 "-d"', deps);
+  assert.equal(word.line, 'find2 "-d"'); // stays a word, not the flag
+  const flag = await runLine("find2 -d x", deps);
+  assert.equal(flag.line, "find2 --devices x");
+});
