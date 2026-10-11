@@ -184,6 +184,15 @@ _Last updated: 2026-10-11._
 - `arm` on a track that cannot be armed does nothing and shows no message (the SDK write neither
   throws nor takes effect). Task out to cmdabl-modules.
 - The Ecosia results mix manual versions 11 and 12. Narrowing to `/live-manual/12`.
+- **Palette stuck again, now with evidence (20:59):** `arm` on the group track "Analog Rytm", run
+  twice, showed no message; the next trigger logged `dialog open: palette` and nothing after it —
+  no window in Live, `/state` answers `open`, only a restart helps. So `showModalDialog` was
+  called and neither showed a window nor settled. Suspected, unverified: the rejected write
+  inside `withinTransaction` leaves something pending on Live's side. Mitigation (cmdabl-modules):
+  refuse `arm` on group tracks before writing. Investigation (cmdabl-bridge).
+- `arm` on a MIDI track whose input device is missing (arm button greyed out) shows no error. Not
+  yet known whether the build with the read-back was running; if it was, the SDK cannot tell and
+  it needs the Remote Script (`can_be_armed`, replies).
 
 ### In progress (tasks out, 2026-10-11)
 
@@ -214,6 +223,8 @@ _Last updated: 2026-10-11._
 | Scrollbar still white in Live: `color-scheme: dark`, one rule family per engine, better integration | cmdabl-ui | committed `63bba87`, reviewed; verified in headless Chrome only, **not in Live's webview**; needs the Live test (slim dim bar in all four pages, caret and selection still readable, no white flash on open) |
 | `arm` reports tracks that cannot be armed; manual search pinned to `/live-manual/12` | cmdabl-modules | committed `e885674` + `9edd84f`, reviewed; needs the Live test (step 4). The read-back after arming is unverified against the SDK: if ordinary tracks report "did not change", it comes out again (one function) |
 | Docs workflow's build job gets its own check name (`docs-build`) | cmdabl-core | committed `e23c043`, reviewed; the next pull-request run on GitHub is the proof (three checks: `build`, `gitleaks`, `docs-build`) |
+| `arm` refuses group tracks before writing | cmdabl-modules | sent (urgent) |
+| Why a dialog never appears after a write to a group track's `arm` (transaction, rejected write) | cmdabl-bridge | sent (investigation) |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
