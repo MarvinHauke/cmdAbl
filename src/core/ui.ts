@@ -1,6 +1,7 @@
 import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { PaletteItem, PaletteResult } from "../types.js";
 import { parseIndexes } from "./pickResult.js";
+import { notifySize } from "./notifySize.js";
 import { pickHeight } from "./pickSize.js";
 import { inlineJson } from "./inlineJson.js";
 import { createDialogQueue, type DialogQueue } from "./dialogQueue.js";
@@ -100,7 +101,8 @@ export function createDefaultUi(
 
     notify(request) {
       const html = notifyTemplate.replace("/*MESSAGE_PLACEHOLDER*/null", () => inlineJson(request.text));
-      void show("message", html, 500, 180);
+      const { width, height } = notifySize(request.text);
+      void show("message", html, width, height);
     },
   };
 }
