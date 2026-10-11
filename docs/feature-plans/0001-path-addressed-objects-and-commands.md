@@ -481,7 +481,8 @@ possible. A command needs one request in the normal case (`hello` is cached); an
 needs several pieces of data returns them in one reply. Single measurements scatter (14, 24,
 43 ms) because the script reads its socket once per display tick; `cmdabl --bridge` reports
 min / median / max over 20 round trips. A faster drain is built only if the maximum is above
-100 ms.
+100 ms. Accepted exception: `arm` asks twice (facts before the write, verify after),
+because the SDK reads back `arm` as true for a track Live refuses to arm (measured 2026-10-12).
 
 Rules for every new operation: one handler in `ops/`, one typed function in `bridgeOps.ts`, a
 test on each side; described in §4 before it is built, and the script `VERSION` goes up with it;

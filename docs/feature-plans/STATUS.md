@@ -264,11 +264,13 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
 
 ### Other
 
-- **`arm` on a MIDI track whose input device is missing** (arm button greyed out) shows no error:
-  neither with the SDK read-back (`e885674`) nor with `track_facts` (`7e4d787`, user 2026-10-12).
-  Live's Log.txt shows no script error, so Live most likely reports `can_be_armed` as true for
-  it (not yet seen as a value; task out to cmdabl-modules: log the facts and the read-back).
-  The user considers this Live's intended behaviour. If the log confirms it: a documented limit.
+- **`arm` on a MIDI track whose input device is missing** (arm button greyed out) shows no error.
+  Measured in Live (2026-10-12, log lines of `ff32196`): the script reports `can_be_armed` true
+  for it; the SDK reads back `arm` true after the write, but the script still reports `arm`
+  false on the next run — Live does not arm the track and the SDK's value is wrong. So it can
+  be detected: task out to cmdabl-modules — toggle from the script's value and verify with a
+  second `track_facts` after the write (two requests for `arm`, an accepted exception to "one
+  request per command"). Without the script the limit stays.
 - Live's Log.txt shows a `SyntaxError` at startup for `import ableton-live-midi-remote-scripts`:
   a folder of that name in a Remote Scripts directory, not cmdAbl. Harmless; the user may
   remove or rename the folder.
