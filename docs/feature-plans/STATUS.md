@@ -77,7 +77,7 @@ _Last updated: 2026-10-11._
     - Install, then uninstall a real extension → its folder appears, then is gone.
     - `pakabl upgrade federico-pepe.snake@9.9.9` → a version-mismatch failure.
 14. Reduced environment for child processes (`c28c70d`, `e1674bf`; step 13 covers pakabl):
-    - `cmdabl --setup` → same output as before (symlink created or "already exists").
+    - ~~`cmdabl --setup` → same output as before.~~ Passed in Live.
     - `:` opens the palette, and types a colon while the palette is open.
     - `man ableton` opens the Live manual in the browser, `man cmdabl` the docs site (once the
       `man` module is in); `cmdabl --help` shows a usage text and opens nothing.
@@ -136,6 +136,15 @@ _Last updated: 2026-10-11._
   which web globals the host has. If confirmed, it belongs in `docs/sdk-tree.md` as a constraint.
   Fixed in `827f326` (plain string check, no `URL` global; reviewed) — **the cause is still a
   hypothesis** until the startup log line `cmdAbl: host globals: …` has been read in Live.
+  **Confirmed 2026-10-11:** the host reports `URL`, `URLSearchParams`, `structuredClone`,
+  `TextEncoder` and `crypto` as `undefined` (`fetch`, `AbortController` exist). Recorded in
+  `docs/sdk-tree.md`, section 7.
+- `cmdabl --setup` works with the reduced environment (rule already linked, Remote Script
+  installed). Its message has a horizontal scrollbar: a long path does not wrap, and the window is
+  too small again. Task out: the page wraps (cmdabl-ui), then the host sizes the window from the
+  text (cmdabl-core).
+- The dialog log lines work (`dialog open: palette`, `dialog closed: palette (returned a value)`,
+  `dialog open: message`).
 
 ### In progress (tasks out, 2026-10-11)
 
@@ -159,6 +168,7 @@ _Last updated: 2026-10-11._
 | pakabl's Repo button opens through core's `openUrl` (macOS); the Windows branch stays, with an https check | cmdabl-modules | committed `931615b`, reviewed; Windows untested |
 | `man ableton <words>`: DuckDuckGo search limited to the manual (`site:ableton.com inurl:live-manual`; the user chose the engine) | cmdabl-modules | committed `0db7d6b`, reviewed; needs the Live test (step 16). Quotes are not passed on (no exact phrase); a word starting with `-` needs `--`; the typed words go to DuckDuckGo |
 | Manual search uses Ecosia instead of DuckDuckGo (`site:ableton.com/en/live-manual`; user decision) | cmdabl-modules | committed `ddd15cb`, reviewed; needs the Live test: does Ecosia honour the path in `site:`, and is the English manual (`/en/`) the wanted one? |
+| Message page: long lines wrap, Close stays visible, `Esc`/`Enter` close; then the window height follows the text | cmdabl-ui, then cmdabl-core | sent to cmdabl-ui |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 

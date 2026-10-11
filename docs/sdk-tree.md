@@ -295,6 +295,12 @@ WarpMode           Beats=0 | Tones=1 | Texture=2 | Repitch=3 | Complex=4 | Compl
 - **`renderPreFxAudio()`** — output goes to `tempDirectory`, which may be `undefined`
   (see `environment.storageDirectory` ⚠ note in the context tree above)
 - **`showModalDialog()` URL schemes** — `file:`, `data:`, `https:`, `http://localhost` only
+- **Web globals in the Extension Host** — extension code does not get the full set of Node
+  globals. Measured in Live 12.4.15b6 on 2026-10-11 (`typeof` at startup): `URL`,
+  `URLSearchParams`, `structuredClone`, `TextEncoder` and `crypto` are `undefined`; `fetch` and
+  `AbortController` exist. Unit tests run in plain Node and do not notice, so do not use the
+  missing ones (import from `node:url`, `node:util`, `node:crypto`, or avoid them). cmdAbl logs
+  the list at startup (`cmdAbl: host globals: …`).
 - **`context.commands.executeCommand()`** — scoped to the calling extension's own registered
   commands; cannot invoke commands registered by other extensions (filed as feature request
   2026-06-08)
