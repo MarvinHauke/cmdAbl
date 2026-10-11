@@ -169,12 +169,14 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    `find`, `next`, `prev`; `goto` does not feel slower; a track row and a device row picked in
    the palette. Open: `cmdabl --help` lists `--bridge`;
    `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open: answer, speed.
-1b. Remote Script step 3. Seen 2026-10-12 with script 0.3.0 (`hello, select, track_facts`;
-   20 round trips min 4 / median 51 / max 100 ms): `arm` toggles a normal track, refuses group,
-   return and main, "k/n done" with one undo, and the palette kept opening after every `arm`.
-   **Not working: `arm` on the MIDI track with the missing input device still gives no
-   message** (see "Known issues"). Open: the log lines of the task below, to see which facts
-   Live reports for that track.
+1b. Remote Script step 3, `arm` verify (`ebeadf7`; restart `npm start` only). Seen before with
+   script 0.3.0: `arm` toggles a normal track, refuses group, return and main, "k/n done". Now:
+   (1) `arm` on the MIDI track with the missing input device → "Live did not arm this track
+   (its arm button is disabled, e.g. no input device)"; again → the same message; `unarm` → ok;
+   (2) a normal MIDI and an audio track, arm on/off several times → never a failure (the
+   architect reads the `arm verify:` lines from the log); (3) normal + greyed-out track together
+   → "1/2 done", the normal one armed; (4) Edit → Undo after (1) and (3): what it shows, what
+   one undo does (a refused `arm` may leave an extra undo step); (5) `:` still opens the palette.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
@@ -270,7 +272,8 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
   false on the next run — Live does not arm the track and the SDK's value is wrong. So it can
   be detected: task out to cmdabl-modules — toggle from the script's value and verify with a
   second `track_facts` after the write (two requests for `arm`, an accepted exception to "one
-  request per command"). Without the script the limit stays.
+  request per command"). Built in `ebeadf7` (reviewed); a mismatch is asked once more after
+  100 ms before it counts. Without the script the limit stays. Live test 1b.
 - Live's Log.txt shows a `SyntaxError` at startup for `import ableton-live-midi-remote-scripts`:
   a folder of that name in a Remote Scripts directory, not cmdAbl. Harmless; the user may
   remove or rename the folder.
