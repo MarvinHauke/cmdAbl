@@ -27,7 +27,7 @@ export function snapshotObjectTree(context: ExtensionContext<"1.0.0">): PaletteI
   for (const node of nodes) nameCounts.set(node.name, (nameCounts.get(node.name) ?? 0) + 1);
 
   return nodes.map((node) => {
-    const parentPath = node.path.slice(0, -(node.name.length + 1));
+    const parentPath = node.path.slice(0, node.path.lastIndexOf("/"));
     const parentName = parentPath.split("/").filter(Boolean).pop();
     const subtitle = (nameCounts.get(node.name) ?? 0) > 1 ? node.path : parentName;
     return {

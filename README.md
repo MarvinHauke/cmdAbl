@@ -67,7 +67,7 @@ your own:
 
 | Module    | Capability                                                                 |
 | --------- | -------------------------------------------------------------------------- |
-| `goto`    | Surfaces tracks/devices in the palette and selects them via the Remote Script bridge |
+| `goto`    | Surfaces tracks/devices in the palette and selects them via the Remote Script bridge; `goto <path>` does the same from typed input. Same-named siblings are addressed as `/Drums/Kick`, `/Drums/Kick#2` |
 | `mute`    | `mute <path>[, <path> …]` — toggle mute on one or more tracks by path       |
 | `solo`    | `solo <path>[, <path> …]` — toggle solo on one or more tracks by path       |
 | `history` | Remembers your last 20 invocations and re-offers them as rerunnable entries |

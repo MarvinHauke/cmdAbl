@@ -75,7 +75,7 @@ export function buildObjectTree(context: ExtensionContext<"1.0.0">): ObjectNode[
   const mainRoot = buildTrackNode(song.mainTrack, 0, "master");
 
   const allRoots = [...roots, ...returnRoots, mainRoot];
-  for (const root of allRoots) assignPaths(root, "");
+  assignPaths(allRoots, "");
   return allRoots;
 }
 
@@ -99,9 +99,21 @@ function buildTrackNode(track: Track<"1.0.0">, trackIndex: number, scope: TrackS
   };
 }
 
-function assignPaths(node: ObjectNode, parentPath: string): void {
-  node.path = `${parentPath}/${node.name}`;
-  for (const child of node.children) assignPaths(child, node.path);
+/**
+ * Give every node its address. Siblings that share a name would otherwise get
+ * the same path and all but the first would be unreachable, so the 2nd, 3rd, …
+ * get an ordinal suffix: "/Drums/Kick", "/Drums/Kick#2". The suffix is a
+ * disambiguator derived from the current order — not a stable identity (that
+ * is the handle/route, re-checked when a command runs).
+ */
+export function assignPaths(siblings: ObjectNode[], parentPath: string): void {
+  const seen = new Map<string, number>();
+  for (const node of siblings) {
+    const ordinal = (seen.get(node.name) ?? 0) + 1;
+    seen.set(node.name, ordinal);
+    node.path = `${parentPath}/${node.name}${ordinal > 1 ? `#${ordinal}` : ""}`;
+    assignPaths(node.children, node.path);
+  }
 }
 
 /** Depth-first flat view of the tree — e.g. for building searchable palette items. */
