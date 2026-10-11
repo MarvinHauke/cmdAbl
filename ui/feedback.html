@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- notify surface (see src/core/ui.ts). In: MESSAGE_PLACEHOLDER = the message string. Out: nothing (closes with ''). -->
+<!-- notify surface (see src/core/ui.ts). In: MESSAGE_PLACEHOLDER = the message string. Out: nothing (closes with ''). Esc and Enter close it like the button. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -7,14 +7,28 @@
   <style>
     /*SHARED_CSS_PLACEHOLDER*/
 
-    body { padding: 16px; }
-    #msg { white-space: pre-wrap; font-size: 13px; margin: 0 0 12px; }
+    html, body { height: 100%; overflow: hidden; }
+    body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    /* The text scrolls on its own (vertically); the button below stays in view.
+       Long words and paths break anywhere: never a horizontal scrollbar. */
+    #msg {
+      flex: 1;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      font: inherit;
+      line-height: 18px;
+      outline: none;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    #footer { flex-shrink: 0; }
   </style>
 </head>
 <body>
 
-  <pre id="msg"></pre>
-  <button id="close">Close</button>
+  <pre id="msg" tabindex="-1"></pre>
+  <div id="footer"><button id="close">Close</button></div>
 
   <script>
     // Injected at runtime — the raw feedback message string.
@@ -28,7 +42,14 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('msg').textContent = MESSAGE ?? '';
-      document.getElementById('close').addEventListener('click', () => send(''));
+      const close = document.getElementById('close');
+      close.addEventListener('click', () => send(''));
+      document.addEventListener('keydown', e => {
+        if (e.repeat) return;   // a held Enter from the dialog before must not close this one
+        if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); send(''); }
+      });
+      // Focus the text, not the button: arrows and Page Up/Down then scroll it natively.
+      document.getElementById('msg').focus();
     });
   </script>
 
