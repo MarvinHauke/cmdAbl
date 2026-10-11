@@ -82,7 +82,7 @@ _Last updated: 2026-10-11._
     - `pakabl upgrade federico-pepe.snake@9.9.9` → a version-mismatch failure.
 14. Reduced environment for child processes (`c28c70d`, `e1674bf`; step 13 covers pakabl):
     - ~~`cmdabl --setup` → same output as before.~~ Passed in Live.
-    - `:` opens the palette, and types a colon while the palette is open.
+    - ~~`:` opens the palette, and types a colon while the palette is open.~~ Passed in Live.
     - `man ableton` opens the Live manual in the browser, `man cmdabl` the docs site (once the
       `man` module is in); `cmdabl --help` shows a usage text and opens nothing.
 15. Pick list page (`1b305f6`, `d8ca020`; `Space` marking and the `> mute …` line already seen
@@ -132,9 +132,10 @@ _Last updated: 2026-10-11._
   covers messages, log lines for open/close. **The cause stays unverified after that lands**: the
   queue does not help if a dialog promise never settles; the new log lines are there to tell.
 - **`pakabl list` opens its dialog itself** (`src/modules/pakabl/index.ts`), outside the `Ui`
-  contract and the dialog queue. No collision today. Options: (a) a fourth generic surface
-  (`page`) on `Ui`, reachable through `ModuleApi`; (b) rebuild the list on `select` plus
-  commands. Both change a contract — **waiting for the user's decision**.
+  contract and the dialog queue. No collision today. **Decided by the user (2026-10-11): option
+  (a)** — a fourth generic surface (`page`) on `Ui`, reachable through `ModuleApi`; `pakabl list`
+  keeps its page. Not built yet; it is a contract change for cmdabl-core, to be ordered with the
+  candidates (the manual index needs a pick list for non-Live items, a related change).
 - `pakabl list` inlined downloaded index data unescaped (`</script>` in a name breaks the page).
   Task out to cmdabl-modules, using core's `inlineJson`.
 - `Space` "did not mark" in the pick list: resolved, not a bug. The user had used `find`, which is
@@ -172,6 +173,13 @@ _Last updated: 2026-10-11._
   row each without a scrollbar; the scrollbar in `pakabl list` is slim and dim (the dark colour
   scheme and the single rule family work in Live's webview). Still to look at: `help`, a long
   pick list, the palette dropdown, caret and selection.
+- **Confirmed in Live (evening):** `:` opens the palette by shortcut and types a colon while it is
+  open (reduced environment works with Karabiner); `pakabl list` → Install put "Device Manager"
+  into Live's Extensions settings; `man ableton warp modes` opens Ecosia, and the provider honours
+  the path in `site:`.
+- `arm` on a track that cannot be armed does nothing and shows no message (the SDK write neither
+  throws nor takes effect). Task out to cmdabl-modules.
+- The Ecosia results mix manual versions 11 and 12. Narrowing to `/live-manual/12`.
 
 ### In progress (tasks out, 2026-10-11)
 
@@ -200,6 +208,8 @@ _Last updated: 2026-10-11._
 | Themed scrollbar in the dialogs (`ui/shared.css`) | cmdabl-ui | committed `158502d`, reviewed; checked in headless Chrome for the message and pick pages only; needs the Live test (thin dim scrollbar, no white track, in all four pages) |
 | Message height: fixed part 65 → 72 px | cmdabl-core | committed `ac885e2`, reviewed; needs the Live test: `cmdabl --help` shows six lines without a scrollbar |
 | Scrollbar still white in Live: `color-scheme: dark`, one rule family per engine, better integration | cmdabl-ui | committed `63bba87`, reviewed; verified in headless Chrome only, **not in Live's webview**; needs the Live test (slim dim bar in all four pages, caret and selection still readable, no white flash on open) |
+| `arm` reports tracks that cannot be armed; manual search pinned to `/live-manual/12` | cmdabl-modules | sent |
+| Docs workflow's build job gets its own check name (`docs-build`) | cmdabl-core | sent |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
@@ -210,6 +220,8 @@ _Last updated: 2026-10-11._
   rows of the empty palette, marked `(history)` — at most 20, in memory only.
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
 - Object items in the palette routed through `goto` (0005).
+- A generic `page` surface on `Ui` for module pages (decided, see above); `pakabl list` moves
+  onto it.
 - An `enum` argument kind with declared choices (0005 mentions it for pakabl ids): `man` would
   then show `usage: man <ableton|cmdabl>` instead of `man [topic]`, and get completion.
 - A Windows opener in core's `openUrl` (`man` and `cmdabl` answer with the URL there today;
