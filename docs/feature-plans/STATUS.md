@@ -209,7 +209,7 @@ _Last updated: 2026-10-11._
 | Message height: fixed part 65 → 72 px | cmdabl-core | committed `ac885e2`, reviewed; needs the Live test: `cmdabl --help` shows six lines without a scrollbar |
 | Scrollbar still white in Live: `color-scheme: dark`, one rule family per engine, better integration | cmdabl-ui | committed `63bba87`, reviewed; verified in headless Chrome only, **not in Live's webview**; needs the Live test (slim dim bar in all four pages, caret and selection still readable, no white flash on open) |
 | `arm` reports tracks that cannot be armed; manual search pinned to `/live-manual/12` | cmdabl-modules | sent |
-| Docs workflow's build job gets its own check name (`docs-build`) | cmdabl-core | sent |
+| Docs workflow's build job gets its own check name (`docs-build`) | cmdabl-core | committed `e23c043`, reviewed; the next pull-request run on GitHub is the proof (three checks: `build`, `gitleaks`, `docs-build`) |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
