@@ -322,7 +322,21 @@ Plans: 0001 Phase 4, decisions in 0004. Today the bridge is fire-and-forget over
    changes or deletes. Behaviour change from build step 2: with the old script installed,
    `goto` answers "installed Remote Script is outdated; run `cmdabl setup` and restart Live".
    The bridge sits behind an interface with a fake for tests; replies are validated where they
-   arrive. Build steps: 0001 §7; step 1 is out to cmdabl-bridge.
+   arrive. Build steps: 0001 §7.
+   - **Step 1 built** in `99b6e00` (reviewed; 127 unit tests, 6 Python tests): the script
+     answers `hello` (`VERSION` 0.1.0 in `remote-script/cmdAbl/protocol.py`), the extension has
+     the `Bridge` interface, a UDP client (500 ms timeout, cached `hello`), a fake, and a check
+     of the installed script file (missing / outdated / current). No command uses it yet, so it
+     cannot be seen in Live until the diagnostic below exists. The old `goto` path is unchanged.
+   - Task out to cmdabl-core: `cmdabl --bridge` (state, script version, round-trip time) and a
+     temporary `GET /bridge` on the trigger server, to time a `hello` while a dialog is open;
+     the Python tests in CI.
+   - Live test once that is in (after `cmdabl --setup` and a restart of Live): `goto` still
+     selects a track and a device; `cmdabl --bridge` shows the version and the time; control
+     surface disabled → "not running"; `curl http://127.0.0.1:27184/bridge` with the palette
+     open → does it answer, and how fast.
+   - Undo History: no call in the LOM documentation or the SDK types opens the panel (from the
+     documents, not tried in Live). The idea is dropped unless Ableton adds one.
 2. Availability: the extension knows whether the script is installed, running and of a matching
    version; commands declare `requires: ["bridge"]` (0005) and answer with exit code 5 and a
    clear text instead of doing nothing.
