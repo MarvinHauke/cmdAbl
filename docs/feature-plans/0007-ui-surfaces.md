@@ -123,8 +123,11 @@ multi-select.
   stricter OS sandbox arrives; levels 1 and 3 can stay inside the bundle.
 - **Dialog size.** The user cannot resize a dialog: `showModalDialog(url, width, height)` fixes
   the size when it opens, the SDK has no resize call, and a page cannot resize its native window
-  (a resize handle was requested in the Live test). Instead: size `notify` from its text (line
-  count and longest line — `help` wraps at 500×180), raise the pick list's maximum, and make the
+  (a resize handle was requested in the Live test). Instead the host sizes each dialog before
+  opening it. Built: `notify` from its text (`src/core/notifySize.ts`, `b6b208a`: width 500…760
+  from the longest line, height 110…420 from the wrapped line count, the page scrolls beyond
+  that) and the pick list from its rows (`src/core/pickSize.ts`). The numbers were measured in
+  headless Chrome, not in Live's webview. Still open: a larger maximum for the pick list, and
   sizes overridable with the settings of phase 2. Candidate for a feature request to Ableton.
   A replacement page may also need to declare its preferred size (a `<meta>` tag read before
   opening?).

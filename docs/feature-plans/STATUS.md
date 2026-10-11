@@ -106,6 +106,11 @@ _Last updated: 2026-10-11._
       `man ableton extra` → a usage error.
     - `help` lists `man`; a successful `man ableton` is in the history and re-runs.
     - `cmdabl --help` and bare `cmdabl` show the usage text; `cmdabl --foo` adds `unknown flag`.
+17. Messages (`1b6d254`, `b6b208a`):
+    - `man foo` (one line) → a small window; text and Close visible, no scrollbar.
+    - `help` → every line on one row, the last line visible, no horizontal scrollbar.
+    - `cmdabl --help` → the long `--setup` line fits; `cmdabl --setup` → the long path wraps.
+    - `Esc` closes, `Enter` closes; `↓`/`PageDown` scroll a long text; Close stays visible.
 
 ### Found in the Live test (2026-10-11, still running)
 
@@ -168,12 +173,13 @@ _Last updated: 2026-10-11._
 | pakabl's Repo button opens through core's `openUrl` (macOS); the Windows branch stays, with an https check | cmdabl-modules | committed `931615b`, reviewed; Windows untested |
 | `man ableton <words>`: DuckDuckGo search limited to the manual (`site:ableton.com inurl:live-manual`; the user chose the engine) | cmdabl-modules | committed `0db7d6b`, reviewed; needs the Live test (step 16). Quotes are not passed on (no exact phrase); a word starting with `-` needs `--`; the typed words go to DuckDuckGo |
 | Manual search uses Ecosia instead of DuckDuckGo (`site:ableton.com/en/live-manual`; user decision) | cmdabl-modules | committed `ddd15cb`, reviewed; needs the Live test: does Ecosia honour the path in `site:`, and is the English manual (`/en/`) the wanted one? |
-| Message page: long lines wrap, Close stays visible, `Esc`/`Enter` close; then the window height follows the text | cmdabl-ui, then cmdabl-core | page committed `1b6d254`, reviewed (checked in headless Chrome only; held-key repeats do not close a message; arrows and PageDown scroll the text); window sizing sent to cmdabl-core |
+| Message page: long lines wrap, Close stays visible, `Esc`/`Enter` close; then the window height follows the text | cmdabl-ui, then cmdabl-core | page committed `1b6d254`, reviewed (checked in headless Chrome only; held-key repeats do not close a message; arrows and PageDown scroll the text); window sizing committed `b6b208a`, reviewed (width 500…760, height 110…420; short messages now open smaller); needs the Live test (step 17) |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
 - Follow mode for the pick list (0007 §4; needs the spike in 0006).
-- Dialog sizes: `notify` sized from its text, larger pick list, configurable sizes (0007).
+- Dialog sizes, the rest: a larger pick list, configurable sizes (0007). `notify` is sized from
+  its text since `b6b208a`.
 - A `history` command: show the list and re-run an entry. Today the entries are only the first
   rows of the empty palette, marked `(history)` — at most 20, in memory only.
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
