@@ -7,7 +7,10 @@ publishes anything and never changes a version.
 dependency drift), and manually (Actions → CI → Run workflow).
 
 **Steps:** check that `package.json` and `manifest.json` have the same version → `npm ci` →
-`npm test` (unit tests for the command platform) → `npm run package` → upload the built `.ablx` as the artifact `cmdabl-ablx`.
+`npm test` (unit tests for the command platform) →
+`python3 -B -m unittest discover -s remote-script/tests` (the Remote Script's protocol tests;
+standard library only; `-B` keeps `__pycache__` out of the folder that gets packaged; run the same
+command locally) → `npm run package` → upload the built `.ablx` as the artifact `cmdabl-ablx`.
 
 ## Getting a built `.ablx` from CI
 
@@ -20,6 +23,7 @@ Open a green run in the Actions tab → **Artifacts** → `cmdabl-ablx`.
 | Green | Type-check, bundle and packaging all worked |
 | Red at "Check … versions match" | `package.json` and `manifest.json` differ — bump both to the same value |
 | Red at `npm test` | A unit test failed — see the test name in the log |
+| Red at "Remote Script tests" | A Python test of `remote-script/` failed — see the test name in the log |
 | Red at `npm run package` | A real build/type error — see the log |
 | `action_required` | GitHub holds runs triggered by bot-created PRs (e.g. the pakabl index PR) until someone clicks **Approve and run**. Optional for PRs that only change generated JSON. |
 

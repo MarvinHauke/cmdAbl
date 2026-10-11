@@ -1,6 +1,7 @@
 import type { CommandRegistry } from "../commandRegistry.js";
 import { runSetup } from "../setup.js";
 import { ok, fail, ExitCode } from "../types.js";
+import { reportBridge, type BridgeProbe } from "./bridgeStatus.js";
 
 // The only commands baked into cmdAbl itself — what a first-time user needs
 // before any module is involved. Everything else is a module
@@ -8,6 +9,7 @@ import { ok, fail, ExitCode } from "../types.js";
 
 const CMDABL_FLAGS = [
   { name: "--setup", description: "install keyboard trigger rule (Karabiner on macOS, AutoHotkey on Windows)" },
+  { name: "--bridge", description: "check the connection to the Remote Script (one hello, timed)" },
   { name: "--help", description: "show this usage text" },
 ];
 
@@ -24,7 +26,12 @@ export function cmdablUsage(): string {
   ].join("\n");
 }
 
-export function registerBuiltins(registry: CommandRegistry): void {
+export interface BuiltinsDeps {
+  /** The Remote Script bridge, for `cmdabl --bridge`. */
+  bridge?: () => BridgeProbe;
+}
+
+export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps = {}): void {
   registry.register("help", "list the available commands", () => {
     const lines = registry
       .list()
@@ -37,8 +44,12 @@ export function registerBuiltins(registry: CommandRegistry): void {
     "cmdabl",
     "configure cmdAbl",
     CMDABL_FLAGS,
-    (flags) => {
+    async (flags) => {
       if (flags.includes("--setup")) return ok(runSetup());
+      if (flags.includes("--bridge")) {
+        if (!deps.bridge) return fail(ExitCode.UNAVAILABLE, "the Remote Script bridge is not available in this build");
+        return (await reportBridge(deps.bridge())).result;
+      }
       if (flags.includes("--help")) return ok(cmdablUsage());
       const unknown = flags.find((f) => f.startsWith("-"));
       return fail(ExitCode.USAGE, `${unknown ? `unknown flag "${unknown}"\n` : ""}${cmdablUsage()}`);

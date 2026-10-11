@@ -53,12 +53,13 @@ Typing a command name followed by a space switches the dropdown into flag-comple
 
 **Built-in commands**
 
-| Command          | Description                                                |
-| ---------------- | --------------------------------------------------------- |
-| `help`           | List the available commands                               |
-| `cmdabl --help`  | Show the usage of `cmdabl` (documentation: `man cmdabl`)  |
-| `cmdabl --setup` | Install the keyboard trigger rule and show a result dialog |
-| `pakabl list`    | Browse and install community extensions — see _Install more extensions with `pakabl`_ under Installation |
+| Command           | Description                                                                                              |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
+| `help`            | List the available commands                                                                              |
+| `cmdabl --help`   | Show the usage of `cmdabl` (documentation: `man cmdabl`)                                                 |
+| `cmdabl --bridge` | Check the connection to the Remote Script (one timed hello)                                              |
+| `cmdabl --setup`  | Install the keyboard trigger rule and show a result dialog                                               |
+| `pakabl list`     | Browse and install community extensions — see _Install more extensions with `pakabl`_ under Installation |
 
 **Default modules**
 

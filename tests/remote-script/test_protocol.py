@@ -3,7 +3,7 @@ import os
 import sys
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "cmdAbl"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "remote-script", "cmdAbl"))
 import protocol  # noqa: E402
 
 
