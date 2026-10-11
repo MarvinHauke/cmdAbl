@@ -366,6 +366,9 @@ Plans: 0001 Phase 4, decisions in 0004. Today the bridge is fire-and-forget over
      a regression. Tasks out: cmdabl-core, `cmdabl --bridge` over 20 round trips with
      min / median / max; cmdabl-bridge, research on a faster drain (no code until the maximum
      is measured above 100 ms).
+     Research is in (0001 §6, `76bbb5d`): the tick is 0.1 s in Live's bundled framework;
+     `schedule_message` gives no gain; the one option is a `Live.Base.Timer` at about 20 ms
+     (used by Ableton's own scripts; main-thread behaviour and CPU cost unmeasured).
    - After that test: cmdabl-bridge removes the old one-way messages (`legacy.py`,
      `src/ableton/select.ts`, `selectTrack`/`selectDevice`).
    - Known gaps, for roadmap steps 3.3/3.4: a failing palette row is shown as a plain message
