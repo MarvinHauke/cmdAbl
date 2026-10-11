@@ -1,10 +1,10 @@
 import { SCRIPT_VERSION, type BridgeResult, type HelloInfo } from "../ableton/bridgeProtocol.js";
 import { ExitCode, fail, ok, type CommandResult } from "../types.js";
 
-// What `cmdabl --bridge` and the temporary GET /bridge report: fresh `hello`
-// round trips to the Remote Script, timed, one after the other, as min / median
-// / max (the script drains its socket once per display tick, so single values
-// scatter). Pure apart from the injected probe and clock: tested without Live.
+// What `cmdabl --bridge` (one fresh `hello`, answered at once) and the
+// temporary GET /bridge (20 of them, timed, one after the other, as min /
+// median / max — the script drains its socket once per display tick, so single
+// values scatter) report. Pure apart from the injected probe and clock: tested without Live.
 
 /** The part of the Bridge this needs: one fresh hello that never throws. */
 export interface BridgeProbe {

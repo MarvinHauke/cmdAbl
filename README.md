@@ -57,7 +57,7 @@ Typing a command name followed by a space switches the dropdown into flag-comple
 | ----------------- | -------------------------------------------------------------------------------------------------------- |
 | `help`            | List the available commands                                                                              |
 | `cmdabl --help`   | Show the usage of `cmdabl` (documentation: `man cmdabl`)                                                 |
-| `cmdabl --bridge` | Time 20 round trips to the Remote Script (min / median / max)                                            |
+| `cmdabl --bridge` | Show the Remote Script status: version, response time in ms, operations                                  |
 | `cmdabl --setup`  | Install the keyboard trigger rule and show a result dialog                                               |
 | `pakabl list`     | Browse and install community extensions — see _Install more extensions with `pakabl`_ under Installation |
 

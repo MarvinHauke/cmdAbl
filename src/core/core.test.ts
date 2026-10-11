@@ -231,13 +231,13 @@ test("cmdabl --bridge: reports the bridge's answer, the usage lists the flag", a
   assert.match(cmdablUsage(), /--bridge/);
   const run = async (answer: Parameters<typeof registerBuiltins>[1]) => {
     const registry = new CommandRegistry();
-    registerBuiltins(registry, { ...answer, bridgeReport: { sleep: async () => {} } });
+    registerBuiltins(registry, answer);
     return registry.run("cmdabl", ["--bridge"]);
   };
   const good = await run({ bridge: () => ({ ping: async () => ({ ok: true, value: { script: SCRIPT_VERSION, v: 1, ops: ["hello"] } }) }) });
   assert.equal(good.code, ExitCode.OK);
   assert.ok((good.message ?? "").startsWith(`Remote Script ${SCRIPT_VERSION} is running`));
-  assert.match(good.message ?? "", /^Remote Script \S+ is running \(protocol v1; 20 round trips: min \d+ ms, median \d+ ms, max \d+ ms; operations: hello\)$/);
+  assert.match(good.message ?? "", /^Remote Script \S+ is running \(protocol v1; \d+ ms; operations: hello\)$/);
   const down = await run({ bridge: () => ({ ping: async () => ({ ok: false, code: 5, text: "Remote Script not running" }) }) });
   assert.equal(down.code, ExitCode.UNAVAILABLE);
   assert.equal(down.message, "Remote Script not running");
