@@ -86,12 +86,14 @@ Plans: 0001 "Phase 4 protocol", build order 0001 §7, layout 0001 §8, decisions
    `cmdabl --setup` installs today, but does not compare versions (0001 §7, step 7); the
    subcommand form is step 3.1.
 4. Operations, in this order: `select` with read-back (built, see 1); track facts (built, see
-   1; `arm` verifies through the script); in work (2026-10-12): chain nodes (kind "chain",
-   path `/Track/Rack/Chain`, names from one `chains` request for all racks, cached; the tree
-   build never waits; the first palette open after a start may list no chains yet — accepted;
-   selecting uses `select`, so step 5 needs no new op). Order: cmdabl-core adds "chain" to
-   `PaletteItemType`, cmdabl-bridge wires the tree, cmdabl-modules (`goto`, `find`) and
-   cmdabl-ui (row look) follow. Planned as: Drum Rack chains
+   1; `arm` verifies through the script); chain nodes built (`bc46ca1`, `491e617`, script 0.4.0;
+   `91f6c9b`, `1565a06`): kind "chain", path `/Track/Rack/Chain`, names from one `chains`
+   request for all racks, cached; the tree build never waits; selecting uses `select`, so
+   step 5 needs no new op. Behaviour changes: the first palette open after a start lists no
+   chains yet (accepted); `find` also returns chains (new `-c`/`--chains`; `-t`/`-d`/`-c` now
+   add up); `goto <name>` asks to pick when a track and a pad share a name; a renamed pad
+   answers "the Live Set changed" or "is no longer there" until the cache refreshed.
+   Unverified until the Live test (1d): selecting a Drum Rack pad. Still planned: Drum Rack chains
    and pads with their real names in the object tree, pad selection (`find vermona kick`);
    reading the current selection (for restoring it later in follow mode).
 5. Unit tests for the protocol on both sides (built for steps 1–2); a Live test list per
@@ -191,6 +193,13 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    give the same rows as before, flags still complete after a command name; pick list
    (`mute vermona`) — `midi vermona` and `vermona midi` find the same rows, marks survive
    filtering, no visible delay on open; `find vermona kick` as before.
+1d. Chains and pads (script 0.4.0: `cmdabl --setup`, restart Live, `npm start`):
+   `cmdabl --bridge` → 0.4.0 with `chains`; open the palette once, then `find vermona kick` →
+   the Kick pad of the Drum Rack on "Vermona MIDI", selecting it shows the pad selected; the
+   second palette open lists chain rows, picking one selects it; `find -c kick` only pads;
+   `goto kick` with a track and a pad of that name asks to pick; `mute kick` offers only the
+   track; rename a pad and use the old name → "the Live Set changed; run the command again",
+   the new name works after the next palette open.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
