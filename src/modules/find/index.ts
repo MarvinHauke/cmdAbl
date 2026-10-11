@@ -4,7 +4,8 @@ import { resolvePath, uniquePath } from "../../ableton/resolvePath.js";
 import { getBridge } from "../../ableton/bridge.js";
 import { selectNodeResult } from "../selectNode.js";
 import { ExitCode, fail, type CommandResult } from "../../types.js";
-import { MatchList, matchesPattern } from "./matches.js";
+import { matches as matchesPattern } from "../../core/match.js";
+import { MatchList } from "./matches.js";
 
 /**
  * `find <pattern> [-t|-d]` — grep for the Live Set: every track/device whose
