@@ -75,7 +75,7 @@ _Last updated: 2026-10-11._
     - `pakabl uninstall some.thing` (not installed) → "not installed".
     - Install, then uninstall a real extension → its folder appears, then is gone.
     - `pakabl upgrade federico-pepe.snake@9.9.9` → a version-mismatch failure.
-14. Reduced environment for child processes (`c28c70d`; pakabl part to follow):
+14. Reduced environment for child processes (`c28c70d`, `e1674bf`; step 13 covers pakabl):
     - `cmdabl --setup` → same output as before (symlink created or "already exists").
     - `:` opens the palette, and types a colon while the palette is open.
     - `cmdabl --help` opens the manual in the browser and shows no message.
@@ -109,7 +109,7 @@ _Last updated: 2026-10-11._
 | One dialog at a time, "open" covers messages, open/close log lines | cmdabl-core | committed `6ad8884`, reviewed; needs the Live test (step 12 above). Behaviour change: a trigger while a message is up is ignored |
 | `inlineJson` in its own file; `pakabl list` escapes the index data with it | cmdabl-core, then cmdabl-modules | committed `cc5c62f` + `504a606`, reviewed; Live: `pakabl list` and its buttons as before |
 | pakabl hardening: validate ids before unzip and delete, open only repo URLs from the index, fail on a missing page placeholder | cmdabl-modules | committed `9dc9ec7`, reviewed; needs the Live test (step 13 above). Behaviour changes: pakabl errors are failing results now (no history entry); `pakabl uninstall` refuses folder names outside the id shape, e.g. hand-installed ones |
-| Child processes get an allowlisted environment instead of all of `process.env` (`src/setup.ts`, pakabl's `platform.ts`) | cmdabl-core, then cmdabl-modules | core committed `c28c70d` (setup and `cmdabl --help`), reviewed; pakabl's `platform.ts` still open with cmdabl-modules. `cmdabl --help` off macOS now returns exit code 5 with the URL instead of spawning `open`; Windows untested |
+| Child processes get an allowlisted environment instead of all of `process.env` (`src/setup.ts`, pakabl's `platform.ts`) | cmdabl-core, then cmdabl-modules | committed `c28c70d` (setup and `cmdabl --help`) + `e1674bf` (pakabl), reviewed; no spawn passes the whole environment any more; needs the Live test (steps 13 and 14). `cmdabl --help` off macOS now returns exit code 5 with the URL instead of spawning `open`; Windows untested |
 | `pakabl list` page sends `repo:<id>` instead of a URL (one line in `ui/pakabl-list.html`) | cmdabl-ui | waiting, with the pick page task |
 | Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | waiting — the user starts it with `scripts/agents.sh ui`; needs the core task first |
 
