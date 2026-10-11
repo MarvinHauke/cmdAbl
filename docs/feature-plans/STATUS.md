@@ -119,11 +119,11 @@ Changing these after a release breaks what users have learned and what is stored
 - Import-boundary test is built (`921dd43`, `9ee97c3`; rules in 0005, "Import boundaries"). One
   listed exception is left: `pakabl list` opening its own dialog (goes away with the `page`
   surface below).
-- One shared matcher (approved by the user 2026-10-12; task out to cmdabl-core, then cmdabl-ui
-  and cmdabl-modules): `src/core/match.ts` with "every word occurs" and a fuzzy rank, embedded
-  into the pages; the palette, the pick list filter and `find` use it. Path resolution stays
-  strict. A fuzzy finder is not a module and does not replace `find`; the completion engine
-  (0006, after 0.1.0) builds on it.
+- One shared matcher (approved by the user 2026-10-12): built — `src/core/match.ts`, embedded
+  into the pages as `CmdMatch` (`f82ab56`); `find` (`ba229fc`), palette and pick list
+  (`6f0527d`) use it. Path resolution stays strict. Behaviour change: the pick list filter
+  matches words in any order and orders rows by fuzzy rank. The completion engine (0006, after
+  0.1.0) builds on it. Live test: "Open Live tests", 1c.
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
 - A generic `page` surface on `Ui` for module pages (decided, see "Decisions"); `pakabl list`
   moves onto it and into the dialog queue.
@@ -187,6 +187,10 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    visible; `mute /a /nonexistent` → same layout; `find zzz` → one line as before; a normal
    MIDI and an audio track armed on/off several times never fail; Edit → Undo after a refused
    `arm` (what it shows, what one undo does).
+1c. Shared matcher (`f82ab56`, `ba229fc`, `6f0527d`): palette — `mte`, `opal`, a path fragment
+   give the same rows as before, flags still complete after a command name; pick list
+   (`mute vermona`) — `midi vermona` and `vermona midi` find the same rows, marks survive
+   filtering, no visible delay on open; `find vermona kick` as before.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
