@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import { spawnSync, spawn } from "node:child_process";
+import { childEnv } from "./core/childEnv.js";
 
 // ── macOS / Karabiner-Elements ───────────────────────────────────────────────
 
@@ -17,7 +18,10 @@ function karabinerSourcePath(): string {
 function isKarabinerSetupDone(): boolean {
   try {
     const target = path.join(KARABINER_MODS_DIR, KARABINER_SYMLINK_NAME);
-    const result = spawnSync("bash", ["-c", `test -e "${target}"`], { stdio: "ignore" });
+    const result = spawnSync("bash", ["-c", 'test -e "$CMDABL_TARGET"'], {
+      stdio: "ignore",
+      env: childEnv({ CMDABL_TARGET: target }),
+    });
     return result.status === 0;
   } catch {
     return false;
@@ -50,13 +54,12 @@ echo "Next: Karabiner-Elements -> Complex Modifications -> Add rule -> enable cm
 
   const result = spawnSync("bash", ["-c", script], {
     encoding: "utf8",
-    env: {
-      ...process.env,
+    env: childEnv({
       CMDABL_APP: KARABINER_APP,
       CMDABL_SOURCE: source,
       CMDABL_TARGET: target,
       CMDABL_MODS_DIR: KARABINER_MODS_DIR,
-    },
+    }),
   });
 
   return ((result.stdout ?? "") + (result.stderr ?? "")).trim() || "Setup complete.";
@@ -79,8 +82,8 @@ function isAhkSetupDone(): boolean {
     const target = path.join(WIN_STARTUP_DIR, WIN_SCRIPT_NAME);
     const result = spawnSync(
       "powershell",
-      ["-NonInteractive", "-Command", `Test-Path '${target}'`],
-      { encoding: "utf8" },
+      ["-NonInteractive", "-Command", "Test-Path -LiteralPath $env:CMDABL_TARGET"],
+      { encoding: "utf8", env: childEnv({ CMDABL_TARGET: target }) },
     );
     return result.stdout?.trim() === "True";
   } catch {
@@ -118,12 +121,11 @@ Write-Output 'Next: open cmdabl.ahk manually to activate now, or restart to auto
 
   const result = spawnSync("powershell", ["-NonInteractive", "-Command", script], {
     encoding: "utf8",
-    env: {
-      ...process.env,
+    env: childEnv({
       CMDABL_SOURCE: source,
       CMDABL_TARGET: target,
       CMDABL_STARTUP_DIR: WIN_STARTUP_DIR,
-    },
+    }),
   });
 
   return ((result.stdout ?? "") + (result.stderr ?? "")).trim() || "Setup complete.";
@@ -160,11 +162,10 @@ echo "Next: restart Live, then Settings -> Link, Tempo & MIDI -> Control Surface
 
   const result = spawnSync("bash", ["-c", script], {
     encoding: "utf8",
-    env: {
-      ...process.env,
+    env: childEnv({
       CMDABL_RS_SOURCE: source,
       CMDABL_RS_TARGET: target,
-    },
+    }),
   });
 
   return ((result.stdout ?? "") + (result.stderr ?? "")).trim() || "Setup complete.";
@@ -192,11 +193,10 @@ Write-Output 'Next: restart Live, then Settings -> Link, Tempo & MIDI -> Control
 
   const result = spawnSync("powershell", ["-NonInteractive", "-Command", script], {
     encoding: "utf8",
-    env: {
-      ...process.env,
+    env: childEnv({
       CMDABL_RS_SOURCE: source,
       CMDABL_RS_TARGET: target,
-    },
+    }),
   });
 
   return ((result.stdout ?? "") + (result.stderr ?? "")).trim() || "Setup complete.";
@@ -221,7 +221,9 @@ for cli in /opt/homebrew/bin/karabiner_cli "/Library/Application Support/org.pqr
   fi
 done
 `.trim();
-    spawn("bash", ["-c", script], { stdio: "ignore" }).unref();
+    const child = spawn("bash", ["-c", script], { stdio: "ignore", env: childEnv() });
+    child.on("error", () => {}); // non-critical; an unhandled "error" event would take down the host
+    child.unref();
   } catch {
     // non-critical
   }
