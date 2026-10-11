@@ -243,9 +243,9 @@ Left open deliberately — easier to settle with real data/usage than to guess u
   or chain need the analogous "make my ancestors visible" behavior, and if so, where does that
   logic live generically rather than per-kind?
 
-## Phase 4 protocol proposal (draft, 2026-10-11 — the user confirms before anything is built)
+## Phase 4 protocol (confirmed by the user 2026-10-11; build step 1 in progress)
 
-Supersedes the sketch in "Architecture §2". Decisions the user has to make are marked **[D1…]**.
+Supersedes the sketch in "Architecture §2". Decisions are marked **[D1…]** with the user's answer.
 "Measured" means observed in Live; nothing below is measured yet — every number is an assumption
 until the first Live test of build step 1. LOM facts are "from the LOM docs, to confirm in Live".
 
@@ -266,8 +266,8 @@ from `recvfrom()`. No second fixed port, no TCP, no files.
   reply is kept under 4 KB; `chains` takes `offset`/`limit` and the result carries `total`, so
   a Drum Rack with many long pad names is read in pages. If a reply would still not fit, the
   script answers `too_large`. `sendto` failures are caught and logged, never raised.
-- **[D1]** If 100 ms turns out too slow, the script also drains from a `schedule_message` that
-  re-arms itself each tick. Not planned; only if measurement says so.
+- **[D1] decided:** a faster drain (a self-re-arming `schedule_message`) only if the Live
+  measurement asks for it.
 
 ### 2. Message format
 
@@ -290,8 +290,8 @@ Reply: `{"v": 1, "id": "<same>", "ok": true, "result": { … }}` or
   | `unknown_op` | the script lacks the op | 5 — "installed script is outdated" |
   | `protocol_mismatch` | request `v` differs from the script's | 5 — see §3 |
 
-  **[D3]** `stale`/`out_of_range` as exit code 1 (proposed) or 3 "not found". `BridgeResult`
-  allows only 1 | 5 unless the user wants 3.
+  **[D3] decided:** `stale`/`out_of_range` are exit code 1 with the text "the Live Set changed;
+  run the command again". `BridgeResult` therefore allows only 1 | 5.
 - Today's script logs "unknown cmd None" for every `hello` it receives; that line is expected, not a bug.
 - The old `{"cmd": …}` messages stay accepted by the script for one release so an older extension
   keeps working with a newer script; the extension never sends them again.
@@ -305,8 +305,9 @@ Reply: `{"v": 1, "id": "<same>", "ok": true, "result": { … }}` or
   request with an `id` gets exactly one reply; unparseable or id-less datagrams are logged and
   dropped; routes and argument types are validated before any LOM access; the script never caches
   LOM objects and does one thing per op.
-- **Security**: any local process can send to 27185. The ops are `select` and reads, so no token
-  — a decision. A later destructive op would need one.
+- **Security**: any local process can send to 27185. No access token while the ops only select and
+  read (decided). **Rule:** a token is mandatory before the first op that changes or deletes
+  something.
 
 ### 3. `hello`, installation, version
 
@@ -316,7 +317,7 @@ Reply: `{"v": 1, "id": "<same>", "ok": true, "result": { … }}` or
   an error reply (`protocol_mismatch`) carrying the script's `v`, so a mismatch never looks like
   "not running".
 - **Installed**: assumption — the User Library `Remote Scripts/cmdAbl` folder holds the files and
-  a `VERSION` line in `cmdabl.py`. This reads outside the bundle (a stricter OS sandbox is
+  a `VERSION` line in `protocol.py`. This reads outside the bundle (a stricter OS sandbox is
   announced) and the User Library location is configurable in Live, so "cannot tell" is a valid,
   fail-soft answer.
 - **Running**: `hello` answers. Installed but silent = "not enabled in Live's preferences, or

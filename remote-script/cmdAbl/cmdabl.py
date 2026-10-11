@@ -5,7 +5,9 @@ socket and applies them to the Live Set. The socket is drained from
 `update_display`, which Live calls on the main thread at ~10 Hz, so LOM
 mutations made here are thread-safe.
 
-Protocol (UTF-8 JSON datagrams):
+Protocol with replies ({"v", "id", "op", "args"} -> {"v", "id", "ok", ...}) lives
+in protocol.py; this file only owns the socket and the ops table. Legacy
+fire-and-forget messages (UTF-8 JSON datagrams) are still accepted:
     {"cmd": "select_track", "scope": <"regular"|"return"|"master">, "index": <int>}
     {"cmd": "select_device", "scope": <...>, "trackIndex": <int>, "deviceIndex": <int>}
 
@@ -21,14 +23,18 @@ import traceback
 
 from _Framework.ControlSurface import ControlSurface
 
+from .protocol import handle_request
+
 BRIDGE_HOST = "127.0.0.1"
 BRIDGE_PORT = 27185
+MAX_PER_TICK = 32
 
 
 class cmdAbl(ControlSurface):
     def __init__(self, c_instance):
         super().__init__(c_instance)
         self._socket = None
+        self._ops = {}  # op name -> handler(args) -> dict; filled as ops are added
         try:
             self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self._socket.setblocking(False)
@@ -57,16 +63,31 @@ class cmdAbl(ControlSurface):
     def _drain_socket(self):
         if self._socket is None:
             return
-        while True:
+        # At most MAX_PER_TICK datagrams per tick: a flood must not stall Live's main thread.
+        for _ in range(MAX_PER_TICK):
             try:
-                data, _addr = self._socket.recvfrom(4096)
+                data, addr = self._socket.recvfrom(4096)
             except (BlockingIOError, OSError):
                 return  # nothing left to read
             if not data:
                 return
-            self._handle(data)
+            try:
+                self._handle(data, addr)
+            except Exception:
+                self.log_message("cmdAbl bridge: handler error:\n%s" % traceback.format_exc())
 
-    def _handle(self, data):
+    def _handle(self, data, addr):
+        # New protocol: a request has an "op". Everything else is the legacy form.
+        if b'"op"' in data:
+            reply, problem = handle_request(data, self._ops)
+            if problem:
+                self.log_message("cmdAbl bridge: dropped datagram: %s" % problem)
+            if reply is not None:
+                try:
+                    self._socket.sendto(reply, addr)
+                except Exception:
+                    self.log_message("cmdAbl bridge: reply failed:\n%s" % traceback.format_exc())
+            return
         try:
             msg = json.loads(data.decode("utf-8"))
         except Exception:
