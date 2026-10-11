@@ -15,3 +15,7 @@ test("inlineJson: </script> and <!-- cannot appear in the output and round-trip"
 test("inlineJson: plain values are unchanged JSON", () => {
   assert.equal(inlineJson({ a: [1, "b", null] }), '{"a":[1,"b",null]}');
 });
+
+test("inlineJson: undefined (which JSON.stringify cannot encode) becomes null", () => {
+  assert.equal(inlineJson(undefined), "null");
+});
