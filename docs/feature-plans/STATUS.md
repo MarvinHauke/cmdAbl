@@ -59,6 +59,14 @@ _Last updated: 2026-10-11._
     - A track `Bass -6dB`: `mute /Bass -6dB` → "unknown option" with the quoting hint;
       `mute "/Bass -6dB"` works.
     - `find "-d"` is remembered as `find "-d"`; `mute -- --help` does not print help.
+12. One dialog at a time (`6ad8884`):
+    - `help`, then trigger the palette while the message is up → nothing opens; the log says
+      `trigger ignored: message`. Dismiss it → the palette opens again.
+    - `mute` on a missing track (failure message), dismiss, trigger → opens.
+    - `goto vermona` → pick list → `Esc` → trigger → opens.
+    - `pakabl list` still opens and its buttons work.
+    - If the palette sticks again: look in the `npm start` log for `dialog open: X` without a
+      matching `dialog closed`, or `trigger ignored: a command is still running`.
 
 ### Found in the Live test (2026-10-11, still running)
 
@@ -86,6 +94,8 @@ _Last updated: 2026-10-11._
 | `SelectRequest.preview` and `items[].value` for the command line in the pick list (0007 §4) | cmdabl-core | committed `900f89d`, reviewed (also escapes `<` in the data inlined into all three dialogs); the line itself is not visible until the page task is done |
 | Remembered line fully canonical: unique paths, each object once (0005) | cmdabl-core | committed `b09108c` + `972b67a` (option parsing fix, reviewed OK). `b09108c` alone has one failing test — squash before merging if a clean history matters |
 | Dash handling: quote leading-dash words in the remembered line, `--` ends options, lone `-` is a word, hint in "unknown option" (0005) | cmdabl-core | committed `d7ba529` + `fa31212`, reviewed; needs the Live test (step 11 above) |
+| One dialog at a time, "open" covers messages, open/close log lines | cmdabl-core | committed `6ad8884`, reviewed; needs the Live test (step 12 above). Behaviour change: a trigger while a message is up is ignored |
+| `inlineJson` in its own file; `pakabl list` escapes the index data with it | cmdabl-core, then cmdabl-modules | sent |
 | Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | waiting — the user starts it with `scripts/agents.sh ui`; needs the core task first |
 
 ### Candidates (not ordered yet — order them with the user after the test)
