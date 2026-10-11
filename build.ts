@@ -21,13 +21,34 @@ const fuseBundle = await esbuild.build({
 });
 const fuseSource = fuseBundle.outputFiles[0].text;
 
+// The one name matcher (src/core/match.ts), bundled the same way: the pages
+// get it as the `CmdMatch` global (matches, rank, filterRanked). It contains
+// Fuse.js, so a page using CmdMatch needs no separate Fuse placeholder.
+const matchBundle = await esbuild.build({
+  stdin: {
+    contents: `import * as m from "./src/core/match.ts"; window.CmdMatch = m;`,
+    resolveDir: process.cwd(),
+    loader: "ts",
+  },
+  bundle: true,
+  format: "iife",
+  platform: "browser",
+  minify: true,
+  write: false,
+});
+const matchSource = matchBundle.outputFiles[0].text;
+// Both bundles are inlined into a <script> block: a literal end tag would cut it.
+for (const [name, text] of [["fuse", fuseSource], ["match", matchSource]] as const) {
+  if (/<\/script/i.test(text)) throw new Error(`the ${name} bundle contains "</script": cannot be inlined into a page`);
+}
+
 // Shared CSS injected into every HTML template (same pattern as the Fuse bundle above).
 const sharedCss = fs.readFileSync("ui/shared.css", "utf8");
 
 // esbuild inlines all ui/*.html files as strings (the `text` loader). Hook the
 // load so build-time placeholders are replaced before bundling:
-//   interface.html  — Fuse.js bundle + shared CSS
-//   all other .html — shared CSS only
+//   interface.html  — Fuse.js bundle (until it moves to CmdMatch) + shared CSS
+//   every .html     — shared CSS, and the matcher where /*MATCH_PLACEHOLDER*/ stands
 const htmlInlinePlugin: esbuild.Plugin = {
   name: "html-inline",
   setup(build) {
@@ -36,6 +57,7 @@ const htmlInlinePlugin: esbuild.Plugin = {
       if (args.path.endsWith("interface.html")) {
         html = html.replace("/*FUSE_PLACEHOLDER*/", () => fuseSource);
       }
+      html = html.replace("/*MATCH_PLACEHOLDER*/", () => matchSource);
       html = html.replace("/*SHARED_CSS_PLACEHOLDER*/", () => sharedCss);
       return { contents: html, loader: "text" };
     });
