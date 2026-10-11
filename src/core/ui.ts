@@ -24,7 +24,26 @@ export interface PromptRequest {
 export interface SelectRequest {
   title: string;
   multi: boolean;
-  items: { label: string; detail?: string }[];
+  /**
+   * The command text around the address being resolved, so the page can show
+   * the line Enter will run: `before`, the `value`s of the marked rows, `after`,
+   * joined with one space (empty parts skipped). Values go in the order of the
+   * returned indexes; with nothing marked the active row's value is shown.
+   * Absent: show no line.
+   */
+  preview?: PickPreview;
+  items: {
+    /** The row's text (for a pick: the unique path, unquoted). */
+    label: string;
+    detail?: string;
+    /** What this row contributes to the line (for a pick: the quoted unique path). */
+    value?: string;
+  }[];
+}
+
+export interface PickPreview {
+  before: string;
+  after: string;
 }
 
 /** A message for the user. `code` is the exit code it belongs to (0 = informational). */
@@ -41,13 +60,16 @@ export interface Ui {
   notify(request: NotifyRequest): void;
 }
 
+/** JSON for inlining into a <script> block: `<` is escaped so a name like `</script>` cannot end it. */
+const inlineJson = (value: unknown) => JSON.stringify(value).replace(/</g, "\\u003c");
+
 const dataUrl = (html: string) => `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 
 /** The built-in surfaces: SDK modal dialogs rendering the pages under ui/. */
 export function createDefaultUi(context: ExtensionContext<"1.0.0">): Ui {
   return {
     async prompt(request) {
-      const html = promptTemplate.replace("/*ITEMS_PLACEHOLDER*/null", () => JSON.stringify(request.items));
+      const html = promptTemplate.replace("/*ITEMS_PLACEHOLDER*/null", () => inlineJson(request.items));
       const raw = await context.ui.showModalDialog(dataUrl(html), 500, 260);
       if (!raw) return null;
       try {
@@ -59,14 +81,14 @@ export function createDefaultUi(context: ExtensionContext<"1.0.0">): Ui {
     },
 
     async select(request) {
-      const html = selectTemplate.replace("/*PICK_PLACEHOLDER*/null", () => JSON.stringify(request));
+      const html = selectTemplate.replace("/*PICK_PLACEHOLDER*/null", () => inlineJson(request));
       const height = Math.min(120 + request.items.length * 28, 420);
       const raw = await context.ui.showModalDialog(dataUrl(html), 560, height);
       return parseIndexes(raw, request.items.length);
     },
 
     notify(request) {
-      const html = notifyTemplate.replace("/*MESSAGE_PLACEHOLDER*/null", () => JSON.stringify(request.text));
+      const html = notifyTemplate.replace("/*MESSAGE_PLACEHOLDER*/null", () => inlineJson(request.text));
       void context.ui.showModalDialog(dataUrl(html), 500, 180);
     },
   };

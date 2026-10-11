@@ -9,7 +9,7 @@ import { registerBuiltins } from "./core/builtins.js";
 import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
 import { pickNodes } from "./core/pick.js";
-import { createDefaultUi, type Ui } from "./core/ui.js";
+import { createDefaultUi, type PickPreview, type Ui } from "./core/ui.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
 import { MODULES } from "./modules/index.js";
 
@@ -25,9 +25,18 @@ export function activate(activation: ActivationContext) {
   const commandRunListeners: Array<(invocation: string) => void> = [];
   const pickListeners: Array<(candidates: ObjectNode[], chosen: ObjectNode[] | null) => void> = [];
 
+  const liveNodes = () => flattenObjectTree(buildObjectTree(context));
+
   /** The one pick list — used by the platform for ambiguous addresses and by modules. */
-  async function pick(title: string, candidates: ObjectNode[], multi = false): Promise<ObjectNode[] | null> {
-    const chosen = await pickNodes(ui, { title, candidates, multi });
+  async function pick(
+    title: string,
+    candidates: ObjectNode[],
+    multi = false,
+    extra: { nodes?: ObjectNode[]; preview?: PickPreview } = {},
+  ): Promise<ObjectNode[] | null> {
+    // A module's own pick has no Live Set at hand; unique labels need it.
+    const nodes = extra.nodes ?? liveNodes();
+    const chosen = await pickNodes(ui, { title, candidates, multi, nodes, preview: extra.preview });
     for (const listener of pickListeners) listener(candidates, chosen);
     return chosen;
   }
@@ -81,8 +90,8 @@ export function activate(activation: ActivationContext) {
       const line = result.line ?? [result.id, ...(result.flags ?? [])].join(" ");
       const outcome = await runLine(line, {
         registry,
-        liveNodes: () => flattenObjectTree(buildObjectTree(context)),
-        pick: ({ title, candidates, multi }) => pick(title, candidates, multi),
+        liveNodes,
+        pick: ({ title, candidates, multi, nodes, preview }) => pick(title, candidates, multi, { nodes, preview }),
       });
       if (outcome.cancelled) return;
       present(outcome.result);

@@ -4,8 +4,9 @@ import { uniquePath } from "../ableton/resolvePath.js";
 import type { CommandRegistry } from "../commandRegistry.js";
 import { helpText, type Invocation } from "./commandTree.js";
 import { parse } from "./parse.js";
-import { applyPick, normalizeTargets, resolveTargets, type Target } from "./resolveArgs.js";
+import { applyPick, normalizeTargets, resolveTargets, type PickRequest, type Target } from "./resolveArgs.js";
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
+import type { PickPreview } from "./ui.js";
 
 // The one path every typed line takes: parse → resolve (asking the user to
 // pick when an address is ambiguous) → run → result. Everything it needs from
@@ -16,7 +17,15 @@ export interface RunDeps {
   /** The current Live Set as a flat list of addressable objects. */
   liveNodes: () => ObjectNode[];
   /** Ask the user to choose among candidates; null = cancelled. */
-  pick: (request: { title: string; candidates: ObjectNode[]; multi: boolean }) => Promise<ObjectNode[] | null>;
+  pick: (request: {
+    title: string;
+    candidates: ObjectNode[];
+    multi: boolean;
+    /** The whole Live Set, so the pick list can label rows with unique paths. */
+    nodes: ObjectNode[];
+    /** The command text around the ambiguous address (see SelectRequest.preview). */
+    preview: PickPreview;
+  }) => Promise<ObjectNode[] | null>;
 }
 
 export interface RunOutcome {
@@ -27,17 +36,41 @@ export interface RunOutcome {
   cancelled?: boolean;
 }
 
-function canonicalLine(invocation: Invocation<string>, targets: Target[][], nodes: ObjectNode[]): string {
+/** The command and its options, before any target. */
+function headWords(invocation: Invocation<string>): string[] {
   const words = [...invocation.path];
   for (const [name, value] of Object.entries(invocation.options)) {
     words.push(value === true ? `--${name}` : `--${name}=${quoteIfNeeded(value)}`);
   }
-  for (const values of targets) {
-    for (const value of values) {
-      words.push(quoteIfNeeded(typeof value === "string" ? value : uniquePath(nodes, value)));
-    }
-  }
-  return words.join(" ");
+  return words;
+}
+
+/** A target as it appears in a command line: resolved ones by unique path, others as typed. */
+function targetWord(value: Target, nodes: ObjectNode[]): string {
+  return quoteIfNeeded(typeof value === "string" ? value : uniquePath(nodes, value));
+}
+
+function canonicalLine(invocation: Invocation<string>, targets: Target[][], nodes: ObjectNode[]): string {
+  return [...headWords(invocation), ...targets.flat().map((v) => targetWord(v, nodes))].join(" ");
+}
+
+/** The line split around the ambiguous target the user is about to pick for. */
+function previewFor(
+  invocation: Invocation<string>,
+  targets: Target[][],
+  request: PickRequest,
+  nodes: ObjectNode[],
+): PickPreview {
+  const before = headWords(invocation);
+  const after: string[] = [];
+  targets.forEach((values, argIndex) => {
+    values.forEach((value, valueIndex) => {
+      if (argIndex === request.argIndex && valueIndex === request.valueIndex) return;
+      const isBefore = argIndex < request.argIndex || (argIndex === request.argIndex && valueIndex < request.valueIndex);
+      (isBefore ? before : after).push(targetWord(value, nodes));
+    });
+  });
+  return { before: before.join(" "), after: after.join(" ") };
 }
 
 export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome> {
@@ -73,6 +106,8 @@ export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome>
         title: `${invocation.path.join(" ")}: "${request.query}" matches ${request.candidates.length}`,
         candidates: request.candidates,
         multi: request.multi,
+        nodes,
+        preview: previewFor(invocation, targets, request, nodes),
       });
       if (!chosen || chosen.length === 0) return { result: ok(), cancelled: true };
       targets = applyPick(targets, request, request.multi ? chosen : chosen.slice(0, 1));

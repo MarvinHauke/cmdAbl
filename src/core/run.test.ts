@@ -6,6 +6,8 @@ import { uniquePath } from "../ableton/resolvePath.js";
 import { ExitCode, fail } from "../types.js";
 import { runLine, type RunDeps } from "./run.js";
 import { parse } from "./parse.js";
+import { pickNodes } from "./pick.js";
+import type { SelectRequest } from "./ui.js";
 import { parsePickResult } from "./pickResult.js";
 import { validateTree } from "./commandTree.js";
 import { MatchList, matchesPattern } from "../modules/find/matches.js";
@@ -35,7 +37,7 @@ const all = flattenObjectTree(roots);
 function setup(pickAnswer: (candidates: ObjectNode[], multi: boolean) => ObjectNode[] | null = () => null) {
   const registry = new CommandRegistry();
   const calls: { name: string; paths: string[] }[] = [];
-  const picks: { title: string; multi: boolean; offered: string[] }[] = [];
+  const picks: { title: string; multi: boolean; offered: string[]; preview: { before: string; after: string } }[] = [];
   const record = (name: string): Command["run"] => (inv) => {
     calls.push({ name, paths: (inv.args[0] ?? []).map((v) => (typeof v === "string" ? v : v.path)) });
   };
@@ -54,8 +56,8 @@ function setup(pickAnswer: (candidates: ObjectNode[], multi: boolean) => ObjectN
   const deps: RunDeps = {
     registry,
     liveNodes: () => all,
-    pick: async ({ title, candidates, multi }) => {
-      picks.push({ title, multi, offered: candidates.map((c) => c.path) });
+    pick: async ({ title, candidates, multi, preview }) => {
+      picks.push({ title, multi, offered: candidates.map((c) => c.path), preview });
       return pickAnswer(candidates, multi);
     },
   };
@@ -193,4 +195,62 @@ test("matchesPattern: every word must occur, any order, ignoring case", () => {
   assert.equal(matchesPattern("/Vermona MIDI/Drum Rack/Kick", "KICK vermona"), true);
   assert.equal(matchesPattern("/Vermona MIDI/Drum Rack/Kick", "vermona snare"), false);
   assert.equal(matchesPattern("/Vermona MIDI", "  "), false);
+});
+
+test("run: the pick preview splits the line around the ambiguous address", async () => {
+  const { deps, picks } = setup((c) => [c[0]!]);
+  await runLine('mute "/Opal Lead" "/Vermona DRM Audio" /Kick "/Opal Lead"', deps);
+  assert.deepEqual(picks[0]!.preview, {
+    before: 'mute "/Opal Lead" "/Vermona DRM Audio"',
+    after: '"/Opal Lead"',
+  });
+});
+
+test("run: resolved targets show as unique paths, unresolved ones as typed", async () => {
+  const { deps, picks } = setup((c) => [c[0]!]);
+  await runLine("mute /Vermona, /Kick, /Opal", deps);
+  // First ambiguous address is "/Vermona": nothing before, the rest as typed.
+  assert.deepEqual(picks[0]!.preview, { before: "mute", after: "/Kick /Opal" });
+  // Second: "/Kick" — the picked "/Vermona MIDI" is now a resolved target before it.
+  assert.deepEqual(picks[1]!.preview, { before: 'mute "/Vermona MIDI"', after: "/Opal" });
+});
+
+test("pickNodes: label is the unique path, value is the quoted unique path", async () => {
+  const requests: SelectRequest[] = [];
+  const ui = {
+    select: async (r: SelectRequest) => (requests.push(r), [0]),
+    prompt: async () => null,
+    notify: () => {},
+  };
+  const candidates = all.filter((n) => n.name === "Kick" || n.name === "Vermona DRM Audio");
+  const preview = { before: "mute /a", after: "/b" };
+  await pickNodes(ui, { title: "t", candidates, multi: true, nodes: all, preview });
+  const req = requests[0]!;
+  assert.deepEqual(req.preview, preview);
+  assert.deepEqual(
+    req.items.map((i) => [i.label, i.value]),
+    [
+      ["/Vermona DRM Audio", '"/Vermona DRM Audio"'],
+      ["/Kick#1", "/Kick#1"],
+      ["/Kick#2", "/Kick#2"],
+    ],
+  );
+  // Without a preview the field is absent.
+  await pickNodes(ui, { title: "t", candidates, multi: false });
+  assert.equal("preview" in requests[1]!, false);
+});
+
+test("run: preview + chosen values reproduces the remembered line", async () => {
+  let offered: ObjectNode[] = [];
+  let preview = { before: "", after: "" };
+  const { deps } = setup((c) => [c[1]!, c[0]!]);
+  const inner = deps.pick;
+  deps.pick = async (request) => {
+    offered = request.candidates;
+    preview = request.preview;
+    return inner(request);
+  };
+  const out = await runLine('mute /Vermona "/Opal Lead"', deps);
+  const values = [offered[1]!, offered[0]!].map((n) => (/\s/.test(n.path) ? `"${n.path}"` : n.path));
+  assert.equal([preview.before, ...values, preview.after].filter(Boolean).join(" "), out.line);
 });
