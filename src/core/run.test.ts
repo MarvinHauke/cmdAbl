@@ -202,17 +202,17 @@ test("run: the pick preview splits the line around the ambiguous address", async
   await runLine('mute "/Opal Lead" "/Vermona DRM Audio" /Kick "/Opal Lead"', deps);
   assert.deepEqual(picks[0]!.preview, {
     before: 'mute "/Opal Lead" "/Vermona DRM Audio"',
-    after: '"/Opal Lead"',
+    after: "", // the second "/Opal Lead" names an object already listed
   });
 });
 
 test("run: resolved targets show as unique paths, unresolved ones as typed", async () => {
   const { deps, picks } = setup((c) => [c[0]!]);
   await runLine("mute /Vermona, /Kick, /Opal", deps);
-  // First ambiguous address is "/Vermona": nothing before, the rest as typed.
-  assert.deepEqual(picks[0]!.preview, { before: "mute", after: "/Kick /Opal" });
+  // First ambiguous address is "/Vermona": nothing before; "/Opal" resolves uniquely, "/Kick" does not.
+  assert.deepEqual(picks[0]!.preview, { before: "mute", after: '/Kick "/Opal Lead"' });
   // Second: "/Kick" — the picked "/Vermona MIDI" is now a resolved target before it.
-  assert.deepEqual(picks[1]!.preview, { before: 'mute "/Vermona MIDI"', after: "/Opal" });
+  assert.deepEqual(picks[1]!.preview, { before: 'mute "/Vermona MIDI"', after: '"/Opal Lead"' });
 });
 
 test("pickNodes: label is the unique path, value is the quoted unique path", async () => {
@@ -253,4 +253,28 @@ test("run: preview + chosen values reproduces the remembered line", async () => 
   const out = await runLine('mute /Vermona "/Opal Lead"', deps);
   const values = [offered[1]!, offered[0]!].map((n) => (/\s/.test(n.path) ? `"${n.path}"` : n.path));
   assert.equal([preview.before, ...values, preview.after].filter(Boolean).join(" "), out.line);
+});
+
+test("run: the remembered line is canonical — unique paths, each object once", async () => {
+  const { deps, calls } = setup((c) => [c[0]!]);
+  const a = await runLine("mute opal /Opal Lead", deps);
+  assert.equal(a.line, 'mute "/Opal Lead"');
+  assert.deepEqual(calls[0]!.paths, ["/Opal Lead"]);
+  const b = await runLine("mute /Kick#1 kick", deps); // picks Kick#1 for "kick"
+  assert.equal(b.line, "mute /Kick#1");
+  assert.equal(calls[1]!.paths.length, 1); // the handler got one object
+  // A path argument is rewritten; a text argument and an option stay as typed.
+  const { deps: d2, registry } = setup();
+  const c = await runLine("goto opal", d2);
+  assert.equal(c.line, 'goto "/Opal Lead"');
+  registry.add({ name: "say", summary: "text", args: [{ name: "word", kind: "text" }], options: [{ name: "to", takesValue: true, summary: "target" }], run: () => {} });
+  const d = await runLine('say --to="a b" Hello', d2);
+  assert.equal(d.line, 'say --to="a b" Hello');
+});
+
+test("run: the preview shows uniquely resolved text as its path, once", async () => {
+  const { deps, picks } = setup((c) => [c[0]!]);
+  await runLine('mute opal "/Opal Lead" kick vermona', deps);
+  // "kick" is ambiguous (picked first); opal and "/Opal Lead" are one object.
+  assert.deepEqual(picks[0]!.preview, { before: 'mute "/Opal Lead"', after: "vermona" });
 });

@@ -1,10 +1,10 @@
 import { ExitCode, fail, ok, type CommandResult } from "../types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
-import { uniquePath } from "../ableton/resolvePath.js";
+import { resolvePath, uniquePath } from "../ableton/resolvePath.js";
 import type { CommandRegistry } from "../commandRegistry.js";
-import { helpText, type Invocation } from "./commandTree.js";
+import { helpText, type CommandNode, type Invocation } from "./commandTree.js";
 import { parse } from "./parse.js";
-import { applyPick, normalizeTargets, resolveTargets, type PickRequest, type Target } from "./resolveArgs.js";
+import { applyPick, normalizeTargets, resolveTargets, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
 import type { PickPreview } from "./ui.js";
 
@@ -50,12 +50,25 @@ function targetWord(value: Target, nodes: ObjectNode[]): string {
   return quoteIfNeeded(typeof value === "string" ? value : uniquePath(nodes, value));
 }
 
-function canonicalLine(invocation: Invocation<string>, targets: Target[][], nodes: ObjectNode[]): string {
-  return [...headWords(invocation), ...targets.flat().map((v) => targetWord(v, nodes))].join(" ");
+/**
+ * The line to remember: every path target by its unique path, each object once
+ * (the handler's own resolved arguments, in order); text arguments and options
+ * as typed. A re-run never asks again and keeps its meaning when the Set grows.
+ */
+function canonicalLine(invocation: Invocation<string>, args: ArgValue[][], nodes: ObjectNode[]): string {
+  return [...headWords(invocation), ...args.flat().map((v) => targetWord(v, nodes))].join(" ");
 }
 
-/** The line split around the ambiguous target the user is about to pick for. */
+/**
+ * The line split around the ambiguous target the user is about to pick for,
+ * under the same rule as `canonicalLine`: path text that resolves uniquely is
+ * shown as its unique path and an object appears once. Text that is still
+ * ambiguous stays as typed, so `before` + chosen values + `after` equals the
+ * remembered line once everything is resolved (a chosen row that duplicates a
+ * listed target is dropped from the remembered line, not from the preview).
+ */
 function previewFor(
+  node: CommandNode<any, any>,
   invocation: Invocation<string>,
   targets: Target[][],
   request: PickRequest,
@@ -64,10 +77,24 @@ function previewFor(
   const before = headWords(invocation);
   const after: string[] = [];
   targets.forEach((values, argIndex) => {
+    const def = node.args?.[argIndex];
+    const seen = new Set<string>(); // per argument, like resolveTargets
     values.forEach((value, valueIndex) => {
       if (argIndex === request.argIndex && valueIndex === request.valueIndex) return;
+      // Path text that resolves without a pick (one match, or `multiple: "all"`) shows as its objects.
+      let expanded: Target[] = [value];
+      if (typeof value === "string" && def?.kind === "path") {
+        const matches = resolvePath(nodes, value, def.kinds);
+        if (matches.length === 1 || (matches.length > 1 && def.multiple === "all")) expanded = matches;
+      }
       const isBefore = argIndex < request.argIndex || (argIndex === request.argIndex && valueIndex < request.valueIndex);
-      (isBefore ? before : after).push(targetWord(value, nodes));
+      for (const target of expanded) {
+        if (typeof target !== "string") {
+          if (seen.has(target.handleId)) continue;
+          seen.add(target.handleId);
+        }
+        (isBefore ? before : after).push(targetWord(target, nodes));
+      }
     });
   });
   return { before: before.join(" "), after: after.join(" ") };
@@ -107,7 +134,7 @@ export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome>
         candidates: request.candidates,
         multi: request.multi,
         nodes,
-        preview: previewFor(invocation, targets, request, nodes),
+        preview: previewFor(node, invocation, targets, request, nodes),
       });
       if (!chosen || chosen.length === 0) return { result: ok(), cancelled: true };
       targets = applyPick(targets, request, request.multi ? chosen : chosen.slice(0, 1));
@@ -120,6 +147,6 @@ export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome>
     } catch (e: unknown) {
       result = fail(ExitCode.FAILURE, `${invocation.path.join(" ")}: ${e instanceof Error ? e.message : String(e)}`);
     }
-    return { result, line: canonicalLine(invocation, targets, nodes) };
+    return { result, line: canonicalLine(invocation, step.invocation.args, nodes) };
   }
 }
