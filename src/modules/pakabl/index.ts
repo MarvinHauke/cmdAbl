@@ -178,7 +178,7 @@ async function list(api: ModuleApi): Promise<CommandResult | void> {
     if (!url || !url.startsWith("https://")) {
       return fail(ExitCode.NOT_FOUND, `pakabl: no repository known for "${id}"`);
     }
-    openUrl(url);
+    return openUrl(url);
   }
   return outcome;
 }

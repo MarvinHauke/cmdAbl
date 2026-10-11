@@ -1,6 +1,8 @@
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 import { childEnv } from "../../core/childEnv.js";
+import { openUrl as coreOpenUrl } from "../../core/openUrl.js";
+import { ExitCode, fail, ok, type CommandResult } from "../../types.js";
 
 // ── Live's Extensions folder ─────────────────────────────────────────────────
 // Where Live scans for installed `.ablx` bundles — confirmed on macOS (the user
@@ -32,11 +34,17 @@ function run(mac: string, win: string, env: Record<string, string>): { ok: boole
 }
 
 // ── open URL ─────────────────────────────────────────────────────────────────
-// `open` ships with macOS; `Start-Process` is a PowerShell built-in — same
-// "shell out, no new dependency" approach as the rest of this module.
+// macOS goes through core's opener (https only, minimal environment, result
+// instead of silence). Core has no Windows opener yet, so Windows keeps its
+// `Start-Process` branch here — dropping it would be a regression.
 
-export function openUrl(url: string): void {
-  run(`open "$CMDABL_URL"`, `Start-Process $env:CMDABL_URL`, { CMDABL_URL: url });
+export async function openUrl(url: string): Promise<CommandResult> {
+  if (process.platform !== "win32") return coreOpenUrl(url);
+  if (!url.startsWith("https://")) {
+    return fail(ExitCode.FAILURE, `refusing to open "${url}": only https: URLs are opened`);
+  }
+  const r = run("", `Start-Process $env:CMDABL_URL`, { CMDABL_URL: url });
+  return r.ok ? ok() : fail(ExitCode.FAILURE, `cannot open ${url}: ${r.output}`);
 }
 
 // ── download ─────────────────────────────────────────────────────────────────
