@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
+import { childEnv } from "../../core/childEnv.js";
 
 // ── Live's Extensions folder ─────────────────────────────────────────────────
 // Where Live scans for installed `.ablx` bundles — confirmed on macOS (the user
@@ -21,8 +22,8 @@ export const EXTENSIONS_DIR = process.platform === "win32" ? WIN_EXTENSIONS_DIR 
 function run(mac: string, win: string, env: Record<string, string>): { ok: boolean; output: string } {
   const result =
     process.platform === "win32"
-      ? spawnSync("powershell", ["-NonInteractive", "-Command", win], { encoding: "utf8", env: { ...process.env, ...env } })
-      : spawnSync("bash", ["-c", mac], { encoding: "utf8", env: { ...process.env, ...env } });
+      ? spawnSync("powershell", ["-NonInteractive", "-Command", win], { encoding: "utf8", env: childEnv(env) })
+      : spawnSync("bash", ["-c", mac], { encoding: "utf8", env: childEnv(env) });
 
   return {
     ok: result.status === 0,
