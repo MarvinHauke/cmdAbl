@@ -209,8 +209,9 @@ _Last updated: 2026-10-11._
 - Hypotheses: (H1) group arm specifically; (H2) a transaction executed inside a modal's close
   callback overlaps the modal's teardown, timing dependent; (H3) unrelated to writes; (H4) Live
   holds the dialog because of a pending undo step.
-- Experiments for the user: `arm /Analog Rytm` by direct path several times, then through the pick
-  list (separates H1 from H2); after a hang: what Live's Edit menu shows for Undo, whether Cmd+Z
+- Experiments for the user (group arm is refused since `aa98b7a`, so use `mute`): `mute` on a
+  normal track through the pick list several times, then by direct path (separates "write after a
+  pick" from "write"); after a hang: what Live's Edit menu shows for Undo, whether Cmd+Z
   brings the dialog, whether switching apps reveals a hidden window.
 - Candidate fixes, not to ship before the experiments: run the handler one macrotask after a
   dialog closes (cmdabl-core); drop the outer `withinTransaction` for a single-track write.
@@ -244,7 +245,7 @@ _Last updated: 2026-10-11._
 | Scrollbar still white in Live: `color-scheme: dark`, one rule family per engine, better integration | cmdabl-ui | committed `63bba87`, reviewed; verified in headless Chrome only, **not in Live's webview**; needs the Live test (slim dim bar in all four pages, caret and selection still readable, no white flash on open) |
 | `arm` reports tracks that cannot be armed; manual search pinned to `/live-manual/12` | cmdabl-modules | committed `e885674` + `9edd84f`, reviewed; needs the Live test (step 4). The read-back after arming is unverified against the SDK: if ordinary tracks report "did not change", it comes out again (one function) |
 | Docs workflow's build job gets its own check name (`docs-build`) | cmdabl-core | committed `e23c043`, reviewed; the next pull-request run on GitHub is the proof (three checks: `build`, `gitleaks`, `docs-build`) |
-| `arm` refuses group tracks before writing | cmdabl-modules | sent (urgent) |
+| `arm` refuses group tracks before writing | cmdabl-modules | committed `aa98b7a`, reviewed; needs the Live test. It avoids one possible trigger; it does not explain the hang |
 | Why a dialog never appears after a write to a group track's `arm` (transaction, rejected write) | cmdabl-bridge | findings in (no code changed), see "Dialog hang" below; waiting for the user's experiments |
 
 ### Candidates (not ordered yet — order them with the user after the test)
