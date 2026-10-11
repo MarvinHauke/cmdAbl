@@ -69,9 +69,9 @@ your own:
 | --------- | -------------------------------------------------------------------------- |
 | `goto`    | `goto <path>` selects a track or device (via the Remote Script bridge); tracks/devices are also listed in the palette |
 | `find`    | `find <pattern> [-t\|-d]` — every track/device whose path contains the pattern; `next` / `prev` step through the matches |
-| `mute`    | `mute <track>…` / `unmute <track>…` — set mute on one or more tracks        |
-| `solo`    | `solo <track>…` / `unsolo <track>…`                                         |
-| `arm`     | `arm <track>…` / `unarm <track>…` — record-arm tracks                       |
+| `mute`    | `mute <track>…` toggles mute per track; `unmute <track>…` always unmutes |
+| `solo`    | `solo <track>…` toggles solo per track; `unsolo <track>…` always unsolos |
+| `arm`     | `arm <track>…` toggles record arm per track; `unarm <track>…` always disarms |
 | `history` | Remembers your last 20 invocations and re-offers them as rerunnable entries |
 | `pakabl`  | Install/update/uninstall community extensions — see _Install more extensions with `pakabl`_ |
 
