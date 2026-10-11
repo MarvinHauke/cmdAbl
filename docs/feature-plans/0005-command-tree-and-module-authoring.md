@@ -196,6 +196,11 @@ Taken from comparing a ChatGPT architecture proposal with this plan (full table 
   (`find … | pick | mute`), and whether a selection can be handed back to the palette to keep
   typing.
 - **The pick list shows the command it will run** (see 0007, "Command line in the pick list").
+- **The remembered line is fully canonical** (architect, 2026-10-11): `RunOutcome.line` names
+  every resolved `path` target by its unique path, quoted where needed, and each object once —
+  `mute opal /Opal Lead` is stored as `mute "/Opal Lead"`. `text` arguments and options stay as
+  typed. A history re-run therefore never asks and does not change meaning when a later track
+  makes `opal` ambiguous. The pick list's preview follows the same rule.
 
 ## Verification
 
