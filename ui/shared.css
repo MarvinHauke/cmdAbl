@@ -29,17 +29,26 @@ button {
 }
 button:hover { border-color: var(--text); color: #fff; }
 
-/* Scrollbars: thin, dim thumb on the page background, so they do not show up as the
-   system's bright track. The standard properties cover newer webviews (Windows, recent
-   WebKit); the ::-webkit rules cover older WebKit, which ignores them. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--dim) transparent;
-}
-/* 8px: the host keeps this much free in the message width (NOTIFY_WIDTH_MARGIN in
-   src/core/notifySize.ts); change both together. */
-::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+/* Native scrollbars and form controls render dark, even where the rules below are ignored. */
+:root { color-scheme: dark; }
+
+/* Scrollbars: a slim bar on the page background, dim at rest, clearer on hover.
+   One rule family per engine, chosen on purpose: current engines (WebKit, Chromium) take
+   the ::-webkit-scrollbar rules, and an engine that understands the standard
+   scrollbar-color/-width properties ignores those pseudo-elements as soon as they are set,
+   so the standard ones are only used where ::-webkit-scrollbar does not exist. */
+::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }  /* 8px: the host keeps this
+   much free in the message width (NOTIFY_WIDTH_MARGIN, src/core/notifySize.ts); change both. */
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text); }
 ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--dim);
+  border: 2px solid transparent;      /* a 4px bar inset in the 8px track */
+  background-clip: content-box;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text); background-clip: content-box; }
+
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: var(--dim) transparent; }
+}
