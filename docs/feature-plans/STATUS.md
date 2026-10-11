@@ -8,10 +8,10 @@ _Last updated: 2026-10-11._
 
 ## Where the code is
 
-- `main`: SDK 1.0.0-beta.1, pakabl index crawler, CI, guides, MkDocs site, plans 0004–0006.
-- `refactor/core-modules` (draft PR #9): pushed on 2026-10-11 up to `99f5444`; CI, docs and the
-  new secret scan are green. Everything below under "Built, not yet merged". Merge after the Live
-  test passes.
+- `main`: contains the command platform rework since 2026-10-11 (PR #9 `refactor/core-modules`,
+  squash-merged at the user's request). The Live test was not finished: the rows marked "no" and
+  the open steps of the Live test list below still apply, now against `main`. The version is
+  still 0.0.1, so the merge published no release.
 - `main` is protected since 2026-10-11 by the ruleset "Protect main" (id 24888213): pull request
   required (0 approvals), required checks `build` and `gitleaks`, no force push, no deletion. The
   repository admin may bypass, but only when merging a pull request — a direct push to `main` is
@@ -20,7 +20,7 @@ _Last updated: 2026-10-11._
 - PR #8 `pakabl/index-update` (opened by the daily crawler, not reviewed yet): check the diff —
   if only star counts or push dates in `candidates.json` changed, it is the known noise (see "Parked").
 
-## Built, not yet merged (PR #9)
+## Built in PR #9 (merged 2026-10-11, Live test still open in parts)
 
 | Area | What | Tested in Live? |
 |---|---|---|
@@ -36,7 +36,7 @@ _Last updated: 2026-10-11._
 | Fix | Karabiner `cmdabl_open` flag reset on startup | no |
 | Team | `CLAUDE.md`, `.claude/agents/`, `scripts/agents.sh` | — |
 
-### Live test list for PR #9 (restart `npm start` first)
+### Live test list for the work of PR #9 (restart `npm start` first)
 
 1. `help` lists the commands, including `goto`, `find`, `arm`.
 2. `goto vermona` → pick list; `Enter` selects; `Esc` does nothing and adds no history entry.
@@ -235,6 +235,9 @@ _Last updated: 2026-10-11._
   open" and `GET /reset` answers 405; (3) after the next real hang, before restarting: Undo
   entry, Cmd+Z, app switch, then `POST /reset`, press `:`, and report whether a palette appears
   plus the log from the last `run start:` line on.
+- `arm` on a MIDI track whose input device is missing (arm button greyed out in Live): no message
+  even with the read-back of `e885674` running (user, 2026-10-11). The SDK accepts the write and
+  shows no difference; detecting it needs Remote Script replies (`can_be_armed`), see "Next".
 - Candidate fixes, kept until a hang can be tied to a cause: run the handler one macrotask after
   a dialog closes (cmdabl-core); drop the outer `withinTransaction` for a single-track write.
 
