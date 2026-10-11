@@ -30,6 +30,7 @@ export function createFakeBridge(options: FakeBridgeOptions = {}): FakeBridge {
     calls,
     state: () => state,
     available,
+    ping: available, // always "fresh" in the fake; updates the state like available()
     async request(op, args = {}, opts = {}) {
       calls.push({ op, args, changes: opts.changes ?? false });
       const ready = await available();

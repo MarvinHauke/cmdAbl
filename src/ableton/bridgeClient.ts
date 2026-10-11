@@ -30,6 +30,14 @@ export interface Bridge {
   /** Runs `hello` when the state is unknown; the answer is cached. Never throws. */
   available(): Promise<BridgeResult<HelloInfo>>;
   /**
+   * Always sends a fresh `hello` (ignores the cache) and updates the cached
+   * state with the outcome: a failure → "unavailable", a success → "available".
+   * For diagnostics (timing, "did the script go away"). Never throws. It does not join or
+   * replace a `hello` already in flight: a concurrent `ping()` and `available()` are two
+   * separate hellos that can end differently, and the later one wins. The state is a hint.
+   */
+  ping(): Promise<BridgeResult<HelloInfo>>;
+  /**
    * One request. `changes` marks a request that alters Live: a timeout then
    * means "end state unknown". Never throws.
    */
@@ -143,6 +151,17 @@ export function createBridgeClient(options: BridgeClientOptions): Bridge {
     return helloInFlight;
   }
 
+  async function ping(): Promise<BridgeResult<HelloInfo>> {
+    let r: BridgeResult<HelloInfo>;
+    try {
+      r = await hello();
+    } catch {
+      r = fail(5, TEXT_NOT_RUNNING);
+    }
+    cached = r;
+    return r;
+  }
+
   async function request(
     op: string,
     args: Record<string, unknown> = {},
@@ -170,6 +189,7 @@ export function createBridgeClient(options: BridgeClientOptions): Bridge {
       return cached.ok ? "available" : "unavailable";
     },
     available,
+    ping,
     request,
     close() {
       closed = true;

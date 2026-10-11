@@ -65,6 +65,21 @@ test("a request returns the result; script errors map to exit codes", async () =
   assert.deepEqual(await h.bridge.request("select", { bad: true }), { ok: false, code: 1, text: TEXT_STALE });
 });
 
+test("ping always sends a fresh hello and updates the state both ways", async () => {
+  let up = true;
+  const h = harness((r) => (up ? helloOk(r.id) : null));
+  assert.equal((await h.bridge.available()).ok, true);
+  assert.equal(h.sent.length, 1);
+  assert.equal((await h.bridge.ping()).ok, true); // not served from the cache
+  assert.equal(h.sent.length, 2);
+  up = false;
+  const p = h.bridge.ping();
+  await Promise.resolve();
+  h.fire();
+  assert.deepEqual(await p, { ok: false, code: 5, text: TEXT_NOT_RUNNING });
+  assert.equal(h.bridge.state(), "unavailable");
+});
+
 test("an op the script lacks → code 5 outdated, nothing sent", async () => {
   const h = harness((r) => helloOk(r.id, ["hello"]));
   const r = await h.bridge.request("select", {});
