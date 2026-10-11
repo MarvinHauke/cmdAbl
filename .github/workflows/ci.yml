@@ -34,9 +34,9 @@ jobs:
       - run: npm ci
       - run: npm test
 
-      # -B: no __pycache__ inside remote-script/, which `npm run package` ships.
+      # -B: no __pycache__ files left behind in the working tree.
       - name: Remote Script tests (Python, standard library only)
-        run: python3 -B -m unittest discover -s remote-script/tests
+        run: python3 -B -m unittest discover -s tests/remote-script
       - run: npm run package
 
       - uses: actions/upload-artifact@v4

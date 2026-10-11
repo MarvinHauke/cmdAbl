@@ -8,8 +8,8 @@ dependency drift), and manually (Actions → CI → Run workflow).
 
 **Steps:** check that `package.json` and `manifest.json` have the same version → `npm ci` →
 `npm test` (unit tests for the command platform) →
-`python3 -B -m unittest discover -s remote-script/tests` (the Remote Script's protocol tests;
-standard library only; `-B` keeps `__pycache__` out of the folder that gets packaged; run the same
+`python3 -B -m unittest discover -s tests/remote-script` (the Remote Script's protocol tests;
+standard library only; the tests live outside `remote-script/` so they are not packaged; run the same
 command locally) → `npm run package` → upload the built `.ablx` as the artifact `cmdabl-ablx`.
 
 ## Getting a built `.ablx` from CI
