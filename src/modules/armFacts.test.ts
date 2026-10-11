@@ -72,7 +72,7 @@ test("factsRefusal: unarmable MIDI track, group, stale entry, missing facts", ()
   const ok = { ok: true as const, value: { name: "a", canBeArmed: true, isGroup: false, isGrouped: false, arm: false } };
   assert.equal(factsRefusal(ok), undefined);
   assert.equal(factsRefusal(undefined), undefined);
-  assert.equal(factsRefusal({ ok: true, value: { ...ok.value, canBeArmed: false, arm: null } }), "Live does not allow arming this track (e.g. no input device)");
+  assert.equal(factsRefusal({ ok: true, value: { ...ok.value, canBeArmed: false, arm: null } }), "Live does not allow arming this track (its arm button is disabled, e.g. the input device is not available)");
   assert.equal(
     factsRefusal({ ok: true, value: { ...ok.value, canBeArmed: false, isGroup: true, arm: null } }),
     "group tracks cannot be armed",

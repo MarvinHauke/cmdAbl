@@ -2,6 +2,7 @@ import type { Bridge } from "../ableton/bridgeClient.js";
 import { trackFacts, type TrackFacts } from "../ableton/bridgeOps.js";
 import type { BridgeResult } from "../ableton/bridgeProtocol.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
+import { ARM_DISABLED_HINT } from "./trackSetValue.js";
 
 /**
  * What Live says about each track `arm` is about to write, one entry per node
@@ -127,6 +128,6 @@ export function armVerifyLine(path: string, wanted: boolean, verdict: ArmVerdict
 
 export function armNotChangedText(wanted: boolean): string {
   return wanted
-    ? "Live did not arm this track (its arm button is disabled, e.g. no input device)"
+    ? `Live did not arm this track ${ARM_DISABLED_HINT}`
     : "Live did not disarm this track";
 }

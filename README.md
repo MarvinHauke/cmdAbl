@@ -72,7 +72,7 @@ your own:
 | `find`    | `find <pattern> [-t\|-d]` — every track/device whose path contains the pattern; `next` / `prev` step through the matches |
 | `mute`    | `mute <track>…` toggles mute per track; `unmute <track>…` always unmutes |
 | `solo`    | `solo <track>…` toggles solo per track; `unsolo <track>…` always unsolos |
-| `arm`     | `arm <track>…` toggles record arm per track; `unarm <track>…` always disarms; return, main and group tracks cannot be armed and are reported as failed; with the Remote Script, so are tracks Live greys out (e.g. a MIDI track without an input device — checked after the write, as the Live API cannot tell beforehand; a refused `arm` may leave an extra undo step); a script enabled mid-session is noticed after `cmdabl --bridge` or a `goto` |
+| `arm`     | `arm <track>…` toggles record arm per track; `unarm <track>…` always disarms; return, main and group tracks cannot be armed and are reported as failed; with the Remote Script, so are tracks Live greys out (e.g. a MIDI track whose input device is not available — checked after the write, as the Live API cannot tell beforehand; a refused `arm` may leave an extra undo step); a script enabled mid-session is noticed after `cmdabl --bridge` or a `goto` |
 | `history` | Remembers your last 20 invocations and re-offers them as rerunnable entries |
 | `man`     | `man <topic>` opens a manual in the browser: `man ableton` (Live reference manual), `man cmdabl` (this documentation). `man ableton <words>` searches the Live 12 manual through Ecosia, e.g. `man ableton warp modes` |
 | `pakabl`  | Install/update/uninstall community extensions — see _Install more extensions with `pakabl`_ |
