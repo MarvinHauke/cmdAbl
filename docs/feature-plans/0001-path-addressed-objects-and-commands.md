@@ -134,10 +134,11 @@ fire-and-forget and one-way (extension → script). Reading `Chain.name` — and
 > against a Drum Rack with custom-named, non-default-instrument pads before considering Phase 4
 > done; a chain whose first device is an "External Instrument" is exactly the case to test.
 
-- Extension sends `{"cmd": "query", "id": <reqId>, "what": "chain_names", "route": [...]}`.
+- The message shapes (`{v, id, op, args}` → `{v, id, ok, result|error}`) and the `chains` operation
+  are specified in "Phase 4 protocol proposal" below; the sketch of a `query` message that was
+  here is superseded by it.
 - The Remote Script already has the sender's address from `recvfrom()`
-  (`remote-script/cmdAbl/cmdabl.py:_drain_socket`); it replies on the same socket with
-  `{"id": <reqId>, "data": [...]}`.
+  (`remote-script/cmdAbl/cmdabl.py:_drain_socket`) and replies to it.
 - Extension side: a small pending-request map keyed by `reqId`, with a timeout. If the script
   isn't installed or doesn't answer, the request times out and the affected nodes (chains, in
   this case) are simply omitted — the same fail-soft posture as today's selection no-op when
@@ -233,8 +234,7 @@ Left open deliberately — easier to settle with real data/usage than to guess u
   manually-typed paths with spaces need a real answer.
 - **Genuine ambiguity under `-d`/`-c`**: if `-d` is given but *two* devices on the resolved
   parent share a name, what happens — first match, error, or a disambiguation prompt?
-- **Bridge request timeouts**: how long to wait for a `query` response before treating the
-  bridge as "can't answer" (and, for the chain provider, simply not registering it)?
+- **Bridge request timeouts**: proposed 500 ms, unmeasured; see "Phase 4 protocol proposal" (§2, §6).
 - **Naming**: `ObjectNode`/`LiveRef`/`route`/`kind` are working names from this design
   session — worth a final pass once the shapes exist in code and have call sites to read
   naturally from.
@@ -242,6 +242,162 @@ Left open deliberately — easier to settle with real data/usage than to guess u
   parent groups on `select_track` (`cmdabl.py`'s `_unfold_parents`); does `select` on a device
   or chain need the analogous "make my ancestors visible" behavior, and if so, where does that
   logic live generically rather than per-kind?
+
+## Phase 4 protocol proposal (draft, 2026-10-11 — the user confirms before anything is built)
+
+Supersedes the sketch in "Architecture §2". Decisions the user has to make are marked **[D1…]**.
+"Measured" means observed in Live; nothing below is measured yet — every number is an assumption
+until the first Live test of build step 1. LOM facts are "from the LOM docs, to confirm in Live".
+
+### 1. Transport
+
+Stay on UDP, 127.0.0.1, script port 27185. The extension binds one socket on an ephemeral port
+for its lifetime and sends from it, so replies go to the sender address the script already gets
+from `recvfrom()`. No second fixed port, no TCP, no files.
+
+- Why: the script runs in Live's Python on the main thread; the socket is drained from
+  `update_display` (~10 Hz, assumed from the existing script comment). A UDP socket needs no
+  threads and no accept loop.
+- Cost: a request waits for the next drain, so a round trip is 0–100 ms plus Live's main-thread
+  load (assumed). Loopback delivery is reliable in practice but not guaranteed.
+- The script replies in the same drain pass that read the request.
+- **Size rule** (limits assumed: the script reads with `recvfrom(4096)`; macOS caps a UDP
+  datagram at 9216 bytes by default): requests stay under 2 KB (they are routes and names). A
+  reply is kept under 4 KB; `chains` takes `offset`/`limit` and the result carries `total`, so
+  a Drum Rack with many long pad names is read in pages. If a reply would still not fit, the
+  script answers `too_large`. `sendto` failures are caught and logged, never raised.
+- **[D1]** If 100 ms turns out too slow, the script also drains from a `schedule_message` that
+  re-arms itself each tick. Not planned; only if measurement says so.
+
+### 2. Message format
+
+Request: `{"v": 1, "id": "<string>", "op": "<name>", "args": { … }}`.
+Reply: `{"v": 1, "id": "<same>", "ok": true, "result": { … }}` or
+`{"v": 1, "id": "<same>", "ok": false, "error": {"code": "<slug>", "text": "<message>"}}`.
+
+`v` is the protocol version, one number, the same as in 0004; `hello` reports it too.
+
+- Error codes and the exit code the bridge maps them to:
+
+  | Code | Meaning | Exit code |
+  |---|---|---|
+  | `stale` | the route resolves but `expectName` differs | 1 — "the Live Set changed, run again" |
+  | `out_of_range` | the route does not exist | 1 — same text |
+  | `unsupported` | the LOM refuses (a LOM refusal; no 0.1.0 op can hit it yet, it is for later write ops) | 1 |
+  | `failed` | exception in the script, logged in Live's log | 1 |
+  | `too_large` | reply would exceed the size rule | 1 |
+  | `bad_request` | malformed args | 1 (a bug) |
+  | `unknown_op` | the script lacks the op | 5 — "installed script is outdated" |
+  | `protocol_mismatch` | request `v` differs from the script's | 5 — see §3 |
+
+  **[D3]** `stale`/`out_of_range` as exit code 1 (proposed) or 3 "not found". `BridgeResult`
+  allows only 1 | 5 unless the user wants 3.
+- Today's script logs "unknown cmd None" for every `hello` it receives; that line is expected, not a bug.
+- The old `{"cmd": …}` messages stay accepted by the script for one release so an older extension
+  keeps working with a newer script; the extension never sends them again.
+- Timeout: 500 ms (≥ 300 ms by 0004; assumed). The caller (`bridge.ts`, never a module) sees:
+  - no `hello` reply at all → **unavailable**, exit code 5;
+  - a timeout *after* a successful `hello`, for a request that changes Live → **unknown end
+    state**, exit code 1 ("no answer; check Live");
+  - a timeout on a read → exit code 1, nothing changed.
+- No retries for writes. `bridge.ts` retries a read once.
+- **Script rules**: every op handler is wrapped (nothing raises into Live); every parseable
+  request with an `id` gets exactly one reply; unparseable or id-less datagrams are logged and
+  dropped; routes and argument types are validated before any LOM access; the script never caches
+  LOM objects and does one thing per op.
+- **Security**: any local process can send to 27185. The ops are `select` and reads, so no token
+  — a decision. A later destructive op would need one.
+
+### 3. `hello`, installation, version
+
+`{"v": 1, "id": …, "op": "hello"}` → `{"script": "0.1.0", "v": 1, "ops": ["select", "track_facts", …]}`.
+
+- `hello` is answered whatever `v` the request carries. Any other op with a different `v` gets
+  an error reply (`protocol_mismatch`) carrying the script's `v`, so a mismatch never looks like
+  "not running".
+- **Installed**: assumption — the User Library `Remote Scripts/cmdAbl` folder holds the files and
+  a `VERSION` line in `cmdabl.py`. This reads outside the bundle (a stricter OS sandbox is
+  announced) and the User Library location is configurable in Live, so "cannot tell" is a valid,
+  fail-soft answer.
+- **Running**: `hello` answers. Installed but silent = "not enabled in Live's preferences, or
+  Live not restarted".
+- **Outdated script**: today's script logs "unknown cmd" and never replies, so `hello` times out.
+  When the installed-file check says "installed, old version", the text is "installed script is
+  outdated; run `cmdabl setup`, restart Live" — not "not running". **Behaviour change**: `goto`
+  selects with the old script today and returns exit code 5 after build step 2.
+- **Mismatch**: `v` differs, or an op the extension needs is missing from `ops` → exit code 5 with
+  both versions and "run `cmdabl setup`, restart Live".
+- `cmdabl setup` needs the installed `VERSION` (read from the file, no `hello`), and after
+  copying always says that Live must be restarted (Python is loaded once per start).
+- The extension sends `hello` lazily on first bridge use and caches the answer for the session;
+  the cache is dropped on the first timeout.
+
+### 4. Operations for 0.1.0 (roadmap order)
+
+Every op addresses an object with `{scope, route}`. A route alternates *track index, device
+index, chain index, device index, …* starting at the collection named by `scope`; its length
+says what it points at (1 = track, 2 = device on the track, 3 = chain, 4 = device in a chain,
+…). `expectName` is the name the extension saw when it built the tree.
+
+| Op | Args | Result |
+|---|---|---|
+| `select` | `{scope, route, expectName}` | `{name}` once the script read the selection back (track: `song.view.selected_track`; device: `track.view.selected_device`; a chain route selects the chain in its rack's view); `stale` / `out_of_range`; if the read-back differs: `failed` |
+| `track_facts` | `{scope, route}` (length 1) | `{can_be_armed, is_foldable, is_grouped, arm}` — `arm` is `null` unless `can_be_armed` (reading it raises otherwise) |
+| `chains` | `{scope, route, offset?, limit?}` (a device) | `{kind: "rack"\|"drum", total, chains: [{index, name, note?}]}` |
+| `select_chain` | `{scope, route, expectName}` (a chain or, for a Drum Rack, the pad) | `{name}`; differs from `select` only in the Drum Rack pad lookup — folded into `select` if that needs no extra logic |
+| `selection` | `{}` | `{scope, route, name}` for track, plus `device`/`chain` when set |
+
+- `is_group` is not a LOM property: group tracks are `is_foldable`; `is_grouped` means inside a
+  group. Both from the LOM docs, to confirm in Live (also whether a group track is armable).
+- `select` unfolds parent groups first, as `_unfold_parents` does today.
+- `chains`: `index` is the index in `device.chains`, on both sides; the extension checks the
+  count against the SDK's `rack.chains` so names cannot attach to the wrong chain. The name is
+  `Chain.name`; for a drum chain, the pad's name if the chain's name differs is **unverified**
+  (a pad can hold more than one chain). `note` may be redundant with the SDK's
+  `DrumChain.receivingNote`.
+- `select_chain` on a drum rack: a DrumChain has no back reference to its pad as far as the LOM
+  docs show; finding the pad means scanning `drum_pads`. **Unverified**; first Live test.
+- Identity stays the route, verified by `expectName`; nothing is cached in the script.
+- On a timeout, a *tree node* (chains) is omitted; a *command* answers with code 5/1 instead.
+
+### 5. What modules see
+
+`src/ableton/bridge.ts` exposes async functions that never throw and return
+`BridgeResult<T> = {ok: true, value: T} | {ok: false, code: 1 | 5, text: string}`:
+`bridge.available()`, `bridge.select(node)`, `bridge.trackFacts(node)`, `bridge.chains(node)`,
+`bridge.selection()`. `requires: ["bridge"]` makes the platform await `available()` before the handler (it sends
+`hello` when the state is unknown, up to the timeout); no answer → exit code 5 with the install
+hint, the handler is not run. Only the palette uses the cached state (unknown = not marked) and never waits for `hello`, so a
+missing script cannot delay opening it. A module never opens a socket or parses a reply.
+
+### 6. Open questions and risks
+
+- **[D2] Does the script run while a modal dialog is open?** Unknown. Live's main thread may not
+  call `update_display` during a modal; the extension's dialogs are modal. The design avoids
+  needing it (the palette closes before a command runs), but `select` inside a pick flow would
+  stall if it does. Related to the dialog-hang work: a request sent in the continuation of a
+  dialog close may meet a stalled main thread and time out, and a first-use timeout reads "not
+  running". First Live test: send `hello` while the pick list is open and time it.
+- Latency per round trip: assumed 0–100 ms, unmeasured. The tree build never does one request
+  per device; chain names are fetched only for racks an address touches.
+- Script reloaded mid-session: the cached `hello` is dropped on the first timeout.
+- Two Live instances: the second bind fails (logged). Out of scope.
+- Port 27185 taken: logged on bind failure; the extension sees "unavailable".
+- Windows is out of scope for 0.1.0 (macOS-only).
+
+### 7. Build order (each step has a Live test)
+
+1. Script: `hello` + request/reply plumbing, `VERSION`; extension: socket, pending map, timeout,
+   `bridge.available()`. Live: round-trip time; script stopped → exit 5; old script → "outdated";
+   `hello` during an open dialog (D2).
+2. `select` with read-back and `expectName`; `requires: ["bridge"]` in `goto`. Live: renamed
+   track → `stale`; unfold a folded group.
+3. `track_facts`; `arm` on a group / return track reports instead of doing nothing.
+4. `chains` + chain nodes in the tree behind `hello`; a Drum Rack with custom pad names and an
+   External Instrument chain (the case from §2).
+5. `select_chain` (pad selection, `find vermona kick`).
+6. `selection` read for follow mode.
+7. `cmdabl setup` version check and restart hint.
 
 ## Phased rollout
 
