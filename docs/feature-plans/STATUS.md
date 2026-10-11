@@ -131,7 +131,8 @@ _Last updated: 2026-10-11._
 | `pakabl list` page sends `repo:<id>` instead of a URL (one line in `ui/pakabl-list.html`) | cmdabl-modules (host), cmdabl-ui (page) | committed `82beafd` + `4a479ce`; needs the Live test: the Repo button opens the extension's GitHub page (step 13) |
 | Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | committed `1b305f6`, reviewed; keys checked with a scripted browser run, the look is unchecked; needs the Live test (step 15 above). Dialog height for the extra line: cmdabl-core, committed `bd13a52`, reviewed |
 | Pick list: first arrow enters the list without moving; robust `Space` detection; `Ctrl+Shift+D` key diagnostic | cmdabl-ui | committed `d8ca020`, reviewed; needs the Live test (step 15) |
-| Secret scan in CI (gitleaks or equivalent, pinned; allowlist for test fixtures; `docs/guides/ci.md`) | cmdabl-core | sent |
+| Secret scan in CI (`.github/workflows/secret-scan.yml`, gitleaks 8.30.1 pinned by checksum, `docs/guides/ci.md`) | cmdabl-core | committed `1092e4e`, reviewed. Full history scanned locally: 0 findings. **Only the first CI run after a push shows whether the workflow works** — then check the push run and start one manual run |
+| Pin `peter-evans/create-pull-request` in `pakabl-index.yml` to a commit SHA | cmdabl-core | sent |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
@@ -181,6 +182,8 @@ refs and the working tree on 2026-10-11: clean.
 - **pakabl index noise**: `candidates.json` stores star counts and push dates, so the daily
   workflow can open a PR when nothing relevant changed. Fix: only rewrite it when the set of repos
   or `.ablx` names changes.
+- **First-party actions by tag**: `actions/*` are pinned by tag (`@v4`, …) in the four older
+  workflows; pin them by SHA when convenient. The third-party one is being pinned now.
 - **CI runner image**: `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19; the crawler needs `unzip`.
   Pin `ubuntu-24.04` in the workflows or verify after the switch.
 - **Old remote branches** `features` and `feature/path-addressed-objects`: the user has not decided
