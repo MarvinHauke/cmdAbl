@@ -24,7 +24,7 @@ _Last updated: 2026-10-11._
 | Parser | tokenizer, command tree, validator, parser, `registry.add` / `api.commands.add` | implicitly, through the commands below |
 | Resolver | paths → Live objects before the handler; `#n` for same-named siblings | `goto` not-found / ambiguous seen |
 | Pick list | shown for ambiguous paths; `Tab` multi-select for multi-target commands | shown for `goto` and `find`; multi-select **not confirmed yet** |
-| Commands | `goto`; `mute`/`solo`/`arm` toggle per track, `unmute`/`unsolo`/`unarm` switch off (one undo step, duplicate targets count once) | `goto` yes; the toggles **no** (rebuilt in `145fd98`) |
+| Commands | `goto`; `mute`/`solo`/`arm` toggle per track, `unmute`/`unsolo`/`unarm` switch off (one undo step; the resolver counts a track named twice once) | `goto` yes; the toggles **no** (rebuilt in `145fd98`) |
 | `find` | `find <words> [-t\|-d]`, `next`, `prev` | **yes** (`find`, `-t`, `next`, `prev`) |
 | `pakabl` | `pakabl list` unchanged | yes |
 | UI contract | `prompt` / `select` / `notify` in `src/core/ui.ts` | no (no behaviour change intended) |
@@ -59,8 +59,8 @@ _Last updated: 2026-10-11._
 
 | Task | Agent | State |
 |---|---|---|
-| `mute`/`solo`/`arm` toggle again; `un…` stay as "off" (0005) | cmdabl-modules | committed `145fd98`, reviewed; needs the Live test (step 4 above) |
-| `SelectRequest.preview` and `items[].value` for the command line in the pick list (0007 §4) | cmdabl-core | sent |
+| `mute`/`solo`/`arm` toggle again; `un…` stay as "off" (0005) | cmdabl-modules | committed `145fd98` + `083c288`, reviewed; needs the Live test (step 4 above) |
+| `SelectRequest.preview` and `items[].value` for the command line in the pick list (0007 §4) | cmdabl-core | committed `900f89d`; overview from core still to come; nothing visible until the page task is done |
 | Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | waiting — the user starts it with `scripts/agents.sh ui`; needs the core task first |
 
 ### Candidates (not ordered yet — order them with the user after the test)
