@@ -156,6 +156,7 @@ _Last updated: 2026-10-11._
 | New module `man`: `man ableton` (Live manual), `man cmdabl` (docs site) | cmdabl-modules | committed `69452e9`, reviewed; needs the Live test (step 16). On Windows `man` answers with the URL (exit 5) until core's `openUrl` has a Windows opener |
 | pakabl's Repo button opens through core's `openUrl` (macOS); the Windows branch stays, with an https check | cmdabl-modules | committed `931615b`, reviewed; Windows untested |
 | `man ableton <words>`: DuckDuckGo search limited to the manual (`site:ableton.com inurl:live-manual`; the user chose the engine) | cmdabl-modules | committed `0db7d6b`, reviewed; needs the Live test (step 16). Quotes are not passed on (no exact phrase); a word starting with `-` needs `--`; the typed words go to DuckDuckGo |
+| Manual search uses Ecosia instead of DuckDuckGo (`site:ableton.com/en/live-manual`; user decision) | cmdabl-modules | sent |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
@@ -169,7 +170,8 @@ _Last updated: 2026-10-11._
   then show `usage: man <ableton|cmdabl>` instead of `man [topic]`, and get completion.
 - A Windows opener in core's `openUrl` (`man` and `cmdabl` answer with the URL there today;
   pakabl keeps its own `Start-Process` branch until then).
-- A section index for the Ableton manual: match `man ableton <words>` against chapter and section
+- **Wanted by the user (2026-10-11): index the Ableton manual** instead of sending a query to a
+  search engine, which feels odd to him. A section index for the Ableton manual: match `man ableton <words>` against chapter and section
   titles and open the section directly, with the pick list on several hits (needs a pick list for
   things other than Live objects — a `ModuleApi` change). The web search below is the first step.
 - An `enum` argument kind with declared choices (0005 mentions it for pakabl ids): `man` would
