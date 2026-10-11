@@ -107,7 +107,8 @@ _Last updated: 2026-10-11._
     - `help` lists `man`; a successful `man ableton` is in the history and re-runs.
     - `cmdabl --help` and bare `cmdabl` show the usage text; `cmdabl --foo` adds `unknown flag`.
 17. Messages (`1b6d254`, `b6b208a`):
-    - `man foo` (one line) → a small window; text and Close visible, no scrollbar.
+    - ~~`man foo` (one line) → a small window, no scrollbar; `Esc` and `Enter` close; the long
+      path in `cmdabl --setup` wraps.~~ Passed in Live.
     - `help` → every line on one row, the last line visible, no horizontal scrollbar.
     - `cmdabl --help` → the long `--setup` line fits; `cmdabl --setup` → the long path wraps.
     - `Esc` closes, `Enter` closes; `↓`/`PageDown` scroll a long text; Close stays visible.
@@ -150,6 +151,13 @@ _Last updated: 2026-10-11._
   text (cmdabl-core).
 - The dialog log lines work (`dialog open: palette`, `dialog closed: palette (returned a value)`,
   `dialog open: message`).
+- Message sizing in Live (`b6b208a`): a one-line message and `cmdabl --setup` are right; `Esc` and
+  `Enter` close. `help` and `cmdabl --help` still wrap their longest line and get a scrollbar: a
+  character is about 8.0 px wide in Live's webview, not 7.83 as in headless Chrome. The requested
+  height is the content height (the title band is extra), line height 18 px is right. The
+  scrollbar track is bright white.
+- `cmdabl --setup` prints a raw `cp: … are identical (not copied)` line when the Remote Script
+  folder is a symlink to the repo.
 
 ### In progress (tasks out, 2026-10-11)
 
@@ -174,6 +182,8 @@ _Last updated: 2026-10-11._
 | `man ableton <words>`: DuckDuckGo search limited to the manual (`site:ableton.com inurl:live-manual`; the user chose the engine) | cmdabl-modules | committed `0db7d6b`, reviewed; needs the Live test (step 16). Quotes are not passed on (no exact phrase); a word starting with `-` needs `--`; the typed words go to DuckDuckGo |
 | Manual search uses Ecosia instead of DuckDuckGo (`site:ableton.com/en/live-manual`; user decision) | cmdabl-modules | committed `ddd15cb`, reviewed; needs the Live test: does Ecosia honour the path in `site:`, and is the English manual (`/en/`) the wanted one? |
 | Message page: long lines wrap, Close stays visible, `Esc`/`Enter` close; then the window height follows the text | cmdabl-ui, then cmdabl-core | page committed `1b6d254`, reviewed (checked in headless Chrome only; held-key repeats do not close a message; arrows and PageDown scroll the text); window sizing committed `b6b208a`, reviewed (width 500…760, height 110…420; short messages now open smaller); needs the Live test (step 17) |
+| Message sizing with Live's character width (8.05 px); setup reports a linked Remote Script instead of the `cp` line | cmdabl-core | sent |
+| Themed scrollbar in the dialogs (`ui/shared.css`) | cmdabl-ui | sent |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
