@@ -220,6 +220,18 @@ Taken from comparing a ChatGPT architecture proposal with this plan (full table 
     whether numbers get a special case when the first `number` argument exists, and say it in
     the authoring guide.
 
+## Import boundaries (2026-10-11, enforced by `src/architecture.test.ts`)
+
+- A module does not import another module's folder, `src/extension`, `src/httpTrigger` or a
+  platform dialog page (`interface`, `pick`, `feedback`). It may import its own page
+  `ui/<module>-*.html`. Only `src/modules/index.ts`, the manifest, imports module folders.
+- `src/core/` does not import modules, `httpTrigger` or `extension`.
+- `src/ableton/` does not import modules, `core/ui` or `extension`.
+- Only `src/core/ui.ts` calls `showModalDialog`.
+- Known exceptions, listed in the test: the `find` match tests sit in `src/core/run.test.ts`
+  (they belong in `src/modules/find/`), and `pakabl list` opens its own dialog until the `page`
+  surface exists.
+
 ## Verification
 
 - Registration rejects each rule violation above with a clear startup error.

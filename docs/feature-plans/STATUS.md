@@ -348,10 +348,11 @@ Changing these after a release breaks what users have learned and what is stored
 
 ### 4. Small things that make it feel finished
 
-- An import-boundary test (task out to cmdabl-core): fails when a module imports the dialog
-  pages, the HTTP server or another module's internals. From an outside architecture review the
-  user brought in; its other points are already true or are step 3.4 (ports).
-
+- Import-boundary test: built in `921dd43` (`src/architecture.test.ts`, rules in 0005, "Import
+  boundaries"); 125 unit tests pass. Two listed exceptions to clear: move the `find` match
+  tests from `src/core/run.test.ts` to `src/modules/find/` (cmdabl-modules), and `pakabl list`
+  opening its own dialog (goes away with the `page` surface below). From an outside
+  architecture review the user brought in; its other points are already true or are step 3.4.
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
 - A generic `page` surface on `Ui` for module pages (decided, see above); `pakabl list` moves
   onto it and into the dialog queue.
