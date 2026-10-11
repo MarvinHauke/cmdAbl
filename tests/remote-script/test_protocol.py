@@ -3,8 +3,9 @@ import os
 import sys
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "remote-script", "cmdAbl"))
-import protocol  # noqa: E402
+sys.path.insert(0, os.path.dirname(__file__))
+import fake_live  # noqa: E402,F401  (installs the _Framework stub, puts remote-script on the path)
+from cmdAbl import protocol  # noqa: E402
 
 
 def req(**kw):

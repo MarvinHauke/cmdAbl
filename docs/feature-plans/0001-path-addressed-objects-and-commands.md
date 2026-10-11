@@ -419,7 +419,8 @@ Remote Script (`remote-script/cmdAbl/`):
 
 Operations get the song passed in and import nothing from Live, so they are tested with fake
 objects in `tests/remote-script/` (`fake_live.py`, one test file per operation file). The old
-one-way `cmd` messages are removed in step 2, when `goto` uses `select`.
+one-way `cmd` messages (`legacy.py`) are removed in step 2, when `goto` uses `select`; an
+installed copy stays in the User Library (`cp -R` does not delete) but nothing imports it.
 
 Extension (`src/ableton/`): `bridgeProtocol.ts` (message types, error → exit code),
 `bridgeClient.ts`, `bridgeFake.ts`, `bridge.ts` (transport, fake, access) and `bridgeOps.ts`

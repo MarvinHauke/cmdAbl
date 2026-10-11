@@ -1,28 +1,24 @@
-"""cmdAbl bridge Remote Script.
+"""cmdAbl bridge Remote Script — the control surface: socket, read, hand over.
 
-Receives small JSON commands from the cmdAbl extension over a local UDP
-socket and applies them to the Live Set. The socket is drained from
-`update_display`, which Live calls on the main thread at ~10 Hz, so LOM
-mutations made here are thread-safe.
+Receives JSON datagrams from the cmdAbl extension on 127.0.0.1:27185. The
+socket is drained from `update_display`, which Live calls on the main thread at
+~10 Hz, so LOM access made here is thread-safe. No operation logic lives here:
 
-Protocol with replies ({"v", "id", "op", "args"} -> {"v", "id", "ok", ...}) lives
-in protocol.py; this file only owns the socket and the ops table. Legacy
-fire-and-forget messages (UTF-8 JSON datagrams) are still accepted:
-    {"cmd": "select_track", "scope": <"regular"|"return"|"master">, "index": <int>}
-    {"cmd": "select_device", "scope": <...>, "trackIndex": <int>, "deviceIndex": <int>}
+- protocol.py  message format, errors, `hello` (pure)
+- routes.py    {scope, route} -> Live objects
+- ops/         one handler per operation (the list `hello` reports)
+- legacy.py    the old one-way `cmd` messages, until goto uses `select`
 
-`scope` names which track collection the index resolves into — song.tracks,
-song.return_tracks, or the single-element [song.master_track]. It mirrors
-TrackScope on the extension side (src/types.ts) and defaults to "regular" if
-omitted, matching pre-Phase-2 messages that only ever addressed song.tracks.
+Layout and rules: docs/feature-plans/0001 §8.
 """
 
-import json
 import socket
 import traceback
 
 from _Framework.ControlSurface import ControlSurface
 
+from . import legacy
+from .ops import OPS
 from .protocol import handle_request
 
 BRIDGE_HOST = "127.0.0.1"
@@ -34,18 +30,13 @@ class cmdAbl(ControlSurface):
     def __init__(self, c_instance):
         super().__init__(c_instance)
         self._socket = None
-        self._ops = {}  # op name -> handler(args) -> dict; filled as ops are added
         try:
             self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self._socket.setblocking(False)
             self._socket.bind((BRIDGE_HOST, BRIDGE_PORT))
-            self.log_message(
-                "cmdAbl bridge listening on %s:%d" % (BRIDGE_HOST, BRIDGE_PORT)
-            )
+            self.log_message("cmdAbl bridge listening on %s:%d" % (BRIDGE_HOST, BRIDGE_PORT))
         except Exception:
-            self.log_message(
-                "cmdAbl bridge failed to bind:\n%s" % traceback.format_exc()
-            )
+            self.log_message("cmdAbl bridge failed to bind:\n%s" % traceback.format_exc())
 
     def disconnect(self):
         if self._socket is not None:
@@ -76,10 +67,14 @@ class cmdAbl(ControlSurface):
             except Exception:
                 self.log_message("cmdAbl bridge: handler error:\n%s" % traceback.format_exc())
 
+    def _ops_for_song(self):
+        """The op table with the song bound; the song is read per request, never cached."""
+        return {name: (lambda args, fn=fn: fn(self.song(), args)) for name, fn in OPS.items()}
+
     def _handle(self, data, addr):
-        # New protocol: a request has an "op". Everything else is the legacy form.
+        # A request of the new protocol has an "op"; everything else is the legacy form.
         if b'"op"' in data:
-            reply, problem = handle_request(data, self._ops)
+            reply, problem = handle_request(data, self._ops_for_song())
             if problem:
                 self.log_message("cmdAbl bridge: dropped datagram: %s" % problem)
             if reply is not None:
@@ -88,79 +83,4 @@ class cmdAbl(ControlSurface):
                 except Exception:
                     self.log_message("cmdAbl bridge: reply failed:\n%s" % traceback.format_exc())
             return
-        try:
-            msg = json.loads(data.decode("utf-8"))
-        except Exception:
-            self.log_message("cmdAbl bridge: bad message: %r" % data)
-            return
-        cmd = msg.get("cmd")
-        if cmd == "select_track":
-            self._select_track(msg)
-        elif cmd == "select_device":
-            self._select_device(msg)
-        else:
-            self.log_message("cmdAbl bridge: unknown cmd %r" % cmd)
-
-    def _tracks_for_scope(self, song, scope):
-        if scope == "return":
-            return song.return_tracks
-        if scope == "master":
-            return [song.master_track]
-        return song.tracks
-
-    def _select_track(self, msg):
-        scope = msg.get("scope", "regular")
-        index = msg.get("index")
-        song = self.song()
-        tracks = self._tracks_for_scope(song, scope)
-        if not isinstance(index, int) or index < 0 or index >= len(tracks):
-            self.log_message(
-                "cmdAbl bridge: select_track index out of range: %r (scope=%r)" % (index, scope)
-            )
-            return
-        try:
-            track = tracks[index]
-            self._unfold_parents(track)
-            song.view.selected_track = track
-        except Exception:
-            self.log_message(
-                "cmdAbl bridge: select failed:\n%s" % traceback.format_exc()
-            )
-
-    def _select_device(self, msg):
-        scope = msg.get("scope", "regular")
-        track_index = msg.get("trackIndex")
-        device_index = msg.get("deviceIndex")
-        song = self.song()
-        tracks = self._tracks_for_scope(song, scope)
-        if not isinstance(track_index, int) or track_index < 0 or track_index >= len(tracks):
-            self.log_message(
-                "cmdAbl bridge: select_device trackIndex out of range: %r (scope=%r)" % (track_index, scope)
-            )
-            return
-        track = tracks[track_index]
-        devices = track.devices
-        if not isinstance(device_index, int) or device_index < 0 or device_index >= len(devices):
-            self.log_message(
-                "cmdAbl bridge: select_device deviceIndex out of range: %r" % device_index
-            )
-            return
-        try:
-            # Device selection requires the containing track to be selected
-            # too (and visible, if it's nested in a folded group).
-            self._unfold_parents(track)
-            song.view.selected_track = track
-            song.view.select_device(devices[device_index])
-        except Exception:
-            self.log_message(
-                "cmdAbl bridge: select_device failed:\n%s" % traceback.format_exc()
-            )
-
-    def _unfold_parents(self, track):
-        # A track inside a folded Group Track is hidden in the UI even when
-        # selected, so walk up the chain of enclosing groups and unfold each.
-        group = track.group_track
-        while group:
-            if group.is_foldable and group.fold_state:
-                group.fold_state = 0
-            group = group.group_track
+        legacy.handle(data, self.song(), self.log_message)
