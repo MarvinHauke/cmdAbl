@@ -1,7 +1,7 @@
 import type { ModuleApi } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { trackFor } from "../ableton/trackLookup.js";
-import { nextTrackValue, uniqueTracks, type TrackSetValue } from "./trackSetValue.js";
+import { nextTrackValue, type TrackSetValue } from "./trackSetValue.js";
 import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../types.js";
 
 // Shared by mute/unmute, solo/unsolo and arm/unarm. Two modes:
@@ -26,7 +26,7 @@ export function registerTrackSetCommand(
     summary,
     args: [{ name: "track", kind: "path", kinds: ["track"], variadic: true }],
     run: (invocation): CommandResult => {
-      const nodes = uniqueTracks((invocation.args[0] ?? []) as ObjectNode[]);
+      const nodes = (invocation.args[0] ?? []) as ObjectNode[];
       const outcomes: TargetOutcome[] = [];
 
       // One transaction = one undo step for the whole command.
