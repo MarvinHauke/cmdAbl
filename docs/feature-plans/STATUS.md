@@ -68,7 +68,11 @@ Plans: 0001 "Phase 4 protocol", build order 0001 §7, layout 0001 §8, decisions
      request for up to 20 tracks). Unverified until Live: `can_be_armed` for a MIDI track
      without its input device, for a group and for the main track. Task out to cmdabl-modules:
      `arm` uses the facts when the script is there and behaves as today when it is not (`arm`
-     does not require the bridge). Needs `cmdabl --setup` and a restart of Live again.
+     does not require the bridge). Built in `7e4d787` (reviewed): one `track_facts` request
+     before the write; `canBeArmed` false → "Live does not allow arming this track (e.g. no
+     input device)"; without the script exactly today's behaviour. A cached "unavailable" is
+     not retried by `arm` (noticed after `cmdabl --bridge` or a `goto`). Live test: "Open Live
+     tests", 1b.
    - Known gaps, for roadmap steps 3.3/3.4: a failing palette row is shown as a plain message
      (the result handler cannot return a `CommandResult`); a row whose object is gone can fall
      back to the route and select another object (no name in the item); modules call
@@ -165,6 +169,13 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    `find`, `next`, `prev`; `goto` does not feel slower; a track row and a device row picked in
    the palette. Open: `cmdabl --help` lists `--bridge`;
    `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open: answer, speed.
+1b. Remote Script step 3 (`cmdabl --setup`, restart Live, `npm start`): `cmdabl --bridge` →
+   0.3.0 with `hello, select, track_facts`; `arm` on the MIDI track with the missing input
+   device → refused with the message, nothing armed; `arm` on a normal track toggles on and off;
+   group, return, main → refused as before; `arm` on several tracks with one greyed out →
+   "k/n done", one undo step; control surface disabled → `arm` as before; after each `arm`,
+   `:` still opens the palette (a bridge round trip now sits between dialog close and the
+   write — relevant to hang hypothesis H2).
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in

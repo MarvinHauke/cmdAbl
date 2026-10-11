@@ -241,6 +241,15 @@ Cmd-clicking the buttons — and to be stated in the command reference.
   cached bridge state only, so opening never waits for a timeout. `--help` does not name the
   requirement yet.
 
+## Optional use of the bridge (2026-10-12, `7e4d787`)
+
+A command that works without the Remote Script but gets better with it does not declare
+`requires`. It asks the bridge only when the cached state allows it (one `available()` when
+the state is unknown, nothing when it is "unavailable") and falls back to its SDK-only
+behaviour otherwise. `arm` is the first: it reads `track_facts` to refuse tracks Live cannot
+arm. The state check in `src/modules/armFacts.ts` becomes a bridge helper when a second
+command needs it.
+
 ## Import boundaries (2026-10-11, enforced by `src/architecture.test.ts`)
 
 - A module does not import another module's folder, `src/extension`, `src/httpTrigger` or a
