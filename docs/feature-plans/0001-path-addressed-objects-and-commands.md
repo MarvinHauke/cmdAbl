@@ -398,7 +398,7 @@ missing script cannot delay opening it. A module never opens a socket or parses 
    External Instrument chain (the case from §2).
 5. `select_chain` (pad selection, `find vermona kick`).
 6. `selection` read for follow mode.
-7. `cmdabl setup` version check and restart hint.
+7. `cmdabl setup` (today `cmdabl --setup`) version check and restart hint.
 
 ## Phased rollout
 
