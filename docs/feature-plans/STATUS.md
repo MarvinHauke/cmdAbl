@@ -78,7 +78,8 @@ _Last updated: 2026-10-11._
 14. Reduced environment for child processes (`c28c70d`, `e1674bf`; step 13 covers pakabl):
     - `cmdabl --setup` → same output as before (symlink created or "already exists").
     - `:` opens the palette, and types a colon while the palette is open.
-    - `cmdabl --help` opens the manual in the browser and shows no message.
+    - `man ableton` opens the Live manual in the browser, `man cmdabl` the docs site (once the
+      `man` module is in); `cmdabl --help` shows a usage text and opens nothing.
 15. Pick list page (`1b305f6`, `d8ca020`; `Space` marking and the `> mute …` line already seen
     working in Live):
     - The dialog opens with focus in the filter; typing works at once.
@@ -133,6 +134,8 @@ _Last updated: 2026-10-11._
 | Pick list: first arrow enters the list without moving; robust `Space` detection; `Ctrl+Shift+D` key diagnostic | cmdabl-ui | committed `d8ca020`, reviewed; needs the Live test (step 15) |
 | Secret scan in CI (`.github/workflows/secret-scan.yml`, gitleaks 8.30.1 pinned by checksum, `docs/guides/ci.md`) | cmdabl-core | committed `1092e4e`, reviewed. Full history scanned locally: 0 findings. **Only the first CI run after a push shows whether the workflow works** — then check the push run and start one manual run |
 | Pin `peter-evans/create-pull-request` in `pakabl-index.yml` to a commit SHA | cmdabl-core | committed `a5e1adc` (v7.0.11), reviewed; the next manual run of the index workflow after a push is the check |
+| `cmdabl --help` prints usage instead of opening the Ableton manual; `openUrl` in its own file | cmdabl-core | sent |
+| New module `man`: `man ableton` (Live manual), `man cmdabl` (docs site) | cmdabl-modules | sent, starts after core |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
@@ -142,6 +145,11 @@ _Last updated: 2026-10-11._
   rows of the empty palette, marked `(history)` — at most 20, in memory only.
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
 - Object items in the palette routed through `goto` (0005).
+- Search in the Ableton manual: `man ableton <words>`. The online manual has no search of its own
+  (checked 2026-10-11; chapters are `/en/live-manual/12/<chapter>/#<section>`). Options: (a) open
+  a web search limited to the manual; (b) ship an index of chapter and section titles, match the
+  words against it and open the section, with the pick list on several hits (needs a pick list
+  for things other than Live objects — a `ModuleApi` change). Waiting for the user's choice.
 
 Decided by the user: the parser stays strict for dash-words in unquoted names (0005, "Dash rules").
 
