@@ -220,6 +220,12 @@ Taken from comparing a ChatGPT architecture proposal with this plan (full table 
     whether numbers get a special case when the first `number` argument exists, and say it in
     the authoring guide.
 
+## Exclusive arm and solo (user, 2026-10-12)
+
+`arm` and `solo` do not follow Live's "Exclusive" settings: a write through the API changes only
+the named tracks. Accepted as the behaviour — naming tracks is an explicit choice, like
+Cmd-clicking the buttons — and to be stated in the command reference.
+
 ## `requires` as built (2026-10-11, `25b467a`)
 
 - The check runs in `runLine` right after parsing and `--help`, before paths are resolved and

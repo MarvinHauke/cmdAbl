@@ -197,6 +197,12 @@ _Last updated: 2026-10-11._
   yet known whether the build with the read-back was running; if it was, the SDK cannot tell and
   it needs the Remote Script (`can_be_armed`, replies).
 
+- Live test list, steps 1–4 pass (user, 2026-10-12). Observed in step 4: `arm /a /b` arms both
+  tracks although "Exclusive: Arm" is on in Live's settings, and `solo` does the same with
+  "Exclusive: Solo". A write through the API does not apply the exclusive rule. **Accepted by
+  the user:** naming several tracks is an explicit choice, like Cmd-clicking the buttons. Note:
+  `arm /a` therefore does not disarm other armed tracks either.
+
 ### Dialog hang — what is known (cmdabl-bridge, 2026-10-11)
 
 - Evidence: `track.arm = v` is a synchronous native call wrapped in its own transaction; the SDK
@@ -374,8 +380,8 @@ Plans: 0001 Phase 4, decisions in 0004. Today the bridge is fire-and-forget over
      min / median / max; a run takes 2-3 s, during which a palette trigger is ignored. The max
      is the number to hold against the 100 ms goal.
      **Measured in Live (user, 2026-10-11, script 0.2.0): min 4 ms, median 62 ms, max 98 ms** —
-     the 0–100 ms wait for the display tick, confirmed. Within the goal, but at its edge; the
-     20 ms timer is the user's decision.
+     the 0–100 ms wait for the display tick, confirmed. **Decided by the user: no timer for now.**
+     It becomes a candidate again with follow mode (one request per arrow key).
    - After that test: cmdabl-bridge removes the old one-way messages (`legacy.py`,
      `src/ableton/select.ts`, `selectTrack`/`selectDevice`).
    - Known gaps, for roadmap steps 3.3/3.4: a failing palette row is shown as a plain message
