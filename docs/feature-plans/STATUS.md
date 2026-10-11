@@ -79,6 +79,18 @@ _Last updated: 2026-10-11._
     - `cmdabl --setup` → same output as before (symlink created or "already exists").
     - `:` opens the palette, and types a colon while the palette is open.
     - `cmdabl --help` opens the manual in the browser and shows no message.
+15. Pick list page (`1b305f6`):
+    - The dialog opens with focus in the filter; typing works at once.
+    - `mute vermona`, type `vermona midi` → the space appears, the list filters, nothing is marked.
+    - `↓`, then `Space` → marks and moves on; the `> mute …` line grows; the hint shows
+      `Space mark`. The first `↓` moves to the second row.
+    - In the list: stronger row highlight and no caret. A typed letter, `Backspace` or `←`/`→`
+      returns to the filter; the marks stay.
+    - `Tab` marks in both zones; `Enter` runs on the marked tracks and the history entry equals
+      the line; `Esc` cancels without a history entry. A mouse click marks in a multi-select list.
+    - `goto vermona` (single-select): `Space` after `↓` still types a space.
+    - A very long track name: the line stays on one row, clipped.
+    - A pick with two rows: no scrollbar, nothing cut off (needs the height change from core).
 
 ### Found in the Live test (2026-10-11, still running)
 
@@ -111,7 +123,7 @@ _Last updated: 2026-10-11._
 | pakabl hardening: validate ids before unzip and delete, open only repo URLs from the index, fail on a missing page placeholder | cmdabl-modules | committed `9dc9ec7`, reviewed; needs the Live test (step 13 above). Behaviour changes: pakabl errors are failing results now (no history entry); `pakabl uninstall` refuses folder names outside the id shape, e.g. hand-installed ones |
 | Child processes get an allowlisted environment instead of all of `process.env` (`src/setup.ts`, pakabl's `platform.ts`) | cmdabl-core, then cmdabl-modules | committed `c28c70d` (setup and `cmdabl --help`) + `e1674bf` (pakabl), reviewed; no spawn passes the whole environment any more; needs the Live test (steps 13 and 14). `cmdabl --help` off macOS now returns exit code 5 with the URL instead of spawning `open`; Windows untested |
 | `pakabl list` page sends `repo:<id>` instead of a URL (one line in `ui/pakabl-list.html`) | cmdabl-ui, then cmdabl-modules for the host side | sent with the pick page task; the two commits go in together |
-| Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | sent (the host data is in since `900f89d`) |
+| Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | committed `1b305f6`, reviewed; keys checked with a scripted browser run, the look is unchecked; needs the Live test (step 15 above). Dialog height for the extra line: sent to cmdabl-core |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 

@@ -67,7 +67,10 @@ decides how things look.
 
 ### 4. The pick list: zones, command line, follow mode (from the Live test, 2026-10-11)
 
-**Two zones (planned, `ui/pick.html` only, no contract change).** The page tracks whether the
+**Two zones (built in `1b305f6`, untested in Live; `ui/pick.html` only, no contract change).**
+Besides typed characters, `Backspace`, `Delete`, `←`/`→`, `Home` and `End` also return to the
+filter. The first `↓` enters the list *and* moves to the second row; the first row is marked
+with `Tab`, or with `↓` `↑` `Space`. The page tracks whether the
 *filter* (initial) or the *list* is active:
 
 - In the filter, `Space` types a space, so `vermona midi` can be typed.
@@ -81,7 +84,8 @@ decides how things look.
 - DOM focus stays in the input; the zone is state in the key handler, so no keystroke is lost
   whatever the webview does with focus.
 
-**Command line in the pick list (decided; contract fields being built).** Above the filter the
+**Command line in the pick list (built: data in `900f89d`, page in `1b305f6`; untested in
+Live).** Above the filter the
 page shows a read-only line with the command `Enter` will run, e.g.
 `> mute /Vermona MIDI "/Vermona DRM Audio"`. It grows with every mark; with nothing marked it
 shows the active row. It is what history will store. Read-only on purpose: sharing one field
