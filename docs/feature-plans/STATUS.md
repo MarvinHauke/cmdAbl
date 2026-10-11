@@ -194,7 +194,7 @@ _Last updated: 2026-10-11._
 | Message page: long lines wrap, Close stays visible, `Esc`/`Enter` close; then the window height follows the text | cmdabl-ui, then cmdabl-core | page committed `1b6d254`, reviewed (checked in headless Chrome only; held-key repeats do not close a message; arrows and PageDown scroll the text); window sizing committed `b6b208a`, reviewed (width 500…760, height 110…420; short messages now open smaller); needs the Live test (step 17) |
 | Message sizing with Live's character width (8.05 px); setup reports a linked Remote Script instead of the `cp` line | cmdabl-core | committed `5e6b339`, reviewed; needs the Live test (step 17). The first direct `node:fs` call in host code (`src/core/samePath.ts`, fails soft) — note it in `docs/sdk-tree.md` once Live confirms |
 | Themed scrollbar in the dialogs (`ui/shared.css`) | cmdabl-ui | committed `158502d`, reviewed; checked in headless Chrome for the message and pick pages only; needs the Live test (thin dim scrollbar, no white track, in all four pages) |
-| Message height: fixed part 65 → 72 px | cmdabl-core | sent |
+| Message height: fixed part 65 → 72 px | cmdabl-core | committed `ac885e2`, reviewed; needs the Live test: `cmdabl --help` shows six lines without a scrollbar |
 | Scrollbar still white in Live: `color-scheme: dark`, one rule family per engine, better integration | cmdabl-ui | sent |
 
 ### Candidates (not ordered yet — order them with the user after the test)
