@@ -372,7 +372,10 @@ Plans: 0001 Phase 4, decisions in 0004. Today the bridge is fire-and-forget over
      Measurement built (cmdabl-core, reviewed, 145 unit tests): `cmdabl --bridge` and
      `GET /bridge` time 20 round trips with a random pause between them and report
      min / median / max; a run takes 2-3 s, during which a palette trigger is ignored. The max
-     is the number to hold against the 100 ms goal. Needs the Live measurement.
+     is the number to hold against the 100 ms goal.
+     **Measured in Live (user, 2026-10-11, script 0.2.0): min 4 ms, median 62 ms, max 98 ms** —
+     the 0–100 ms wait for the display tick, confirmed. Within the goal, but at its edge; the
+     20 ms timer is the user's decision.
    - After that test: cmdabl-bridge removes the old one-way messages (`legacy.py`,
      `src/ableton/select.ts`, `selectTrack`/`selectDevice`).
    - Known gaps, for roadmap steps 3.3/3.4: a failing palette row is shown as a plain message
