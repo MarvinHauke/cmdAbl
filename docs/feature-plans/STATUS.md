@@ -157,11 +157,9 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
 1. Remote Script step 2 (first `cmdabl --setup`, restart Live, `npm start`). Seen 2026-10-12:
    `cmdabl --bridge` → 0.2.0 with `hello, select`; `goto` on a track, a device, a return track,
    the main track and a track in a folded group; "not running" without a pick list when the
-   control surface is disabled. Open: `cmdabl --help` lists `--bridge`; a track row and a device
-   row picked in the palette; `find <pattern>` with several hits, then `next` / `prev`; is
-   `goto` noticeably slower?; the first command right after `npm start` must not report "not
-   running" or "nothing matches" wrongly (one report of "nothing matches" right after a start
-   had a typo in the log, `goto mciro` — repeat with a correct name);
+   control surface is disabled; the first command right after `npm start` finds its track.
+   Open: `cmdabl --help` lists `--bridge`; a track row and a device row picked in the palette;
+   `find <pattern>` with several hits, then `next` / `prev`; is `goto` noticeably slower?;
    `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open: answer, speed.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
