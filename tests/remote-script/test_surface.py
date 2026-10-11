@@ -3,7 +3,7 @@ import unittest
 
 import fake_live as fl
 from fake_live import FakeDevice, FakeSong, FakeTrack
-from cmdAbl import legacy, routes
+from cmdAbl import routes
 from cmdAbl.cmdabl import cmdAbl
 from cmdAbl.ops import OPS
 
@@ -72,38 +72,11 @@ class Surface(unittest.TestCase):
         self.assertEqual(reply["result"], {"name": "T"})
         self.assertIs(song.view.selected_track, t)
 
-    def test_legacy_select_track_still_works_and_unfolds(self):
-        group = FakeTrack("G", foldable=True)
-        group.fold_state = 1
-        kid = FakeTrack("K", group=group)
-        song = FakeSong(tracks=[group, kid])
-        s = surface(song, [(json.dumps({"cmd": "select_track", "scope": "regular", "index": 1}).encode(), ("h", 1))])
+    def test_old_cmd_messages_and_junk_are_dropped_and_logged(self):
+        s = surface(FakeSong(), [(b'{"cmd":"select_track","index":0}', ("h", 1)), (b"\xff", ("h", 1))])
         s._drain_socket()
-        self.assertIs(song.view.selected_track, kid)
-        self.assertEqual(group.fold_state, 0)
-
-    def test_legacy_select_device(self):
-        dev = FakeDevice("EQ")
-        t = FakeTrack("T", devices=[dev])
-        song = FakeSong(tracks=[t])
-        legacy.select_device(song, {"scope": "regular", "trackIndex": 0, "deviceIndex": 0}, lambda m: None)
-        self.assertIs(song.view.selected_track, t)
-        self.assertIs(t.view.selected_device, dev)
-
-    def test_legacy_select_device_through_the_socket(self):
-        dev = FakeDevice("EQ")
-        t = FakeTrack("T", devices=[dev])
-        song = FakeSong(tracks=[t])
-        msg = json.dumps({"cmd": "select_device", "trackIndex": 0, "deviceIndex": 0}).encode()
-        surface(song, [(msg, ("h", 1))])._drain_socket()
-        self.assertIs(t.view.selected_device, dev)
-
-    def test_legacy_bad_input_is_logged_not_raised(self):
-        logged = []
-        legacy.handle(b"\xff", FakeSong(), logged.append)
-        legacy.handle(b'{"cmd":"x"}', FakeSong(), logged.append)
-        legacy.select_track(FakeSong(), {"index": 9}, logged.append)
-        self.assertEqual(len(logged), 3)
+        self.assertEqual(s._socket.sent, [])
+        self.assertEqual(len([m for m in s.logged if "dropped" in m]), 2)
 
     def test_a_flood_is_capped_per_tick(self):
         from cmdAbl import cmdabl as mod

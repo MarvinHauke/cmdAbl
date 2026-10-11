@@ -7,7 +7,6 @@ socket is drained from `update_display`, which Live calls on the main thread at
 - protocol.py  message format, errors, `hello` (pure)
 - routes.py    {scope, route} -> Live objects
 - ops/         one handler per operation (the list `hello` reports)
-- legacy.py    the old one-way `cmd` messages, until goto uses `select`
 
 Layout and rules: docs/feature-plans/0001 §8.
 """
@@ -17,7 +16,6 @@ import traceback
 
 from _Framework.ControlSurface import ControlSurface
 
-from . import legacy
 from .ops import OPS
 from .protocol import handle_request
 
@@ -72,15 +70,13 @@ class cmdAbl(ControlSurface):
         return {name: (lambda args, fn=fn: fn(self.song(), args)) for name, fn in OPS.items()}
 
     def _handle(self, data, addr):
-        # A request of the new protocol has an "op"; everything else is the legacy form.
-        if b'"op"' in data:
-            reply, problem = handle_request(data, self._ops_for_song())
-            if problem:
-                self.log_message("cmdAbl bridge: dropped datagram: %s" % problem)
-            if reply is not None:
-                try:
-                    self._socket.sendto(reply, addr)
-                except Exception:
-                    self.log_message("cmdAbl bridge: reply failed:\n%s" % traceback.format_exc())
-            return
-        legacy.handle(data, self.song(), self.log_message)
+        # Every request has an id and an op; a datagram without them is dropped and logged
+        # (this includes the old one-way `cmd` messages of extensions before 0.2.0).
+        reply, problem = handle_request(data, self._ops_for_song())
+        if problem:
+            self.log_message("cmdAbl bridge: dropped datagram: %s" % problem)
+        if reply is not None:
+            try:
+                self._socket.sendto(reply, addr)
+            except Exception:
+                self.log_message("cmdAbl bridge: reply failed:\n%s" % traceback.format_exc())

@@ -293,8 +293,9 @@ Reply: `{"v": 1, "id": "<same>", "ok": true, "result": { … }}` or
   **[D3] decided:** `stale`/`out_of_range` are exit code 1 with the text "the Live Set changed;
   run the command again". `BridgeResult` therefore allows only 1 | 5.
 - Today's script logs "unknown cmd None" for every `hello` it receives; that line is expected, not a bug.
-- The old `{"cmd": …}` messages stay accepted by the script for one release so an older extension
-  keeps working with a newer script; the extension never sends them again.
+- The old one-way `{"cmd": …}` messages were removed with script 0.2.0 (this reverses an earlier
+  promise to keep them for one release; nothing had been released before 0.1.0). An extension older
+  than 0.2.0 against this script selects nothing and gets no reply.
 - Timeout: 500 ms (≥ 300 ms by 0004; assumed). The caller (`bridge.ts`, never a module) sees:
   - no `hello` reply at all → **unavailable**, exit code 5;
   - a timeout *after* a successful `hello`, for a request that changes Live → **unknown end
@@ -466,8 +467,9 @@ Remote Script (`remote-script/cmdAbl/`):
 
 Operations get the song passed in and import nothing from Live, so they are tested with fake
 objects in `tests/remote-script/` (`fake_live.py`, one test file per operation file). The old
-one-way `cmd` messages (`legacy.py`) are removed in step 2, when `goto` uses `select`; an
-installed copy stays in the User Library (`cp -R` does not delete) but nothing imports it.
+one-way `cmd` messages and `legacy.py` were removed after `goto` moved to `select` (script 0.2.0 in
+Live, 2026-10-12). A stale `legacy.py` may remain in an existing install (`cp -R` does not delete);
+nothing imports it, so it is harmless.
 
 Extension (`src/ableton/`): `bridgeProtocol.ts` (message types, error → exit code),
 `bridgeClient.ts`, `bridgeFake.ts`, `bridge.ts` (transport, fake, access) and `bridgeOps.ts`
