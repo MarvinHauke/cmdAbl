@@ -95,7 +95,9 @@ _Last updated: 2026-10-11._
 | Remembered line fully canonical: unique paths, each object once (0005) | cmdabl-core | committed `b09108c` + `972b67a` (option parsing fix, reviewed OK). `b09108c` alone has one failing test — squash before merging if a clean history matters |
 | Dash handling: quote leading-dash words in the remembered line, `--` ends options, lone `-` is a word, hint in "unknown option" (0005) | cmdabl-core | committed `d7ba529` + `fa31212`, reviewed; needs the Live test (step 11 above) |
 | One dialog at a time, "open" covers messages, open/close log lines | cmdabl-core | committed `6ad8884`, reviewed; needs the Live test (step 12 above). Behaviour change: a trigger while a message is up is ignored |
-| `inlineJson` in its own file; `pakabl list` escapes the index data with it | cmdabl-core, then cmdabl-modules | sent |
+| `inlineJson` in its own file; `pakabl list` escapes the index data with it | cmdabl-core, then cmdabl-modules | committed `cc5c62f` + `504a606`, reviewed; Live: `pakabl list` and its buttons as before |
+| pakabl hardening: validate ids before unzip and delete, open only repo URLs from the index, fail on a missing page placeholder | cmdabl-modules | sent |
+| `pakabl list` page sends `repo:<id>` instead of a URL (one line in `ui/pakabl-list.html`) | cmdabl-ui | waiting, with the pick page task |
 | Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | waiting — the user starts it with `scripts/agents.sh ui`; needs the core task first |
 
 ### Candidates (not ordered yet — order them with the user after the test)
@@ -108,6 +110,14 @@ _Last updated: 2026-10-11._
 - Object items in the palette routed through `goto` (0005).
 - Unquoted names with a dash-word (`mute /Bass -6dB`): stay strict, or let path arguments take
   them? Strict for now (0005, "Dash rules") — the user should weigh in.
+
+### Secrets (rule from the user, 2026-10-11)
+
+No environment variable or secret may reach the git history. An API key is exported in every
+shell on the user's machine. Agents do not print environments, refer to variables by name only,
+and the reviewer checks every diff for secret-shaped strings. The architect scans the commits to
+be pushed before every push. `.env*`, `.envrc`, `*.pem`, `*.key` are git-ignored. Scan of all
+refs and the working tree on 2026-10-11: clean.
 
 ## Next, in order
 
