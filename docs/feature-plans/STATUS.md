@@ -20,12 +20,13 @@ _Last updated: 2026-10-11._
 | Area | What | Tested in Live? |
 |---|---|---|
 | Results | `CommandResult` with exit codes, one presenter, history records only successes | partly (messages seen) |
-| Core | `help`, `cmdabl` as the only built-ins; module manifest; provider priority | no |
-| Parser | tokenizer, command tree, validator, parser, `registry.add` / `api.commands.add` | no |
+| Core | `help`, `cmdabl` as the only built-ins; module manifest; provider priority | `help` seen |
+| Parser | tokenizer, command tree, validator, parser, `registry.add` / `api.commands.add` | implicitly, through the commands below |
 | Resolver | paths → Live objects before the handler; `#n` for same-named siblings | `goto` not-found / ambiguous seen |
-| Pick list | shown for ambiguous paths; `Tab` multi-select for multi-target commands | **no** |
-| Commands | `goto`, `mute`/`unmute`, `solo`/`unsolo`, `arm`/`unarm` (set, not toggle; one undo step) | **no** |
-| `find` | `find <words> [-t\|-d]`, `next`, `prev` | only "nothing matches" seen |
+| Pick list | shown for ambiguous paths; `Tab` multi-select for multi-target commands | shown for `goto` and `find`; multi-select **not confirmed yet** |
+| Commands | `goto`, `mute`/`unmute`, `solo`/`unsolo`, `arm`/`unarm` (one undo step) | `goto` yes; the rest **changing** (toggle again, see below) |
+| `find` | `find <words> [-t\|-d]`, `next`, `prev` | **yes** (`find`, `-t`, `next`, `prev`) |
+| `pakabl` | `pakabl list` unchanged | yes |
 | UI contract | `prompt` / `select` / `notify` in `src/core/ui.ts` | no (no behaviour change intended) |
 | Fix | Karabiner `cmdabl_open` flag reset on startup | no |
 | Team | `CLAUDE.md`, `.claude/agents/`, `scripts/agents.sh` | — |
@@ -35,12 +36,36 @@ _Last updated: 2026-10-11._
 1. `help` lists the commands, including `goto`, `find`, `arm`.
 2. `goto vermona` → pick list; `Enter` selects; `Esc` does nothing and adds no history entry.
 3. `mute vermona` → pick list; mark two with `Tab`; `Enter` mutes both; one undo reverts both.
-4. `unmute …`, `solo …` / `unsolo …`, `arm …` / `unarm …`.
+4. After the toggle change lands: `solo /x` twice → on, off; `mute a b` with one already muted →
+   both flip; one undo reverts all; `unsolo /x` on a track that is not soloed changes nothing.
 5. `mute /Opal Lead` (unquoted space) and `mute /a, /b` (comma form) still work.
 6. `find vermona` → pick list; then `next` / `prev` step through the matches.
 7. A resolved command re-run from history asks nothing.
 8. `pakabl list`, `cmdabl --setup` unchanged; an unknown command shows `unknown command`.
 9. Check the pick list's size and that the filter field has focus when it opens.
+
+### Found in the Live test (2026-10-11, still running)
+
+- Passed so far: `help`, pick list for `goto` and `find`, `find -t`, `next`/`prev`, `pakabl list`.
+- The `help` window is too small (text wraps at 500×180) — see "Dialog size" in 0007.
+- Open decision: do `next`/`prev` stay once the pick list has a follow mode? Kept until the spike.
+
+### In progress (tasks out, 2026-10-11)
+
+| Task | Agent | State |
+|---|---|---|
+| `mute`/`solo`/`arm` toggle again; `un…` stay as "off" (0005) | cmdabl-modules | sent |
+| `SelectRequest.preview` and `items[].value` for the command line in the pick list (0007 §4) | cmdabl-core | sent |
+| Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | waiting — the user starts it with `scripts/agents.sh ui`; needs the core task first |
+
+### Candidates (not ordered yet — order them with the user after the test)
+
+- Follow mode for the pick list (0007 §4; needs the spike in 0006).
+- Dialog sizes: `notify` sized from its text, larger pick list, configurable sizes (0007).
+- A `history` command: show the list and re-run an entry. Today the entries are only the first
+  rows of the empty palette, marked `(history)` — at most 20, in memory only.
+- Feedback for `next`/`prev` (e.g. `2/5 /path`).
+- Object items in the palette routed through `goto` (0005).
 
 ## Next, in order
 
@@ -53,9 +78,10 @@ _Last updated: 2026-10-11._
    selection, `select {route, expectName}` read-back. Plans: 0001 Phase 4, decisions in 0004.
 3. **Keymap** (cmdabl-core + cmdabl-ui): UI keys as named actions, defaults plus a user
    `keymap.json`, keys bindable to command lines. Described in 0006.
-4. **Navigation mode spike**: can a dialog loaded from the local server `fetch` it, do SDK/bridge
-   calls work while a modal is open, does Live repaint behind it? Then build, or fall back to
-   global hotkeys via Karabiner/AutoHotkey. Described in 0006.
+4. **Dialog-channel spike** — decides two features, navigation mode and the pick list's follow
+   mode: can the dialog page `fetch` the local server, does the Remote Script process messages
+   while a modal is open, does Live repaint behind it? Then build, or fall back to global hotkeys
+   via Karabiner/AutoHotkey. The four checks are listed in 0006.
 5. **Rest of 0005**: ports instead of the raw `ModuleApi` context, `requires: ["bridge"]` checks,
    `pakabl` and `cmdabl` as subcommand groups (`cmdabl setup`, old flag as alias), the
    command-authoring guide (`docs/guides/adding-a-command.md`).

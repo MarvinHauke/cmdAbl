@@ -89,9 +89,18 @@ to one of:
 - **Navigation mode (planned, spike first):** keep a dialog open like vim's normal mode and map
   single keys to commands (`n` → `next`). The SDK channel only delivers one string on close, so
   this needs the dialog loaded from the local server (`http://127.0.0.1:27184/…`, allowed by the
-  SDK) talking to it via `fetch`, guarded by a per-session token. To verify first: whether the
-  webview may fetch localhost, whether SDK/bridge calls work while a modal is open, and whether
-  Live repaints behind it.
+  SDK) talking to it via `fetch`, guarded by a per-session token.
+- **The spike decides two features:** navigation mode and the pick list's follow mode (0007).
+  To verify, in this order:
+  1. May the dialog page `fetch` `http://127.0.0.1:27184` — from a `data:` page (origin `null`,
+     so the server must send CORS headers), or only when the page itself is served from there?
+  2. Does the Remote Script (`update_display`, ~10 Hz) process bridge messages while a modal is open?
+  3. Does Live repaint the selection behind the modal?
+  4. On the side: does `window.resizeTo` do anything in the webview? (Expected: no.)
+- **Two zones in the pick list (precursor, no spike needed):** the list zone of `ui/pick.html`
+  (0007) is where single keys already act instead of typing (`Space` = `mark`). Navigation mode
+  extends that zone with more single-key actions (`j`/`k`, `n` → `next`). `Space` is the default
+  key for `mark`, `Tab` a second one.
 
 ## Open questions
 

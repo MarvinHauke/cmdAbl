@@ -171,12 +171,31 @@ Taken from comparing a ChatGPT architecture proposal with this plan (full table 
 - `requires: ["bridge"]` is the only capability concept: coarse, checked before the handler,
   serialized when the palette opens so unavailable commands can be marked (0006). No capability
   registry, no `executionId`/`AbortSignal`, no `retrySafe`.
-- Setting commands over toggles: `mute`/`unmute`, `solo`/`unsolo` (idempotent, history re-runs are
-  safe); a toggle remains only as a palette item action.
+- ~~Setting commands over toggles~~ — **reversed by the user after the Live test (2026-10-11):**
+  `mute`, `solo` and `arm` toggle each named track individually, as they did before the rework;
+  `unmute`, `unsolo` and `unarm` stay and always switch off. Consequence, accepted: re-running
+  `solo /a` from history toggles it back.
 - **Acceptance criterion:** a command can be added, replaced or removed without touching the
   palette, the dispatcher or the bridge (only a LOM-only op needs a new Remote Script function).
 - The node/command contract stays adapter-neutral (handlers use ports, never `child_process`),
   so an external-process adapter can be added later as a port + module (deferred, see 0004).
+
+## Decisions from the Live test of PR #9 (2026-10-11)
+
+- **Live objects as palette items stay.** Typing a track or device name (or path) without `goto`
+  and pressing Enter selects it — intended, and what 0006 describes for word 0. It still runs
+  through the older route (`goto`'s provider plus `registerResultHandler("select")`), so it
+  bypasses `runLine`: no history entry, no `next`/`prev` list. Clean-up with the rest of this
+  plan: a chosen object item becomes `goto <unique path>` and takes the normal path; then
+  `registerResultHandler` can go (a `ModuleApi` change — ask the user first).
+- **The pick list is an interactive filter, built with pipelines in mind.** Objects in, a subset
+  of objects out (`pickNodes`); a selection is never passed through the platform as text. Its
+  *text form* is the list of unique paths (`uniquePath`), the same form history stores and a
+  future pipe would print or pass on. Pipelines themselves stay deferred (0004). Left open on
+  purpose: whether `find` inside a pipe passes on all matches or opens the pick list
+  (`find … | pick | mute`), and whether a selection can be handed back to the palette to keep
+  typing.
+- **The pick list shows the command it will run** (see 0007, "Command line in the pick list").
 
 ## Verification
 
