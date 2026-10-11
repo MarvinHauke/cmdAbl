@@ -361,6 +361,11 @@ Plans: 0001 Phase 4, decisions in 0004. Today the bridge is fire-and-forget over
      picked in the palette; (4) `find <pattern>` with several hits, then `next` / `prev`;
      (5) control surface disabled: `goto x` → "not running" and no pick list; (6) is `goto`
      noticeably slower than before?
+   - Response time (user, 2026-10-11): keep a round trip under 100 ms where possible (rule in
+     0001 §8). Seen: 14, 24, 43 ms on single runs — probably scatter from the display tick, not
+     a regression. Tasks out: cmdabl-core, `cmdabl --bridge` over 20 round trips with
+     min / median / max; cmdabl-bridge, research on a faster drain (no code until the maximum
+     is measured above 100 ms).
    - After that test: cmdabl-bridge removes the old one-way messages (`legacy.py`,
      `src/ableton/select.ts`, `selectTrack`/`selectDevice`).
    - Known gaps, for roadmap steps 3.3/3.4: a failing palette row is shown as a plain message

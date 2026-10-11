@@ -427,6 +427,13 @@ Extension (`src/ableton/`): `bridgeProtocol.ts` (message types, error → exit c
 with one typed function per operation (`select()`, `trackFacts()`, …). Modules call the typed
 functions only, never `request("name", …)` with loose arguments.
 
+Response time (user, 2026-10-11): a command's round trip to the script stays under 100 ms where
+possible. A command needs one request in the normal case (`hello` is cached); an operation that
+needs several pieces of data returns them in one reply. Single measurements scatter (14, 24,
+43 ms) because the script reads its socket once per display tick; `cmdabl --bridge` reports
+min / median / max over 20 round trips. A faster drain is built only if the maximum is above
+100 ms.
+
 Rules for every new operation: one handler in `ops/`, one typed function in `bridgeOps.ts`, a
 test on each side; described in §4 before it is built, and the script `VERSION` goes up with it;
 only selecting and reading until the access token exists.
