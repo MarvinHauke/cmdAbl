@@ -14,6 +14,9 @@ import type { PickPreview } from "./ui.js";
 
 export interface RunDeps {
   registry: CommandRegistry;
+  /** Log sink and clock; default console.log and Date.now. */
+  log?: (line: string) => void;
+  now?: () => number;
   /** The current Live Set as a flat list of addressable objects. */
   liveNodes: () => ObjectNode[];
   /** Ask the user to choose among candidates; null = cancelled. */
@@ -100,7 +103,28 @@ function previewFor(
   return { before: before.join(" "), after: after.join(" ") };
 }
 
+/**
+ * Run one typed line and log it: the canonical command line, the exit code and
+ * how long it took (a pick the user answers is included). Evidence for "what
+ * ran right before the dialog hung".
+ */
 export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome> {
+  const log = deps.log ?? ((line: string) => console.log(line));
+  const now = deps.now ?? (() => Date.now());
+  const started = now();
+  // Logged at the start too: a handler that never returns must leave a trace.
+  log(`cmdAbl: run start: ${input.trim()}`);
+  let outcome: RunOutcome | undefined;
+  try {
+    outcome = await runLineInner(input, deps);
+    return outcome;
+  } finally {
+    const code = outcome ? (outcome.cancelled ? "cancelled" : String(outcome.result.code)) : "threw";
+    log(`cmdAbl: run: ${outcome?.line ?? input.trim()} -> ${code} (${now() - started} ms)`);
+  }
+}
+
+async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   const line = input.trim();
   const { registry } = deps;
 

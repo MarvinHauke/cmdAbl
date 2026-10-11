@@ -75,10 +75,15 @@ export function activate(activation: ActivationContext) {
 
   // ── HTTP trigger server ──────────────────────────────────────────────────
   // Karabiner (or any external tool) can POST/GET http://127.0.0.1:27184/open
-  // to open the command palette without a context menu.
+  // to open the command palette without a context menu; GET /state reports
+  // open|closed; POST /reset is a temporary diagnostic for a hung dialog.
   startTriggerServer(TRIGGER_PORT, () => {
     context.commands.executeCommand("cmdabl.open");
-  }, () => isOpen || dialogs.describe() !== null);
+  }, () => isOpen || dialogs.describe() !== null, () => {
+    const was = dialogs.reset();
+    if (was) return `dialog queue reset (was: ${was.name})`;
+    return isOpen ? "no dialog open; a command is still running" : "no dialog was open";
+  });
 
   // The Karabiner rule only fires while `cmdabl_open` is 0. If a previous host
   // was stopped with the palette open, the flag would stay at 1 and ":" would
@@ -118,6 +123,7 @@ export function activate(activation: ActivationContext) {
       present(fail(ExitCode.NOT_FOUND, `no handler for "${result.type}" action "${result.action}"`));
       return;
     }
+    console.log(`cmdAbl: run: item action ${result.action} (${result.type})`);
     try {
       await handler(result);
     } catch (e: unknown) {

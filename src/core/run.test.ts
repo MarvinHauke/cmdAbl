@@ -307,3 +307,22 @@ test("run: a lone dash inside an unquoted name, and a word equal to a declared f
   const flag = await runLine("find2 -d x", deps);
   assert.equal(flag.line, "find2 --devices x");
 });
+
+test("run: one log line per command with the canonical line, exit code and duration", async () => {
+  const { deps } = setup((c) => [c[0]!]);
+  const lines: string[] = [];
+  let clock = 100;
+  deps.log = (l) => lines.push(l);
+  deps.now = () => (clock += 12);
+  await runLine("mute opal", deps);
+  await runLine("mute nothing-like-this", deps);
+  await runLine("nope", deps);
+  assert.deepEqual(lines, [
+    "cmdAbl: run start: mute opal",
+    'cmdAbl: run: mute "/Opal Lead" -> 0 (12 ms)',
+    "cmdAbl: run start: mute nothing-like-this",
+    "cmdAbl: run: mute nothing-like-this -> 3 (12 ms)",
+    "cmdAbl: run start: nope",
+    "cmdAbl: run: nope -> 1 (12 ms)",
+  ]);
+});
