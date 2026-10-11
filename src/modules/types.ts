@@ -12,8 +12,12 @@ export type ResultHandler = (result: PaletteResult) => void | Promise<void>;
 export interface ModuleApi {
   context: ExtensionContext<"1.0.0">;
   registry: CommandRegistry;
-  /** Contribute searchable items to the palette snapshot. */
-  registerProvider(provider: Provider): void;
+  /**
+   * Contribute searchable items to the palette snapshot. Lower `priority` sorts
+   * earlier in the empty-query list (default 0; commands are 0, history is
+   * negative so recent invocations come first). Ties keep registration order.
+   */
+  registerProvider(provider: Provider, priority?: number): void;
   /**
    * Handle palette results for non-"command" items, keyed by `PaletteItem.action`
    * ("select", "toggleMute", …) — the actual discriminator for what a Live-object
@@ -21,12 +25,13 @@ export interface ModuleApi {
    */
   registerResultHandler(action: string, handler: ResultHandler): void;
   /**
-   * Notified after any command runs successfully — fresh or re-run — with its
+   * Notified after any command finishes with code 0 — fresh or re-run — with its
    * full canonical invocation string (e.g. "mute /vermona/kick, /vermona/snare").
-   * Bare invocations with no arguments are not reported. The only window a
-   * module gets into *every* command run regardless of who registered it.
+   * Failed runs are not reported, and neither are bare invocations with no
+   * arguments. The only window a module gets into *every* command run
+   * regardless of who registered it.
    */
-  onCommandRun(listener: (invocation: string) => void): void;
+    onCommandRun(listener: (invocation: string) => void): void;
   /** Show a small modal with a message and a "Close" button. */
   showFeedback(message: string): void;
 }

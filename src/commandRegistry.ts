@@ -1,4 +1,4 @@
-import type { FlagDef } from "./types.js";
+import { ExitCode, fail, ok, type CommandResult, type FlagDef } from "./types.js";
 
 export interface CommandDef {
   name: string;
@@ -6,7 +6,8 @@ export interface CommandDef {
   flags?: FlagDef[];
 }
 
-export type CommandHandler = (flags: string[]) => void | Promise<void>;
+/** A handler may return a result, or nothing (= silent success). */
+export type CommandHandler = (flags: string[]) => CommandResult | void | Promise<CommandResult | void>;
 
 export class CommandRegistry {
   private readonly handlers = new Map<string, CommandHandler>();
@@ -35,16 +36,23 @@ export class CommandRegistry {
     return [...this.defs];
   }
 
-  /** Run a command by name with already-parsed flags. */
-  async run(name: string, flags: string[] = []): Promise<void> {
+  /**
+   * Run a command by name with already-parsed flags. Always resolves — an unknown
+   * command or a throwing handler becomes a failing result, never an exception.
+   */
+  async run(name: string, flags: string[] = []): Promise<CommandResult> {
     const handler = this.handlers.get(name);
-    if (!handler) throw new Error(`unknown command: "${name}"`);
-    await handler(flags);
+    if (!handler) return fail(ExitCode.NOT_FOUND, `unknown command: "${name}"`);
+    try {
+      return (await handler(flags)) ?? ok();
+    } catch (e: unknown) {
+      return fail(ExitCode.FAILURE, `${name}: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   /** Parse a raw "name --flag" string and run it. */
-  async execute(input: string): Promise<void> {
+  async execute(input: string): Promise<CommandResult> {
     const tokens = input.trim().split(/\s+/);
-    await this.run(tokens[0] ?? "", tokens.slice(1));
+    return this.run(tokens[0] ?? "", tokens.slice(1));
   }
 }

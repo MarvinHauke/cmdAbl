@@ -1,32 +1,22 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./commandRegistry.js";
 import { createCommandProvider } from "./providers/commandProvider.js";
-import type { Provider, PaletteResult } from "./types.js";
+import { type Provider, type PaletteResult, type CommandResult, ExitCode, fail } from "./types.js";
 import type { Module, ModuleApi, ResultHandler } from "./modules/types.js";
 import { startTriggerServer } from "./httpTrigger.js";
-import { runSetup, isSetupDone, setKarabinerPaletteOpen } from "./setup.js";
+import { isSetupDone, setKarabinerPaletteOpen } from "./setup.js";
+import { registerBuiltins } from "./core/builtins.js";
+import { presentResult } from "./core/present.js";
+import { MODULES } from "./modules/index.js";
 import interfaceTemplate from "../ui/interface.html";
 import feedbackTemplate from "../ui/feedback.html";
-import { spawn } from "node:child_process";
-
-import * as historyModule from "./modules/history/index.js";
-import * as gotoModule from "./modules/goto/index.js";
-import * as muteModule from "./modules/mute/index.js";
-import * as soloModule from "./modules/solo/index.js";
-import * as pakablModule from "./modules/pakabl/index.js";
 
 const TRIGGER_PORT = 27184;
-
-// cmdAbl's "default config" — bundled in the same .ablx, activated the same
-// way third-party extensions eventually will be (see docs/feature-plans/0003).
-// `historyModule` is activated separately, before this list (see below), so
-// its provider claims the very first slot in `providers`/`ITEMS`.
-const DEFAULT_MODULES: Module[] = [gotoModule, muteModule, soloModule, pakablModule];
 
 export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");
   const registry = new CommandRegistry();
-  const providers: Provider[] = [];
+  const providers: { provider: Provider; priority: number }[] = [];
   const resultHandlers = new Map<string, ResultHandler>();
   const commandRunListeners: Array<(invocation: string) => void> = [];
   let isOpen = false;
@@ -36,72 +26,21 @@ export function activate(activation: ActivationContext) {
     void context.ui.showModalDialog(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`, 500, 180);
   }
 
-  // ── built-in commands ────────────────────────────────────────────────────
-  registry.register(
-    "cmdabl",
-    "configure cmdAbl",
-    [
-      { name: "--setup", description: "install keyboard trigger rule (Karabiner on macOS, AutoHotkey on Windows)" },
-      { name: "--help", description: "open the Ableton Live manual" },
-    ],
-    (flags) => {
-      if (flags.includes("--setup")) {
-        showFeedback(runSetup());
-      } else if (flags.includes("--help")) {
-        spawn("open", ["https://www.ableton.com/en/manual/"], { detached: true, stdio: "ignore" }).unref();
-      } else {
-        showFeedback("cmdAbl: no recognised flag. Try: cmdabl --setup");
-      }
-    },
-  );
-
-  // ── spike 0a (revised), CONCLUDED — BLOCKED ON UPSTREAM SDK SUPPORT ────────
-  // Probed "type a third-party extension's name into cmdAbl and have it run"
-  // via context.commands.executeCommand (see docs/feature-plans/0003 Step 0).
-  // Result: registerCommand/executeCommand are scoped per calling extension —
-  // Track Creator's "track-creator.open" is registered and works via its own
-  // context-menu entry, but executeCommand("track-creator.open") from cmdAbl
-  // in the same host throws "Command track-creator.open is not registered".
-  // There is currently no SDK path for cross-extension command invocation;
-  // filed as a feature request on Ableton's extensions Discord (2026-06-08).
-  // Left in place as a ready-to-go re-test for if/when such an API ships.
-  registry.register(
-    "spike-run-track-creator",
-    "(spike 0a, BLOCKED on SDK support — see 0003 Step 0) try to launch federico-pepe.track-creator via context.commands.executeCommand",
-    () => {
-      try {
-        context.commands.executeCommand("track-creator.open");
-        showFeedback(
-          "cmdAbl spike: called executeCommand(\"track-creator.open\").\n\n" +
-            "If Track Creator's modal opened, cross-extension command invocation\n" +
-            "works — cmdAbl can run an independently-installed extension by name\n" +
-            "with no code-loading and no filesystem access.",
-        );
-      } catch (e: unknown) {
-        showFeedback(
-          "cmdAbl spike: executeCommand(\"track-creator.open\") threw:\n\n" +
-            (e instanceof Error ? e.message : String(e)),
-        );
-      }
-    },
-  );
+  // ── core: the only commands baked in (see src/core/builtins.ts) ───────────
+  registerBuiltins(registry);
 
   // ── default modules ──────────────────────────────────────────────────────
   const moduleApi: ModuleApi = {
     context,
     registry,
-    registerProvider: (provider) => providers.push(provider),
+    registerProvider: (provider, priority = 0) => providers.push({ provider, priority }),
     registerResultHandler: (action, handler) => resultHandlers.set(action, handler),
     onCommandRun: (listener) => commandRunListeners.push(listener),
     showFeedback,
   };
-  // history first: claims providers[0], so its provider's items land at the
-  // very front of `ITEMS` — ahead of even the static command list — making
-  // the most recently run invocation literally the first row in the
-  // empty-query palette view (`ui/interface.html`: `query ? ... : ITEMS`).
-  historyModule.activate(moduleApi);
-  providers.push(createCommandProvider(registry));
-  for (const mod of DEFAULT_MODULES) mod.activate(moduleApi);
+  // The command list itself is a provider (priority 0); modules add theirs.
+  moduleApi.registerProvider(createCommandProvider(registry));
+  for (const mod of MODULES) mod.activate(moduleApi);
 
   // ── HTTP trigger server ──────────────────────────────────────────────────
   // Karabiner (or any external tool) can POST/GET http://127.0.0.1:27184/open
@@ -126,20 +65,35 @@ export function activate(activation: ActivationContext) {
       return;
     }
     if (result.type === "command") {
-      await registry.run(result.id, result.flags ?? []);
-      // Report invocations that carry arguments to history listeners — the
-      // webview already normalizes "canned" full-invocation items (history
-      // entries) into this same {id, flags} shape before sending, so this
-      // sees fresh and re-run invocations identically.
+      const outcome = await registry.run(result.id, result.flags ?? []);
+      present(outcome);
+      // Report successful invocations that carry arguments to history
+      // listeners — the webview already normalizes "canned" full-invocation
+      // items (history entries) into this same {id, flags} shape, so this sees
+      // fresh and re-run invocations identically. Failed runs aren't recorded.
       const invocation = [result.id, ...(result.flags ?? [])].join(" ");
-      if (invocation.includes(" ")) for (const listener of commandRunListeners) listener(invocation);
+      if (outcome.code === ExitCode.OK && invocation.includes(" ")) {
+        for (const listener of commandRunListeners) listener(invocation);
+      }
       return;
     }
     // Non-command items (Live objects) are routed by `action` — modules
     // declare what an item should *do*, independent of its `type`.
     const handler = result.action ? resultHandlers.get(result.action) : undefined;
-    if (handler) await handler(result);
-    else console.warn(`cmdAbl: no handler for "${result.type}" action "${result.action}"`);
+    if (!handler) {
+      present(fail(ExitCode.NOT_FOUND, `no handler for "${result.type}" action "${result.action}"`));
+      return;
+    }
+    try {
+      await handler(result);
+    } catch (e: unknown) {
+      present(fail(ExitCode.FAILURE, e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  /** The single place results become user-visible (see src/core/present.ts). */
+  function present(outcome: CommandResult): void {
+    presentResult(outcome, showFeedback);
   }
 
   async function openPalette(): Promise<void> {
@@ -148,7 +102,9 @@ export function activate(activation: ActivationContext) {
     setKarabinerPaletteOpen(true);
     try {
       // Snapshot every provider's items, then let the webview search them.
-      const items = (await Promise.all(providers.map((p) => p.getItems()))).flat();
+      // Stable sort by priority (lower first); ties keep registration order.
+      const ordered = [...providers].sort((a, b) => a.priority - b.priority);
+      const items = (await Promise.all(ordered.map((p) => p.provider.getItems()))).flat();
       const html = interfaceTemplate.replace(
         "/*ITEMS_PLACEHOLDER*/null",
         JSON.stringify(items),

@@ -71,3 +71,51 @@ export interface Provider {
   /** Contribute items to the palette snapshot taken when it opens. */
   getItems(): PaletteItem[] | Promise<PaletteItem[]>;
 }
+
+// ── command results ─────────────────────────────────────────────────────────
+// Every command ends in a CommandResult — the exit-status analogue of a shell
+// command (see docs/feature-plans/0002-command-feedback-pattern.md). `code` is
+// machine-checkable, `message` is what a user sees (stderr's analogue), and
+// `details` carries per-target outcomes for multi-target commands. Handlers
+// may also return nothing, which is normalized to `ok()`.
+
+export const ExitCode = {
+  /** Success. */
+  OK: 0,
+  /** The command ran but failed — including partial failure (see `details`). */
+  FAILURE: 1,
+  /** Bad invocation: missing/unknown arguments or options. */
+  USAGE: 2,
+  /** A command or an addressed object was not found. */
+  NOT_FOUND: 3,
+  /** An address matched more than one object; candidates are in `details`. */
+  AMBIGUOUS: 4,
+  /** A required companion (e.g. the Remote Script) is not available. */
+  UNAVAILABLE: 5,
+} as const;
+
+export type ExitCodeValue = (typeof ExitCode)[keyof typeof ExitCode];
+
+export interface TargetOutcome {
+  path: string;
+  ok: boolean;
+  message?: string;
+}
+
+export interface CommandResult {
+  code: number;
+  message?: string;
+  details?: TargetOutcome[];
+}
+
+export const ok = (message?: string, details?: TargetOutcome[]): CommandResult => ({
+  code: ExitCode.OK,
+  ...(message !== undefined ? { message } : {}),
+  ...(details ? { details } : {}),
+});
+
+export const fail = (
+  code: Exclude<number, 0>,
+  message: string,
+  details?: TargetOutcome[],
+): CommandResult => ({ code, message, ...(details ? { details } : {}) });
