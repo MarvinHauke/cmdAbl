@@ -213,8 +213,17 @@ _Last updated: 2026-10-11._
   normal track through the pick list several times, then by direct path (separates "write after a
   pick" from "write"); after a hang: what Live's Edit menu shows for Undo, whether Cmd+Z
   brings the dialog, whether switching apps reveals a hidden window.
-- Candidate fixes, not to ship before the experiments: run the handler one macrotask after a
-  dialog closes (cmdabl-core); drop the outer `withinTransaction` for a single-track write.
+- **Result of the experiment (user, 2026-10-11):** `mute` through the pick list about ten times
+  and by direct path about ten times: no hang in either round. H2 is not supported (not excluded
+  either, it would be timing dependent). The hang is rare and cannot be reproduced on demand, so
+  neither candidate fix below is shipped: there is nothing to verify it against.
+- Next step instead: better evidence for the next occurrence (task to cmdabl-core): a log line
+  per command run (line, exit code, duration), and a manual `/reset` on the local trigger server
+  that clears the "dialog open" state, to learn whether a new dialog can open after a hang
+  without restarting. The checks after a hang stay: Undo entry in the Edit menu, Cmd+Z,
+  switching apps.
+- Candidate fixes, kept until a hang can be tied to a cause: run the handler one macrotask after
+  a dialog closes (cmdabl-core); drop the outer `withinTransaction` for a single-track write.
 
 ### In progress (tasks out, 2026-10-11)
 
@@ -246,7 +255,8 @@ _Last updated: 2026-10-11._
 | `arm` reports tracks that cannot be armed; manual search pinned to `/live-manual/12` | cmdabl-modules | committed `e885674` + `9edd84f`, reviewed; needs the Live test (step 4). The read-back after arming is unverified against the SDK: if ordinary tracks report "did not change", it comes out again (one function) |
 | Docs workflow's build job gets its own check name (`docs-build`) | cmdabl-core | committed `e23c043`, reviewed; the next pull-request run on GitHub is the proof (three checks: `build`, `gitleaks`, `docs-build`) |
 | `arm` refuses group tracks before writing | cmdabl-modules | committed `aa98b7a`, reviewed; needs the Live test. It avoids one possible trigger; it does not explain the hang |
-| Why a dialog never appears after a write to a group track's `arm` (transaction, rejected write) | cmdabl-bridge | findings in (no code changed), see "Dialog hang" below; waiting for the user's experiments |
+| Why a dialog never appears after a write to a group track's `arm` (transaction, rejected write) | cmdabl-bridge | findings in (no code changed), see "Dialog hang" above; the user's experiment did not reproduce it |
+| Evidence for the next dialog hang: log line per command run, manual `/reset` on the trigger server | cmdabl-core | task out |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
