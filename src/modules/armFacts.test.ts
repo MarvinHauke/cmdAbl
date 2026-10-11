@@ -72,7 +72,7 @@ test("factsRefusal: unarmable MIDI track, group, stale entry, missing facts", ()
   const ok = { ok: true as const, value: { name: "a", canBeArmed: true, isGroup: false, isGrouped: false, arm: false } };
   assert.equal(factsRefusal(ok), undefined);
   assert.equal(factsRefusal(undefined), undefined);
-  assert.equal(factsRefusal({ ok: true, value: { ...ok.value, canBeArmed: false, arm: null } }), "Live does not allow arming this track (its arm button is disabled, e.g. the input device is not available)");
+  assert.equal(factsRefusal({ ok: true, value: { ...ok.value, canBeArmed: false, arm: null } }), "Live does not allow arming it: its arm button is disabled (e.g. the input device is not available)");
   assert.equal(
     factsRefusal({ ok: true, value: { ...ok.value, canBeArmed: false, isGroup: true, arm: null } }),
     "group tracks cannot be armed",
@@ -169,8 +169,8 @@ test("verify texts and log line", () => {
     armVerifyLine("/a", true, { state: "ok", actual: true, secondLook: true }),
     /-> ok \(first look mismatched, second look decided\)$/,
   );
-  assert.match(armNotChangedText(true), /Live did not arm this track/);
-  assert.equal(armNotChangedText(false), "Live did not disarm this track");
+  assert.match(armNotChangedText(true), /^Live did not arm it: its arm button is disabled/);
+  assert.equal(armNotChangedText(false), "Live did not disarm it");
   assert.equal(
     armVerifyLine("/Sub 37 Midi", true, { state: "mismatch", actual: false }),
     "cmdAbl: arm verify: /Sub 37 Midi wanted true, script reads false -> mismatch",

@@ -46,7 +46,7 @@ export function notChanged(wanted: boolean, actual: boolean): boolean {
 }
 
 /** Why Live may refuse to arm a track — shared by the refusal and the verify message. */
-export const ARM_DISABLED_HINT = "(its arm button is disabled, e.g. the input device is not available)";
+export const ARM_DISABLED_HINT = "its arm button is disabled (e.g. the input device is not available)";
 
 /**
  * The refusal text for a track whose Live facts say it cannot be armed (a MIDI
@@ -61,6 +61,6 @@ export function factsRefusal(entry: BridgeResult<TrackFacts> | undefined, wanted
   if (!entry.ok) return entry.text === TEXT_STALE ? entry.text : undefined;
   if (!wantedOn) return undefined; // switching off is never refused
   if (entry.value.isGroup) return armRefusal(true);
-  if (!entry.value.canBeArmed) return `Live does not allow arming this track ${ARM_DISABLED_HINT}`;
+  if (!entry.value.canBeArmed) return `Live does not allow arming it: ${ARM_DISABLED_HINT}`;
   return undefined;
 }

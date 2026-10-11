@@ -128,6 +128,6 @@ export function armVerifyLine(path: string, wanted: boolean, verdict: ArmVerdict
 
 export function armNotChangedText(wanted: boolean): string {
   return wanted
-    ? `Live did not arm this track ${ARM_DISABLED_HINT}`
-    : "Live did not disarm this track";
+    ? `Live did not arm it: ${ARM_DISABLED_HINT}`
+    : "Live did not disarm it";
 }
