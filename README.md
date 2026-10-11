@@ -84,7 +84,8 @@ apart by an ordinal: `/Drums/Kick`, `/Drums/Kick#2`.
 When a path matches more than one object, cmdAbl shows a **pick list** instead of guessing:
 type to filter (`Space` types a space), `↑`/`↓` to move, `Enter` to choose, `Esc` to cancel.
 Commands that take several tracks (`mute`, `solo`, `arm`, …) let you mark several with `Tab`, or
-with `Space` once you are in the list (after `↑`/`↓`; typing a character returns to the filter).
+with `Space` once you are in the list (the first `↑`/`↓` only enters it, so `↓` `Space` marks the
+first row; typing a character returns to the filter).
 A line above the filter shows the command `Enter` will run. That resolved command is what lands
 in the history, so re-running it never asks again.
 
