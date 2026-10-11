@@ -214,3 +214,12 @@ test("presentResult: silent success, messages, failures with details", () => {
   ]), show);
   assert.deepEqual(shown, ["done", "cmdAbl: muted 1/2\n  ✓ /a\n  ✗ /b — not found"]);
 });
+
+test("cmdablUsage: lists every registered flag and points to man and help", async () => {
+  const { cmdablUsage } = await import("./builtins.js");
+  const text = cmdablUsage();
+  assert.match(text, /--setup/);
+  assert.match(text, /--help/);
+  assert.match(text, /man cmdabl/);
+  assert.match(text, /all commands: help/);
+});
