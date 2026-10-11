@@ -169,14 +169,13 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    `find`, `next`, `prev`; `goto` does not feel slower; a track row and a device row picked in
    the palette. Open: `cmdabl --help` lists `--bridge`;
    `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open: answer, speed.
-1b. Remote Script step 3, `arm` verify (`ebeadf7`; restart `npm start` only). Seen before with
-   script 0.3.0: `arm` toggles a normal track, refuses group, return and main, "k/n done". Now:
-   (1) `arm` on the MIDI track with the missing input device → "Live did not arm this track
-   (its arm button is disabled, e.g. no input device)"; again → the same message; `unarm` → ok;
-   (2) a normal MIDI and an audio track, arm on/off several times → never a failure (the
-   architect reads the `arm verify:` lines from the log); (3) normal + greyed-out track together
-   → "1/2 done", the normal one armed; (4) Edit → Undo after (1) and (3): what it shows, what
-   one undo does (a refused `arm` may leave an extra undo step); (5) `:` still opens the palette.
+1b. Remote Script step 3, `arm` verify (`ebeadf7`). Seen 2026-10-12: `arm` on the MIDI track
+   with the unavailable input device → "Live did not arm this track …" (the log shows the
+   verify mismatch, decided on the second look); together with a normal track → "1/2 done", the
+   normal one armed. Task out to cmdabl-modules: a better structured partial-result message
+   (successes first, the reason on its own short lines). Open: a normal MIDI and an audio track
+   armed on/off several times never fail; Edit → Undo after a refused `arm` (what it shows,
+   what one undo does); the new message layout.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
