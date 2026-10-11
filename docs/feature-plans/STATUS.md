@@ -12,8 +12,9 @@ _Last updated: 2026-10-11._
   squash-merged at the user's request). The Live test was not finished: the rows marked "no" and
   the open steps of the Live test list below still apply, now against `main`. The version is
   still 0.0.1, so the merge published no release.
-- `docs/roadmap-0.1.0` (from `main`, 2026-10-11): the roadmap below and the Remote Script
-  protocol proposal in 0001. Documents only; merge by pull request when the user asks.
+- `feat/bridge-replies` (from `main`, 2026-10-11; local, not pushed): the roadmap below, the
+  Remote Script protocol in 0001 and its build steps. The agents share one working tree, so all
+  current work is on this branch.
 - `main` is protected since 2026-10-11 by the ruleset "Protect main" (id 24888213): pull request
   required (0 approvals), required checks `build` and `gitleaks`, no force push, no deletion. The
   repository admin may bypass, but only when merging a pull request — a direct push to `main` is
@@ -294,7 +295,12 @@ below was approved by the user the same day.
 
 ### 1. Reliable (blocks everything else)
 
-1. Finish the Live test of the merged work (lists above); fix what it shows.
+1. Finish the Live test of the merged work. Seen working by the user on 2026-10-11, after the
+   merge: `arm` refuses a group and the palette keeps opening; `mute` toggles and `unmute` on an
+   unmuted track changes nothing; `arm` on a normal track (no message) and on a return track
+   ("cannot be armed"); history rows in the empty palette and running one; a trigger during a
+   message opens no second window. Still open: pakabl Update/Uninstall/Repo, the dash rules,
+   sizing of long lists.
 2. Dialog hang ("Dialog hang — what is known" above): 0.1.0 does not ship with "only a restart
    helps". Either the cause is found and fixed, or the palette recovers by itself (a watchdog in
    `src/core/dialogQueue.ts` that abandons a dialog which never appeared — only buildable once a
@@ -306,9 +312,17 @@ below was approved by the user the same day.
 
 Plans: 0001 Phase 4, decisions in 0004. Today the bridge is fire-and-forget over UDP 27185.
 
-1. Protocol with replies: `hello` (script version, list of operations), request ids, timeout,
-   error replies. A contract change: cmdabl-bridge writes the proposal into 0001, the user
-   confirms it, then it is built.
+1. Protocol with replies — **confirmed by the user on 2026-10-11** as proposed in 0001, "Phase 4
+   protocol proposal" (`c9a1d18`): UDP 127.0.0.1:27185, `{v, id, op, args}` →
+   `{v, id, ok, result | error}`, timeout 500 ms, `hello` → `{script, v, ops}`. Decided with it:
+   no `hello` reply → exit code 5 with what to do; the Live Set changed since the command was
+   typed (route out of range, name differs) → exit code 1 "the Live Set changed; run the command
+   again"; a faster drain than Live's display rate only if a measurement asks for it; no access
+   token while the operations only select and read — mandatory before the first operation that
+   changes or deletes. Behaviour change from build step 2: with the old script installed,
+   `goto` answers "installed Remote Script is outdated; run `cmdabl setup` and restart Live".
+   The bridge sits behind an interface with a fake for tests; replies are validated where they
+   arrive. Build steps: 0001 §7; step 1 is out to cmdabl-bridge.
 2. Availability: the extension knows whether the script is installed, running and of a matching
    version; commands declare `requires: ["bridge"]` (0005) and answer with exit code 5 and a
    clear text instead of doing nothing.
@@ -334,8 +348,10 @@ Changing these after a release breaks what users have learned and what is stored
 
 ### 4. Small things that make it feel finished
 
-- A `history` command: show the list and re-run an entry. Today the entries are only the first
-  rows of the empty palette, marked `(history)` — at most 20, in memory only.
+- An import-boundary test (task out to cmdabl-core): fails when a module imports the dialog
+  pages, the HTTP server or another module's internals. From an outside architecture review the
+  user brought in; its other points are already true or are step 3.4 (ports).
+
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
 - A generic `page` surface on `Ui` for module pages (decided, see above); `pakabl list` moves
   onto it and into the dialog queue.
@@ -365,6 +381,11 @@ Changing these after a release breaks what users have learned and what is stored
   instead of a search-engine query: match the words against chapter and section titles (chapters
   are `/en/live-manual/12/<chapter>/#<section>`) and open the section, with the pick list on
   several hits (needs a pick list for things other than Live objects — a `ModuleApi` change).
+- History as a log (user, 2026-10-11: wanted, but later): `history` shows the last commands
+  newest first with success or failure, `Enter` runs a row again; failed commands are kept in
+  the log too. Today the entries are only the first rows of the empty palette, marked
+  `(history)` — at most 20, in memory only. Open: whether Live's Undo History can be opened
+  from the extension or the Remote Script (cmdabl-bridge checks during step 2).
 - Windows: an opener in core's `openUrl`, a trigger key, Remote Script install paths, a tester.
 
 ## Parked
