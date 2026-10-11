@@ -275,6 +275,7 @@ Extensions must export an `activate(context: ActivationContext)` function.
 
 ```sh
 npm start          # type-check, build (dev), and run in Live's Extension Host
+npm test           # unit tests for the command platform (tokenizer, parser, validator)
 npm run package    # production build + create a .ablx archive (includes karabiner/ and windows/)
 ```
 

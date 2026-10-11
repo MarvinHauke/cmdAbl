@@ -3,7 +3,7 @@
 **Parent:** [0004](0004-command-platform.md)
 **Depends on:** [0002](0002-command-feedback-pattern.md) Phase A (`CommandResult`).
 
-**Status:** Draft (2026-10-08) — defines how commands, subcommands and their arguments are
+**Status:** In Progress — rollout step 1 shipped (2026-10-11); drafted 2026-10-08 — defines how commands, subcommands and their arguments are
 declared, so parsing, help and completion all derive from one structure.
 
 ## Context
@@ -140,6 +140,8 @@ success unless it helps; return `CommandResult` instead of calling `showFeedback
 - Whether `args` should support named groups (e.g. `<from> <to>`) beyond ordered positionals.
 
 ## Phased rollout
+
+**Where things stand (2026-10-11):** step 1 is implemented and unit-tested (`npm test`): `src/core/tokenize.ts` (shared tokenizer), `src/core/commandTree.ts` (node types, `validateTree`, `usage`/`helpText`, `serializeTree`), `src/core/parse.ts` (walks the tree, parses options/arguments, returns run / help / error with exit codes). Nothing is wired into `dispatch()` yet — existing commands still run through the old `register()` path. The comma form `mute /a, /b` is not handled by the tokenizer; it stays with the legacy adapter until `mute` is migrated.
 
 1. Types + validator + tokenizer + parser with unit-level checks (no behavior change).
 2. `api.commands` registration and the `register()` adapter; `dispatch()` runs through the parser.
