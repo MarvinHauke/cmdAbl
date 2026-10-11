@@ -1,6 +1,7 @@
 import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { PaletteItem, PaletteResult } from "../types.js";
 import { parseIndexes } from "./pickResult.js";
+import { pickHeight } from "./pickSize.js";
 import { inlineJson } from "./inlineJson.js";
 import { createDialogQueue, type DialogQueue } from "./dialogQueue.js";
 import promptTemplate from "../../ui/interface.html";
@@ -92,7 +93,7 @@ export function createDefaultUi(
 
     async select(request) {
       const html = selectTemplate.replace("/*PICK_PLACEHOLDER*/null", () => inlineJson(request));
-      const height = Math.min(120 + request.items.length * 28, 420);
+      const height = pickHeight(request.items.length, request.preview !== undefined);
       const raw = await show("pick", html, 560, height);
       return parseIndexes(raw, request.items.length);
     },
