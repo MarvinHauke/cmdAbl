@@ -194,6 +194,27 @@ _Last updated: 2026-10-11._
   yet known whether the build with the read-back was running; if it was, the SDK cannot tell and
   it needs the Remote Script (`can_be_armed`, replies).
 
+### Dialog hang — what is known (cmdabl-bridge, 2026-10-11)
+
+- Evidence: `track.arm = v` is a synchronous native call wrapped in its own transaction; the SDK
+  has no channel for a failure that arrives later. Our handler is synchronous and nothing in the
+  code drops a rejected promise. The log shows no `dialog failed` and no `trigger ignored`: the
+  hang is inside `showModalDialog`, whose promise never settles.
+- `arm` is a toggle, so the two runs on the group were arm, then unarm. The palette opened fine
+  after the first. No message is the expected result of a write that does not throw and reads
+  back equal — it is not evidence that Live refused it.
+- So "a write to a group track" is **not** established as the cause. The earlier hang followed a
+  `mute`. The shared factor: a data-model write ran in the continuation of a pick dialog's close,
+  and a later dialog request then hung.
+- Hypotheses: (H1) group arm specifically; (H2) a transaction executed inside a modal's close
+  callback overlaps the modal's teardown, timing dependent; (H3) unrelated to writes; (H4) Live
+  holds the dialog because of a pending undo step.
+- Experiments for the user: `arm /Analog Rytm` by direct path several times, then through the pick
+  list (separates H1 from H2); after a hang: what Live's Edit menu shows for Undo, whether Cmd+Z
+  brings the dialog, whether switching apps reveals a hidden window.
+- Candidate fixes, not to ship before the experiments: run the handler one macrotask after a
+  dialog closes (cmdabl-core); drop the outer `withinTransaction` for a single-track write.
+
 ### In progress (tasks out, 2026-10-11)
 
 | Task | Agent | State |
@@ -224,7 +245,7 @@ _Last updated: 2026-10-11._
 | `arm` reports tracks that cannot be armed; manual search pinned to `/live-manual/12` | cmdabl-modules | committed `e885674` + `9edd84f`, reviewed; needs the Live test (step 4). The read-back after arming is unverified against the SDK: if ordinary tracks report "did not change", it comes out again (one function) |
 | Docs workflow's build job gets its own check name (`docs-build`) | cmdabl-core | committed `e23c043`, reviewed; the next pull-request run on GitHub is the proof (three checks: `build`, `gitleaks`, `docs-build`) |
 | `arm` refuses group tracks before writing | cmdabl-modules | sent (urgent) |
-| Why a dialog never appears after a write to a group track's `arm` (transaction, rejected write) | cmdabl-bridge | sent (investigation) |
+| Why a dialog never appears after a write to a group track's `arm` (transaction, rejected write) | cmdabl-bridge | findings in (no code changed), see "Dialog hang" below; waiting for the user's experiments |
 
 ### Candidates (not ordered yet — order them with the user after the test)
 
