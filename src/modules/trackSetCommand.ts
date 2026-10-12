@@ -1,8 +1,6 @@
 import type { ModuleApi } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
-import { trackFor } from "../ableton/trackLookup.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
-import { getBridge } from "../ableton/bridge.js";
 import { setChainSwitch } from "./chainSwitch.js";
 import {
   armBase,
@@ -55,8 +53,6 @@ export function registerTrackSetCommand(
   value: TrackSetValue,
   summary: string,
   docs: TrackSetDocs,
-  /** The bridge, taken lazily — only chains and `arm` facts need it. Tests pass a fake. */
-  bridgeOf: () => Bridge = getBridge,
 ): void {
   api.commands.add({
     name,
@@ -88,15 +84,15 @@ export function registerTrackSetCommand(
       // otherwise the SDK-only path below. The script's `arm` is the truth a
       // toggle starts from: the SDK's value can be wrong for a track Live
       // refused to arm.
-      const loaded = prop === "arm" ? await loadArmFacts(bridgeOf(), nodes) : undefined;
+      const loaded = prop === "arm" ? await loadArmFacts(api.bridge, nodes) : undefined;
       const facts = loaded?.facts;
       // Evidence for what Live reports (names and booleans only).
-      if (loaded) for (const line of armFactsLines(nodes, loaded)) console.log(line);
+      if (loaded) for (const line of armFactsLines(nodes, loaded)) api.log(line);
 
       // One transaction = one undo step for the whole command.
-      api.context.withinTransaction(() => {
+      api.tracks.transaction(() => {
         nodes.forEach((node, index) => {
-          const track = trackFor(api.context, node);
+          const track = api.tracks.track(node);
           if (!track) {
             outcomes.push({ path: node.path, ok: false, code: ExitCode.NOT_FOUND, message: "track is gone" });
             return;
@@ -138,14 +134,14 @@ export function registerTrackSetCommand(
 
       if (prop === "arm") verifyArm(api, written, outcomes);
       // With the script's facts, the script's read after the write decides.
-      if (prop === "arm" && facts) await verifyWithScript(api, written, outcomes, bridgeOf());
+      if (prop === "arm" && facts) await verifyWithScript(api, written, outcomes, api.bridge);
 
       // Chains: their own switch through the bridge, after the tracks are done.
       const byTarget: TargetOutcome[] = new Array(targets.length);
       trackSlots.forEach((slot, k) => (byTarget[slot] = outcomes[k]!));
       if (chainSlots.length > 0 && prop !== "arm") {
         const chainNodes = chainSlots.map((i) => targets[i]!);
-        const results = await setChainSwitch(bridgeOf(), chainNodes, prop, value);
+        const results = await setChainSwitch(api.bridge, chainNodes, prop, value);
         chainSlots.forEach((slot, k) => {
           const r = results[k]!;
           const path = targets[slot]!.path;
@@ -187,8 +183,8 @@ function verifyArm(api: ModuleApi, written: WrittenArm[], outcomes: TargetOutcom
     const outcome = outcomes[w.outcome];
     if (!outcome || !outcome.ok) continue; // a write that threw is already a failure
     try {
-      const track = trackFor(api.context, w.node);
-      if (track) console.log(armReadBackLine(w.node.path, w.wanted, track.arm));
+      const track = api.tracks.track(w.node);
+      if (track) api.log(armReadBackLine(w.node.path, w.wanted, track.arm));
       if (track && notChanged(w.wanted, track.arm)) {
         outcomes[w.outcome] = {
           path: w.node.path,
@@ -223,17 +219,17 @@ async function verifyWithScript(
   const corrections: Array<{ node: ObjectNode; actual: boolean }> = [];
   verdicts.forEach((verdict, i) => {
     const w = pending[i]!;
-    console.log(armVerifyLine(w.node.path, w.wanted, verdict));
+    api.log(armVerifyLine(w.node.path, w.wanted, verdict));
     if (verdict.state !== "mismatch") return;
     outcomes[w.outcome] = { path: w.node.path, ok: false, message: armNotChangedText(w.wanted) };
     corrections.push({ node: w.node, actual: verdict.actual ?? false });
   });
   if (corrections.length === 0) return;
   try {
-    api.context.withinTransaction(() => {
+    api.tracks.transaction(() => {
       for (const c of corrections) {
         try {
-          const track = trackFor(api.context, c.node);
+          const track = api.tracks.track(c.node);
           if (track) track.arm = c.actual;
         } catch {
           /* leave this track; the failure is reported anyway */
