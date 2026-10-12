@@ -340,7 +340,11 @@ Decided by the user and still governing future work.
   access token (new per Live start, in `~/Library/Application Support/cmdAbl/bridge-token`,
   outside the repo, never logged; writing operations are refused without it, reads and
   `select` need none); always the chain's own switch, for every rack type (whether a Drum
-  Rack pad's M button follows is checked in Live). In work: cmdabl-bridge, then cmdabl-modules.
+  Rack pad's M button follows is checked in Live). The reference is the chain's column in
+  the Session mixer (speaker button and S). In work: cmdabl-bridge, then cmdabl-modules.
+- 2026-10-12: selecting a pad or chain does not unfold the track's chains in the mixer — the
+  user wants that as the default, plus an option `--unfold` on `goto`/`find` that shows them.
+  cmdabl-bridge checks whether Live's scripting interface can do it, after `chain_set`.
 - 2026-10-12: exclusive arm/solo is not applied by commands; naming several tracks is an explicit
   choice, like Cmd-clicking the buttons (accepted).
 - 2026-10-11: `mute`/`solo`/`arm` toggle; `unmute`/`unsolo`/`unarm` switch off (0005).
