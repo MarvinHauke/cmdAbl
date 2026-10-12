@@ -45,6 +45,9 @@ nav:
       - Releasing cmdAbl: guides/release-cmdabl.md
       - pakabl index: guides/pakabl-index.md
       - CI: guides/ci.md
+  - Reference:
+      - Commands: reference/commands.md
+      - Remote Script: reference/remote-script.md
 
 markdown_extensions:
   - tables

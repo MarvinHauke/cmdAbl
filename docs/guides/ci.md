@@ -36,6 +36,14 @@ from a workflow that runs on every pull request: `docs.yml` has a `paths` filter
 never be made required (on a pull request that touches no docs it would not run and the check would
 wait forever).
 
+## Reference pages
+
+`docs/reference/commands.md` and `docs/reference/remote-script.md` are generated from the code (the
+command tree and `src/ableton/remoteScriptOps.ts`). The `build` job runs `npm run docs:reference --
+--check`: it fails when a committed page differs from what the code produces, when a runnable command
+has no example, or when an example does not parse. Fix it by running `npm run docs:reference` and
+committing the result.
+
 ## Pinned actions
 
 Third-party actions (everything outside `actions/*`, e.g. `peter-evans/create-pull-request`) are

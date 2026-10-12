@@ -11,11 +11,16 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import * as path from "node:path";
 import { CommandRegistry } from "../src/commandRegistry.js";
 import { registerBuiltins } from "../src/core/builtins.js";
-import { renderCommandReference } from "../src/core/referenceDoc.js";
+import { checkExamples, renderCommandReference, renderRemoteScriptReference } from "../src/core/referenceDoc.js";
+import { REMOTE_SCRIPT_OPS } from "../src/ableton/remoteScriptOps.js";
+import { PROTOCOL_VERSION, SCRIPT_VERSION } from "../src/ableton/bridgeProtocol.js";
 import { MODULES } from "../src/modules/index.js";
 import type { ModuleApi } from "../src/modules/types.js";
 
-const OUT = path.resolve(process.cwd(), "docs/reference/commands.md");
+const PAGES = {
+  commands: path.resolve(process.cwd(), "docs/reference/commands.md"),
+  remoteScript: path.resolve(process.cwd(), "docs/reference/remote-script.md"),
+};
 
 const registry = new CommandRegistry();
 registerBuiltins(registry);
@@ -34,22 +39,37 @@ const stub: ModuleApi = {
 };
 for (const mod of MODULES) mod.activate(stub);
 
-const text = renderCommandReference(registry.roots());
+const problems = checkExamples(registry.roots());
+if (problems.length) {
+  console.error("Command documentation is incomplete:\n  " + problems.join("\n  "));
+  process.exit(1);
+}
+
+const pages: Array<[string, string]> = [
+  [PAGES.commands, renderCommandReference(registry.roots())],
+  [PAGES.remoteScript, renderRemoteScriptReference(REMOTE_SCRIPT_OPS, { script: SCRIPT_VERSION, protocol: PROTOCOL_VERSION })],
+];
 
 if (process.argv.includes("--check")) {
-  let current = "";
-  try {
-    current = readFileSync(OUT, "utf8");
-  } catch {
-    // missing page: differs
+  let stale = false;
+  for (const [file, text] of pages) {
+    let current = "";
+    try {
+      current = readFileSync(file, "utf8");
+    } catch {
+      // missing page: differs
+    }
+    if (current !== text) {
+      console.error(`${path.relative(process.cwd(), file)} is out of date: run \`npm run docs:reference\` and commit the result.`);
+      stale = true;
+    }
   }
-  if (current !== text) {
-    console.error("docs/reference/commands.md is out of date: run `npm run docs:reference` and commit the result.");
-    process.exit(1);
-  }
-  console.log("docs/reference/commands.md is up to date");
+  if (stale) process.exit(1);
+  console.log("docs/reference is up to date");
 } else {
-  mkdirSync(path.dirname(OUT), { recursive: true });
-  writeFileSync(OUT, text);
-  console.log(`wrote ${path.relative(process.cwd(), OUT)}`);
+  for (const [file, text] of pages) {
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, text);
+    console.log(`wrote ${path.relative(process.cwd(), file)}`);
+  }
 }
