@@ -264,6 +264,11 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    track, the main track, a device, a rack, a pad → three lines (cmdAbl path, LOM path, link);
    one device path checked in Max for Live (`live.path`) → the same device; can the text of the
    message be selected and copied?; `lom` works with the control surface disabled.
+1k. `--set`: `mute /a` toggles; `mute --set 1 /a, /b` with one already muted → both muted, no
+   failure; `mute --set 0 /a, /b` → both unmuted; the same for `solo`, also on a pad; `arm
+   --set 1` on a normal track, a group (refused) and the MIDI track with the unavailable input
+   (reported); `mute --set 2 /a` → usage error naming 0 and 1; `unmute /a` → unknown command;
+   run `mute --set 0 /a` from history → still unmuted.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
@@ -431,7 +436,7 @@ Decided by the user and still governing future work.
 - 2026-10-12: `mute`/`solo`/`arm` toggle by default and take `-s, --set <0|1>` to force the
   state (1 = muted / soloed / armed, as in the LOM); `unmute`/`unsolo`/`unarm` are removed, no
   aliases — fewer base commands. Replaces the decision of 2026-10-11 to keep the `un…`
-  commands. Task out to cmdabl-modules.
+  commands. Built (`6af692b`, `8fa17a9`). Live test 1k.
 - 2026-10-11: option (a) for module pages: a fourth generic surface `page` on `Ui`, reachable
   through `ModuleApi`; `pakabl list` keeps its page. Not built yet (roadmap step 4).
 - 2026-10-11: the parser stays strict for dash-words in unquoted names (0005, "Dash rules").
