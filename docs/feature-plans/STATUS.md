@@ -12,9 +12,10 @@ _Last updated: 2026-10-12._
 - `main`: contains the command platform rework since 2026-10-11 (PR #9 `refactor/core-modules`,
   squash-merged at the user's request). The Live test was not finished; the list below applies
   against `main`. The version is still 0.0.1, so the merge published no release.
-- `feat/bridge-replies` (from `main`, 2026-10-11; local, not pushed): the roadmap below, the
-  Remote Script protocol in 0001 and its build steps. The agents share one working tree, so all
-  current work is on this branch.
+- `feat/bridge-replies` (from `main`): pushed on 2026-10-12, draft PR #10; CI (`build` with
+  the Remote Script tests, `gitleaks`, `docs-build`) is green. It holds roadmap step 2 and the
+  forgiving target resolution; step 3 continues on it. The agents share one working tree, so
+  all current work is on this branch. Merge when the user says so.
 - `main` is protected since 2026-10-11 by the ruleset "Protect main" (id 24888213): pull request
   required (0 approvals), required checks `build` and `gitleaks`, no force push, no deletion. The
   repository admin may bypass, but only when merging a pull request — a direct push to `main` is
