@@ -62,6 +62,8 @@ export interface Ui {
   /** Resolves with the chosen indexes into `request.items`, or null if cancelled. */
   select(request: SelectRequest): Promise<number[] | null>;
   notify(request: NotifyRequest): void;
+  /** A module's own page: resolves with the string it returns on close, or null if dismissed (an empty string counts as dismissed). */
+  page(name: string, html: string, width: number, height: number): Promise<string | null>;
 }
 
 const dataUrl = (html: string) => `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
@@ -103,6 +105,11 @@ export function createDefaultUi(
       const html = notifyTemplate.replace("/*MESSAGE_PLACEHOLDER*/null", () => inlineJson(request.text));
       const { width, height } = notifySize(request.text);
       void show("message", html, width, height);
+    },
+
+    async page(name, html, width, height) {
+      // The SDK resolves an empty string on dismissal: both count as dismissed.
+      return (await show(name, html, width, height)) || null;
     },
   };
 }

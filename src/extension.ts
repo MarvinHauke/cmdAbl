@@ -15,6 +15,7 @@ import { pickNodes } from "./core/pick.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type Ui } from "./core/ui.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
+import { trackFor } from "./ableton/trackLookup.js";
 import { MODULES } from "./modules/index.js";
 
 const TRIGGER_PORT = 27184;
@@ -64,6 +65,17 @@ export function activate(activation: ActivationContext) {
   // ── default modules ──────────────────────────────────────────────────────
   const moduleApi: ModuleApi = {
     context,
+    get bridge() {
+      return getBridge();
+    },
+    liveSet: { nodes: liveNodes },
+    tracks: {
+      transaction: (fn) => context.withinTransaction(fn),
+      // Only a track node has a track; a device or chain would give its CONTAINING track.
+      track: (node) => (node.kind === "track" ? trackFor(context, node) : null),
+    },
+    log: (line) => console.log(line),
+    dialog: (html, width, height, name = "module page") => ui.page(name, html, width, height),
     commands: { add: (command) => void registry.add(command) },
     pick,
     onPick: (listener) => pickListeners.push(listener),

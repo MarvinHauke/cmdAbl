@@ -30,6 +30,21 @@ const stub: ModuleApi = {
   get context(): never {
     throw new Error("a module used api.context while being activated; declare commands only");
   },
+  get bridge(): never {
+    throw new Error("a module used api.bridge while being activated; declare commands only");
+  },
+  get liveSet(): never {
+    throw new Error("a module used api.liveSet while being activated; declare commands only");
+  },
+  get tracks(): never {
+    throw new Error("a module used api.tracks while being activated; declare commands only");
+  },
+  log: () => {
+    throw new Error("a module logged while being activated; declare commands only");
+  },
+  dialog: async () => {
+    throw new Error("a module opened a dialog while being activated; declare commands only");
+  },
   commands: { add: (command) => void registry.add(command) },
   pick: async () => null,
   onPick: () => {},
