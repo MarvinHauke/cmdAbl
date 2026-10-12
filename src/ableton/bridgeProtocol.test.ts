@@ -54,7 +54,7 @@ test("installed script check: missing, old, current, unknown", () => {
   assert.equal(inspectInstalledScript("darwin", proto("0.6.0"), () => "present", home).status, "outdated");
 });
 
-// A tripwire: it fails on the first legitimate bump — read 0001 §3 "Versioning rule" before changing it.
+// Pins the reset value; update it together with VERSION in protocol.py on the next script change (0001 §3).
 test("the script version is 0.1.0 until a release changes it (0001 §3 versioning rule)", () => {
   assert.equal(SCRIPT_VERSION, "0.1.0");
 });
