@@ -96,11 +96,12 @@ Plans: 0001 "Phase 4 protocol", build order 0001 §7, layout 0001 §8, decisions
 
 Changing these after a release breaks what users have learned and what is stored in history.
 
-1. `cmdabl` and `pakabl` as subcommand groups (`cmdabl setup`; the old flags stay as aliases).
+1. `cmdabl` and `pakabl` as subcommand groups (`cmdabl setup`, `cmdabl bridge`, `pakabl list`…).
+   No aliases: the old flags go (user, 2026-10-12: he is the only user so far).
 2. An `enum` argument kind with declared choices (`man <ableton|cmdabl>`, pakabl ids): usage
    text and, later, completion come from it.
 3. Object items of the palette run through `goto` (history entry, `next`/`prev` list); removes
-   `registerResultHandler` — a `ModuleApi` change, to be confirmed with the user first.
+   `registerResultHandler` — a `ModuleApi` change, confirmed by the user on 2026-10-12.
 4. Ports instead of the raw SDK context in `ModuleApi`, then the command-authoring guide
    (`docs/guides/adding-a-command.md`).
 5. Leftovers from before the rework (checked 2026-10-11): `pakabl`, `help` and `cmdabl` still
@@ -337,6 +338,8 @@ Decided by the user and still governing future work.
   with the Set, so the Set counts as modified. Opt-in only; never folds.
   Seen in Live: it unfolds; Undo does not fold again (view state). There is no command to
   fold the chains back yet.
+- 2026-10-12: renamed commands get no alias for the old spelling before 0.1.0 (the user is the
+  only user so far); removing `registerResultHandler` from `ModuleApi` is confirmed.
 - 2026-10-12: Remote Script versions grow conservatively. Reset to 0.1.0 (`2b2d448`; it had
   gone to 0.6.0 in a day). Every script change raises the third number, also during
   development; the middle number only with a release whose script is incompatible with the
