@@ -357,7 +357,7 @@ says what it points at (1 = track, 2 = device on the track, 3 = chain, 4 = devic
 |---|---|---|
 | `select` | `{scope, route, expectName}` | `{name}` once the script read the selection back (track: `song.view.selected_track`; device: `track.view.selected_device`; a chain route selects the chain in its rack's view); `stale` / `out_of_range`; if the read-back differs: `failed` |
 | `track_facts` | `{targets: [{scope, route, expectName?}, …]}` (routes of length 1, at most 20) | `{tracks: [{can_be_armed, is_foldable, is_grouped, arm} (+ `name` only without `expectName`) \| {error: {code, text}}, …]}` in the order given — several tracks in one reply (one request per command); `arm` is `null` unless `can_be_armed` (reading it raises otherwise); a stale or missing target is its own `error` entry, the others are still answered |
-| `chains` | `{targets: [{scope, route, offset?}, …]}` (routes of rack devices, at most 20) | `{racks: [{kind: "rack"\|"drum", total, offset, chains: [{name, note?}], next?} \| {error: {code, text}}, …]}` — all racks of the Set in one request; names are `Chain.name` in `rack.chains` order; an entry that does not fit the 3.4 KB reply budget stops early and carries `next` (ask again with that offset) |
+| `chains` | `{targets: [{scope, route, offset?}, …]}` (routes of rack devices, at most 20) | `{racks: [{kind: "rack"\|"drum", total, offset, chains: [{name, in_note?, mute?, solo?}], next?} \| {error: {code, text}}, …]}` — all racks of the Set in one request; names are `Chain.name` in `rack.chains` order; an entry that does not fit the 3.4 KB reply budget stops early and carries `next` (ask again with that offset) |
 | ~~`select_chain`~~ | — | folded into `select`: a route of length 3 (or a nested chain) selects the chain in its rack's view; the Drum Rack pad lookup is unverified until Live |
 | `selection` | `{}` | `{scope, route, name}` for track, plus `device`/`chain` when set |
 
@@ -372,7 +372,7 @@ says what it points at (1 = track, 2 = device on the track, 3 = chain, 4 = devic
 - `chains`: `index` is the index in `device.chains`, on both sides; the extension checks the
   count against the SDK's `rack.chains` so names cannot attach to the wrong chain. The name is
   `Chain.name`; for a drum chain, the pad's name if the chain's name differs is **unverified**
-  (a pad can hold more than one chain). `note` may be redundant with the SDK's
+  (a pad can hold more than one chain). `in_note` (`DrumChain.in_note`) may be redundant with the SDK's
   `DrumChain.receivingNote`.
 - `select_chain` on a drum rack: a DrumChain has no back reference to its pad (the `drumchain`
   page lists `in_note`, `out_note`, `choke_group` only); finding the pad means scanning
@@ -390,17 +390,17 @@ says what it points at (1 = track, 2 = device on the track, 3 = chain, 4 = devic
     selection (and only if it succeeded) the script resolves the route's track; if
     `can_show_chains` and not `is_showing_chains` it sets `is_showing_chains = True` and reads it
     back. It never sets it to false (nothing that is already shown is folded). Reply: the usual
-    `{name}` plus `chains_shown: true | false | null` — `null` when the track cannot show chains
+    `{name}` plus `is_showing_chains: true | false | null` — `null` when the track cannot show chains
     (the flag was ignored), `false` when the write did not take. A selection that succeeded is
     never turned into a failure by this.
   - *Token:* not a writing op — it changes view state like the selection does and is reversible
     by the user in one click. One reason to reconsider: Live stores the expanded state in the Set
     (the Set becomes "modified"); it changes no content. The user decides.
   - *Extension API:* `select(bridge, node, { showChains?: boolean })` in `bridgeOps.ts` returns
-    `{ name, chainsShown: boolean | null }`; `cmdabl-modules` maps `--unfold` to it for `goto`
+    `{ name, isShowingChains: boolean | null }`; `cmdabl-modules` maps `--unfold` to it for `goto`
     and `find` (and, per its own design, for `next`/`prev`). Built in script 0.6.0 (user confirmed 2026-10-12). `can_show_chains` / `is_showing_chains` are
     LOM facts not yet seen in Live (unverified until the Live test). Whether `next`/`prev` take
-    the flag is up to the command side; it must not be the default. `chainsShown` is `null` when
+    the flag is up to the command side; it must not be the default. `isShowingChains` is `null` when
     not asked for or when the track cannot show chains.
 - Identity stays the route, verified by `expectName`; nothing is cached in the script.
 - On a timeout, a *tree node* (chains) is omitted; a *command* answers with code 5/1 instead.
@@ -689,7 +689,7 @@ it equal to what the Python sources touch):
 | --- | --- | --- | --- |
 | `Track` (`track`) | `can_be_armed` | bool, get | "0 for return and master tracks". Verified in Live: also true for a MIDI track with an unavailable input |
 | | `arm` | bool, get/set/observe | "[not in return/master tracks]"; read only when `can_be_armed` |
-| | `is_foldable` | bool, get | the wire's `is_foldable` / extension's `isGroup`. Note: "Instrument and Drum Racks return 0 even though they can open and close" |
+| | `is_foldable` | bool, get | the wire's `is_foldable` / extension's `isFoldable`. Note: "Instrument and Drum Racks return 0 even though they can open and close" |
 | | `is_grouped` | bool, get | |
 | | `fold_state` | int, get/set | "only available if `is_foldable` = 1"; set to 0 to unfold parent groups |
 | | `group_track` | Track, get | `None` in the Python API when not grouped (the Max reference says id 0) |
@@ -710,11 +710,18 @@ it equal to what the Python sources touch):
 `undo`/`redo` and `can_undo`/`can_redo`). The script calls them guarded and degrades to no undo
 grouping. Everything else the script uses is documented.
 
-**Names.** The wire keeps LOM names (`can_be_armed`, `is_foldable`, `is_grouped`, `arm`, `mute`,
-`solo`) except `note` (= `DrumChain.in_note`), `chains_shown` (= `Track.is_showing_chains`) and
-`kind` (= `RackDevice.has_drum_pads`). The extension's `isGroup` is `Track.is_foldable`, with the
-reference's caveat above. Renames are a separate decision (`isGroup`→`isFoldable`,
-`chainsShown`→`isShowingChains`); not done.
+**Names (script 0.1.1, decided 2026-10-12).** Names follow the LOM. Wire: `can_be_armed`,
+`is_foldable`, `is_grouped`, `arm`, `mute`, `solo`, `in_note` (was `note`), `is_showing_chains`
+(was `chains_shown`). Extension (`bridgeOps.ts`): `isFoldable` (was `isGroup`; with the
+reference's caveat above), `isShowingChains` (was `chainsShown`), `canBeArmed`, `isGrouped`.
+`kind` ("rack" | "drum") stays ours: it is `Device.can_have_drum_pads` and then
+`RackDevice.has_drum_pads`. `RackChains.notes` holds `in_note` values; the `showChains` argument
+of `select` keeps its name (it is a request, the reply field is the LOM property).
+**A 0.1.0 script** answers with the old names: the extension treats an old-named field as
+"outdated" for that operation (`select` with `showChains`, `chains` of a drum rack: exit code 5,
+"run `cmdabl setup` and restart Live"), never as `null`/`false`/"no notes". A missing new field
+alone is not an error: `is_showing_chains` is `null` when not applicable, `in_note` is absent
+when Live does not report it.
 
 **Paths.** `lomPath({scope, route})` (`src/ableton/lomPath.ts`) gives `live_set tracks 4`,
 `live_set return_tracks 1`, `live_set master_track`, then `devices N` and `chains N` alternating

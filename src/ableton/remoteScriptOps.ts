@@ -111,7 +111,7 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
       T("is_showing_chains", "get", "bool"),
       T("is_showing_chains", "set", "bool", "set to true only, never folds; to confirm in Live for Drum Rack tracks"),
     ],
-    fields: [{ wire: "chains_shown", ts: "chainsShown", lom: "Track.is_showing_chains" }],
+    fields: [{ wire: "is_showing_chains", ts: "isShowingChains", lom: "Track.is_showing_chains" }],
     sdkAlternative: "none yet (the SDK has no selection or view access)",
   },
   {
@@ -129,7 +129,7 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
       T("name", "get", "symbol", "returned only when no expectName was given"),
     ],
     fields: [
-      { wire: "is_foldable", ts: "isGroup", lom: "Track.is_foldable" },
+      { wire: "is_foldable", ts: "isFoldable", lom: "Track.is_foldable" },
       { wire: "is_grouped", ts: "isGrouped", lom: "Track.is_grouped" },
       { wire: "can_be_armed", ts: "canBeArmed", lom: "Track.can_be_armed" },
       { wire: "arm", lom: "Track.arm" },
@@ -152,11 +152,11 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
       lom("RackDevice", "rackdevice", "has_drum_pads", "get", "bool", "only available for Drum Racks (raises elsewhere): read after can_have_drum_pads"),
     ],
     fields: [
-      { wire: "kind", lom: "RackDevice.has_drum_pads" },
-      { wire: "note", lom: "DrumChain.in_note" },
+      { wire: "kind", lom: "Device.can_have_drum_pads and RackDevice.has_drum_pads" },
+      { wire: "in_note", ts: "notes", lom: "DrumChain.in_note" },
       { wire: "total", lom: "RackDevice.chains (length)" },
     ],
-    sdkAlternative: "none yet (SDK Chain has no name; DrumChain.receivingNote may cover note)",
+    sdkAlternative: "none yet (SDK Chain has no name; DrumChain.receivingNote may cover in_note)",
   },
   {
     name: "chain_set",

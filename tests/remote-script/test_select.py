@@ -60,16 +60,16 @@ class Select(unittest.TestCase):
         self.assertEqual(select(self.song, {"route": [1, 0, 0], "expectName": "Kick"}), {"name": "Kick"})
         self.assertFalse(self.kid.is_showing_chains)  # default: untouched
         r = select(self.song, {"route": [1, 0, 0], "expectName": "Kick", "showChains": True})
-        self.assertEqual(r, {"name": "Kick", "chains_shown": True})
+        self.assertEqual(r, {"name": "Kick", "is_showing_chains": True})
         self.assertTrue(self.kid.is_showing_chains)
 
     def test_show_chains_never_folds_and_is_no_error_without_a_rack(self):
         self.kid.is_showing_chains = True
         r = select(self.song, {"route": [1], "expectName": "Kid", "showChains": True})
-        self.assertEqual(r["chains_shown"], True)
+        self.assertEqual(r["is_showing_chains"], True)
         self.assertTrue(self.kid.is_showing_chains)
         r = select(self.song, {"route": [0], "expectName": "G", "showChains": True})  # a track without a rack
-        self.assertEqual(r, {"name": "G", "chains_shown": None})
+        self.assertEqual(r, {"name": "G", "is_showing_chains": None})
         self.assertFalse(self.group.is_showing_chains)
 
     def test_show_chains_write_that_does_not_take_and_odd_values(self):
@@ -84,7 +84,7 @@ class Select(unittest.TestCase):
 
         t = Stubborn("T", devices=[FakeDevice("Rack", chains=[FakeChain("A")])])
         song = FakeSong(tracks=[t])
-        self.assertEqual(select(song, {"route": [0], "expectName": "T", "showChains": True}), {"name": "T", "chains_shown": False})
+        self.assertEqual(select(song, {"route": [0], "expectName": "T", "showChains": True}), {"name": "T", "is_showing_chains": False})
         self.assertIs(song.view.selected_track, t)  # the selection stands
         self.assertEqual(code(lambda: select(self.song, {"route": [1], "showChains": "yes"})), "bad_request")
         self.assertIsNone(self.song.view.selected_track)  # validated before anything changed

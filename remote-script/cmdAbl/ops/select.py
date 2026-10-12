@@ -9,7 +9,7 @@ read-back is not the requested object the reply is `failed`.
 Optional `showChains: true` (default false): after a successful selection the
 track's chains are shown in the Session mixer (`Track.is_showing_chains`) when
 the track can show them and does not already. Never folds anything. The reply
-then has `chains_shown`: true (shown now or already), false (the write did not
+then has `is_showing_chains` (the LOM's name): true (shown now or already), false (the write did not
 take) or null (the track cannot show chains, or reading failed). It never
 turns a successful selection into a failure. View state, not a writing op.
 
@@ -80,5 +80,5 @@ def select(song, args):
             raise _fail("Live did not select the chain")
     result = {"name": target.name}
     if show:
-        result["chains_shown"] = _show_chains(track)
+        result["is_showing_chains"] = _show_chains(track)
     return result

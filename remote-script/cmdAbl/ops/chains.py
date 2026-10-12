@@ -3,12 +3,12 @@
 Args: {targets: [{scope, route, offset?}, ...]} — each route addresses a rack
 device (even length: track, device, [chain, device]...), at most MAX_TARGETS.
 Result: {racks: [entry, ...]} in the order of `targets`; an entry is
-  {kind: "rack" | "drum", total, offset, chains: [{name, note?, mute?, solo?}], next?}
+  {kind: "rack" | "drum", total, offset, chains: [{name, in_note?, mute?, solo?}], next?}
 or {error: {code, text}}. `chains` are the rack's own `chains` in order, so the
 index of an entry is offset + its position, the same index as the SDK's
 `rack.chains` (the extension checks `total` against its own count). The name is
-the chain's own `name`, never the name of its first device. `note` is the
-chain's `in_note` for drum chains, when Live reports it.
+the chain's own `name`, never the name of its first device. `in_note` is
+`DrumChain.in_note` for drum chains, when Live reports it.
 
 The reply is built under a byte budget shared by all entries: when a rack's
 names do not fit, the entry stops early and carries `next` (the offset to ask
@@ -65,7 +65,7 @@ def _chain_entry(chain, drum):
         except Exception:
             note = None
         if isinstance(note, int) and not isinstance(note, bool):
-            entry["note"] = note
+            entry["in_note"] = note
     return entry
 
 

@@ -19,7 +19,7 @@ class Chains(unittest.TestCase):
         self.assertEqual(e["kind"], "drum")
         self.assertEqual(e["total"], 3)
         self.assertEqual([c["name"] for c in e["chains"]], ["Kick", "Snare", "Hat"])
-        self.assertEqual(e["chains"][0]["note"], 36)
+        self.assertEqual(e["chains"][0]["in_note"], 36)
         self.assertNotIn("next", e)
 
     def test_instrument_rack_chains_are_answered(self):
@@ -39,7 +39,7 @@ class Chains(unittest.TestCase):
         r = chains(song, {"targets": [{"route": [0, 0]}, {"route": [0, 0, 0, 0]}]})
         self.assertEqual(r["racks"][0]["kind"], "rack")
         self.assertEqual([c["name"] for c in r["racks"][1]["chains"]], ["A", "B"])
-        self.assertNotIn("note", r["racks"][1]["chains"][0])
+        self.assertNotIn("in_note", r["racks"][1]["chains"][0])
 
     def test_errors_are_entries(self):
         song = FakeSong(tracks=[FakeTrack("T", devices=[FakeDevice("EQ")])])

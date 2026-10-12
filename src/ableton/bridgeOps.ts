@@ -1,5 +1,5 @@
 import type { Bridge } from "./bridgeClient.js";
-import { fail, TEXT_STALE, type BridgeResult } from "./bridgeProtocol.js";
+import { fail, TEXT_OUTDATED, TEXT_STALE, type BridgeResult } from "./bridgeProtocol.js";
 import type { ObjectNode } from "./objectTree.js";
 
 // One typed function per Remote Script operation (0001 §4, §8). Modules call
@@ -14,8 +14,9 @@ export interface SelectResult {
    * Session mixer (now or already), false = the write did not take, null = the track cannot show
    * chains (or it was not asked for). `null` therefore means "nothing to report": it also covers a
    * failed read/write and a script that lacks the `showChains` argument (it ignores it).
+   * LOM: `Track.is_showing_chains` (wire `is_showing_chains`).
    */
-  chainsShown: boolean | null;
+  isShowingChains: boolean | null;
 }
 
 export interface SelectOptions {
@@ -39,9 +40,11 @@ export async function select(
   if (!reply.ok) return reply;
   const name = reply.value.name;
   if (typeof name !== "string") return fail(1, "bad reply from the Remote Script: select without a name");
-  const shown = reply.value.chains_shown;
-  const chainsShown = typeof shown === "boolean" ? shown : null;
-  return { ok: true, value: { name, chainsShown } };
+  // A script older than 0.1.1 answers with the old field name: say so instead of reading it as "null".
+  if ("chains_shown" in reply.value && !("is_showing_chains" in reply.value)) return fail(5, TEXT_OUTDATED);
+  const shown = reply.value.is_showing_chains;
+  const isShowingChains = typeof shown === "boolean" ? shown : null;
+  return { ok: true, value: { name, isShowingChains } };
 }
 
 /** What the SDK cannot tell about one track (0001 §4). */
@@ -50,8 +53,8 @@ export interface TrackFacts {
   name: string;
   /** False for return and main tracks and for tracks Live greys out (e.g. a MIDI track without an input device). */
   canBeArmed: boolean;
-  /** True for group tracks. */
-  isGroup: boolean;
+  /** True for group tracks. LOM: `Track.is_foldable` (the reference: Instrument and Drum Racks report false). */
+  isFoldable: boolean;
   /** True when the track sits inside a group. */
   isGrouped: boolean;
   /** The arm state; null when the track cannot be armed (the LOM refuses the read). */
@@ -83,7 +86,7 @@ function parseFacts(entry: unknown, askedName: string): BridgeResult<TrackFacts>
   ) {
     return fail(1, "bad reply from the Remote Script: track_facts entry");
   }
-  return { ok: true, value: { name, canBeArmed: e.can_be_armed, isGroup: e.is_foldable, isGrouped: e.is_grouped, arm: e.arm } };
+  return { ok: true, value: { name, canBeArmed: e.can_be_armed, isFoldable: e.is_foldable, isGrouped: e.is_grouped, arm: e.arm } };
 }
 
 /**
@@ -137,7 +140,7 @@ export interface RackChains {
   kind: "rack" | "drum";
   /** The chain names in `rack.chains` order; `names[i]` belongs to the SDK's `rack.chains[i]`. */
   names: string[];
-  /** MIDI input note per chain for drum chains, when Live reports it. */
+  /** `DrumChain.in_note` (wire `in_note`) per chain for drum chains, when Live reports it. */
   notes: Array<number | null>;
   /** The chain's mute switch (Chain Activator off) and solo switch, in the same order. */
   mutes: boolean[];
@@ -170,8 +173,10 @@ function parseRack(entry: unknown): { chains: RackChains | null; next: number | 
     return fail(1, "bad reply from the Remote Script: chains entry");
   }
   const names = list.map((c) => (c as { name: string }).name);
+  // A script older than 0.1.1 sends `note` instead of `in_note`: outdated, not "no notes".
+  if (list.some((c) => "note" in (c as object) && !("in_note" in (c as object)))) return fail(5, TEXT_OUTDATED);
   const notes = list.map((c) => {
-    const n = (c as { note?: unknown }).note;
+    const n = (c as { in_note?: unknown }).in_note;
     return typeof n === "number" ? n : null;
   });
   // The script sends `mute` / `solo` only when true.
