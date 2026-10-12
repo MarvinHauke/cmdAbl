@@ -56,9 +56,9 @@ Typing a command name followed by a space switches the dropdown into flag-comple
 | Command           | Description                                                                                              |
 | ----------------- | -------------------------------------------------------------------------------------------------------- |
 | `help`            | List the available commands                                                                              |
-| `cmdabl --help`   | Show the usage of `cmdabl` (documentation: `man cmdabl`)                                                 |
-| `cmdabl --bridge` | Show the Remote Script status: version, response time in ms, operations                                  |
-| `cmdabl --setup`  | Install the keyboard trigger rule and show a result dialog                                               |
+| `cmdabl`          | Show the usage of `cmdabl` (also `cmdabl --help`; documentation: `man cmdabl`)                           |
+| `cmdabl bridge`   | Show the Remote Script status: version, response time in ms, operations                                  |
+| `cmdabl setup`    | Install keyboard trigger and Remote Script, then say what to do next                                     |
 | `pakabl list`     | Browse and install community extensions — see _Install more extensions with `pakabl`_ under Installation |
 
 **Default modules**
@@ -72,7 +72,7 @@ your own:
 | `find`    | `find [--unfold] <pattern> [-t] [-d] [-c]` — every track, device and chain (rack chains, Drum Rack pads) whose path contains the pattern; the flags narrow it to tracks, devices or chains; `next` / `prev` step through the matches and keep the `find`'s `--unfold` |
 | `mute`    | `mute <track-or-chain>…` toggles mute per track, rack chain or Drum Rack pad; `unmute …` always unmutes. Tracks need no Remote Script and are applied separately from chains; chains do (macOS) |
 | `solo`    | `solo <track-or-chain>…` toggles solo per track, rack chain or Drum Rack pad; `unsolo …` always unsolos. Tracks need no Remote Script and are applied separately from chains; chains do (macOS) |
-| `arm`     | `arm <track>…` toggles record arm per track; `unarm <track>…` always disarms; return, main and group tracks cannot be armed and are reported as failed; with the Remote Script, so are tracks Live greys out (e.g. a MIDI track whose input device is not available — checked after the write, as the Live API cannot tell beforehand; a refused `arm` may leave an extra undo step); a script enabled mid-session is noticed after `cmdabl --bridge` or a `goto` |
+| `arm`     | `arm <track>…` toggles record arm per track; `unarm <track>…` always disarms; return, main and group tracks cannot be armed and are reported as failed; with the Remote Script, so are tracks Live greys out (e.g. a MIDI track whose input device is not available — checked after the write, as the Live API cannot tell beforehand; a refused `arm` may leave an extra undo step); a script enabled mid-session is noticed after `cmdabl bridge` or a `goto` |
 | `history` | Remembers your last 20 invocations and re-offers them as rerunnable entries |
 | `man`     | `man <topic>` opens a manual in the browser: `man ableton` (Live reference manual), `man cmdabl` (this documentation). `man ableton <words>` searches the Live 12 manual through Ecosia, e.g. `man ableton warp modes` |
 | `pakabl`  | Install/update/uninstall community extensions — see _Install more extensions with `pakabl`_ |
@@ -140,7 +140,7 @@ Run the following command in the palette — it both links the keyboard trigger
 **and** copies the companion Remote Script into place for step 4 below:
 
 ```
-cmdabl --setup
+cmdabl setup
 ```
 
 <details>
@@ -173,7 +173,7 @@ to activate it immediately, or restart Windows to auto-start it.
 **4. Link the Remote Script (enables track selection)**
 
 Selecting a track from the palette needs a small companion Remote Script, because Live's
-Extensions SDK has no API to change the selection itself — `cmdabl --setup` (step 3) already
+Extensions SDK has no API to change the selection itself — `cmdabl setup` (step 3) already
 copied it into Live's User Library for you:
 
 - **macOS:** `~/Music/Ableton/User Library/Remote Scripts/cmdAbl`
@@ -201,7 +201,7 @@ the palette:
 | `pakabl list`                    | Browse the curated list in a UI — Install / Update / Uninstall, or jump to each extension's repo, all with one click |
 | `pakabl install <id>`            | Download and install one extension by id (e.g. `federico-pepe.snake`)       |
 | `pakabl update`                  | Refresh the cached curated index                                            |
-| `pakabl upgrade <id>@<version>`  | Re-install a specific version                                               |
+| `pakabl upgrade <id>[@<version>]` | Re-install the index's version (`@<version>` states the version you expect) |
 | `pakabl uninstall <id>`          | Remove an installed extension                                               |
 
 <figure>
