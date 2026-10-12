@@ -2,17 +2,18 @@
 # Starts the cmdAbl agent team. Each agent is a peer Claude session with the session id from its
 # .claude/agents/*.md ("Session id: <uuid>"); an existing session is resumed, a new one gets that id.
 # - core, modules, bridge and reviewer open as splits in one tmux window "cmdabl-agents" (tiled)
-# - ui is on demand: it only starts when you name it
+# - ui and docs are on demand: they only start when you name them
 # - the architect replaces this script in the current pane (your main window)
 # Usage: scripts/agents.sh                   start the default team (architect in this pane)
 #        scripts/agents.sh ui                add the on-demand UI agent to the agents window
-#        scripts/agents.sh core reviewer     start only these peers (also: modules, bridge, ui)
+#        scripts/agents.sh docs              add the on-demand documentation agent
+#        scripts/agents.sh core reviewer     start only these peers (also: modules, bridge, ui, docs)
 #        scripts/agents.sh architect         start only the architect
 #        DRY_RUN=1 scripts/agents.sh         print the commands instead of running them
 set -euo pipefail
 cd "$(dirname "$0")/.."
 WINDOW=cmdabl-agents
-MAX_PANES=5
+MAX_PANES=6
 
 # name  agent-file  model
 PEERS=(
@@ -24,6 +25,7 @@ PEERS=(
 # Started only when named on the command line.
 ON_DEMAND=(
 	"cmdabl-ui ui sonnet"
+	"cmdabl-docs docs haiku"
 )
 ARCHITECT="cmdabl-architect architect opus"
 

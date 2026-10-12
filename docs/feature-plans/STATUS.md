@@ -152,10 +152,36 @@ Changing these after a release breaks what users have learned and what is stored
 
 ### 5. Release 0.1.0
 
-- User documentation on the docs site: install, `cmdabl setup` (Remote Script, trigger key),
-  command reference, known limits (macOS-only, SDK beta).
+Documentation (plan approved by the user 2026-10-12). Today the docs site has a 9-line home page
+and three developer guides; nothing for users.
+
+- **Generated command reference** (cmdabl-core): a script writes a page from the command tree;
+  CI checks it is current. New optional fields on the command node, confirmed by the user:
+  `description`, `examples`, and a summary per argument — the same texts show in `--help`. A
+  test requires at least one example per command. Also generated: the list of Remote Script
+  operations.
+- **User pages** (cmdabl-docs, one brief per page from the architect): install and
+  `cmdabl setup`; the Remote Script (what it does, restarting Live, the access token); using it
+  (palette, pick list, several words, "did you mean", history); known limits (macOS-only, SDK
+  beta).
+- **"Adding a command"** (cmdabl-modules), after step 3.4.
+- **README** shortened to a pointer to the site; stale passages out. The `node:fs` note in
+  `docs/sdk-tree.md`.
+- **Images:** only where they explain what text cannot. Dialog-only screenshots are generated
+  by a script (cmdabl-ui, headless browser, sample data) into `docs/assets/`; shots with Live
+  in them come from the user, from a short list with exact contents and file names. Private
+  parts (home path, user name, project names) are covered with an opaque box rather than left
+  out — never a blur. The architect looks at every image before it is committed.
+- **`cmdabl-docs`**: a new on-demand agent (haiku; `scripts/agents.sh docs`,
+  `.claude/agents/docs.md`) for `docs/` (not `feature-plans/`), `README.md`, `mkdocs.yml`,
+  `docs/assets/`. If the writing quality does not hold, it moves to sonnet.
+
+Release:
+
 - From "Parked", what affects a release: the runner image before 2026-10-19, index pull requests
   that start the required checks, the pakabl index noise.
+- Decide the temporary diagnostics on the trigger server: `POST /reset` and `GET /bridge` —
+  remove, or keep `/reset` as a documented recovery.
 - Release test: install the packaged `.ablx` into a Live without Developer Mode, run setup, run
   the full Live test list once.
 - Bump the version in `package.json` and `manifest.json`, merge; the release workflow publishes.
