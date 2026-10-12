@@ -17,7 +17,7 @@ type ChainNode = Pick<ObjectNode, "scope" | "route" | "name">;
  * Mute or solo chains (rack chains and Drum Rack pads) through the Remote
  * Script — the SDK cannot. A toggle reads the chains' current switches first
  * and writes the negated value (set semantics, so a re-run from history means
- * the same thing for `unmute`/`unsolo`); every chain answers on its own, in the
+ * the same thing for `--set 0`); every chain answers on its own, in the
  * order given. A failure of the bridge as a whole fails every chain with its
  * code and text. Never throws.
  */

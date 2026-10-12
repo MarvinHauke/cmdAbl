@@ -13,20 +13,17 @@ const docs: TrackSetDocs = { description: "d", examples: [{ line: "x" }], target
 const node = (name: string, kind: string, route: number[]): ObjectNode =>
   ({ handleId: name, route, kind, scope: "regular", name, path: `/${name}`, children: [] }) as unknown as ObjectNode;
 
-test("arm/unarm accept tracks only; mute/solo also chains — a device is never offered", () => {
+test("arm accepts tracks only; mute/solo also chains — a device is never offered", () => {
   const { api, commands } = createFakeApi();
-  registerTrackSetCommand(api, "mute", "mute", "toggle", "s", docs);
-  registerTrackSetCommand(api, "unmute", "mute", false, "s", docs);
-  registerTrackSetCommand(api, "solo", "solo", "toggle", "s", docs);
-  registerTrackSetCommand(api, "unsolo", "solo", false, "s", docs);
-  registerTrackSetCommand(api, "arm", "arm", "toggle", "s", docs);
-  registerTrackSetCommand(api, "unarm", "arm", false, "s", docs);
-  assert.equal(commands.length, 6);
+  registerTrackSetCommand(api, "mute", "mute", "s", docs);
+  registerTrackSetCommand(api, "solo", "solo", "s", docs);
+  registerTrackSetCommand(api, "arm", "arm", "s", docs);
+  assert.equal(commands.length, 3);
 
   const tree = [node("Kick", "track", [0]), node("Kick", "device", [0, 0]), node("Kick", "chain", [0, 0, 0])];
   for (const c of commands) {
     const def = c.args?.[0];
-    const armCommand = c.name === "arm" || c.name === "unarm";
+    const armCommand = c.name === "arm";
     assert.deepEqual(def?.kinds, armCommand ? ["track"] : ["track", "chain"], c.name);
     // what the platform resolves for such an argument: never the device
     const found = resolvePath(tree, "Kick", def?.kinds);
@@ -50,9 +47,10 @@ function setup(opts: {
   for (const [id, state] of Object.entries(opts.state ?? {})) {
     fake.tracks.set(id, { mute: false, solo: false, arm: false, ...state });
   }
-  registerTrackSetCommand(fake.api as ModuleApi, opts.name, opts.prop, opts.value, "s", docs);
+  registerTrackSetCommand(fake.api as ModuleApi, opts.prop, opts.prop, "s", docs);
+  const options: Record<string, string> = opts.value === "toggle" ? {} : { set: opts.value ? "1" : "0" };
   const run = async (targets: ObjectNode[]) =>
-    (await fake.commands[0]!.run!({ path: [opts.name], options: {}, args: [targets] } as never, undefined as never)) as
+    (await fake.commands[0]!.run!({ path: [opts.prop], options, args: [targets] } as never, undefined as never)) as
       | CommandResult
       | void;
   return { fake, run, handle: (id: string) => fake.api.tracks.track(opts.nodes.find((n) => n.handleId === id)!)! };
@@ -112,7 +110,7 @@ test("a chain and the script unavailable: the track is done, the chain fails wit
 });
 
 test("only chains and the script unavailable: exit code 5", async () => {
-  const t = setup({ name: "unmute", prop: "mute", value: false, nodes: [KICK], bridge: { running: false } });
+  const t = setup({ name: "mute --set 0", prop: "mute", value: false, nodes: [KICK], bridge: { running: false } });
   assert.equal(code(await t.run([KICK])), ExitCode.UNAVAILABLE);
 });
 
@@ -174,11 +172,86 @@ test("arm without the script: the SDK path as before, the log says why there are
   assert.ok(t.fake.logs.some((l) => l.startsWith("cmdAbl: arm facts: none (")));
 });
 
-test("unarm: sets off and is verified like arm", async () => {
+test("arm --set 0: sets off and is verified like arm", async () => {
   const t = setup({
-    name: "unarm", prop: "arm", value: false, nodes: [A], state: { A: { arm: true } },
+    name: "arm --set 0", prop: "arm", value: false, nodes: [A], state: { A: { arm: true } },
     bridge: { ops: { track_facts: factsOp([wire(true), wire(false)]) } },
   });
   assert.equal(code(await t.run([A])), ExitCode.OK);
   assert.equal(t.handle("A").arm, false);
+});
+
+// ── --set 1 / --set 0 ───────────────────────────────────────────────────────
+
+test("mute --set 1: every target ends up muted, whatever it was; --set 0: none is", async () => {
+  const on = setup({ name: "mute", prop: "mute", value: true, nodes: [A, B], state: { B: { mute: true } } });
+  assert.equal(code(await on.run([A, B])), ExitCode.OK);
+  assert.deepEqual([on.handle("A").mute, on.handle("B").mute], [true, true]); // B was already muted: still a success
+  const off = setup({ name: "mute", prop: "mute", value: false, nodes: [A, B], state: { A: { mute: true } } });
+  assert.equal(code(await off.run([A, B])), ExitCode.OK);
+  assert.deepEqual([off.handle("A").mute, off.handle("B").mute], [false, false]);
+});
+
+test("toggle is unchanged without the option", async () => {
+  const t = setup({ name: "solo", prop: "solo", value: "toggle", nodes: [A, B], state: { B: { solo: true } } });
+  assert.equal(code(await t.run([A, B])), ExitCode.OK);
+  assert.deepEqual([t.handle("A").solo, t.handle("B").solo], [true, false]);
+});
+
+test("mute --set 1 on a chain writes without reading first", async () => {
+  const t = setup({
+    name: "mute", prop: "mute", value: true, nodes: [KICK],
+    bridge: { ops: { chains: chainsOp, chain_set: setOp } },
+  });
+  assert.equal(code(await t.run([KICK])), ExitCode.OK);
+  assert.deepEqual(t.fake.bridge.calls.map((c) => c.op), ["chain_set"]);
+  assert.deepEqual(t.fake.bridge.calls[0]!.args.targets, [{ scope: "regular", route: [0, 1, 0], expectName: "Kick", mute: true }]);
+});
+
+test("arm --set 1 follows the facts and verify logic of a toggle that arms", async () => {
+  const t = setup({
+    name: "arm", prop: "arm", value: true, nodes: [A], state: { A: { arm: false } },
+    bridge: { ops: { track_facts: factsOp([wire(false), wire(true)]) } },
+  });
+  assert.equal(code(await t.run([A])), ExitCode.OK);
+  assert.equal(t.handle("A").arm, true);
+  assert.deepEqual(t.fake.bridge.calls.map((c) => c.op), ["track_facts", "track_facts"]);
+});
+
+test("arm --set 1 on an already armed track is a success", async () => {
+  const t = setup({
+    name: "arm", prop: "arm", value: true, nodes: [A], state: { A: { arm: true } },
+    bridge: { ops: { track_facts: factsOp([wire(true), wire(true)]) } },
+  });
+  assert.equal(code(await t.run([A])), ExitCode.OK);
+  assert.equal(t.handle("A").arm, true);
+});
+
+// ── the option as the platform parses it ────────────────────────────────────
+import { parse } from "../core/parse.js";
+
+test("--set accepts 0 and 1 in every spelling and rejects anything else with exit 2", () => {
+  const { api, commands } = createFakeApi();
+  registerTrackSetCommand(api, "mute", "mute", "s", docs);
+  for (const line of ["mute --set 1 /Kick", "mute --set=1 /Kick", "mute -s 1 /Kick", "mute --set=0 \"/Kick\""]) {
+    const outcome = parse(line, commands);
+    assert.equal(outcome.kind, "run", line);
+    if (outcome.kind === "run") assert.match(String(outcome.invocation.options.set), /^[01]$/, line);
+  }
+  const bad = parse("mute --set 2 /Kick", commands);
+  assert.equal(bad.kind, "error");
+  if (bad.kind === "error") {
+    assert.equal(bad.result.code, ExitCode.USAGE);
+    assert.match(bad.result.message ?? "", /choose one of 0, 1/);
+  }
+  // the remembered canonical form parses back to the same invocation
+  const first = parse("mute --set 0 /Kick", commands);
+  const remembered = parse('mute --set=0 "/Kick"', commands);
+  assert.equal(first.kind === "run" && remembered.kind === "run", true);
+  if (first.kind === "run" && remembered.kind === "run") {
+    assert.deepEqual(remembered.invocation.options, first.invocation.options);
+    assert.deepEqual(remembered.invocation.args, first.invocation.args);
+  }
+  const bare = parse("mute /Kick", commands);
+  assert.equal(bare.kind === "run" && bare.invocation.options.set, undefined);
 });

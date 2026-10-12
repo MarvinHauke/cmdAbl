@@ -15,12 +15,13 @@ import { armDecision, armRefusal, factsRefusal, isGroupNode, nextTrackValue, not
 import type { CommandExample } from "../core/commandTree.js";
 import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../core/types.js";
 
-// Shared by mute/unmute, solo/unsolo and arm/unarm. Two modes:
-//  - a boolean sets that value on every named track (`unmute`, `unsolo`,
-//    `unarm` always switch off, so re-running them is harmless);
-//  - "toggle" flips the property on each track individually (`mute`, `solo`,
-//    `arm`), so one command switches a track on and off. Re-running a toggle
-//    from history therefore toggles back — that is intended.
+// Shared by mute, solo and arm. Two modes, chosen by the `--set` option:
+//  - without it, "toggle" flips the property on each track individually, so
+//    one command switches a track on and off. Re-running a toggle from
+//    history therefore toggles back — that is intended;
+//  - `--set 1` / `--set 0` makes every target muted / soloed / armed (or not),
+//    whatever it was, so re-running it is harmless and a target already in the
+//    wanted state is a success.
 //
 // `arm` is special: a return, main or group track cannot be armed, and asking
 // Live (via the SDK) is not a harmless no-op — it neither throws nor takes
@@ -46,11 +47,12 @@ export interface TrackSetDocs {
   targetSummary: string;
 }
 
+const STATE = { mute: "muted", solo: "soloed", arm: "armed" } as const;
+
 export function registerTrackSetCommand(
   api: ModuleApi,
   name: string,
   prop: "mute" | "solo" | "arm",
-  value: TrackSetValue,
   summary: string,
   docs: TrackSetDocs,
 ): void {
@@ -59,6 +61,18 @@ export function registerTrackSetCommand(
     summary,
     description: docs.description,
     examples: docs.examples,
+    // `--set 1` / `--set 0` name the state the command is called after
+    // (muted, soloed, armed — like the LOM's `mute = 1`); without it every
+    // target is toggled.
+    options: [
+      {
+        name: "set",
+        short: "s",
+        takesValue: true,
+        choices: ["0", "1"],
+        summary: `make sure every target is ${STATE[prop]} (1) or not (0) instead of toggling`,
+      },
+    ],
     // mute/solo also work on rack chains and Drum Rack pads (through the
     // Remote Script); arm is for tracks only.
     args: [
@@ -71,6 +85,8 @@ export function registerTrackSetCommand(
       },
     ],
     run: async (invocation): Promise<CommandResult> => {
+      const set = invocation.options.set;
+      const value: TrackSetValue = set === "1" ? true : set === "0" ? false : "toggle";
       const targets = (invocation.args[0] ?? []) as ObjectNode[];
       // Tracks go through the SDK (no Remote Script needed); chains through the bridge.
       const chainSlots = targets.map((n, i) => (n.kind === "chain" ? i : -1)).filter((i) => i >= 0);
@@ -79,7 +95,7 @@ export function registerTrackSetCommand(
       const outcomes: TargetOutcome[] = [];
       const written: WrittenArm[] = [];
 
-      // `arm`/`unarm` ask Live what it knows about the tracks first (one
+      // `arm` (with or without `--set`) asks Live what it knows about the tracks first (one
       // request, before any write) — only when the Remote Script is there;
       // otherwise the SDK-only path below. The script's `arm` is the truth a
       // toggle starts from: the SDK's value can be wrong for a track Live

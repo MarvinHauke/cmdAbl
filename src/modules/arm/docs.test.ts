@@ -3,5 +3,5 @@ import { assertDocumented, declaredBy } from "../docs.testkit.js";
 import { activate } from "./index.js";
 
 test("arm: every command is documented and its examples parse", () => {
-  assertDocumented(declaredBy(activate), ["arm", "unarm"]);
+  assertDocumented(declaredBy(activate), ["arm"]);
 });

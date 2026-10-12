@@ -10,13 +10,17 @@ shows as help. Type a command in the palette; `<command> --help` prints the same
 
 toggle record arm on tracks
 
-Switches record arm on for each track that is not armed and off for each that is, one by one. Return, main and group tracks cannot be armed and are reported as failed. With the cmdAbl Remote Script running, tracks Live refuses to arm (for example a MIDI track whose input device is not available) are reported as failed too. Live's Exclusive Arm setting is not applied: naming several tracks arms all of them.
+Switches record arm on for each track that is not armed and off for each that is, one by one. With --set 1 every track ends up armed, with --set 0 not armed, whatever it was before; a track that is already in that state counts as done. Return, main and group tracks cannot be armed and are reported as failed (disarming them is a no-op). With the cmdAbl Remote Script running, tracks Live refuses to arm (for example a MIDI track whose input device is not available) are reported as failed too. Live's Exclusive Arm setting is not applied: naming several tracks arms all of them.
 
-**Usage:** `arm <track>…`
+**Usage:** `arm [--set <0|1>] <track>…`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
 | `<track>…` | path (track) | yes | Tracks to arm; separate several with commas |
+
+| Option | Description |
+| --- | --- |
+| `-s, --set <0|1>` | make sure every target is armed (1) or not (0) instead of toggling |
 
 **Examples**
 
@@ -31,6 +35,18 @@ arm /Bass, /Lead
 ```
 
 several tracks, separated by a comma
+
+```
+arm --set 1 /Bass
+```
+
+make sure Bass is armed
+
+```
+arm --set 0 /Bass, /Lead
+```
+
+disarm both
 
 ## `cmdabl`
 
@@ -262,13 +278,17 @@ open the cmdAbl documentation
 
 toggle mute on tracks, chains and drum pads
 
-Switches mute on for each target that is not muted and off for each that is, one by one. Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the cmdAbl Remote Script and macOS. When a word matches several objects you are asked to choose.
+Switches mute on for each target that is not muted and off for each that is, one by one. With --set 1 every target ends up muted, with --set 0 unmuted, whatever it was before; a target that is already in that state counts as done. Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the cmdAbl Remote Script and macOS. When a word matches several objects you are asked to choose.
 
-**Usage:** `mute <track>…`
+**Usage:** `mute [--set <0|1>] <track>…`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
 | `<track>…` | path (track / chain) | yes | Tracks, rack chains or Drum Rack pads; separate several with commas |
+
+| Option | Description |
+| --- | --- |
+| `-s, --set <0|1>` | make sure every target is muted (1) or not (0) instead of toggling |
 
 **Examples**
 
@@ -283,6 +303,18 @@ mute /Kick, /Snare
 ```
 
 several targets, separated by a comma
+
+```
+mute --set 1 /Kick, /Snare
+```
+
+make sure both are muted
+
+```
+mute --set 0 /Kick
+```
+
+make sure Kick is not muted
 
 ```
 mute vermona kick
@@ -440,13 +472,17 @@ go to the previous match of the last find
 
 toggle solo on tracks, chains and drum pads
 
-Switches solo on for each target that is not soloed and off for each that is, one by one. Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the cmdAbl Remote Script and macOS. Live's Exclusive Solo setting is not applied: naming several targets solos all of them.
+Switches solo on for each target that is not soloed and off for each that is, one by one. With --set 1 every target ends up soloed, with --set 0 not soloed, whatever it was before; a target that is already in that state counts as done. Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the cmdAbl Remote Script and macOS. Live's Exclusive Solo setting is not applied: naming several targets solos all of them.
 
-**Usage:** `solo <track>…`
+**Usage:** `solo [--set <0|1>] <track>…`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
 | `<track>…` | path (track / chain) | yes | Tracks, rack chains or Drum Rack pads; separate several with commas |
+
+| Option | Description |
+| --- | --- |
+| `-s, --set <0|1>` | make sure every target is soloed (1) or not (0) instead of toggling |
 
 **Examples**
 
@@ -463,85 +499,19 @@ solo /Kick, /Snare
 several targets, separated by a comma
 
 ```
+solo --set 1 /Kick
+```
+
+make sure Kick is soloed
+
+```
+solo --set 0 /Kick, /Snare
+```
+
+make sure neither is soloed
+
+```
 solo vermona kick
 ```
 
 words that all occur in one path; if each word also names something on its own, you are asked which you mean
-
-## `unarm`
-
-disarm tracks
-
-Switches record arm off for each track. A track that is already off stays off, so running it again changes nothing.
-
-**Usage:** `unarm <track>…`
-
-| Argument | Kind | Required | Description |
-| --- | --- | --- | --- |
-| `<track>…` | path (track) | yes | Tracks to disarm; separate several with commas |
-
-**Examples**
-
-```
-unarm /Bass
-```
-
-disarm the track Bass
-
-```
-unarm /Bass, /Lead
-```
-
-several tracks, separated by a comma
-
-## `unmute`
-
-unmute tracks, chains and drum pads
-
-Switches mute off for each target. Running it again changes nothing. Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the cmdAbl Remote Script and macOS.
-
-**Usage:** `unmute <track>…`
-
-| Argument | Kind | Required | Description |
-| --- | --- | --- | --- |
-| `<track>…` | path (track / chain) | yes | Tracks, rack chains or Drum Rack pads; separate several with commas |
-
-**Examples**
-
-```
-unmute /Kick
-```
-
-unmute the track Kick
-
-```
-unmute /Kick, /Snare
-```
-
-several targets, separated by a comma
-
-## `unsolo`
-
-unsolo tracks, chains and drum pads
-
-Switches solo off for each target. Running it again changes nothing. Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the cmdAbl Remote Script and macOS.
-
-**Usage:** `unsolo <track>…`
-
-| Argument | Kind | Required | Description |
-| --- | --- | --- | --- |
-| `<track>…` | path (track / chain) | yes | Tracks, rack chains or Drum Rack pads; separate several with commas |
-
-**Examples**
-
-```
-unsolo /Kick
-```
-
-unsolo the track Kick
-
-```
-unsolo /Kick, /Snare
-```
-
-several targets, separated by a comma
