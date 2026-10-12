@@ -155,7 +155,7 @@ async function list(api: ModuleApi): Promise<CommandResult | void> {
     return fail(ExitCode.FAILURE, `pakabl: cannot build the list page — ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  const result = await api.context.ui.showModalDialog(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`, 560, 480);
+  const result = await api.dialog(html, 560, 480, "pakabl list");
   const note = droppedText(loaded.dropped);
   if (!result) return note ? ok(`pakabl: ${note}`) : undefined;
 

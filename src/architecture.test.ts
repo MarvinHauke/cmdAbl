@@ -141,12 +141,7 @@ test("architecture: every listed exception is still needed", () => {
 
 // Rule 4 is about behaviour, not imports: a module that calls the SDK's modal
 // dialog itself bypasses the dialog queue and the UI surfaces.
-const DIALOG_EXCEPTIONS: { file: string; why: string }[] = [
-  {
-    file: "src/modules/pakabl/index.ts",
-    why: "`pakabl list` opens its page directly until a page surface exists on Ui/ModuleApi (outside the dialog queue)",
-  },
-];
+const DIALOG_EXCEPTIONS: { file: string; why: string }[] = [];
 
 function filesCallingShowModalDialog(): string[] {
   return sourceFiles("src").filter(
