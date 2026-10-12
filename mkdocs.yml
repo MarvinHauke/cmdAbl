@@ -46,6 +46,7 @@ nav:
   - Reference:
       - Commands: reference/commands.md
       - Remote Script: reference/remote-script.md
+      - Live API mapping: reference/live-api.md
   - Architecture: architecture.md
   - Guides:
       - Overview: guides/README.md
