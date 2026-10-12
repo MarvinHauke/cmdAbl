@@ -209,6 +209,17 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    `goto kick` with a track and a pad of that name asks to pick; rename a pad and use the old
    name → "the Live Set changed; run the command again"; the matcher list (1c); the message
    layout (1b).
+1e. Chain mute/solo and `--unfold` (`5a63bd4`, `8cf77a2`, `7ee66a8`, `957d78c`; script 0.6.0:
+   `cmdabl --setup`, restart Live, `npm start`): Live's Log.txt says "access token written";
+   `cmdabl --bridge` → 0.6.0 with `chain_set`; `mute <pad>` → the speaker button in the chain's
+   mixer column changes, again → back, `unmute` twice stays on; `solo` likewise; does the
+   pad's own M button follow?; `mute <track> <pad>` → both, then Edit → Undo once and twice
+   (a mixed command leaves two undo steps; whether chain mute is undoable at all is unknown);
+   `mute kick` with a track and a pad of that name → pick list; control surface disabled:
+   `mute <track>` works, `mute <pad>` answers with the bridge's text, track + pad → "1 of 2
+   done"; `goto --unfold <pad>` → chain columns appear in the mixer, without the flag nothing
+   unfolds, `find --unfold kick` then `next` unfolds on each step; `arm kick` offers only the
+   track.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
@@ -349,13 +360,14 @@ Decided by the user and still governing future work.
   Rack pad's M button follows is checked in Live). The reference is the chain's column in
   the Session mixer (speaker button and S). Script side built (`5a63bd4`, script 0.5.0:
   `chain_set`, the token, `chainSwitches`/`chainSet` in `bridgeOps.ts`; the token path is
-  outside the repo in every setup and nothing prints it). Task out to cmdabl-modules: the
-  commands. Seen in Live meanwhile: `find test chain` finds the Instrument Rack's chain
+  outside the repo in every setup and nothing prints it). Commands built (`8cf77a2`): tracks
+  through the SDK as before, chains through the script; exit 5 only when every target failed
+  with 5. Live test 1e. Seen in Live meanwhile: `find test chain` finds the Instrument Rack's chain
   (fix `54c1182`).
 - 2026-10-12: selecting a pad or chain does not unfold the track's chains in the mixer — the
   user wants that as the default, plus an option `--unfold` on `goto`/`find` that shows them.
-  The LOM documents `Track.is_showing_chains` (unverified in Live); go given: `showChains` on
-  `select` (cmdabl-bridge), the flag (cmdabl-modules). Side effect: Live saves the fold state
+  Built on the LOM's documented `Track.is_showing_chains` (unverified in Live): `showChains`
+  on `select` (`7ee66a8`), the flag on `goto`/`find`, kept by `next`/`prev` (`957d78c`). Side effect: Live saves the fold state
   with the Set, so the Set counts as modified. Opt-in only; never folds.
 - 2026-10-12: exclusive arm/solo is not applied by commands; naming several tracks is an explicit
   choice, like Cmd-clicking the buttons (accepted).
