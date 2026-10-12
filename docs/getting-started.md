@@ -4,12 +4,11 @@ cmdAbl is a command palette for Ableton Live. You type a short line such as `mut
 runs it on the Set that is open. This page takes you from installing cmdAbl to your first three
 commands.
 
-<!-- open: the "Extensions SDK beta" wording for the requirements is not in README.md or the release guide; to confirm -->
-
 ## What you need
 
 - A Mac. cmdAbl has been tested on macOS only.
-- Ableton Live 12.
+- A version of Ableton Live with Extensions support. The Extensions SDK is in beta; cmdAbl is built against
+  version 1.0.0-beta.1 of it.
 - [Karabiner-Elements](https://karabiner-elements.pqrs.org) (free), for the `:` key. You can still open
   the palette without it, from a context menu (step 4).
 
@@ -51,7 +50,10 @@ A copied script does not run until Live loads it. Do both steps:
 2. Open **Settings → Link, Tempo & MIDI → MIDI**. Under **Control Surface**, choose **cmdAbl**. Leave
    Input and Output set to *None*.
 
-To check the link, see [Check the Remote Script](#check-the-remote-script) below.
+Live's log shows `cmdAbl bridge listening on 127.0.0.1:27185` once the link is active. The log is at
+`~/Library/Preferences/Ableton/Live <version>/Log.txt`, where `<version>` is your Live version; the Remote Script's
+lines contain `RemoteScriptMessage: (cmdAbl)`. To check the link too, see
+[Check the Remote Script](#check-the-remote-script) below.
 
 <!-- image wanted: Live's Settings → Link, Tempo & MIDI → MIDI page with Control Surface set to cmdAbl (the rest of the page cropped out) -->
 
@@ -119,3 +121,13 @@ input device is unavailable.
 
 - [Architecture](architecture.md) explains how cmdAbl is built, for people who want to extend it.
 - [Guides](guides/README.md) cover writing a command, releasing cmdAbl and the pakabl index.
+
+## Install more extensions with pakabl
+
+pakabl installs Ableton Live extensions (`.ablx` files) from cmdAbl's curated list of community repositories.
+Run `pakabl update` once to fetch the list. Then `pakabl list` shows the extensions, with buttons to install,
+update or remove each one. Restart Live after a change.
+
+Installing through pakabl writes into Live's Extensions folder, which works today. Ableton has announced a
+stricter sandbox for extensions. If it arrives, installing through pakabl may be blocked in a later version of
+Live. pakabl as a whole may then stop working. See [Known limits](limits.md).

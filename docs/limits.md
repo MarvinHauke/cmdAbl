@@ -10,6 +10,11 @@ maintainers already know about each one.
   setup exists in the code but has not been tested.
 - **The Extensions SDK is in beta.** cmdAbl needs a version of Ableton Live with Extensions support. cmdAbl is
   built against the Extensions SDK 1.0.0-beta.1.
+- **pakabl installs may be blocked by a stricter sandbox.** pakabl installs Ableton Live extensions by writing
+  into Live's Extensions folder. Ableton has announced a stricter sandbox for extensions. If it arrives, installing
+  through pakabl may be blocked in a later version of Live, and pakabl as a whole may then stop working. The same
+  sandbox could also stop two reads that cmdAbl makes outside its bundle: the installed-script check, which reads
+  the Remote Script in the User Library, and the bridge token file. Each of those reads fails softly.
 - **Only one dialog is shown at a time.** The SDK does not handle a second dialog while one is open. cmdAbl
   therefore queues dialogs: the next one appears after the previous one closes.
 - **Dialogs cannot be resized.** A dialog's size is fixed when it opens, and the SDK has no call to change it.

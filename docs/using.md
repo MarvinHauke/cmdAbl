@@ -86,6 +86,13 @@ Selecting a pad or a chain does not change how the track is shown. Add `--unfold
 track's chains as columns in the Session mixer. Live stores this view state with the Set, so the Set counts as
 changed. cmdAbl never folds the chains back. To fold them again, do it in Live.
 
+## Look up a Live Object Model path
+
+`lom <target>` shows the Live Object Model path of a track, device or chain, and links to the Live Object Model
+reference page for its kind. Use it when you write a script, or to check what cmdAbl sees. The
+[Live API mapping](reference/live-api.md) shows how cmdAbl's ports and Remote Script operations map to the
+Live Object Model.
+
 ## Toggles, and what they do not do
 
 - `mute`, `solo` and `arm` **toggle**: they switch the state of each object they name.

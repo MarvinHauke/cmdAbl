@@ -123,7 +123,8 @@ is no longer part of `ModuleApi`. The ports are:
   string the page sends back, or nothing when the dialog was dismissed.
 
 Modules keep `commands.add`, `pick`, `onPick`, `registerProvider`, `onCommandRun` and
-`showFeedback`. Tests give a module fake ports with `createFakeApi` (`src/modules/testPorts.ts`), so
+`showFeedback`. The mapping of each port and script operation to the Live Object Model is in the
+[Live API mapping](reference/live-api.md). Tests give a module fake ports with `createFakeApi` (`src/modules/testPorts.ts`), so
 no test needs Live.
 
 ## The path of one command
@@ -226,6 +227,9 @@ an `id` gets exactly one reply. An unreadable datagram is logged and dropped.
 
 ## Limits that shape the design
 
+- **A dialog's size is fixed when it opens.** The SDK has no call to resize a dialog, so cmdAbl sizes each dialog
+  from its content before opening it (`src/core/notifySize.ts`, `src/core/pickSize.ts`). A resize handle is a
+  candidate for a feature request to Ableton.
 - **Extensions cannot call each other.** `context.commands.executeCommand()` only reaches commands
   that the calling extension registered itself. cmdAbl cannot run another extension's command.
 - **Only built-in Live devices can be inserted.** `insertDevice()` takes Live's own devices. A

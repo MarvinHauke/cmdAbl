@@ -96,5 +96,6 @@ your own Mac can reach that port, and the script answers only on that address. E
 operation and gets one reply. A request that gets no reply within half a second is reported as unanswered.
 
 The full list of operations, with what each does, is in the [Remote Script reference](reference/remote-script.md).
+The [Live API mapping](reference/live-api.md) shows how cmdAbl's paths map to the Live Object Model.
 It is generated from the code of the cmdAbl version this documentation was built from. The operations your installed
 script supports are the ones `cmdabl bridge` lists.
