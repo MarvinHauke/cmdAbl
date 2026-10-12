@@ -62,7 +62,6 @@ export function activate(activation: ActivationContext) {
   // ── default modules ──────────────────────────────────────────────────────
   const moduleApi: ModuleApi = {
     context,
-    registry,
     commands: { add: (command) => void registry.add(command) },
     pick,
     onPick: (listener) => pickListeners.push(listener),

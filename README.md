@@ -49,7 +49,7 @@ Commands follow a POSIX-style flag pattern:
 commandName [--flag]
 ```
 
-Typing a command name followed by a space switches the dropdown into flag-completion mode.
+After a command name the palette offers no completion of options and subcommands yet (plan 0006); Enter runs what you typed.
 
 **Built-in commands**
 
@@ -263,25 +263,23 @@ This type-checks, bundles, and loads the extension into Ableton's Extension Host
 
 **3. Add commands**
 
-All commands are registered on the `CommandRegistry` instance in `src/extension.ts`:
+A command is a node on the command tree, declared by a module (`src/modules/`, listed in
+`src/modules/index.ts`) through `api.commands.add`. The platform parses the line and resolves
+`path` arguments to Live objects before `run` is called:
 
 ```ts
-registry.register("mycommand", "description shown in the palette", (flags) => {
-  // flags is string[] of everything typed after the command name
-});
-
-// with declared flags for tab-completion:
-registry.register(
-  "mycommand",
-  "description",
-  [{ name: "--option", description: "what this flag does" }],
-  (flags) => {
-    if (flags.includes("--option")) {
-      /* ... */
-    }
+api.commands.add({
+  name: "mycommand",
+  summary: "description shown in the palette",
+  options: [{ name: "option", summary: "what this flag does" }],
+  args: [{ name: "track", kind: "path", kinds: ["track"], variadic: true }],
+  run: (invocation) => {
+    // invocation.options.option, invocation.args[0] — resolved Live objects
   },
-);
+});
 ```
+
+See `docs/feature-plans/0005-command-tree-and-module-authoring.md` for the node format.
 
 Extensions must export an `activate(context: ActivationContext)` function.
 
@@ -313,7 +311,7 @@ described in the [guides](https://marvinhauke.github.io/cmdAbl/guides/).
 ```
 src/
   extension.ts       main entry point — registers commands, starts HTTP server
-  commandRegistry.ts typed command registry with flag support
+  commandRegistry.ts the declared command tree (add / roots / list)
   httpTrigger.ts     localhost HTTP server for external triggers (Karabiner, AHK, etc.)
   setup.ts           platform-specific keyboard trigger setup (macOS + Windows)
   modules/           built-in commands (goto, mute, solo, history, pakabl)

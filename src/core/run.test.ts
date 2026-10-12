@@ -49,9 +49,6 @@ function setup(pickAnswer: (candidates: ObjectNode[], multi: boolean) => ObjectN
   });
   registry.add({ name: "boom", summary: "throws", run: () => { throw new Error("kaput"); } });
   registry.add({ name: "nope", summary: "fails", run: () => fail(ExitCode.FAILURE, "no") });
-  registry.register("legacy", "old style", (flags) => {
-    calls.push({ name: "legacy", paths: flags });
-  });
   const deps: RunDeps = {
     registry,
     liveNodes: () => all,
@@ -132,21 +129,18 @@ test("run: not found, usage, handler failures and exceptions become results", as
   assert.match(boom.result.message ?? "", /kaput/);
 });
 
-test("run: --help and legacy commands", async () => {
-  const { deps, calls } = setup();
+test("run: --help", async () => {
+  const { deps } = setup();
   const help = await runLine("mute --help", deps);
   assert.match(help.result.message ?? "", /usage: mute <track>…/);
-  const out = await runLine("legacy --setup  x", deps);
-  assert.deepEqual(calls, [{ name: "legacy", paths: ["--setup", "x"] }]);
-  assert.equal(out.line, "legacy --setup  x");
 });
 
 test("registry.add rejects an invalid or duplicate command without throwing", () => {
   const { registry } = setup();
   assert.ok(registry.add({ name: "goto", summary: "again", run: () => {} }).length > 0);
-  assert.ok(registry.add({ name: "legacy", summary: "clash", run: () => {} }).length > 0);
   assert.ok(registry.add({ name: "x", summary: "no run" }).length > 0);
   assert.equal(registry.roots().length, 4);
+  assert.deepEqual(registry.list().map((d) => d.name), ["goto", "mute", "boom", "nope"]);
 });
 
 test("parse: a rest argument takes the remaining words as one value", () => {

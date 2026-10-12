@@ -1,10 +1,12 @@
 // The surface cmdAbl's bundled default modules (goto, mute, solo, pakabl, …)
-// register through — a thin facade over the same CommandRegistry/Provider
+// declare commands through — a thin facade over the same command tree/Provider
 // platform third-party `cmdabl`-declaring extensions will eventually reach
 // through executeCommand (see docs/feature-plans/0003-pakabl-extension-system.md).
+// A module declares commands as tree nodes (`commands.add`, docs/feature-plans/0005);
+// there is no other registration path.
 
 import type { ExtensionContext } from "@ableton-extensions/sdk";
-import type { Command, CommandRegistry } from "../commandRegistry.js";
+import type { Command } from "../commandRegistry.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { PaletteResult, Provider } from "../types.js";
 
@@ -12,8 +14,6 @@ export type ResultHandler = (result: PaletteResult) => void | Promise<void>;
 
 export interface ModuleApi {
   context: ExtensionContext<"1.0.0">;
-  /** Older registration path — commands here parse their own raw tokens. Prefer `commands.add`. */
-  registry: CommandRegistry;
   /**
    * Declare a command. The platform parses the line, resolves `path`
    * arguments to Live objects (asking the user to pick when ambiguous) and
@@ -43,7 +43,7 @@ export interface ModuleApi {
    * arguments. The only window a module gets into *every* command run
    * regardless of who registered it.
    */
-    onCommandRun(listener: (invocation: string) => void): void;
+  onCommandRun(listener: (invocation: string) => void): void;
   /** Show a small modal with a message and a "Close" button. */
   showFeedback(message: string): void;
 }

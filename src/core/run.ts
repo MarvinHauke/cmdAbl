@@ -154,12 +154,6 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   const line = input.trim();
   const { registry } = deps;
 
-  // Commands still registered the old way parse their own raw tokens.
-  const first = tokenize(line).tokens[0]?.value ?? "";
-  if (registry.isLegacy(first)) {
-    return { result: await registry.run(first, line.split(/\s+/).slice(1)), line };
-  }
-
   const parsed = parse<void>(line, registry.roots());
   if (parsed.kind === "error") return { result: parsed.result };
   if (parsed.kind === "help") {
