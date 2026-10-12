@@ -21,16 +21,17 @@ const firstArg = (inv: { args: unknown[][] }): string | undefined => inv.args[0]
 export function pakablCommand(h: PakablHandlers): Command {
   return {
     name: "pakabl",
-    summary: "install and manage cmdAbl extensions",
+    summary: "install and manage Ableton Live extensions",
     description:
-      "Installs and manages community extensions from cmdAbl's curated list. Run pakabl update once to fetch " +
+      "Installs and manages community extensions for Ableton Live (.ablx files) from cmdAbl's curated list of " +
+      "community repositories. Run pakabl update once to fetch " +
       "the list, then pakabl list to browse it. Restart Live after installing, upgrading or removing an extension.",
     children: [
       {
         name: "install",
         summary: "download and install an extension from the curated index",
         description:
-          "Downloads one extension from the curated list and unpacks it into Live's Extensions folder. " +
+          "Downloads one Ableton Live extension from the curated list and unpacks it into Live's Extensions folder. " +
           "Restart Live to load it. Run pakabl update first to fetch the list.",
         examples: [{ line: "pakabl install federico-pepe.snake", note: "install the extension with that id" }],
         args: [{ name: "id", kind: "text", summary: "Extension id as shown by pakabl list: author.name" }],

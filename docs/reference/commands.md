@@ -310,9 +310,9 @@ go to the next match of the last find
 
 ## `pakabl`
 
-install and manage cmdAbl extensions
+install and manage Ableton Live extensions
 
-Installs and manages community extensions from cmdAbl's curated list. Run pakabl update once to fetch the list, then pakabl list to browse it. Restart Live after installing, upgrading or removing an extension.
+Installs and manages community extensions for Ableton Live (.ablx files) from cmdAbl's curated list of community repositories. Run pakabl update once to fetch the list, then pakabl list to browse it. Restart Live after installing, upgrading or removing an extension.
 
 **Usage:** `pakabl <command>`
 
@@ -322,7 +322,7 @@ Installs and manages community extensions from cmdAbl's curated list. Run pakabl
 
 download and install an extension from the curated index
 
-Downloads one extension from the curated list and unpacks it into Live's Extensions folder. Restart Live to load it. Run pakabl update first to fetch the list.
+Downloads one Ableton Live extension from the curated list and unpacks it into Live's Extensions folder. Restart Live to load it. Run pakabl update first to fetch the list.
 
 **Usage:** `pakabl install <id>`
 

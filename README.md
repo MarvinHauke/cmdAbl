@@ -59,7 +59,7 @@ After a command name the palette offers no completion of options and subcommands
 | `cmdabl`          | Show the usage of `cmdabl` (also `cmdabl --help`; documentation: `man cmdabl`)                           |
 | `cmdabl bridge`   | Show the Remote Script status: version, response time in ms, operations                                  |
 | `cmdabl setup`    | Install keyboard trigger and Remote Script, then say what to do next                                     |
-| `pakabl list`     | Browse and install community extensions — see _Install more extensions with `pakabl`_ under Installation |
+| `pakabl list`     | Browse and install community extensions for Ableton Live — see _Install more extensions with `pakabl`_ under Installation |
 
 **Default modules**
 
@@ -76,7 +76,7 @@ your own:
 | `history` | Remembers your last 20 invocations and re-offers them as rerunnable entries |
 | `man`     | `man <topic>` opens a manual in the browser: `man ableton` (Live reference manual), `man cmdabl` (this documentation). `man ableton <words>` searches the Live 12 manual through Ecosia, e.g. `man ableton warp modes` |
 | `lom`     | `lom <target>` shows where a track, device, chain or pad lives in the Live Object Model — its cmdAbl path, its LOM path (`live_set tracks 4 devices 0 chains 2`) and the link to its LOM reference page. Read-only; no Remote Script needed |
-| `pakabl`  | Install/update/uninstall community extensions — see _Install more extensions with `pakabl`_ |
+| `pakabl`  | Install/update/uninstall community extensions for Ableton Live — see _Install more extensions with `pakabl`_ |
 
 **Addressing tracks and devices**
 
@@ -193,7 +193,7 @@ Without it, the palette still opens and runs commands — only track selection i
 
 **5. Install more extensions with `pakabl`**
 
-cmdAbl bundles `pakabl`, a small package manager for a curated list of community extensions.
+cmdAbl bundles `pakabl`, a small package manager for a curated list of community extensions for Ableton Live.
 Run `pakabl update` once to fetch the index, then browse and manage extensions entirely from
 the palette:
 
