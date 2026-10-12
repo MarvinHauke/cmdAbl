@@ -124,7 +124,11 @@ Changing these after a release breaks what users have learned and what is stored
    runs through the SDK or the script — so when a later SDK covers more, only the adapter
    behind a port changes; `lomPath(node)`; a generated page "Live API mapping" checked in CI;
    a command that shows a target's LOM path. All for 0.1.0. After 0.1.0: reading or setting
-   arbitrary LOM properties by command. Tasks out.
+   arbitrary LOM properties by command. Built: the LOM check against the reference, per-op
+   LOM properties, `lomPath` (`0c05cda`); port ↔ SDK/LOM table and the generated page
+   `docs/reference/live-api.md` (`79513e3`); `lom <target>` (commands page `8af6c1c`); names
+   follow the LOM (`isFoldable`, `isShowingChains`, wire `is_showing_chains`, `in_note`;
+   `ab4ae8b`, `2d0fdbc`, script 0.1.1). Live test 1j.
 5. Leftovers from before the rework: platform files still outside `src/core/` (`src/commandRegistry.ts`,
    `src/types.ts`, `src/providers/commandProvider.ts`, `src/setup.ts`) and an empty `src/ui/`
    folder — move them and extend the import-boundary test. No unused module was found.
@@ -254,6 +258,12 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    <pad>` with the script on and off; `pakabl list` opens, its buttons work, `Esc` closes
    without a message; `goto`, `find kick`, `next`, `prev`, a palette row; `mute --help` shows
    description and examples.
+1j. Script 0.1.1 and `lom` (`cmdabl setup`, restart Live, `npm start`): `cmdabl bridge` →
+   0.1.1; `goto --unfold <rack track>` shows the chains; `find -c kick`, `mute <pad>`,
+   `solo <chain>` as before; `arm` on a group is refused; `lom /<track>`, `lom` on a return
+   track, the main track, a device, a rack, a pad → three lines (cmdAbl path, LOM path, link);
+   one device path checked in Max for Live (`live.path`) → the same device; can the text of the
+   message be selected and copied?; `lom` works with the control surface disabled.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in

@@ -335,7 +335,10 @@ Reply: `{"v": 1, "id": "<same>", "ok": true, "result": { … }}` or
   during development, so a stale install shows in `cmdabl bridge` ("(this extension ships
   X)") and in the installed-script check. The middle number goes up only with a release whose
   script is not compatible with the previous release's extension (an op removed or changed in
-  meaning); protocol `v` only when the envelope changes. Compatibility is decided by the op list
+  meaning); protocol `v` when the envelope changes — and, once a script has been released, also
+  when a reply field is renamed or changes meaning, so every operation answers one clean
+  "outdated" (the renames of 0.1.1 were made before any release, without raising `v`).
+  Compatibility is decided by the op list
   from `hello`, never by comparing versions; versions are only compared for equality (the
   installed-script check, `cmdabl bridge`). The script numbers 0.2.0 … 0.6.0 named elsewhere in
   this plan are the development-day numbers before the reset to 0.1.0 — history, not versions to
