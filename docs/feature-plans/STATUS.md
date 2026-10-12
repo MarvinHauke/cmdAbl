@@ -380,6 +380,18 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
   `docs/sdk-tree.md`, section 7. `openUrl` validates with a plain string check (`827f326`).
 - **Undo History**: no call in the LOM documentation or the SDK types opens the panel (from the
   documents, not tried in Live). The idea is dropped unless Ableton adds one.
+- **Open from the Live test of 2026-10-12, to pick up next session (user paused):**
+  - `mute`/`solo` offer too much since they accept chains: `mute e-piano` also lists (and can
+    mark) chains below the track, e.g. `/E-Piano/DefaultTracks/EQ Eight | Utility`, because the
+    chain's path contains the track's name. The user did not mean the rack. To decide: tracks
+    only by default and chains with a flag (`-c`, as in `find`; the user suggested a flag), or
+    rank and filter by the object's own name before matches through a parent's name.
+  - Typing `unmute` (removed) and pressing `Enter` runs `mute`: the log shows no `unmute` run,
+    so the palette ran its best fuzzy row instead of the typed line. Expected: "unknown
+    command". To check in `ui/interface.html`: when the first word is not a command, `Enter`
+    should run the typed line unless a row was chosen with the arrow keys.
+  - Seen working: `solo --set 2` → usage error naming 0 and 1; `lom` on a pad (path
+    `live_set tracks 18 devices 0 chains 0`); `help` with `lom`.
 - **pakabl and the sandbox** (user, 2026-10-12): pakabl installs Ableton Live extensions
   (`.ablx`) by writing into Live's Extensions folder from the Extension Host. It works today; a
   stricter sandbox announced by Ableton may block installing in a later Live. Documented as a
