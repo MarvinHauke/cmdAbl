@@ -100,6 +100,20 @@ between filter and selection would need quoting for names with spaces and collid
   `items[].label` is the unique path, so same-named siblings can be told apart.
 - The return value is unchanged. A module's own `api.pick` has no preview line yet.
 
+**State symbols (draft, wanted by the user 2026-10-12; not built).** When `mute`, `solo` or
+`arm` opens a pick list, each row shows a small symbol for the state the command is about
+(muted, soloed, armed), so a toggle is not applied blindly. No symbol for commands without
+such a state (`goto`, `find`).
+
+- Sources: track mute and solo from the SDK; track arm from the Remote Script (`track_facts`,
+  because the SDK reads `arm` wrongly for tracks Live refuses to arm; without the script the
+  SDK value); chain and pad mute/solo from the script (`chainSwitches`; no script → no symbol).
+- Opening the list waits for at most one request to the script, and only when arm or chains
+  are involved. The symbol shows the state when the list opened and does not update.
+- Contract changes, to be confirmed with the user before building: `SelectRequest.items[]`
+  gets an optional state field (on / off / unknown); a command node gets an optional way to
+  read that state for its candidates (0005).
+
 **Follow mode (draft, depends on the spike in 0006).** The active row is selected in Live while
 the pick list is open (a track or a device, through `selectNode`), for every pick list including
 multi-select.

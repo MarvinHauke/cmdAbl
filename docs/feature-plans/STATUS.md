@@ -131,6 +131,9 @@ Changing these after a release breaks what users have learned and what is stored
   words are one pattern first (`mute vermona kick` → the Kick pad); `mute <group> <its child>`
   asks instead of running both; two ambiguous texts share one pick list; a mistyped target
   opens a "did you mean" list instead of failing at once. Live test 1f.
+- State symbols in the pick list of `mute`/`solo`/`arm`: which rows are already muted, soloed
+  or armed (noted by the user 2026-10-12; draft in 0007 §4; two contract changes to confirm
+  before building: a state field on pick list rows, a state reader on the command node).
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
 - A generic `page` surface on `Ui` for module pages (decided, see "Decisions"); `pakabl list`
   moves onto it and into the dialog queue.
