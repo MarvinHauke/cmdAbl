@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { builtinModules } from "node:module";
 
 // Import boundaries (docs/feature-plans/0004, 0005). The test reads the import
 // statements of every source file and fails with file, import and rule when a
@@ -24,6 +25,14 @@ import * as path from "node:path";
 //   5. src/modules/…         reaches Live through the ModuleApi ports: it does
 //      not import src/ableton/bridge, src/ableton/trackLookup or the SDK
 //      (`@ableton-extensions/*`), so a command's `run` is testable with fakes.
+//   6. src/modules/…         does not reach out through Node itself: of the Node
+//      built-ins a module may import `path`, `url` (pure) and, in tests,
+//      `test` / `assert`; every other one — child_process, fs, net, dgram,
+//      http, tls, dns, module, … — breaks the rule (bare `fs` counts like
+//      `node:fs`). What needs a process, a socket or a file belongs to the
+//      platform or the Live layer; a module that still must is a listed
+//      exception below. This is not a sandbox: globals need no import
+//      (`fetch`, `process.env`).
 //   4. Only src/core/ui.ts opens dialogs (`showModalDialog`); a module hands
 //      its page to the UI surfaces instead.
 
@@ -46,7 +55,18 @@ interface Exception {
   why: string;
 }
 
-const EXCEPTIONS: Exception[] = [];
+const EXCEPTIONS: Exception[] = [
+  {
+    file: "src/modules/pakabl/platform.ts",
+    target: "node:child_process",
+    why: "pakabl downloads, unpacks, deletes and reads files by shelling out (curl, unzip, rm, cat; PowerShell on Windows); no port offers file or network access yet",
+  },
+];
+
+/** The only Node built-ins a module may import (rule 6). */
+const NODE_ALLOWED = new Set(["node:path", "node:url", "node:test", "node:assert", "node:assert/strict"]);
+
+const BUILTINS = new Set(builtinModules);
 
 /** Every relative import of one file: `from "…"`, bare `import "…"`, dynamic `import("…")`. */
 export function importSpecifiers(source: string): string[] {
@@ -63,13 +83,15 @@ export function importSpecifiers(source: string): string[] {
   for (const pattern of patterns) {
     for (const match of code.matchAll(pattern)) specifiers.push(match[1]!);
   }
-  // Relative imports, and the SDK (rule 5); other packages are not boundaries.
-  return specifiers.filter((s) => s.startsWith(".") || s.startsWith("@ableton-extensions/"));
+  // Relative imports, the SDK (rule 5) and Node built-ins (rule 6); other packages are not boundaries.
+  return specifiers.filter(
+    (s) => s.startsWith(".") || s.startsWith("@ableton-extensions/") || s.startsWith("node:") || BUILTINS.has(s),
+  );
 }
 
 /** The repo-relative path an import points at, without .js/.ts. */
 export function resolveImport(file: string, specifier: string): string {
-  if (!specifier.startsWith(".")) return specifier; // a package
+  if (!specifier.startsWith(".")) return BUILTINS.has(specifier) && !specifier.startsWith("node:") ? `node:${specifier}` : specifier; // a package; `fs` is `node:fs`
   const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier));
   return target.replace(/\.(js|ts)$/, "");
 }
@@ -87,6 +109,7 @@ export function brokenRule(file: string, target: string): string | null {
     if (target === "src/ableton/bridge" || target === "src/ableton/trackLookup") {
       return `5: modules reach Live through the ModuleApi ports, not ${target}`;
     }
+    if (target.startsWith("node:") && !NODE_ALLOWED.has(target)) return `6: modules do not reach out through Node (${target}); ask the platform for a port`;
     if (target.startsWith("@ableton-extensions/")) return `5: modules reach Live through the ModuleApi ports, not the SDK (${target})`;
     if (target.startsWith("ui/")) {
       const own = name !== undefined && !PLATFORM_PAGES.has(name)
@@ -183,10 +206,11 @@ test("architecture: the checker sees the imports and flags what it should", () =
       `const m = await import("./lazy.js");`,
       `// import { x } from "./commented.js";`,
       `import fs from "node:fs";`,
+      `import { spawnSync } from "child_process";`,
       `import type { ExtensionContext } from "@ableton-extensions/sdk";`,
     ].join("\n"),
   );
-  assert.deepEqual(specifiers.sort(), ["../b.js", "./a.js", "./c.js", "./lazy.js", "./side.js", "@ableton-extensions/sdk"]);
+  assert.deepEqual(specifiers.sort(), ["../b.js", "./a.js", "./c.js", "./lazy.js", "./side.js", "@ableton-extensions/sdk", "child_process", "node:fs"]);
   assert.equal(resolveImport("src/modules/goto/index.ts", "../mute/index.js"), "src/modules/mute/index");
 
   assert.match(brokenRule("src/modules/goto/index.ts", "src/modules/mute/index") ?? "", /^1:/);
@@ -199,6 +223,15 @@ test("architecture: the checker sees the imports and flags what it should", () =
   assert.equal(brokenRule("src/modules/index.ts", "src/modules/goto/index"), null);
   assert.match(brokenRule("src/modules/pick/index.ts", "ui/pick.html") ?? "", /^1:/); // a module named like a platform page
   assert.match(brokenRule("src/modules/pa/index.ts", "ui/pakabl-list.html") ?? "", /^1:/); // prefix is not a match
+  assert.match(brokenRule("src/modules/goto/index.ts", "node:child_process") ?? "", /^6:/);
+  assert.match(brokenRule("src/modules/goto/index.ts", "node:dgram") ?? "", /^6:/);
+  assert.match(brokenRule("src/modules/goto/index.ts", "node:tls") ?? "", /^6:/); // anything not allowed
+  assert.equal(resolveImport("src/modules/goto/index.ts", "child_process"), "node:child_process"); // bare spelling
+  assert.match(brokenRule("src/modules/goto/index.ts", resolveImport("src/modules/goto/index.ts", "fs")) ?? "", /^6:/);
+  assert.equal(brokenRule("src/modules/goto/run.test.ts", "node:test"), null);
+  assert.equal(brokenRule("src/modules/goto/run.test.ts", "node:assert/strict"), null);
+  assert.equal(brokenRule("src/modules/pakabl/guards.ts", "node:path"), null);
+  assert.equal(brokenRule("src/core/openUrl.ts", "node:child_process"), null); // core and ableton are not under rule 6
   assert.match(brokenRule("src/modules/goto/index.ts", "src/ableton/bridge") ?? "", /^5:/);
   assert.match(brokenRule("src/modules/trackSetCommand.ts", "src/ableton/trackLookup") ?? "", /^5:/);
   assert.match(brokenRule("src/modules/goto/snapshot.ts", "@ableton-extensions/sdk") ?? "", /^5:/);
