@@ -31,9 +31,9 @@ export interface ModuleApi {
    */
   registerProvider(provider: Provider, priority?: number): void;
   /**
-   * Handle palette results for non-"command" items, keyed by `PaletteItem.action`
-   * ("select", "toggleMute", …) — the actual discriminator for what a Live-object
-   * item should *do*, independent of its `type` ("track"/"device"/…).
+   * @deprecated Does nothing: a picked Live-object row runs as the command line
+   * `goto <unique path>` through `runLine` (core/objectRow.ts). Removed once
+   * goto stops calling it.
    */
   registerResultHandler(action: string, handler: ResultHandler): void;
   /**

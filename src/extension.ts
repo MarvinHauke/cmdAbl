@@ -1,8 +1,8 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./commandRegistry.js";
 import { createCommandProvider } from "./providers/commandProvider.js";
-import { type Provider, type PaletteResult, type CommandResult, ExitCode, fail } from "./types.js";
-import type { Module, ModuleApi, ResultHandler } from "./modules/types.js";
+import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail } from "./types.js";
+import type { Module, ModuleApi } from "./modules/types.js";
 import { startTriggerServer } from "./httpTrigger.js";
 import { isSetupDone, setKarabinerPaletteOpen } from "./setup.js";
 import { registerBuiltins } from "./core/builtins.js";
@@ -10,6 +10,7 @@ import { reportBridge } from "./core/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
+import { objectRowLine } from "./core/objectRow.js";
 import { pickNodes } from "./core/pick.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type Ui } from "./core/ui.js";
@@ -31,7 +32,8 @@ export function activate(activation: ActivationContext) {
   const dialogs = createDialogQueue();
   const ui: Ui = createDefaultUi(context, dialogs);
   const providers: { provider: Provider; priority: number }[] = [];
-  const resultHandlers = new Map<string, ResultHandler>();
+  // The items of the palette that is open (or was opened last): a picked object row is found here.
+  let paletteItems: PaletteItem[] = [];
   const commandRunListeners: Array<(invocation: string) => void> = [];
   const pickListeners: Array<(candidates: ObjectNode[], chosen: ObjectNode[] | null) => void> = [];
 
@@ -66,7 +68,7 @@ export function activate(activation: ActivationContext) {
     pick,
     onPick: (listener) => pickListeners.push(listener),
     registerProvider: (provider, priority = 0) => providers.push({ provider, priority }),
-    registerResultHandler: (action, handler) => resultHandlers.set(action, handler),
+    registerResultHandler: () => {}, // unused: object rows run as `goto <path>`; removed from ModuleApi next
     onCommandRun: (listener) => commandRunListeners.push(listener),
     showFeedback,
   };
@@ -100,38 +102,34 @@ export function activate(activation: ActivationContext) {
   // ── open command mode ────────────────────────────────────────────────────
   // Act on what the prompt surface returned.
   async function dispatch(result: PaletteResult): Promise<void> {
+    let line: string;
     if (result.type === "command") {
       // Older webview payloads carried {id, flags}; the raw line keeps quotes intact.
-      const line = result.line ?? [result.id, ...(result.flags ?? [])].join(" ");
-      const outcome = await runLine(line, {
-        registry,
-        liveNodes,
-        bridge: () => getBridge(),
-        pick: ({ title, candidates, multi, nodes, preview, details }) =>
-          pick(title, candidates, multi, { nodes, preview, details }),
-      });
-      if (outcome.cancelled) return;
-      present(outcome.result);
-      // History gets successful invocations that carry arguments, in their
-      // resolved form ("mute /Vermona MIDI"), so a re-run is never ambiguous.
-      const invocation = outcome.line ?? line;
-      if (outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
-        for (const listener of commandRunListeners) listener(invocation);
+      line = result.line ?? [result.id, ...(result.flags ?? [])].join(" ");
+    } else {
+      // A Live-object row is the command `goto <unique path>`, run like a typed line.
+      const row = paletteItems.find((item) => item.id === result.id && item.type === result.type);
+      const mapped = objectRowLine({ id: result.id, kind: result.type, path: row?.path }, liveNodes());
+      if (!mapped) {
+        present(fail(ExitCode.NOT_FOUND, `that ${result.type} is no longer available`));
+        return;
       }
-      return;
+      line = mapped;
     }
-    // Non-command items (Live objects) are routed by `action` — modules
-    // declare what an item should *do*, independent of its `type`.
-    const handler = result.action ? resultHandlers.get(result.action) : undefined;
-    if (!handler) {
-      present(fail(ExitCode.NOT_FOUND, `no handler for "${result.type}" action "${result.action}"`));
-      return;
-    }
-    console.log(`cmdAbl: run: item action ${result.action} (${result.type})`);
-    try {
-      await handler(result);
-    } catch (e: unknown) {
-      present(fail(ExitCode.FAILURE, e instanceof Error ? e.message : String(e)));
+    const outcome = await runLine(line, {
+      registry,
+      liveNodes,
+      bridge: () => getBridge(),
+      pick: ({ title, candidates, multi, nodes, preview, details }) =>
+        pick(title, candidates, multi, { nodes, preview, details }),
+    });
+    if (outcome.cancelled) return;
+    present(outcome.result);
+    // History gets successful invocations that carry arguments, in their
+    // resolved form ("mute /Vermona MIDI"), so a re-run is never ambiguous.
+    const invocation = outcome.line ?? line;
+    if (outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
+      for (const listener of commandRunListeners) listener(invocation);
     }
   }
 
@@ -154,6 +152,7 @@ export function activate(activation: ActivationContext) {
       // Stable sort by priority (lower first); ties keep registration order.
       const ordered = [...providers].sort((a, b) => a.priority - b.priority);
       const items = (await Promise.all(ordered.map((p) => p.provider.getItems()))).flat();
+      paletteItems = items;
       const result = await ui.prompt({ items });
       if (result) await dispatch(result);
     } catch (e: unknown) {
