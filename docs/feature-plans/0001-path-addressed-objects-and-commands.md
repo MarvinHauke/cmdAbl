@@ -726,6 +726,32 @@ of `select` keeps its name (it is a request, the reply field is the LOM property
 alone is not an error: `is_showing_chains` is `null` when not applicable, `in_note` is absent
 when Live does not report it.
 
+**Object ids (research 2026-10-12; for `lom <target>`).** Sources: the Cycling '74 *Live API
+overview* (`/max8/vignettes/live_api_overview`), the `sdk-tree.md` handle type; the Python side
+is partly assumption, marked.
+- *What a LOM id is (evidence):* the `id N` that `live.path` / `live.object` output. "When a
+  live.path object sees this Live object the first time, an id is assigned to it"; it is valid
+  only inside the device containing that `live.path`, "never reused in the scope of a Max
+  device". It stays the same while the object exists (a delete + create at the same place gives
+  a new id; a move may or may not keep it). "Ids are not stored": after loading a saved device
+  the `live.path` must navigate again, so ids do not survive saving/reloading a Set or device.
+  `id 0` = no object. What happens across a Live restart without a reload the page does not say.
+- *Can a Remote Script obtain the same id? (assumption, not verifiable without Live):* the
+  Python objects are native wrappers; the only identity-like attribute seen in the references we
+  have is `_live_ptr` (used as `surface._live_ptr != 0` validity check). No document links it to
+  the Max id, and because Max ids are assigned *per `live.path` device*, there is no
+  Set-wide id for a script to read. A script could return `_live_ptr` (an address-like int), but
+  it is not a LOM id and not usable from Max.
+- *The SDK `handleId` (evidence for the type, assumption for the relation):* `Handle` is
+  `{ id: bigint }`, "opaque — never construct manually"; it is the Extension Host's own
+  identifier, valid for this host session (the tree's `handleId` is re-checked by route). Nothing
+  states that it equals a Max id or `_live_ptr`.
+- *Recommendation:* show **no id** in `lom`. The thing a Max for Live user can use is the
+  canonical path: `path live_set tracks 2 devices 0` into `live.path` yields *their* id in their
+  device. An id from cmdAbl would be meaningless there (wrong scope, not stored). If an id is ever
+  wanted for debugging, show the SDK handle labelled "SDK handle (this session)" — not a script op.
+  Defer, not reject: revisit if the SDK documents a relation to LOM ids.
+
 **Paths.** `lomPath({scope, route})` (`src/ableton/lomPath.ts`) gives `live_set tracks 4`,
 `live_set return_tracks 1`, `live_set master_track`, then `devices N` and `chains N` alternating
 along the route, 0-based as `routes.py` walks it. Drum pads (`drum_pads`) and return chains are
