@@ -105,10 +105,13 @@ Changing these after a release breaks what users have learned and what is stored
    index's version. The legacy `registry.register` path and `ModuleApi.registry` are removed
    (`a3ae115`). Seen in Live (1g). Dead ends left until 0006: `FlagDef`/`PaletteItem.flags`, the
    flags fallback in `extension.ts`, the flag phase in `ui/interface.html`.
-2. An `enum` argument kind with declared choices (`man <ableton|cmdabl>`, pakabl ids): usage
-   text and, later, completion come from it.
-3. (Task out to cmdabl-core, then cmdabl-modules, 2026-10-12; 3.2 follows.) Object items of the palette run through `goto` (history entry, `next`/`prev` list); removes
-   `registerResultHandler` — a `ModuleApi` change, confirmed by the user on 2026-10-12.
+2. `enum` argument kind — built (`dbcb401`; `man <ableton|cmdabl>` in `32e04f9`): choices are
+   checked when parsing (exit 2 with the list), usage shows `<a|b>`. pakabl ids stay plain text
+   until a completion source exists.
+3. Object rows of the palette run as `goto <unique path>` — built (`ee64867`, `9c6246c`,
+   `1063875`): history entry, presenter, name check; a row whose object is gone never selects
+   a neighbour. `registerResultHandler` is removed from `ModuleApi`. Note: `dbcb401` does not
+   build on its own (a shared-index slip); irrelevant after a squash merge. Live test 1h.
 4. Ports instead of the raw SDK context in `ModuleApi`, then the command-authoring guide
    (`docs/guides/adding-a-command.md`).
 5. Leftovers from before the rework: platform files still outside `src/core/` (`src/commandRegistry.ts`,
@@ -137,6 +140,10 @@ Changing these after a release breaks what users have learned and what is stored
 - A generic `page` surface on `Ui` for module pages (decided, see "Decisions"); `pakabl list`
   moves onto it and into the dialog queue.
 - A larger maximum size for the pick list (0007).
+- Cleanup of dead ends (cmdabl-core with cmdabl-ui, one task): `PaletteItem`/`PaletteResult`
+  `action`/`route`/`scope`, `FlagDef` and `PaletteItem.flags`, the flags fallback in
+  `extension.ts`, the flag phase in `ui/interface.html`; README lines that still describe the
+  old palette.
 - Clean "not supported on this platform" answers everywhere off macOS (`cmdabl --help` and `man`
   already answer exit code 5 with the URL off macOS; Windows untested).
 - Note in `docs/sdk-tree.md` that `src/core/samePath.ts` is the first direct `node:fs` call in
@@ -196,6 +203,11 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    the valid subcommands, `cmdabl setup` with the advice line, `cmdabl bridge` (32 ms), `pakabl`
    help, `pakabl nolpe` → usage error, `pakabl list`. Not reported: the buttons of
    `pakabl list`, `pakabl install` without an id.
+1h. Palette rows and `man`: pick a track, a device and a pad row → each is selected and the
+   history shows `goto …`, re-runnable; with two same-named siblings the second row selects
+   the second; control surface disabled → the row answers with the bridge's message; `man` and
+   `man nope` → usage errors naming both topics; `man Ableton`, `man ableton warp modes`,
+   `man cmdabl` as before.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in

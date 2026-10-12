@@ -12,6 +12,8 @@ declared, so parsing, help and completion all derive from one structure.
 and a handler that receives raw `flags: string[]`. `ModuleApi` (`src/modules/types.ts`) exposes
 `registry`, `registerProvider`, `registerResultHandler`, `onCommandRun`, `showFeedback`.
 Modules therefore invent their own argument syntax. See 0004 for the current-state inventory.
+(That was the state when this plan was written; `registry` and `registerResultHandler` are
+removed since 2026-10-12, see "Phased rollout".)
 
 "Done": a module author can add a command or subcommand by declaring a node, and gets parsing,
 `--help`, validation errors, completion and history for free; a short guide
@@ -143,9 +145,10 @@ success unless it helps; return `CommandResult` instead of calling `showFeedback
 ## Phased rollout
 
 **Update (2026-10-12):** `pakabl` and `cmdabl` are groups on the tree (`e04989d`, `f795ac1`;
-no aliases for the old flags), `requires` is built, and the legacy `register()` path and
-`ModuleApi.registry` are removed (`a3ae115`). Left of this plan: the `enum` argument kind,
-palette object rows through `goto`, ports on `ModuleApi`, the authoring guide. The older
+no aliases for the old flags), `requires` is built, the legacy `register()` path and
+`ModuleApi.registry` are removed (`a3ae115`), the `enum` argument kind exists (`dbcb401`) and
+palette object rows run as `goto` (`ee64867`, `1063875`). Left of this plan: ports on
+`ModuleApi`, the authoring guide. The older
 notes below describe the state before that.
 
 **Update (2026-10-11, later):** step 2 and the resolver are in. `CommandRegistry.add(node)`
