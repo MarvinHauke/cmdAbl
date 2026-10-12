@@ -112,12 +112,19 @@ Changing these after a release breaks what users have learned and what is stored
    `1063875`): history entry, presenter, name check; a row whose object is gone never selects
    a neighbour. `registerResultHandler` is removed from `ModuleApi`. Note: `dbcb401` does not
    build on its own (a shared-index slip); irrelevant after a squash merge. Live test 1h.
-4. Ports on `ModuleApi` instead of the raw SDK context — confirmed by the user 2026-10-12, on
-   the condition that the POSIX-like command contract stays as it is: `bridge`, `liveSet`,
-   `tracks` (SDK-backed, so track commands work without the script), `log`, `dialog` (through
-   the dialog queue). In work: cmdabl-core adds them, cmdabl-modules migrates module by module,
-   then `api.context` goes and an import rule is added. The authoring guide exists
-   (`docs/guides/command-authoring.md`, `3133603`) and is updated to the ports afterwards.
+4. Ports on `ModuleApi` — built (`ddc055d`, `2c98b8b`, `c5949a2`, `67655d5`, `1a33851`;
+   confirmed by the user on the condition that the POSIX-like command contract stays):
+   `bridge`, `liveSet`, `tracks` (SDK-backed), `log`, `dialog` (through the dialog queue).
+   `api.context` is gone; an import rule keeps modules off the SDK and the bridge module;
+   commands are tested at `run` level with fakes. Behaviour change: `pakabl list` waits in the
+   dialog queue, and a page that fails to open counts as dismissed. Live test 1i.
+4b. Live API mapping (approved by the user 2026-10-12; source for LOM names and paths:
+   https://docs.cycling74.com/apiref/lom/): names follow the LOM; every Remote Script
+   operation and every port records the LOM properties or SDK calls behind it and whether it
+   runs through the SDK or the script — so when a later SDK covers more, only the adapter
+   behind a port changes; `lomPath(node)`; a generated page "Live API mapping" checked in CI;
+   a command that shows a target's LOM path. All for 0.1.0. After 0.1.0: reading or setting
+   arbitrary LOM properties by command. Tasks out.
 5. Leftovers from before the rework: platform files still outside `src/core/` (`src/commandRegistry.ts`,
    `src/types.ts`, `src/providers/commandProvider.ts`, `src/setup.ts`) and an empty `src/ui/`
    folder — move them and extend the import-boundary test. No unused module was found.
@@ -164,9 +171,10 @@ and three developer guides; nothing for users.
   `description`, `examples`, and a summary per argument — the same texts show in `--help`. A
   test requires at least one example per command. Also generated: the list of Remote Script
   operations.
-- **Architecture overview** (cmdabl-docs; asked for by the user): `docs/architecture.md`, first
-  brief out together with "Getting started". Documentation fields are built (`845b971`,
-  `3133603`, `8ba50b1`); the generated pages and the CI check are core's last commit.
+- Built: documentation fields and the generator (`845b971`, `3133603`, `8ba50b1`), the
+  generated pages `docs/reference/commands.md` and `remote-script.md` with the CI check
+  (`e616318`), "Getting started" and "Architecture" (`27a74c3`, `44399ed`), the authoring
+  guide. Open: "Using cmdAbl", "Remote Script", "Known limits", README, images.
 - **User pages** (cmdabl-docs, one brief per page from the architect): install and
   `cmdabl setup`; the Remote Script (what it does, restarting Live, the access token); using it
   (palette, pick list, several words, "did you mean", history); known limits (macOS-only, SDK
@@ -241,6 +249,11 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    the second; control surface disabled → the row answers with the bridge's message; `man` and
    `man nope` → usage errors naming both topics; `man Ableton`, `man ableton warp modes`,
    `man cmdabl` as before.
+1i. After the ports rework: `mute /a, /b`, `solo`, `unmute`, `unsolo` (one undo step each);
+   `arm` on a normal track, a group and the MIDI track with the unavailable input; `mute
+   <pad>` with the script on and off; `pakabl list` opens, its buttons work, `Esc` closes
+   without a message; `goto`, `find kick`, `next`, `prev`, a palette row; `mute --help` shows
+   description and examples.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
