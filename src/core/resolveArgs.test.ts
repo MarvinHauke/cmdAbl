@@ -92,7 +92,7 @@ test("two readings (group + child): one pick list, joined hits first, rows say w
   assert.equal(s.picks.length, 1);
   assert.equal(s.picks[0]!.title, 'mute: "drums kick" matches 3');
   assert.equal(s.picks[0]!.offered[0], "/Drums/Kick"); // the joined reading first
-  assert.deepEqual(s.picks[0]!.details?.[0], '"drums kick", "kick"');
+  assert.deepEqual(s.picks[0]!.details?.[0], '"drums kick"');
   assert.ok(s.picks[0]!.offered.includes("/Drums")); // the other reading: group and ...
   assert.ok(s.picks[0]!.offered.includes("/Snare Drums/Kick 2")); // ... every "kick"
   assert.equal(out.result.code, 0);
