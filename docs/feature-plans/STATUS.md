@@ -375,6 +375,10 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
   `docs/sdk-tree.md`, section 7. `openUrl` validates with a plain string check (`827f326`).
 - **Undo History**: no call in the LOM documentation or the SDK types opens the panel (from the
   documents, not tried in Live). The idea is dropped unless Ableton adds one.
+- **pakabl and the sandbox** (user, 2026-10-12): pakabl installs Ableton Live extensions
+  (`.ablx`) by writing into Live's Extensions folder from the Extension Host. It works today; a
+  stricter sandbox announced by Ableton may block installing in a later Live. Documented as a
+  limit. Its texts said "cmdAbl extensions" — being corrected to "Ableton Live extensions".
 - **Windows**: untested (see "After 0.1.0").
 - Known gaps of the bridge-based palette rows: see roadmap step 2, "Known gaps".
 
