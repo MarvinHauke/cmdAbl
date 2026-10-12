@@ -1,7 +1,7 @@
 import type { Bridge } from "../ableton/bridgeClient.js";
 import { select } from "../ableton/bridgeOps.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
-import { fail, ok, type CommandResult } from "../types.js";
+import { fail, ok, type CommandResult } from "../core/types.js";
 
 /**
  * Select a node in Live through the bridge's `select` op and map the reply to

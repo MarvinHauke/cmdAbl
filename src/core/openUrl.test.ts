@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import type { ChildProcess } from "node:child_process";
 import { isHttpsUrl, openUrl } from "./openUrl.js";
-import { ExitCode } from "../types.js";
+import { ExitCode } from "./types.js";
 
 function fakeSpawn(event: "spawn" | "error") {
   const calls: { command: string; args: string[] }[] = [];

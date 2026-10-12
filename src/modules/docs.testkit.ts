@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { CommandRegistry, type Command } from "../commandRegistry.js";
+import { CommandRegistry, type Command } from "../core/commandRegistry.js";
 import { parse } from "../core/parse.js";
 import type { ModuleApi } from "./types.js";
 

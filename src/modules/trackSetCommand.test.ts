@@ -4,7 +4,7 @@ import { resolvePath } from "../ableton/resolvePath.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { registerTrackSetCommand, type TrackSetDocs } from "./trackSetCommand.js";
 import { createFakeApi } from "./testPorts.js";
-import { ExitCode, type CommandResult } from "../types.js";
+import { ExitCode, type CommandResult } from "../core/types.js";
 import type { ModuleApi } from "./types.js";
 import type { FakeBridgeOptions } from "../ableton/bridgeFake.js";
 

@@ -1,7 +1,7 @@
 import type { Bridge } from "../ableton/bridgeClient.js";
 import { chainSet, chainSwitches } from "../ableton/bridgeOps.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
-import type { ExitCodeValue } from "../types.js";
+import type { ExitCodeValue } from "../core/types.js";
 import { nextTrackValue, type TrackSetValue } from "./trackSetValue.js";
 
 /** What happened to one chain; code and message are the bridge's, unchanged. */

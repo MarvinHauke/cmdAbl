@@ -311,12 +311,12 @@ described in the [guides](https://marvinhauke.github.io/cmdAbl/guides/).
 
 ```
 src/
-  extension.ts       main entry point — registers commands, starts HTTP server
-  commandRegistry.ts the declared command tree (add / roots / list)
+  extension.ts       main entry point — activates the platform and the modules, starts the HTTP server
   httpTrigger.ts     localhost HTTP server for external triggers (Karabiner, AHK, etc.)
-  setup.ts           platform-specific keyboard trigger setup (macOS + Windows)
-  modules/           built-in commands (goto, mute, solo, history, pakabl)
-  ableton/           object tree and Remote Script bridge
+  core/              the platform: command tree and registry, parser, resolver, pick flow, UI contract,
+                     presenter, shared types, setup (keyboard trigger + Remote Script install)
+  modules/           built-in commands (goto, find, mute, solo, arm, history, man, lom, pakabl)
+  ableton/           object tree, paths and the Remote Script bridge
 remote-script/       companion Remote Script (track/device selection)
 pakabl/              extension list: sources.json (approved repos), generated index.json
 scripts/             pakabl-crawl.ts — regenerates the pakabl list

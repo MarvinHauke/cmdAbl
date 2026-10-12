@@ -1,4 +1,4 @@
-import type { PaletteItemType } from "../../types.js";
+import type { PaletteItemType } from "../../core/types.js";
 
 /**
  * Which object kinds `find` looks at: the kinds named by `-t` (tracks), `-d`

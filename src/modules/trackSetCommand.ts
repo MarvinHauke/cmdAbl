@@ -13,7 +13,7 @@ import {
 } from "./armFacts.js";
 import { armDecision, armRefusal, factsRefusal, isGroupNode, nextTrackValue, notChanged, type TrackSetValue } from "./trackSetValue.js";
 import type { CommandExample } from "../core/commandTree.js";
-import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../types.js";
+import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../core/types.js";
 
 // Shared by mute/unmute, solo/unsolo and arm/unarm. Two modes:
 //  - a boolean sets that value on every named track (`unmute`, `unsolo`,

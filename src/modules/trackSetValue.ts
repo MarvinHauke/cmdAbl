@@ -1,6 +1,6 @@
 import type { TrackFacts } from "../ableton/bridgeOps.js";
 import { TEXT_STALE, type BridgeResult } from "../ableton/bridgeProtocol.js";
-import type { TrackScope } from "../types.js";
+import type { TrackScope } from "../core/types.js";
 
 /** What a track command writes: a fixed value, or "toggle" to flip each track's current one. */
 export type TrackSetValue = boolean | "toggle";

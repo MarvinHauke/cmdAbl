@@ -9,7 +9,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import * as path from "node:path";
-import { CommandRegistry } from "../src/commandRegistry.js";
+import { CommandRegistry } from "../src/core/commandRegistry.js";
 import { registerBuiltins } from "../src/core/builtins.js";
 import {
   checkExamples,

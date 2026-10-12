@@ -4,7 +4,7 @@ import { tokenize, quoteIfNeeded } from "./tokenize.js";
 import { validateTree, usage, helpText, serializeTree, type CommandNode } from "./commandTree.js";
 import { parse } from "./parse.js";
 import { presentResult } from "./present.js";
-import { ExitCode, ok, fail } from "../types.js";
+import { ExitCode, ok, fail } from "./types.js";
 
 const values = (input: string) => {
   const r = tokenize(input);
@@ -248,7 +248,7 @@ test("presentResult: silent success, messages, failures with details", () => {
 
 async function builtins(deps: Parameters<typeof import("./builtins.js").registerBuiltins>[1] = {}) {
   const { registerBuiltins } = await import("./builtins.js");
-  const { CommandRegistry } = await import("../commandRegistry.js");
+  const { CommandRegistry } = await import("./commandRegistry.js");
   const { runLine } = await import("./run.js");
   const registry = new CommandRegistry();
   registerBuiltins(registry, deps);

@@ -1,5 +1,5 @@
-import { validateTree, type CommandNode } from "./core/commandTree.js";
-import type { ArgValue } from "./core/resolveArgs.js";
+import { validateTree, type CommandNode } from "./commandTree.js";
+import type { ArgValue } from "./resolveArgs.js";
 
 /** A declared command: parsed and resolved by the platform before `run` is called. */
 export type Command = CommandNode<void, ArgValue>;

@@ -1,7 +1,7 @@
 import type { ModuleApi } from "../types.js";
 import { resolvePath, uniquePath } from "../../ableton/resolvePath.js";
 import { selectNodeResult } from "../selectNode.js";
-import { ExitCode, fail, type CommandResult } from "../../types.js";
+import { ExitCode, fail, type CommandResult } from "../../core/types.js";
 import { matches as matchesPattern } from "../../core/match.js";
 import { MatchList } from "./matches.js";
 import { findKinds } from "./kinds.js";

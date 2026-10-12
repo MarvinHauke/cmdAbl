@@ -4,7 +4,7 @@ import { EXTENSIONS_DIR, downloadFile, unzipInto, readJsonFile, openUrl, removeD
 import { buildListPage } from "./listPage.js";
 import { pakablCommand } from "./command.js";
 import { extensionDir, filterValidEntries, isValidId, repoUrl } from "./guards.js";
-import { ExitCode, fail, ok, type CommandResult } from "../../types.js";
+import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
 import pakablListTemplate from "../../../ui/pakabl-list.html";
 
 // `context.environment.storageDirectory` is `string | undefined` in the SDK

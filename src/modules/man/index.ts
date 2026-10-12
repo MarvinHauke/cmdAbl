@@ -1,5 +1,5 @@
 import type { ModuleApi } from "../types.js";
-import { ExitCode, fail, type CommandResult } from "../../types.js";
+import { ExitCode, fail, type CommandResult } from "../../core/types.js";
 import { openUrl } from "../../core/openUrl.js";
 import { findTopic, topicNames } from "./topics.js";
 

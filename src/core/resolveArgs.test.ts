@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CommandRegistry } from "../commandRegistry.js";
+import { CommandRegistry } from "./commandRegistry.js";
 import { assignPaths, flattenObjectTree, type ObjectNode } from "../ableton/objectTree.js";
-import { ExitCode } from "../types.js";
+import { ExitCode } from "./types.js";
 import { runLine, type RunDeps } from "./run.js";
 import { parse } from "./parse.js";
 

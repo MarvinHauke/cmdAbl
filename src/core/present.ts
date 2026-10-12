@@ -1,4 +1,4 @@
-import { ExitCode, type CommandResult } from "../types.js";
+import { ExitCode, type CommandResult } from "./types.js";
 
 /**
  * The one place a CommandResult becomes user-visible feedback.

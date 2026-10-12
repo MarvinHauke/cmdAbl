@@ -1,4 +1,4 @@
-import { ExitCode, fail, type CommandResult, type TargetOutcome } from "../types.js";
+import { ExitCode, fail, type CommandResult, type TargetOutcome } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { resolvePath, resolveStructural } from "../ableton/resolvePath.js";
 import type { NodeKind } from "../ableton/objectTree.js";

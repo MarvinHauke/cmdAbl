@@ -1,5 +1,5 @@
-import type { Provider, PaletteItem } from "../types.js";
-import type { CommandRegistry } from "../commandRegistry.js";
+import type { Provider, PaletteItem } from "./types.js";
+import type { CommandRegistry } from "./commandRegistry.js";
 
 /**
  * Exposes registered commands as palette items. Running a line goes through

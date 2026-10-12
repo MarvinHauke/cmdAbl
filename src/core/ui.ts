@@ -1,5 +1,5 @@
 import type { ExtensionContext } from "@ableton-extensions/sdk";
-import type { PaletteItem, PaletteResult } from "../types.js";
+import type { PaletteItem, PaletteResult } from "./types.js";
 import { parseIndexes } from "./pickResult.js";
 import { notifySize } from "./notifySize.js";
 import { pickHeight } from "./pickSize.js";

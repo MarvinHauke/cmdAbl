@@ -5,10 +5,10 @@
 // A module declares commands as tree nodes (`commands.add`, docs/feature-plans/0005);
 // there is no other registration path.
 
-import type { Command } from "../commandRegistry.js";
+import type { Command } from "../core/commandRegistry.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
-import type { Provider } from "../types.js";
+import type { Provider } from "../core/types.js";
 
 /** What a track write needs: the three booleans of an SDK track. */
 export interface TrackHandle {

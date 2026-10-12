@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { median, reportBridge, ROUND_TRIPS } from "./bridgeStatus.js";
-import { ExitCode } from "../types.js";
+import { ExitCode } from "./types.js";
 import { SCRIPT_VERSION, TEXT_NOT_INSTALLED, type BridgeResult, type HelloInfo } from "../ableton/bridgeProtocol.js";
 
 // The version this extension ships, so the tests do not break on a version bump.

@@ -1,4 +1,4 @@
-import { ExitCode, fail, type CommandResult } from "../types.js";
+import { ExitCode, fail, type CommandResult } from "./types.js";
 import { type CommandNode, type Invocation, usage } from "./commandTree.js";
 import { tokenize, type Token } from "./tokenize.js";
 

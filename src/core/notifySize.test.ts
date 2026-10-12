@@ -32,7 +32,7 @@ test("notifySize: a 66-character line gets a width that fits it, with no slack r
 
 test("notifySize: the cmdabl usage text fits the maximum width without wrapping", async () => {
   const { registerBuiltins } = await import("./builtins.js");
-  const { CommandRegistry } = await import("../commandRegistry.js");
+  const { CommandRegistry } = await import("./commandRegistry.js");
   const { helpText } = await import("./commandTree.js");
   const registry = new CommandRegistry();
   registerBuiltins(registry);

@@ -1,10 +1,10 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
-import { CommandRegistry } from "./commandRegistry.js";
-import { createCommandProvider } from "./providers/commandProvider.js";
-import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail } from "./types.js";
+import { CommandRegistry } from "./core/commandRegistry.js";
+import { createCommandProvider } from "./core/commandProvider.js";
+import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail } from "./core/types.js";
 import type { Module, ModuleApi } from "./modules/types.js";
 import { startTriggerServer } from "./httpTrigger.js";
-import { isSetupDone, setKarabinerPaletteOpen } from "./setup.js";
+import { isSetupDone, setKarabinerPaletteOpen } from "./core/setup.js";
 import { registerBuiltins } from "./core/builtins.js";
 import { reportBridge } from "./core/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";

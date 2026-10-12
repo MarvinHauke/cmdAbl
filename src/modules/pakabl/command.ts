@@ -1,5 +1,5 @@
-import type { Command } from "../../commandRegistry.js";
-import type { CommandResult } from "../../types.js";
+import type { Command } from "../../core/commandRegistry.js";
+import type { CommandResult } from "../../core/types.js";
 
 /** What the `pakabl` subcommands do; `index.ts` supplies the real ones. */
 export interface PakablHandlers {

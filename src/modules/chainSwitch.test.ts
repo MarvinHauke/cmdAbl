@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createFakeBridge } from "../ableton/bridgeFake.js";
 import { TEXT_FORBIDDEN, TEXT_STALE, fail as bridgeFail } from "../ableton/bridgeProtocol.js";
-import { ExitCode } from "../types.js";
+import { ExitCode } from "../core/types.js";
 import { setChainSwitch } from "./chainSwitch.js";
 
 const kick = { scope: "regular" as const, route: [0, 1, 0], name: "Kick" };

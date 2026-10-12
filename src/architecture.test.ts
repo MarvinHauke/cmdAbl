@@ -20,8 +20,8 @@ import { builtinModules } from "node:module";
 //      module folder.
 //   2. src/core/…            does not import src/modules/, src/httpTrigger
 //      or src/extension.
-//   3. src/ableton/…         does not import src/modules/, src/core/ui or
-//      src/extension.
+//   3. src/ableton/…         does not import src/modules/, src/extension or
+//      anything in src/core/ but the shared types (src/core/types).
 //   5. src/modules/…         reaches Live through the ModuleApi ports: it does
 //      not import src/ableton/bridge, src/ableton/trackLookup or the SDK
 //      (`@ableton-extensions/*`), so a command's `run` is testable with fakes.
@@ -123,7 +123,10 @@ export function brokenRule(file: string, target: string): string | null {
   }
   if (file.startsWith("src/ableton/")) {
     if (target.startsWith("src/modules/")) return "3: ableton does not import modules";
-    if (target === "src/core/ui" || target === "src/extension") return `3: ableton does not import ${target}`;
+    if (target === "src/extension") return `3: ableton does not import ${target}`;
+    if (target.startsWith("src/core/") && target !== "src/core/types") {
+      return `3: ableton knows the platform only through its shared types, not ${target}`;
+    }
   }
   return null;
 }
@@ -243,5 +246,7 @@ test("architecture: the checker sees the imports and flags what it should", () =
   assert.match(brokenRule("src/core/run.ts", "src/httpTrigger") ?? "", /^2:/);
   assert.match(brokenRule("src/ableton/select.ts", "src/core/ui") ?? "", /^3:/);
   assert.match(brokenRule("src/ableton/select.ts", "src/modules/types") ?? "", /^3:/);
-  assert.equal(brokenRule("src/ableton/select.ts", "src/types"), null);
+  assert.equal(brokenRule("src/ableton/select.ts", "src/core/types"), null);
+  assert.match(brokenRule("src/ableton/select.ts", "src/core/run") ?? "", /^3:/); // ableton knows core only through its shared types
+  assert.match(brokenRule("src/ableton/select.ts", "src/core/setup") ?? "", /^3:/);
 });

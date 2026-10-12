@@ -1,4 +1,4 @@
-import type { TrackScope } from "../types.js";
+import type { TrackScope } from "../core/types.js";
 import type { Bridge } from "./bridgeClient.js";
 import { chains as fetchChains } from "./bridgeOps.js";
 

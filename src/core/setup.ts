@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import { spawnSync, spawn } from "node:child_process";
-import { childEnv } from "./core/childEnv.js";
-import { isSameDirectory } from "./core/samePath.js";
+import { childEnv } from "./childEnv.js";
+import { isSameDirectory } from "./samePath.js";
 
 // ── macOS / Karabiner-Elements ───────────────────────────────────────────────
 
@@ -12,6 +12,8 @@ const KARABINER_MODS_DIR = path.join(
 );
 const KARABINER_SYMLINK_NAME = "cmdabl.json";
 
+// Paths below are relative to the BUNDLE (dist/extension.js, where __dirname is dist/), not to this file:
+// the repository folders karabiner/, windows/ and remote-script/ sit next to dist/.
 function karabinerSourcePath(): string {
   return path.resolve(__dirname, "../karabiner/cmdabl.json");
 }

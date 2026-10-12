@@ -1,7 +1,7 @@
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { createFakeBridge, type FakeBridge, type FakeBridgeOptions } from "../ableton/bridgeFake.js";
-import type { Command } from "../commandRegistry.js";
-import type { Provider } from "../types.js";
+import type { Command } from "../core/commandRegistry.js";
+import type { Provider } from "../core/types.js";
 import type { ModuleApi, TrackHandle } from "./types.js";
 
 // A ModuleApi made of fakes, so a module's `activate` and its commands' `run`

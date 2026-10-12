@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { Command } from "../../commandRegistry.js";
+import type { Command } from "../../core/commandRegistry.js";
 import { validateTree } from "../../core/commandTree.js";
 import { parse } from "../../core/parse.js";
-import { ExitCode } from "../../types.js";
+import { ExitCode } from "../../core/types.js";
 import type { ModuleApi } from "../types.js";
 import { activate } from "./index.js";
 

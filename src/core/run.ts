@@ -1,7 +1,7 @@
-import { ExitCode, fail, ok, type CommandResult } from "../types.js";
+import { ExitCode, fail, ok, type CommandResult } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
-import type { CommandRegistry } from "../commandRegistry.js";
+import type { CommandRegistry } from "./commandRegistry.js";
 import { helpText, type CommandNode, type Invocation } from "./commandTree.js";
 import { parse } from "./parse.js";
 import { alternativeHits, applyPick, lookupTarget, normalizeTargets, resolveTargets, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";

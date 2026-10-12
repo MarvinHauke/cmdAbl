@@ -1,5 +1,5 @@
 import type { ExtensionContext, Track } from "@ableton-extensions/sdk";
-import type { PaletteItemType, TrackScope } from "../types.js";
+import type { PaletteItemType, TrackScope } from "../core/types.js";
 import { getBridge } from "./bridge.js";
 import { findRacks, getChainNameCache, type ChainNameCache } from "./chainNames.js";
 

@@ -3,7 +3,7 @@
 // Specified in docs/feature-plans/0001-path-addressed-objects-and-commands.md
 // ("Phase 4 protocol proposal"). No I/O here — everything is unit-tested.
 
-import { ExitCode } from "../types.js";
+import { ExitCode } from "../core/types.js";
 
 export const PROTOCOL_VERSION = 1;
 /** The Remote Script version this extension was built with (VERSION in protocol.py). */

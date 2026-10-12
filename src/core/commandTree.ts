@@ -1,4 +1,4 @@
-import type { CommandResult } from "../types.js";
+import type { CommandResult } from "./types.js";
 import type { NodeKind } from "../ableton/objectTree.js";
 
 // The declarative command tree — the single source of truth for execution,

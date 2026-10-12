@@ -1,8 +1,8 @@
-import type { CommandRegistry } from "../commandRegistry.js";
+import type { CommandRegistry } from "./commandRegistry.js";
 import { SCRIPT_VERSION, type BridgeResult, type HelloInfo } from "../ableton/bridgeProtocol.js";
 import { inspectInstalledScript, type InstalledScript } from "../ableton/installedScript.js";
-import { runSetup } from "../setup.js";
-import { ok, fail, ExitCode } from "../types.js";
+import { runSetup } from "./setup.js";
+import { ok, fail, ExitCode } from "./types.js";
 import { reportBridge, type BridgeProbe } from "./bridgeStatus.js";
 import { adviseRemoteScript } from "./setupAdvice.js";
 

@@ -1,4 +1,4 @@
-import type { TrackScope } from "../types.js";
+import type { TrackScope } from "../core/types.js";
 
 // The canonical Live Object Model path of an object-tree node, built from its
 // scope and route only (pure: no SDK, no bridge). The route alternates track

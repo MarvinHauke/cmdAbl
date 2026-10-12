@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { TEXT_STALE, fail as bridgeFail } from "../../ableton/bridgeProtocol.js";
-import { ExitCode } from "../../types.js";
+import { ExitCode } from "../../core/types.js";
 import { createFakeApi } from "../testPorts.js";
 import { activate } from "./index.js";
 

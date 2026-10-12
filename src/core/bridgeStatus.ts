@@ -1,5 +1,5 @@
 import { SCRIPT_VERSION, type BridgeResult, type HelloInfo } from "../ableton/bridgeProtocol.js";
-import { ExitCode, fail, ok, type CommandResult } from "../types.js";
+import { ExitCode, fail, ok, type CommandResult } from "./types.js";
 
 // What `cmdabl bridge` (one fresh `hello`, answered at once) and the
 // temporary GET /bridge (20 of them, timed, one after the other, as min /

@@ -1,7 +1,7 @@
 import type { ModuleApi } from "../types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { lomPage, lomPath, lomReferenceUrl } from "../../ableton/lomPath.js";
-import { ok, type CommandResult } from "../../types.js";
+import { ok, type CommandResult } from "../../core/types.js";
 
 /** The three lines `lom` answers with: cmdAbl path, LOM path, reference page. */
 export function lomLines(node: ObjectNode): string[] {

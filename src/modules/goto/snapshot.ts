@@ -1,4 +1,4 @@
-import type { PaletteItem } from "../../types.js";
+import type { PaletteItem } from "../../core/types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 
 // Reading a track/device's name is a synchronous getter, so snapshotting the
