@@ -62,7 +62,7 @@ const tree: CommandNode[] = [
           { name: "force", short: "f", summary: "reinstall" },
           { name: "ref", takesValue: true, summary: "version" },
         ],
-        args: [{ name: "id", kind: "enum" }],
+        args: [{ name: "id", kind: "enum", complete: "pakabl-ids" }],
         run: noop,
       },
       { name: "list", aliases: ["ls"], summary: "list extensions", run: noop },
@@ -317,4 +317,40 @@ test("validateTree: requires must be a known companion on a runnable node", () =
   assert.match(validateTree([leaf({ requires: ["nope"] })]).join("\n"), /unknown requirement "nope"/);
   const group: CommandNode<void, string> = { name: "g", summary: "s", requires: ["bridge"], children: [leaf({})] };
   assert.match(validateTree([group]).join("\n"), /requires belongs on the runnable node/);
+});
+
+// ── enum arguments ──────────────────────────────────────────────────────────
+
+const manTree: CommandNode<void, string>[] = [
+  { name: "man", summary: "manual", args: [{ name: "topic", kind: "enum", choices: ["ableton", "cmdabl"] }], run: () => {} },
+];
+
+test("enum: declared values pass (case-insensitive, declared spelling), others are a usage error naming the choices", () => {
+  const good = parse("man CmdAbl", manTree);
+  assert.equal(good.kind, "run");
+  if (good.kind === "run") assert.deepEqual(good.invocation.args, [["cmdabl"]]);
+  const bad = parse("man nope", manTree);
+  assert.equal(bad.kind, "error");
+  if (bad.kind === "error") {
+    assert.equal(bad.result.code, ExitCode.USAGE);
+    assert.match(bad.result.message ?? "", /invalid value "nope" for <topic>: choose one of ableton, cmdabl/);
+  }
+});
+
+test("enum: usage and help show <a|b>; the serialized tree carries the choices; validation", () => {
+  assert.equal(usage(manTree[0]!, ["man"]), "man <ableton|cmdabl>");
+  assert.match(helpText(manTree[0]!, ["man"]), /usage: man <ableton\|cmdabl>/);
+  const serialized = serializeTree(manTree);
+  assert.deepEqual(serialized[0]!.args![0]!.choices, ["ableton", "cmdabl"]);
+  assert.deepEqual(validateTree(manTree), []);
+  const broken = (arg: object): CommandNode<void, string>[] => [{ name: "x", summary: "s", args: [{ name: "a", ...arg } as never], run: () => {} }];
+  assert.match(validateTree(broken({ kind: "enum" })).join("\n"), /needs choices/);
+  assert.deepEqual(validateTree(broken({ kind: "enum", complete: "pakabl-ids" })), []); // dynamic set: no parser check
+  const dynamic = parse("x anything", broken({ kind: "enum", complete: "ids" }));
+  assert.equal(dynamic.kind, "run");
+  assert.match(validateTree(broken({ kind: "enum", choices: ["a", "a"] })).join("\n"), /duplicate choices/);
+  assert.match(validateTree(broken({ kind: "enum", choices: ["Ab", "ab"] })).join("\n"), /duplicate choices/);
+  assert.match(validateTree(broken({ kind: "enum", choices: ["-x"] })).join("\n"), /starts with a dash/);
+  assert.match(validateTree(broken({ kind: "enum", choices: ["a"], rest: true })).join("\n"), /cannot take the rest/);
+  assert.match(validateTree(broken({ kind: "text", choices: ["a"] })).join("\n"), /choices only applies to enum/);
 });

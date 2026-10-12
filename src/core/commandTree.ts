@@ -34,6 +34,14 @@ export interface ArgDef {
    * match is passed on. Different from `variadic`, which is about tokens.
    */
   multiple?: "one" | "all";
+  /**
+   * `enum` arguments: the allowed values, fixed at declaration time (a
+   * dynamic set is an `enum` with a `complete` source and no `choices`: the
+   * parser then accepts any text and the handler checks it). The parser rejects
+   * anything else with a usage error that lists them; matching ignores case and
+   * the handler receives the declared spelling.
+   */
+  choices?: string[];
   /** Key of a completer registered by a module; supplies the candidates. */
   complete?: string;
 }
@@ -158,6 +166,18 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
         problems.push(`${at}: only the last argument may take the rest of the line ("${arg.name}")`);
       }
       if (arg.rest && arg.variadic) problems.push(`${at}: "${arg.name}" cannot be both rest and variadic`);
+      if (arg.kind === "enum" && !(arg.choices?.length) && !arg.complete) {
+        problems.push(`${at}: enum argument "${arg.name}" needs choices (or a complete source for a dynamic set)`);
+      }
+      if (arg.kind === "enum") {
+        const lower = (arg.choices ?? []).map((c) => c.toLowerCase());
+        if (new Set(lower).size !== lower.length) problems.push(`${at}: duplicate choices in "${arg.name}" (case is ignored)`);
+        if ((arg.choices ?? []).some((c) => c === "" || c.startsWith("-") || /\s/.test(c))) {
+          problems.push(`${at}: a choice of "${arg.name}" is empty, starts with a dash or holds a space`);
+        }
+        if (arg.rest) problems.push(`${at}: enum argument "${arg.name}" cannot take the rest of the line`);
+      }
+      if (arg.choices && arg.kind !== "enum") problems.push(`${at}: choices only applies to enum arguments ("${arg.name}")`);
       if (arg.kinds && arg.kind !== "path") problems.push(`${at}: kinds only applies to path arguments ("${arg.name}")`);
       if (arg.multiple === "all" && arg.kind !== "path") {
         problems.push(`${at}: multiple: "all" only applies to path arguments ("${arg.name}")`);
@@ -189,7 +209,8 @@ export function usage(node: CommandNode<any, any>, path: string[]): string {
     parts.push(opt.takesValue ? `[--${opt.name} <value>]` : `[--${opt.name}]`);
   }
   for (const arg of node.args ?? []) {
-    const label = arg.variadic ? `<${arg.name}>…` : `<${arg.name}>`;
+    const shown = arg.kind === "enum" && arg.choices?.length ? arg.choices.join("|") : arg.name;
+    const label = arg.variadic ? `<${shown}>…` : `<${shown}>`;
     parts.push(arg.required === false ? `[${label}]` : label);
   }
   return parts.join(" ");

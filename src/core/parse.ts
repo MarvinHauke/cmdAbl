@@ -145,6 +145,20 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
       return error(ExitCode.USAGE, `missing argument <${def.name}>\nusage: ${usage(node, path)}`);
     }
   }
+  // Enum arguments: only the declared values, in the declared spelling.
+  for (const [k, def] of argDefs.entries()) {
+    if (def.kind !== "enum" || !def.choices) continue;
+    for (const [v, value] of args[k]!.entries()) {
+      const hit = def.choices.find((c) => c.toLowerCase() === value.toLowerCase());
+      if (hit === undefined) {
+        return error(
+          ExitCode.USAGE,
+          `invalid value "${value}" for <${def.name}>: choose one of ${def.choices.join(", ")}\nusage: ${usage(node, path)}`,
+        );
+      }
+      args[k]![v] = hit;
+    }
+  }
   if (p < positionals.length) {
     return error(ExitCode.USAGE, `unexpected argument "${positionals[p]}"\nusage: ${usage(node, path)}`);
   }
