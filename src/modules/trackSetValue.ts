@@ -60,7 +60,7 @@ export function factsRefusal(entry: BridgeResult<TrackFacts> | undefined, wanted
   // raised in the script) leaves the track to the SDK-only path.
   if (!entry.ok) return entry.text === TEXT_STALE ? entry.text : undefined;
   if (!wantedOn) return undefined; // switching off is never refused
-  if (entry.value.isGroup) return armRefusal(true);
+  if (entry.value.isFoldable) return armRefusal(true);
   if (!entry.value.canBeArmed) return `Live does not allow arming it: ${ARM_DISABLED_HINT}`;
   return undefined;
 }

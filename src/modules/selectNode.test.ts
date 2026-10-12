@@ -41,14 +41,14 @@ test("selectNodeResult: an outdated script (op unknown) gives code 5", async () 
 test("selectNodeResult: --unfold asks for showChains; false is a hint, null and true are silent, default asks for nothing", async () => {
   for (const [shown, expectMessage] of [[true, false], [null, false], [false, true]] as const) {
     const bridge = createFakeBridge({
-      ops: { select: () => ({ ok: true, value: { name: "Kick", ...(shown === null ? {} : { chains_shown: shown }) } }) },
+      ops: { select: () => ({ ok: true, value: { name: "Kick", ...(shown === null ? {} : { is_showing_chains: shown }) } }) },
     });
     const result = await selectNodeResult(bridge, node, { unfold: true });
     assert.equal(result.code, ExitCode.OK);
     assert.equal(bridge.calls[0]!.args.showChains, true);
     assert.equal(result.message !== undefined, expectMessage, String(shown));
   }
-  const plain = createFakeBridge({ ops: { select: () => ({ ok: true, value: { name: "Kick", chains_shown: false } }) } });
+  const plain = createFakeBridge({ ops: { select: () => ({ ok: true, value: { name: "Kick", is_showing_chains: false } }) } });
   const result = await selectNodeResult(plain, node);
   assert.equal(result.message, undefined);
   assert.equal("showChains" in plain.calls[0]!.args, false);

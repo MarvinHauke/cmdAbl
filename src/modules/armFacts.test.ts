@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type { TrackFacts } from "../ableton/bridgeOps.js";
 import { createFakeBridge } from "../ableton/bridgeFake.js";
 import { TEXT_STALE } from "../ableton/bridgeProtocol.js";
 import {
@@ -13,6 +14,15 @@ import {
   verifyArmWrites,
 } from "./armFacts.js";
 import { factsRefusal } from "./trackSetValue.js";
+
+
+// TrackFacts as the bridge delivers it. (`isGroup` is the deprecated alias of
+// `isFoldable` that the type still carries for a while; the helper keeps the
+// literals in one place.)
+function facts(over: { canBeArmed?: boolean; isFoldable?: boolean; arm?: boolean | null } = {}): TrackFacts {
+  const f = { name: "a", canBeArmed: true, isFoldable: false, isGrouped: false, arm: false as boolean | null, ...over };
+  return { ...f, isGroup: f.isFoldable } as TrackFacts;
+}
 
 const nodes = [
   { scope: "regular" as const, route: [0], name: "Drums" },
@@ -69,15 +79,15 @@ test("loadArmFacts: an entry that fails alone stays an entry", async () => {
 });
 
 test("factsRefusal: unarmable MIDI track, group, stale entry, missing facts", () => {
-  const ok = { ok: true as const, value: { name: "a", canBeArmed: true, isGroup: false, isGrouped: false, arm: false } };
+  const ok = { ok: true as const, value: facts() };
   assert.equal(factsRefusal(ok), undefined);
   assert.equal(factsRefusal(undefined), undefined);
-  assert.equal(factsRefusal({ ok: true, value: { ...ok.value, canBeArmed: false, arm: null } }), "Live does not allow arming it: its arm button is disabled (e.g. the input device is not available)");
+  assert.equal(factsRefusal({ ok: true, value: facts({ canBeArmed: false, arm: null }) }), "Live does not allow arming it: its arm button is disabled (e.g. the input device is not available)");
   assert.equal(
-    factsRefusal({ ok: true, value: { ...ok.value, canBeArmed: false, isGroup: true, arm: null } }),
+    factsRefusal({ ok: true, value: facts({ canBeArmed: false, isFoldable: true, arm: null }) }),
     "group tracks cannot be armed",
   );
-  assert.equal(factsRefusal({ ok: true, value: { ...ok.value, isGroup: true } }), "group tracks cannot be armed");
+  assert.equal(factsRefusal({ ok: true, value: facts({ isFoldable: true }) }), "group tracks cannot be armed");
   assert.equal(factsRefusal({ ok: false, code: 1, text: TEXT_STALE }), TEXT_STALE);
   // any other failed entry: no objection, the SDK-only path decides
   assert.equal(factsRefusal({ ok: false, code: 1, text: "Remote Script: AttributeError" }), undefined);
@@ -89,8 +99,8 @@ test("log lines: facts per track, none with a reason, read-back", async () => {
     ops: { track_facts: () => ({ ok: true, value: { tracks: [entry(true), entry(false)] } }) },
   });
   assert.deepEqual(armFactsLines(paths, await loadArmFacts(bridge, nodes)), [
-    "cmdAbl: arm facts: /Drums canBeArmed=true isGroup=false isGrouped=false arm=false",
-    "cmdAbl: arm facts: /Keys canBeArmed=false isGroup=false isGrouped=false arm=null",
+    "cmdAbl: arm facts: /Drums canBeArmed=true isFoldable=false isGrouped=false arm=false",
+    "cmdAbl: arm facts: /Keys canBeArmed=false isFoldable=false isGrouped=false arm=null",
   ]);
   const off = await loadArmFacts(createFakeBridge({ running: false }), nodes);
   assert.deepEqual(armFactsLines(paths, off), [`cmdAbl: arm facts: none (${off.reason})`]);
@@ -109,7 +119,7 @@ const noSleep = { sleep: async () => {}, delayMs: 0 };
 test("armBase: the script's arm wins over the SDK's; null and failures fall back", () => {
   const entry = (arm: boolean | null) => ({
     ok: true as const,
-    value: { name: "a", canBeArmed: true, isGroup: false, isGrouped: false, arm },
+    value: facts({ arm }),
   });
   assert.equal(armBase(true, entry(false)), false); // SDK stale "true", script says off
   assert.equal(armBase(false, entry(true)), true);
@@ -121,7 +131,7 @@ test("armBase: the script's arm wins over the SDK's; null and failures fall back
 test("classifyArm: ok, mismatch, null counts as off, failure is unknown", () => {
   const entry = (arm: boolean | null) => ({
     ok: true as const,
-    value: { name: "a", canBeArmed: true, isGroup: false, isGrouped: false, arm },
+    value: facts({ arm }),
   });
   assert.deepEqual(classifyArm(true, entry(true)), { state: "ok", actual: true });
   assert.deepEqual(classifyArm(true, entry(false)), { state: "mismatch", actual: false });
@@ -178,7 +188,7 @@ test("verify texts and log line", () => {
 });
 
 test("factsRefusal: switching off is never refused for a greyed-out track", () => {
-  const off = { ok: true as const, value: { name: "a", canBeArmed: false, isGroup: false, isGrouped: false, arm: null } };
+  const off = { ok: true as const, value: facts({ canBeArmed: false, arm: null }) };
   assert.equal(factsRefusal(off, false), undefined);
   assert.match(factsRefusal(off, true) ?? "", /does not allow arming/);
 });

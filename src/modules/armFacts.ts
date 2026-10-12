@@ -50,7 +50,7 @@ export function armFactsLines(nodes: Array<Pick<ObjectNode, "path">>, loaded: Ar
     if (!entry) return `cmdAbl: arm facts: ${node.path} missing`;
     if (!entry.ok) return `cmdAbl: arm facts: ${node.path} failed (code ${entry.code}: ${entry.text})`;
     const f = entry.value;
-    return `cmdAbl: arm facts: ${node.path} canBeArmed=${f.canBeArmed} isGroup=${f.isGroup} isGrouped=${f.isGrouped} arm=${f.arm}`;
+    return `cmdAbl: arm facts: ${node.path} canBeArmed=${f.canBeArmed} isFoldable=${f.isFoldable} isGrouped=${f.isGrouped} arm=${f.arm}`;
   });
 }
 

@@ -18,7 +18,7 @@ export async function selectNodeResult(
   if (!reply.ok) return fail(reply.code, reply.text);
   // `--unfold` never turns a selection into a failure; only a write that did
   // not take is worth a word. null (the track cannot show chains) is silence.
-  if (options.unfold === true && reply.value.chainsShown === false) {
+  if (options.unfold === true && reply.value.isShowingChains === false) {
     return ok("selected; the track's chains could not be shown in the mixer");
   }
   return ok();
