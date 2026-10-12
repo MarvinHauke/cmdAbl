@@ -1,7 +1,5 @@
 import type { ModuleApi } from "../types.js";
-import { buildObjectTree, flattenObjectTree } from "../../ableton/objectTree.js";
 import { resolvePath, uniquePath } from "../../ableton/resolvePath.js";
-import { getBridge } from "../../ableton/bridge.js";
 import { selectNodeResult } from "../selectNode.js";
 import { ExitCode, fail, type CommandResult } from "../../types.js";
 import { matches as matchesPattern } from "../../core/match.js";
@@ -20,7 +18,7 @@ export function activate(api: ModuleApi): void {
   // `--unfold` of the `find` that made the list: next/prev keep it. Any other
   // pick list (an ambiguous goto) starts without it.
   let unfold = false;
-  const liveNodes = () => flattenObjectTree(buildObjectTree(api.context));
+  const liveNodes = () => api.liveSet.nodes();
 
   // Any pick list — including the one an ambiguous `goto` shows — becomes the
   // list `next`/`prev` walk.
@@ -66,11 +64,11 @@ export function activate(api: ModuleApi): void {
       if (hits.length === 1) {
         matches.set([uniquePath(all, hits[0]!)], 0);
         unfold = wantsUnfold;
-        return selectNodeResult(getBridge(), hits[0]!, { unfold });
+        return selectNodeResult(api.bridge, hits[0]!, { unfold });
       }
       const chosen = await api.pick(`find: "${pattern}" — ${hits.length} matches`, hits);
       unfold = wantsUnfold; // after the pick: its listener reset it
-      if (chosen?.[0]) return selectNodeResult(getBridge(), chosen[0], { unfold });
+      if (chosen?.[0]) return selectNodeResult(api.bridge, chosen[0], { unfold });
     },
   });
 
@@ -86,7 +84,7 @@ export function activate(api: ModuleApi): void {
         if (!entry) return fail(ExitCode.NOT_FOUND, `${name}: no matches to step through — run "find <pattern>" first`);
         const found = resolvePath(liveNodes(), entry.path);
         if (found.length !== 1) return fail(ExitCode.NOT_FOUND, `${name}: "${entry.path}" is no longer there`);
-        const outcome = await selectNodeResult(getBridge(), found[0]!, { unfold });
+        const outcome = await selectNodeResult(api.bridge, found[0]!, { unfold });
         // A failed select must not use up a step: go back so a re-run tries the same match.
         if (outcome.code !== 0) matches.step(delta === 1 ? -1 : 1);
         return outcome;

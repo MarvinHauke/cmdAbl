@@ -1,6 +1,5 @@
 import type { ModuleApi } from "../types.js";
 import { snapshotObjectTree } from "./snapshot.js";
-import { getBridge } from "../../ableton/bridge.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { selectNodeResult } from "../selectNode.js";
 
@@ -10,7 +9,7 @@ import { selectNodeResult } from "../selectNode.js";
  * request/reply bridge (`select`, with a name check and read-back).
  */
 export function activate(api: ModuleApi): void {
-  api.registerProvider({ getItems: () => snapshotObjectTree(api.context) });
+  api.registerProvider({ getItems: () => snapshotObjectTree(api.liveSet.nodes()) });
 
   // `goto <path>` — also what a picked palette row runs (the platform turns
   // the row into `goto <unique path>`). The path arrives resolved to exactly
@@ -40,6 +39,6 @@ export function activate(api: ModuleApi): void {
       },
     ],
     run: (invocation) =>
-      selectNodeResult(getBridge(), invocation.args[0]![0] as ObjectNode, { unfold: invocation.options.unfold === true }),
+      selectNodeResult(api.bridge, invocation.args[0]![0] as ObjectNode, { unfold: invocation.options.unfold === true }),
   });
 }
