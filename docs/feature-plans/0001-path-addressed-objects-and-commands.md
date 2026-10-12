@@ -545,6 +545,55 @@ Rules for every new operation: one handler in `ops/`, one typed function in `bri
 test on each side; described in §4 before it is built, and the script `VERSION` goes up with it;
 only selecting and reading until the access token exists.
 
+### 9. Write operations and the access token (proposal 2026-10-12 — the user confirms before anything is built)
+
+**Trigger:** `mute` and `solo` on chains and Drum Rack pads in 0.1.0 (`mute kick` → the Kick pad).
+
+**Can the SDK do it?** No (checked in the vendored `index.d.mts` / `index.mjs` and `docs/sdk-tree.md`).
+`Chain` has `devices`, `mixer`, `insertDevice`, `deleteDevice`, `duplicateDevice`; `DrumChain` adds
+`receivingNote`; `ChainMixer` has `volume`, `panning`, `sends` only. The data model has no
+`chainGetMute`/`chainSetMute`/solo/activator calls — mute/solo exist for `Track` and clip `muted`
+only. So the write goes through the Remote Script (LOM `Chain.mute`/`solo`, `DrumPad.mute`/`solo`,
+R/W per the LOM docs).
+
+**Which button the user sees.** In a Drum Rack the M/S buttons on a pad are the *pad's*
+(`DrumPad.mute`/`solo`, "1 = muted"); a chain's own `mute` is its Chain Activator ("1 = muted
+(Chain Activator off)"). Instrument/Audio/MIDI Rack chains have only the chain's. Proposal: for a
+drum chain, find its pad (scan `drum_pads` for the pad whose `chains` contain it — no back
+reference is known; unverified) and write the pad; for other chains write `chain.mute`/`solo`.
+Read-back after the write, like `select`. *Unverified in Live:* that `DrumPad.mute` is the visible
+pad button, and whether writing it also flips the chain's activator.
+
+**Operation.** `chain_set {scope, route, expectName, mute?: bool, solo?: bool}` → `{name, mute,
+solo, via: "pad"|"chain"}` with the values read back; `stale` / `out_of_range` as for `select`,
+`failed` when the read-back differs. One request per command: several chains are
+`chain_set {targets: [...]}`, one entry each, like `track_facts`. Set semantics only (the caller
+computes the toggle from the values it read — `chains` replies carry `mute`/`solo` for this, a
+small addition).
+
+**Access token (mandatory before the first op that changes something).**
+- *Threat model.* Any local process can send UDP to 127.0.0.1:27185. The same user can already
+  change a Live Set in other ways, so the token protects against another local user and against
+  stray or hostile datagrams from sandboxed software — not against the user's own processes.
+- *Creation.* The script creates a random token (`secrets.token_hex(16)`) when it starts and writes
+  it to a file in a fixed per-user place, mode `0600` (proposal: the script's own folder in the
+  User Library, `Remote Scripts/cmdAbl/.token`, not in the repo, never logged). A new token per
+  Live start.
+- *Sharing.* The extension reads the file (it already reads that folder for the installed-script
+  check; assumption: the announced sandbox may forbid it — then the answer is exit 5, "cannot read
+  the bridge token", and only write commands are affected) and sends `token` with every request
+  of a *writing* op. Reads need no token.
+- *Checking.* The ops table marks each op `writes: True/False`; `protocol.handle_request`
+  refuses a writing op without the right token (`hmac.compare_digest`) with the error code
+  `forbidden` before any handler runs. The extension maps `forbidden` to exit 5 with "the Remote
+  Script refused the change (access token); restart Live or run `cmdabl --setup`", and drops its
+  cached token so the next call reads the file again (a Live restart changes it).
+- *Tests.* Script: writing op without / with a wrong / with the right token; read op without
+  token; the token never appears in a reply or a log line. Extension: the token is read from the
+  file lazily, never logged, re-read after `forbidden`.
+- *Alternative considered:* a token the extension generates and sends on the first write
+  (trust-on-first-use) — rejected, a hostile process could win the race at script start.
+
 ## Phased rollout
 
 Three shippable increments, each independently testable (mirrors the existing Phase 0/1/2
