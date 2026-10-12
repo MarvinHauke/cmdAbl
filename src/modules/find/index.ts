@@ -17,6 +17,9 @@ import { findKinds } from "./kinds.js";
  */
 export function activate(api: ModuleApi): void {
   const matches = new MatchList();
+  // `--unfold` of the `find` that made the list: next/prev keep it. Any other
+  // pick list (an ambiguous goto) starts without it.
+  let unfold = false;
   const liveNodes = () => flattenObjectTree(buildObjectTree(api.context));
 
   // Any pick list — including the one an ambiguous `goto` shows — becomes the
@@ -26,6 +29,7 @@ export function activate(api: ModuleApi): void {
     const paths = candidates.map((n) => uniquePath(all, n));
     const current = chosen?.[0] ? candidates.findIndex((n) => n.handleId === chosen[0]!.handleId) : -1;
     matches.set(paths, current);
+    unfold = false;
   });
 
   api.commands.add({
@@ -36,21 +40,25 @@ export function activate(api: ModuleApi): void {
       { name: "tracks", short: "t", summary: "only tracks" },
       { name: "devices", short: "d", summary: "only devices" },
       { name: "chains", short: "c", summary: "only chains and drum pads" },
+      { name: "unfold", summary: "also show the track's chains in the mixer when selecting" },
     ],
     args: [{ name: "pattern", kind: "text", rest: true }],
     run: async (invocation): Promise<CommandResult | void> => {
       const pattern = String(invocation.args[0]?.[0] ?? "");
       const kinds = findKinds(invocation.options);
+      const wantsUnfold = invocation.options.unfold === true;
       const all = liveNodes();
       const hits = all.filter((n) => kinds.includes(n.kind) && matchesPattern(n.path, pattern));
       if (hits.length === 0) return fail(ExitCode.NOT_FOUND, `find: nothing matches "${pattern}"`);
 
       if (hits.length === 1) {
         matches.set([uniquePath(all, hits[0]!)], 0);
-        return selectNodeResult(getBridge(), hits[0]!);
+        unfold = wantsUnfold;
+        return selectNodeResult(getBridge(), hits[0]!, { unfold });
       }
       const chosen = await api.pick(`find: "${pattern}" — ${hits.length} matches`, hits);
-      if (chosen?.[0]) return selectNodeResult(getBridge(), chosen[0]);
+      unfold = wantsUnfold; // after the pick: its listener reset it
+      if (chosen?.[0]) return selectNodeResult(getBridge(), chosen[0], { unfold });
     },
   });
 
@@ -64,7 +72,7 @@ export function activate(api: ModuleApi): void {
         if (!entry) return fail(ExitCode.NOT_FOUND, `${name}: no matches to step through — run "find <pattern>" first`);
         const found = resolvePath(liveNodes(), entry.path);
         if (found.length !== 1) return fail(ExitCode.NOT_FOUND, `${name}: "${entry.path}" is no longer there`);
-        const outcome = await selectNodeResult(getBridge(), found[0]!);
+        const outcome = await selectNodeResult(getBridge(), found[0]!, { unfold });
         // A failed select must not use up a step: go back so a re-run tries the same match.
         if (outcome.code !== 0) matches.step(delta === 1 ? -1 : 1);
         return outcome;

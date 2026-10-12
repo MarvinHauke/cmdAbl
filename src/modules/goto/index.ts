@@ -22,8 +22,10 @@ export function activate(api: ModuleApi): void {
     name: "goto",
     summary: "select a track or device by path",
     requires: ["bridge"],
+    options: [{ name: "unfold", summary: "also show the track's chains in the mixer" }],
     args: [{ name: "path", kind: "path", rest: true }],
-    run: (invocation) => selectNodeResult(getBridge(), invocation.args[0]![0] as ObjectNode),
+    run: (invocation) =>
+      selectNodeResult(getBridge(), invocation.args[0]![0] as ObjectNode, { unfold: invocation.options.unfold === true }),
   });
 
   // A palette row. A result handler cannot return a CommandResult yet (roadmap
