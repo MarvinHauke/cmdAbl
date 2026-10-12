@@ -193,6 +193,38 @@ cmdabl --help
 
 usage of the cmdabl commands
 
+## `lom`
+
+show the Live Object Model path of a track, device or chain
+
+Shows the object's cmdAbl path, its Live Object Model path (the address used by Max for Live's live.path and in Remote Scripts) and the link to the LOM reference page that describes its kind. Only reads; it does not need the cmdAbl Remote Script. When your words match several objects you are asked to choose one.
+
+**Usage:** `lom <target>`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<target>` | path (track / device / chain) | yes | Track, device, chain or pad; spaces need no quotes (takes the rest of the line) |
+
+**Examples**
+
+```
+lom /Vermona MIDI
+```
+
+the LOM path of a track
+
+```
+lom /Vermona MIDI/Drum Rack/Kick
+```
+
+the LOM path of a pad inside a Drum Rack
+
+```
+lom kick
+```
+
+the object whose path contains "kick"
+
 ## `man`
 
 open a manual, or search it: ableton, cmdabl
