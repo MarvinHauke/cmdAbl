@@ -251,6 +251,14 @@ Cmd-clicking the buttons — and to be stated in the command reference.
   cached bridge state only, so opening never waits for a timeout. `--help` does not name the
   requirement yet.
 
+## Documentation fields on the node (2026-10-12, `845b971`)
+
+Three optional fields, confirmed by the user: `description` on a command or group (a sentence
+or two beyond `summary`), `examples: { line, note? }[]` on a command, and `summary` on an
+argument. They are the single source for `<cmd> --help` and for the generated command
+reference (`npm run docs:reference`, checked in CI). Every runnable command has at least one
+example, and every example line must parse — both are tests. Write them for a user of Live.
+
 ## Forgiving target resolution (2026-10-12; `461c885`, `46f241a`, `8588a8d`)
 
 How the platform reads the text of a `path` argument (`src/core/resolveArgs.ts`):
