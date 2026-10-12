@@ -1,0 +1,122 @@
+# Using cmdAbl
+
+This page is for daily use, after [Getting started](getting-started.md). It covers how to type a command,
+how to name the objects of your Set, what the pick list asks, and what the palette remembers. The exact
+usage of every command is in the [command reference](reference/commands.md). Type `<command> --help` in the
+palette for the same text.
+
+## Open the palette
+
+Press `:` with Live focused, or choose **: cmdAbl** from the context menu of a clip, a track, a clip slot or a
+scene. Type a command and press `Enter`. `Esc` closes it without running anything.
+
+## Type a command, or pick a row
+
+The palette shows two kinds of rows:
+
+- **Commands**, such as `mute` or `help`. Enter runs what you typed, or the command you selected with `↑` and `↓`.
+- **Objects of the Set**: a track, a device, a rack chain or a Drum Rack pad. Picking one of these runs
+  `goto` on it, so it selects that object in Live. Typing the name of an object and pressing `Enter` does
+  the same. Selecting needs the [Remote Script](remote-script.md).
+
+After a command runs, the palette closes. Nothing stays open except a message or a pick list.
+
+## Name the objects
+
+A command takes objects as text. cmdAbl reads that text as follows:
+
+- **Several words are one pattern.** `mute vermona kick` looks for an object whose path contains all the
+  words, in any order. If no object contains all of them, each word is its own target: `mute kick snare`
+  mutes the Kick and the Snare. If the whole pattern matches and each word also names other objects on its
+  own, cmdAbl asks, so `mute vermona kick` can open the pick list.
+- **A comma always separates targets.** `mute kick, snare` names two objects.
+- **A leading `/` makes an exact path.** `mute /Vermona/Kick` names exactly that object. A `/` word also
+  starts a new target, so `mute /Vermona MIDI /Kick` names two tracks. A name with spaces needs no quotes
+  for a single target: `goto /Opal Lead`. Quote a name that starts with a dash. The pick list shows the exact
+  path of each object, so you can copy it from there.
+- **`#2` tells apart siblings with the same name.** Two tracks called `Kick` appear as `/Drums/Kick` and
+  `/Drums/Kick#2`.
+
+When a name matches more than one object, cmdAbl asks. It never picks one for you.
+
+### Dash rules
+
+- A word that starts with `-` is read as an option. `mute /Bass -6dB` is therefore an error, because `-6dB`
+  is not a known option. Quote the name, or put `--` before it: `mute -- /Bass -6dB`.
+- A lone `-` is an ordinary word. A track called `Kick - Sub` can be typed without quotes.
+- `--` ends the options. Everything after it is a name.
+
+## The pick list
+
+The pick list opens when a name matches more than one object, or when nothing matches and cmdAbl has close
+suggestions.
+
+- **Filter.** Type to narrow the rows. `Space` types a space.
+- **Move.** `↑` and `↓` move through the rows. In a list where you can mark several rows, the first arrow
+  only enters the list, so `↓` and then `Space` marks the first row.
+- **Mark.** `Tab` marks a row, and so does `Space` once you are in the list. Marking several rows runs the
+  command on all of them.
+- **Choose.** `Enter` runs the command with the marked rows. With nothing marked, the row under the cursor.
+- **Cancel.** `Esc` closes the list. Nothing runs and nothing is remembered.
+
+The line above the filter shows the command that `Enter` will run, with the exact paths of the objects. You
+can read it before you confirm.
+
+**One list per command.** If several of your names are ambiguous, you get one list for all of them, with the
+matches of the whole pattern first. Answer it once.
+
+**"Did you mean".** When nothing matches, the list shows the closest names instead. Nothing runs from that
+list unless you choose a row. `Esc` gives the plain "nothing matches" answer.
+
+## Pads, chains and folding
+
+Drum Rack pads and the chains of other racks are objects too. Their path goes through the track and the rack:
+
+- `/Drums/Drum Rack/Kick` is the Kick pad of the Drum Rack on the track `Drums`.
+- `mute kick` finds the same pad when `kick` is the only match.
+
+Use `find` to list everything that matches a pattern:
+
+- `find kick` lists every track, device and chain whose path contains `kick`.
+- `find -c kick` lists only chains and drum pads.
+- `find -t kick` lists only tracks, and `find -d kick` only devices.
+- `next` and `prev` step through the last `find` list.
+
+Selecting a pad or a chain does not change how the track is shown. Add `--unfold` to `goto` or `find` to show the
+track's chains as columns in the Session mixer. Live stores this view state with the Set, so the Set counts as
+changed. cmdAbl never folds the chains back. To fold them again, do it in Live.
+
+## Toggles, and what they do not do
+
+- `mute`, `solo` and `arm` **toggle**: they switch the state of each object they name.
+- `unmute`, `unsolo` and `unarm` **always switch off**. They do not toggle.
+- `mute` and `solo` work on tracks, rack chains and Drum Rack pads. Chains and pads need the Remote Script
+  and macOS.
+- `arm` works on tracks only. Return, main and group tracks cannot be armed, and cmdAbl reports them as failed.
+
+**Exclusive arm and solo are not applied.** If Live's "Exclusive" setting is on for arm or solo, cmdAbl does
+not follow it. `arm /a /b` arms both tracks. `arm /a` does not disarm other tracks. Name every track you want
+explicitly. This is a choice, like Cmd-clicking the buttons in Live.
+
+## What the palette tells you
+
+After a command runs, cmdAbl shows a short message only when there is something to say:
+
+- **It worked.** A successful command with no message shows nothing.
+- **It failed.** A message says why, and for several objects it lists each one with a tick or a cross.
+- **It could not find the object.** The name matches nothing, and no suggestion helped.
+- **It needs the Remote Script.** The Remote Script is missing, outdated or not running. See the
+  [Remote Script](remote-script.md) page for what to do.
+
+A name that matches more than one object does not produce an error: the pick list answers it.
+
+## History
+
+cmdAbl remembers the last 20 commands that worked and that had arguments. They appear at the top of the palette,
+newest first, so you can run one again.
+
+- A remembered line holds the exact objects, each by its full path. A rerun therefore never asks again, even if
+  a later track has the same name.
+- The history is kept in memory. It is cleared when the extension reloads, for example when Live restarts.
+
+Use `↑` and `↓` to choose a remembered line and `Enter` to run it again.
