@@ -194,9 +194,11 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    (`mute vermona`) — `midi vermona` and `vermona midi` find the same rows, marks survive
    filtering, no visible delay on open; `find vermona kick` as before.
 1d. Chains and pads (script 0.4.0). Seen 2026-10-12: `find vermona kick` and `find -c kick`
-   find the pad and Live shows it selected. **Bug:** the chains of an Instrument Rack created
-   during the session ("Organ Softer", "Test chain", rack directly on the track) are not found
-   (`find test chain` → nothing); cause unknown, cmdabl-bridge is on it. Open: `cmdabl --bridge`
+   find the pad and Live shows it selected. Fixed in `54c1182` (script 0.4.1, needs
+   `cmdabl --setup` and a restart of Live): the chains of Instrument, Audio Effect and MIDI
+   Effect Racks were skipped (the script read a Drum-Rack-only property). Open: `find test
+   chain` finds the Instrument Rack's chain and selects it (the log shows `chains refresh: n
+   racks asked, n answered`); a rack added mid-session appears after the next palette open; `cmdabl --bridge`
    → 0.4.0 with `chains`; the second palette open lists chain rows, picking one selects it;
    `goto kick` with a track and a pad of that name asks to pick; rename a pad and use the old
    name → "the Live Set changed; run the command again"; the matcher list (1c); the message
@@ -333,9 +335,12 @@ Decided by the user and still governing future work.
 - 2026-10-11: keep a bridge round trip under 100 ms where possible (rule in 0001 §8).
 - 2026-10-11: no timer for the faster drain for now; candidate again with follow mode.
 - 2026-10-12: `mute` and `solo` shall also work on rack chains and Drum Rack pads in 0.1.0
-  (`mute kick` → the pad); `arm` stays tracks-only. cmdabl-bridge checks whether the SDK can
-  write a chain's mute/solo; if it needs a script operation, the access token comes first and
-  its design goes to the user for confirmation.
+  (`mute kick` → the pad); `arm` stays tracks-only. The SDK cannot write a chain's mute/solo,
+  so the script gets a writing operation `chain_set` (0001 §9). Confirmed by the user: the
+  access token (new per Live start, in `~/Library/Application Support/cmdAbl/bridge-token`,
+  outside the repo, never logged; writing operations are refused without it, reads and
+  `select` need none); always the chain's own switch, for every rack type (whether a Drum
+  Rack pad's M button follows is checked in Live). In work: cmdabl-bridge, then cmdabl-modules.
 - 2026-10-12: exclusive arm/solo is not applied by commands; naming several tracks is an explicit
   choice, like Cmd-clicking the buttons (accepted).
 - 2026-10-11: `mute`/`solo`/`arm` toggle; `unmute`/`unsolo`/`unarm` switch off (0005).
