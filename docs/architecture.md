@@ -87,12 +87,12 @@ reads the import statements of every file under `src/` and fails when a rule is 
 | Layer | What it is | What it may not import |
 | ----- | ---------- | ---------------------- |
 | `src/core/` | The platform: tokenizer, parser, command tree, resolver, pick flow, the UI contract, the result presenter. Minimal on purpose. | `src/modules/`, `src/httpTrigger.ts`, `src/extension.ts` |
-| `src/modules/` | One folder per feature, listed in `src/modules/index.ts`. Each module declares commands. | another module's folder, `src/extension.ts`, `src/httpTrigger.ts`, the platform's dialog pages |
+| `src/modules/` | One folder per feature, listed in `src/modules/index.ts`. Each module declares commands and reaches Live through ports. | another module's folder, `src/extension.ts`, `src/httpTrigger.ts`, the platform's dialog pages, `src/ableton/bridge.ts`, `src/ableton/trackLookup.ts`, the SDK (`@ableton-extensions/*`) |
 | `src/ableton/` | The Live Set as an object tree, path resolution, and the bridge client that talks to the Remote Script. | `src/modules/`, `src/core/ui.ts`, `src/extension.ts` |
 | `remote-script/cmdAbl/` | The Remote Script, in Python. It runs inside Live and talks to the extension only over the UDP socket. | (Python; the rules above do not apply) |
 | `ui/` | The dialog pages: the palette, the pick list and the message page. They are HTML, CSS and JavaScript, inlined into the bundle at build time. | (HTML; no imports) |
 
-The test states the rules in four parts:
+The test states five rules:
 
 1. A module does not import another module's folder, `src/extension.ts`, `src/httpTrigger.ts`, or
    the platform's pages `interface`, `pick` and `feedback`. A module may import its own dialog
@@ -101,14 +101,16 @@ The test states the rules in four parts:
 2. `src/core/` does not import `src/modules/`, `src/httpTrigger.ts` or `src/extension.ts`.
 3. `src/ableton/` does not import `src/modules/`, `src/core/ui.ts` or `src/extension.ts`.
 4. Only `src/core/ui.ts` opens a dialog with `showModalDialog`. A module hands its page to the UI
-   surfaces instead. One exception is listed: `pakabl list` opens its page directly until a page
-   surface exists. The entry is still in the test, and its move to the page surface is in progress.
+   surfaces instead. The list of exceptions is empty.
+5. A module reaches Live through the ports on `ModuleApi`. It does not import `src/ableton/bridge.ts`,
+   `src/ableton/trackLookup.ts` or the SDK (`@ableton-extensions/*`). So a command's `run` can be
+   tested with fake ports.
 
 A known violation can be listed with a reason. An entry that no longer applies fails the test, so
 the list cannot grow stale.
 
-**How modules reach Live.** Modules are moving from the SDK's context to ports. The ports exist
-on `ModuleApi`; `api.context` is deprecated, and the commands still on it are being moved one by one:
+**How modules reach Live.** Modules reach Live only through ports on `ModuleApi`. The SDK's context
+is no longer part of `ModuleApi`. The ports are:
 
 - `bridge`: the typed client of the Remote Script. Its operations are the functions in
   `src/ableton/bridgeOps.ts`.
@@ -121,9 +123,8 @@ on `ModuleApi`; `api.context` is deprecated, and the commands still on it are be
   string the page sends back, or nothing when the dialog was dismissed.
 
 Modules keep `commands.add`, `pick`, `onPick`, `registerProvider`, `onCommandRun` and
-`showFeedback`. `api.context` still exists but is deprecated, and it will be removed once every
-module has moved to the ports. Tests give a module fake ports (`src/modules/testPorts.ts`), so no
-test needs Live.
+`showFeedback`. Tests give a module fake ports with `createFakeApi` (`src/modules/testPorts.ts`), so
+no test needs Live.
 
 ## The path of one command
 
