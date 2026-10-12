@@ -366,22 +366,23 @@ says what it points at (1 = track, 2 = device on the track, 3 = chain, 4 = devic
   LOM's `arm` stays false after the SDK wrote true — the SDK's read of `arm` is wrong, the LOM's is
   right, so `arm` is read through `track_facts`. Group, return and main tracks refuse arming.
 - `is_group` is not a LOM property: group tracks are `is_foldable`; `is_grouped` means inside a
-  group. Both from the LOM docs, to confirm in Live (also whether a group track is armable).
+  group. Both documented on the Cycling '74 `track` page (§11); a group track refuses arming
+  (verified in Live, although the reference only says "0 for return and master tracks").
 - `select` unfolds parent groups first, as `_unfold_parents` does today.
 - `chains`: `index` is the index in `device.chains`, on both sides; the extension checks the
   count against the SDK's `rack.chains` so names cannot attach to the wrong chain. The name is
   `Chain.name`; for a drum chain, the pad's name if the chain's name differs is **unverified**
   (a pad can hold more than one chain). `note` may be redundant with the SDK's
   `DrumChain.receivingNote`.
-- `select_chain` on a drum rack: a DrumChain has no back reference to its pad as far as the LOM
-  docs show; finding the pad means scanning `drum_pads`. **Unverified**; first Live test.
+- `select_chain` on a drum rack: a DrumChain has no back reference to its pad (the `drumchain`
+  page lists `in_note`, `out_note`, `choke_group` only); finding the pad means scanning
+  `drum_pads`. Not needed: a chain route selects the pad in Live (§10).
 - **`showChains` on `select` (proposal 2026-10-12, user wish `goto --unfold` / `find --unfold`).**
   Selecting a pad selects it in the Drum Rack but leaves the track's chains folded in the Session
   mixer; the user likes that as the default and wants an option to show them.
-  - *Evidence (LOM docs, bundled skill references `track.md`, `rack.md`, `device.md`):*
-    `Track.can_show_chains` (R, "1 if track contains an Instrument Rack device that can show
-    chains") and `Track.is_showing_chains` (R/W, observable, "Instrument Rack chain visibility in
-    Session View"); `RackDevice` has the same pair. *Assumptions, to confirm in Live:* that a track
+  - *Evidence (Cycling '74 LOM reference, `track` and `rackdevice` pages, see §11):*
+    `Track.can_show_chains` (bool, get) and `Track.is_showing_chains` (bool, get/set/observe),
+    both described for tracks with an Instrument Rack; `RackDevice` has the same pair. *Assumptions, to confirm in Live:* that a track
     with a Drum Rack reports `can_show_chains` true (the user's mixer shows Drum Rack chains as
     columns, so very likely), that setting `is_showing_chains` on the *track* is what unfolds those
     columns, and that nothing else (selection) changes.
@@ -676,6 +677,49 @@ These replace the "unverified" notes above where they overlap:
 
 Still unverified: `in_note` on drum chains, renaming a pad between palette open and command,
 token re-read after the control surface was disabled and re-enabled.
+
+### 11. The LOM mapping (source: Cycling '74 reference, Live 12.4.5, 2026-10-12)
+
+The authoritative source for LOM names, types and paths is https://docs.cycling74.com/apiref/lom/
+(one page per object at `/apiref/lom/<name>/`), not the bundled `.pyc` files. What the script
+uses, checked against it; `remoteScriptOps.ts` holds the same as data (`lom` per op, a test keeps
+it equal to what the Python sources touch):
+
+| Object (page) | Member | Type, access (reference) | Script use / note |
+| --- | --- | --- | --- |
+| `Track` (`track`) | `can_be_armed` | bool, get | "0 for return and master tracks". Verified in Live: also true for a MIDI track with an unavailable input |
+| | `arm` | bool, get/set/observe | "[not in return/master tracks]"; read only when `can_be_armed` |
+| | `is_foldable` | bool, get | the wire's `is_foldable` / extension's `isGroup`. Note: "Instrument and Drum Racks return 0 even though they can open and close" |
+| | `is_grouped` | bool, get | |
+| | `fold_state` | int, get/set | "only available if `is_foldable` = 1"; set to 0 to unfold parent groups |
+| | `group_track` | Track, get | `None` in the Python API when not grouped (the Max reference says id 0) |
+| | `can_show_chains` / `is_showing_chains` | bool get / bool get,set,observe | tracks with an Instrument Rack; `showChains` sets true only |
+| `Track.View` (`track_view`) | `selected_device` | Device, get/observe | read-back of `select_device` |
+| `Song.View` (`song_view`) | `selected_track` | Track, get/set/observe | |
+| | `select_device(device)` | function | "the track is not shown automatically"; the device is appointed only if its track is selected |
+| `RackDevice.View` (`rackdevice_view`) | `selected_chain` | Chain, get/set/observe | selects the chain (and a Drum Rack pad) in the rack |
+| `RackDevice` (`rackdevice`) | `chains` | list of Chain, get/observe | |
+| | `has_drum_pads` | bool, get/observe | "Only available for Drum Racks" — raises elsewhere |
+| `Device` (`device`) | `can_have_drum_pads` | bool, get | "1 for Drum Racks"; always readable, so read first |
+| | `name` | symbol, get/set/observe | |
+| `Chain` (`chain`) | `name` | unicode, get/set/observe | |
+| | `mute` / `solo` | bool, get/set/observe | "1 = muted (Chain Activator off)"; soloing does not turn off other chains |
+| `DrumChain` (`drumchain`) | `in_note` | int, get/set/observe | "Available since Live 12.3"; -1 = All Notes; still unverified in Live |
+
+**Not in the reference:** `Song.begin_undo_step()` / `end_undo_step()` (the `song` page lists only
+`undo`/`redo` and `can_undo`/`can_redo`). The script calls them guarded and degrades to no undo
+grouping. Everything else the script uses is documented.
+
+**Names.** The wire keeps LOM names (`can_be_armed`, `is_foldable`, `is_grouped`, `arm`, `mute`,
+`solo`) except `note` (= `DrumChain.in_note`), `chains_shown` (= `Track.is_showing_chains`) and
+`kind` (= `RackDevice.has_drum_pads`). The extension's `isGroup` is `Track.is_foldable`, with the
+reference's caveat above. Renames are a separate decision (`isGroup`→`isFoldable`,
+`chainsShown`→`isShowingChains`); not done.
+
+**Paths.** `lomPath({scope, route})` (`src/ableton/lomPath.ts`) gives `live_set tracks 4`,
+`live_set return_tracks 1`, `live_set master_track`, then `devices N` and `chains N` alternating
+along the route, 0-based as `routes.py` walks it. Drum pads (`drum_pads`) and return chains are
+not nodes of the tree and have no route.
 
 ## Phased rollout
 
