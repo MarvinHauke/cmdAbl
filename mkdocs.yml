@@ -40,14 +40,17 @@ exclude_docs: |
 
 nav:
   - Home: index.md
-  - Guides:
-      - Overview: guides/README.md
-      - Releasing cmdAbl: guides/release-cmdabl.md
-      - pakabl index: guides/pakabl-index.md
-      - CI: guides/ci.md
+  - Getting started: getting-started.md
   - Reference:
       - Commands: reference/commands.md
       - Remote Script: reference/remote-script.md
+  - Architecture: architecture.md
+  - Guides:
+      - Overview: guides/README.md
+      - Writing a command: guides/command-authoring.md
+      - Releasing cmdAbl: guides/release-cmdabl.md
+      - pakabl index: guides/pakabl-index.md
+      - CI: guides/ci.md
 
 markdown_extensions:
   - tables
