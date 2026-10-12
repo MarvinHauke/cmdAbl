@@ -21,7 +21,7 @@ A single chain name longer than the whole budget is not handled (it would end in
 import json
 
 from ..protocol import OpError
-from ..routes import parse_target, resolve
+from ..routes import parse_target, rack_chains, resolve
 
 MAX_TARGETS = 20
 BUDGET_BYTES = 3600  # of the 4096-byte reply cap; the envelope ({"v":..,"id":..,"ok":..}) uses the rest
@@ -32,10 +32,25 @@ def _size(obj):
     return len(json.dumps(obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8")) + 1
 
 
+def _is_drum_rack(device):
+    # `has_drum_pads` is "only available for Drum Racks": on an Instrument/Audio/MIDI Rack
+    # reading it can raise something other than AttributeError, so getattr's default is not
+    # enough (that took the whole rack down once). `can_have_drum_pads` is always readable.
+    try:
+        if not getattr(device, "can_have_drum_pads", False):
+            return False
+        return bool(getattr(device, "has_drum_pads", False))
+    except Exception:
+        return False
+
+
 def _chain_entry(chain, drum):
     entry = {"name": chain.name}
     if drum:
-        note = getattr(chain, "in_note", None)
+        try:
+            note = getattr(chain, "in_note", None)
+        except Exception:
+            note = None
         if isinstance(note, int) and not isinstance(note, bool):
             entry["note"] = note
     return entry
@@ -53,10 +68,10 @@ def _plan(song, target):
         if not isinstance(offset, int) or isinstance(offset, bool) or offset < 0:
             raise OpError("bad_request", "offset must be a non-negative integer")
         device = resolve(song, scope, route)[-1]
-        chains = getattr(device, "chains", None)
+        chains = rack_chains(device)
         if chains is None:
             raise OpError("unsupported", "not a rack device")
-        return ("rack", device, chains, offset, bool(getattr(device, "has_drum_pads", False)))
+        return ("rack", device, chains, offset, _is_drum_rack(device))
     except OpError as e:
         return {"error": {"code": e.code, "text": e.text}}
     except Exception as e:  # an odd device must not hide the others

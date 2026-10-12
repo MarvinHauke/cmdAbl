@@ -80,13 +80,20 @@ export class ChainNameCache {
   private dirty = false;
   private latest: { racks: RackRef[]; bridge: Bridge } | null = null;
 
-  /** `setTimer` is injectable for tests; the default timer is unref'd so it never keeps the host alive. */
+  private lastSummary = "";
+
+  /**
+   * `setTimer` and `log` are injectable for tests; the default timer is unref'd so it never keeps
+   * the host alive, the default log is the extension log (one line per refresh, only when the
+   * line differs from the previous one).
+   */
   constructor(
     private readonly setTimer: (fn: () => void, ms: number) => unknown = (fn, ms) => {
       const t = setTimeout(fn, ms);
       (t as { unref?: () => void }).unref?.();
       return t;
     },
+    private readonly log: (line: string) => void = (line) => console.log(line),
   ) {}
 
   /**
@@ -113,17 +120,41 @@ export class ChainNameCache {
     }
     try {
       const reply = await fetchChains(bridge, racks);
-      if (!reply.ok) return;
+      if (!reply.ok) {
+        this.say(`cmdAbl: chains refresh: ${racks.length} racks asked, request failed (code ${reply.code}): ${reply.text}`);
+        return;
+      }
       const next = new Map<string, ChainEntry>();
+      const skipped: string[] = [];
+      let names = 0;
       racks.forEach((rack, i) => {
         const r = reply.value[i];
         if (r?.ok && r.value.names.length === rack.chainIds.length) {
           next.set(keyOf(rack.scope, rack.route, rack.handleId), { ...r.value, chainIds: rack.chainIds });
+          names += r.value.names.length;
+        } else if (r?.ok) {
+          skipped.push(`${rack.scope} [${rack.route.join(",")}]: script has ${r.value.names.length} chains, SDK ${rack.chainIds.length}`);
+        } else {
+          skipped.push(`${rack.scope} [${rack.route.join(",")}]: ${r?.text ?? "no answer"}`);
         }
       });
       this.entries = next;
+      this.say(
+        `cmdAbl: chains refresh: ${racks.length} racks asked, ${next.size} answered, ${names} chain names` +
+          (skipped.length > 0 ? `; skipped: ${skipped.join("; ")}` : ""),
+      );
     } catch {
       // nothing may throw out of a background refresh
+    }
+  }
+
+  private say(line: string): void {
+    if (line === this.lastSummary) return;
+    this.lastSummary = line;
+    try {
+      this.log(line);
+    } catch {
+      // logging must never fail a refresh
     }
   }
 

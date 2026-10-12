@@ -50,6 +50,10 @@ def select(song, args):
             rack.view.selected_chain = target
         except Exception as e:
             raise OpError("unsupported", "cannot select a chain here: %s" % e)
-        if rack.view.selected_chain != target:
+        try:
+            selected = rack.view.selected_chain
+        except Exception as e:
+            raise OpError("unsupported", "cannot read the selected chain: %s" % e)
+        if selected != target:
             raise _fail("Live did not select the chain")
     return {"name": target.name}

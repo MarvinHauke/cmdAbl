@@ -109,3 +109,32 @@ test("a throttled trigger leaves one trailing refresh that bounds the staleness"
   assert.equal(timers[0]!.ms, REFRESH_INTERVAL_MS - 500);
   assert.equal(requests(), 1);
 });
+
+test("a rack that appears after the first refresh is picked up by the next one", async () => {
+  const lines: string[] = [];
+  const names: Record<string, string[]> = { "0.1": ["Kick", "Snare"] };
+  const { bridge } = scripted(names);
+  const cache = new ChainNameCache(undefined, (l) => lines.push(l));
+  const s = song();
+  await cache.scheduleRefresh(findRacks(s), bridge, 1000);
+  assert.equal(cache.get("regular", [1, 0], "r2", ["c3"]), null);
+  // the user groups an instrument into an Instrument Rack on track 1 → a new rack handle with two chains
+  s.tracks[1]!.devices = [dev("r9", "Instrument Rack", [ch("n1"), ch("n2")])];
+  names["1.0"] = ["Organ Softer", "Test chain"];
+  await cache.scheduleRefresh(findRacks(s), bridge, 1000 + REFRESH_INTERVAL_MS);
+  assert.deepEqual(cache.get("regular", [1, 0], "r9", ["n1", "n2"])?.names, ["Organ Softer", "Test chain"]);
+  assert.match(lines.at(-1)!, /chains refresh: \d+ racks asked, \d+ answered, \d+ chain names/);
+});
+
+test("the refresh log is one line per change and names the reason a rack was skipped", async () => {
+  const lines: string[] = [];
+  const racks = findRacks(song());
+  const { bridge } = scripted({ "0.1": ["Kick", "Snare"] }); // 1.0 and 1.0.0.0 are errors
+  const cache = new ChainNameCache(undefined, (l) => lines.push(l));
+  await cache.refresh(racks, bridge);
+  await cache.refresh(racks, bridge);
+  assert.equal(lines.length, 1);
+  assert.match(lines[0]!, /4 racks asked, 1 answered, 2 chain names; skipped: regular \[1,0\]: Remote Script: x/);
+  await cache.refresh(racks, createFakeBridge({ running: false }));
+  assert.match(lines.at(-1)!, /request failed \(code 5\)/);
+});

@@ -53,13 +53,26 @@ class FakeDeviceView(object):
 
 
 class FakeDevice(object):
+    """A device. A rack (`chains` given) behaves like the LOM: `can_have_drum_pads` is always
+    readable, `has_drum_pads` raises (not AttributeError) unless it is a Drum Rack."""
+
     def __init__(self, name, chains=None, drum=False):
         self.name = name
         self.view = FakeDeviceView()
+        self._drum = drum
         if chains is not None:
             self.chains = chains
-            self.has_drum_pads = drum
         self.devices = []
+
+    @property
+    def can_have_drum_pads(self):
+        return self._drum
+
+    @property
+    def has_drum_pads(self):
+        if not self._drum:
+            raise RuntimeError("has_drum_pads is only available for Drum Racks")
+        return True
 
 
 class FakeChain(object):

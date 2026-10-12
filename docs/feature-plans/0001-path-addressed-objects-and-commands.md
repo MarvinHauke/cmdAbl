@@ -470,8 +470,18 @@ background** (`src/ableton/chainNames.ts`):
   that acts on a chain node must verify the name through the script first (as `select` does).
 - While the script is unavailable each attempt is one `hello` (500 ms) at most every 10 s of
   activity; it also rewrites the cached state `requires` reads. Harmless.
-- Unverified in Live: `has_drum_pads` and `in_note` on drum chains; names of nested racks (racks
-  inside a chain) are not in the tree.
+- **Verified in Live (2026-10-12, script 0.4.0):** selecting a Drum Rack pad through `select` with
+  a chain route works (`find vermona kick` found it and the pad was selected in the rack view).
+- **Bug found in Live and fixed (script 0.4.1):** the chains of an Instrument Rack were missing.
+  Cause (from the LOM docs, reproduced with a fake that raises like the LOM): `has_drum_pads` is
+  "only available for Drum Racks", reading it on an Instrument Rack raises something other than
+  `AttributeError`, so `getattr(…, default)` did not help and the whole rack was answered as
+  `failed` and left out. The script now asks `can_have_drum_pads` first and guards both reads.
+  The refresh also writes one log line per change (`cmdAbl: chains refresh: n racks asked, m
+  answered, k chain names; skipped: …`) so a missing rack shows its reason.
+- Unverified in Live: `in_note` on drum chains. **Not covered:** racks nested inside a chain —
+  their chains are not in the tree (`chains` itself accepts nested routes; the tree build does
+  not walk into chains yet).
 - Behaviour changes: `goto <name>` also matches pads (a name shared by a track and a pad asks to
   pick); `goto` on a chain runs `select` with a route of length 3 (`rack.view.selected_chain`,
   unverified). A 0.3.0 script keeps working (the op list decides); only `cmdabl --bridge` differs.

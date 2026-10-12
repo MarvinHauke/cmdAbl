@@ -22,6 +22,16 @@ class Chains(unittest.TestCase):
         self.assertEqual(e["chains"][0]["note"], 36)
         self.assertNotIn("next", e)
 
+    def test_instrument_rack_chains_are_answered(self):
+        # Regression: reading has_drum_pads raised on an Instrument Rack and the whole rack was skipped.
+        rack = FakeDevice("Instrument Rack", chains=[FakeChain("Organ Softer"), FakeChain("Test chain")])
+        song = FakeSong(tracks=[FakeTrack("E-Piano", devices=[rack])])
+        r = chains(song, {"targets": [{"route": [0, 0]}]})
+        e = r["racks"][0]
+        self.assertNotIn("error", e)
+        self.assertEqual(e["kind"], "rack")
+        self.assertEqual([c["name"] for c in e["chains"]], ["Organ Softer", "Test chain"])
+
     def test_plain_rack_has_no_notes_and_nested_racks_resolve(self):
         inner = FakeDevice("Inner Rack", chains=[FakeChain("A"), FakeChain("B")])
         outer = FakeDevice("Outer", chains=[FakeChain("Layer", devices=[inner])])

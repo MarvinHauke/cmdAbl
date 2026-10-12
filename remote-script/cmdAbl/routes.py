@@ -12,6 +12,18 @@ from .protocol import OpError
 SCOPES = ("regular", "return", "master")
 
 
+def rack_chains(device):
+    """The chains of a rack device, or None when it is not one.
+
+    Guarded: some LOM properties raise something other than AttributeError when they do not
+    apply, which getattr's default does not catch.
+    """
+    try:
+        return getattr(device, "chains", None)
+    except Exception:
+        return None
+
+
 def tracks_for_scope(song, scope):
     if scope == "return":
         return song.return_tracks
@@ -60,7 +72,7 @@ def resolve(song, scope, route):
         if depth % 2 == 1:  # a device of a track or chain
             current = _item(current.devices, index, "device")
         else:  # a chain of a rack device
-            chains = getattr(current, "chains", None)
+            chains = rack_chains(current)
             if chains is None:
                 raise OpError("out_of_range", "device has no chains")
             current = _item(chains, index, "chain")
