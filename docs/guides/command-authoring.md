@@ -18,11 +18,28 @@ api.commands.add({
 
 - A command does one thing. Words are commands and subcommands; `--flags` are options; an action
   is never a flag.
-- The handler never parses raw input, never resolves paths and never shows a dialog for an error:
+- The handler never parses raw input, never resolves paths, never reaches the SDK or the socket directly and never shows a dialog for an error:
   it returns a `CommandResult` (`ok()`, `fail(ExitCode.…, message, details)`).
 - Prefer setting over toggling where a re-run from history should mean the same thing; write
   several targets in one `withinTransaction` (its callback must be synchronous — await before it, not inside).
 - Declare `kinds` on `path` arguments unless the command really means every kind.
+
+## Reaching Live: the ports
+
+A module never touches the SDK or the socket; it uses the ports on `api`, so a command's `run` can
+be tested with fakes (`createFakeApi` in `src/modules/testPorts.ts`).
+
+| Port | Use it for |
+|---|---|
+| `api.bridge` | Calls to the Remote Script (`select`, `trackFacts`, `chainSet`, …) through the typed functions in `src/ableton/bridgeOps.ts`. It never throws; a failure is a result with the bridge's exit code and text, which you pass on unchanged. Declare `requires: ["bridge"]` when the command cannot work without it. |
+| `api.liveSet.nodes()` | The Set's objects (tracks, devices, chains and pads), flattened, for find-like commands and the palette rows. |
+| `api.tracks` | `transaction(fn)` (one undo step; `fn` is synchronous and catches its own writes) and `track(node)` → `{ mute, solo, arm }` or null. SDK-backed, so it works without the Remote Script. |
+| `api.log(line)` | One log line; write your own `cmdAbl: ` prefix. |
+| `api.dialog(html, width, height, name)` | A page of the module's own, through the dialog queue; resolves with the string the page returns, or null when dismissed. |
+| `api.pick(title, candidates, multi)` | The pick list, when a command has to ask. |
+
+Test a command by building the fake with `createFakeApi({ nodes, bridge })`, activating the module
+on `fake.api`, and calling the declared command's `run` with an invocation.
 
 ## Documentation fields
 
