@@ -38,12 +38,6 @@
       caret-color: var(--accent);
     }
 
-    #mode-badge {
-      font-size: 10px;
-      color: var(--dim);
-      user-select: none;
-    }
-
     /* ── dropdown ── */
     #dropdown { flex: 1; overflow-y: auto; }
     #dropdown.hidden { display: none; }
@@ -68,7 +62,6 @@
   <div id="bar">
     <span id="colon">:</span>
     <input id="input" type="text" autocomplete="off" spellcheck="false" />
-    <span id="mode-badge"></span>
   </div>
 
   <div id="dropdown"></div>
@@ -78,23 +71,20 @@
 
   <script>
     // Injected by the extension before the dialog opens. PaletteItem[]:
-    //   { id, type, title, subtitle?, keywords?, path?, route?, flags?: [{ name, description }] }
+    //   { id, type, title, subtitle?, keywords?, path? }
     const ITEMS = /*ITEMS_PLACEHOLDER*/null;
 
     const input     = document.getElementById('input');
     const dropdown  = document.getElementById('dropdown');
-    const modeBadge = document.getElementById('mode-badge');
 
     const itemsById = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 
     // 'path' lets a bare "/vermona/kick"-style query fuzzy-match a Live
     // object's address directly, on top of matching its bare name.
     const itemRank = CmdMatch.ranker(ITEMS, ['title', 'subtitle', 'keywords', 'path']);
-    const flagRanks = new Map();   // flags array -> ranker, built once per command
 
     let items     = [];   // current completion candidates
     let activeIdx = 0;
-    let mode      = 'command'; // 'command' | 'flag'
 
     // ── messaging ──────────────────────────────────────────────────────────
     // Returns a structured PaletteResult to the host as a JSON string (the
@@ -114,9 +104,7 @@
     // after it is *that command's argument text* — not a fresh fuzzy query
     // against the whole palette (which would let e.g. "mute Microtonic"
     // resolve to selecting the Microtonic track instead of running `mute`
-    // with "Microtonic" as its argument). Commands with declared completable
-    // flags get fuzzy-matched within those flags ('flag' phase); commands
-    // that take raw arguments (mute/solo/…) get no completion at all
+    // with "Microtonic" as its argument). Arguments get no completion
     // ('args' phase) — Enter falls through to rawResult(), which parses the
     // literal typed text. Otherwise stay in 'command' phase so names
     // containing spaces (e.g. a track called "Opal Lead") keep fuzzy-matching.
@@ -126,67 +114,45 @@
         const cmdName = raw.slice(0, spaceIdx);
         const cmd = itemsById[cmdName];
         if (cmd?.type === 'command') {
-          const rest = raw.slice(spaceIdx + 1);
-          if (cmd.flags?.length) return { phase: 'flag', query: rest.trim(), cmdName };
-          return { phase: 'args', query: rest, cmdName };
+          return { phase: 'args', query: raw.slice(spaceIdx + 1) };
         }
       }
-      return { phase: 'command', query: raw.trim(), cmdName: null };
+      return { phase: 'command', query: raw.trim() };
     }
 
     // ── build completion list (fuzzy) ──────────────────────────────────────
     function computeItems(raw) {
-      const { phase, query, cmdName } = parse(raw);
-      mode = phase;
+      const { phase, query } = parse(raw);
 
       if (phase === 'args') return []; // no completion — literal pass-through via rawResult()
+      if (!query) return ITEMS;
 
-      if (phase === 'command') {
-        if (!query) return ITEMS;
-        // Drop "canned full invocation" items (command-type, multi-word id —
-        // e.g. a history entry "mute A, B") that the user has already typed
-        // past — e.g. typing "mute A, B, C" after running "mute A, B" would
-        // otherwise leave the shorter, stale row fuzzy-matched and active, so
-        // Enter would silently run the old invocation instead of the new one.
-        // Forward-completable matches (entry.startsWith(query)) stay.
-        return itemRank(query).filter(item =>
-          !(item.type === 'command' && item.id.includes(' ')
-            && query.length > item.id.length && query.startsWith(item.id)));
-      }
-
-      // flag phase
-      const flags = itemsById[cmdName ?? '']?.flags ?? [];
-      if (!flags.length || !query) return flags;
-      if (!flagRanks.has(flags)) flagRanks.set(flags, CmdMatch.ranker(flags, ['name', 'description']));
-      return flagRanks.get(flags)(query);
+      // Drop "canned full invocation" items (command-type, multi-word id —
+      // e.g. a history entry "mute A, B") that the user has already typed
+      // past — e.g. typing "mute A, B, C" after running "mute A, B" would
+      // otherwise leave the shorter, stale row fuzzy-matched and active, so
+      // Enter would silently run the old invocation instead of the new one.
+      // Forward-completable matches (entry.startsWith(query)) stay.
+      return itemRank(query).filter(item =>
+        !(item.type === 'command' && item.id.includes(' ')
+          && query.length > item.id.length && query.startsWith(item.id)));
     }
-
-    // ── row shape differs between phases (PaletteItem vs FlagDef) ────────────
-    function labelOf(item) { return mode === 'command' ? item.title : item.name; }
-    function descOf(item)  { return (mode === 'command' ? item.subtitle : item.description) ?? ''; }
 
     // ── structured payload for a chosen item ────────────────────────────────
     function resultFor(item) {
-      if (mode === 'flag') {
-        const cmdName = input.value.slice(0, input.value.indexOf(' '));
-        return { type: 'command', id: cmdName, line: cmdName + ' ' + item.name };
-      }
       // A "canned full invocation" (command-type, multi-word id — e.g. a
       // history entry "mute A, B"): split it exactly like raw typed input
-      // (rawResult, below) so it runs through the very same {id, flags} path
+      // (rawResult, below) so it runs through the very same {id, line} path
       // a fresh invocation would — the host never needs to know it came from
       // a stored entry rather than the keyboard.
       if (item.type === 'command' && item.id.includes(' ')) {
         const sp = item.id.indexOf(' ');
         return { type: 'command', id: item.id.slice(0, sp), line: item.id };
       }
-      // Command-phase item (command, track, device, …). Pass through
-      // action/route/scope so the host can route and re-resolve Live objects.
+      // A command, or a Live object row (track, device, chain, …): the host
+      // runs `goto <unique path>` for the latter.
       const result = { type: item.type, id: item.id };
       if (item.type === 'command') result.line = item.id;
-      if (item.action !== undefined) result.action = item.action;
-      if (item.route !== undefined) result.route = item.route;
-      if (item.scope !== undefined) result.scope = item.scope;
       return result;
     }
 
@@ -204,8 +170,6 @@
       items     = computeItems(input.value);
       activeIdx = Math.min(activeIdx, Math.max(items.length - 1, 0));
 
-      modeBadge.textContent = mode === 'flag' ? '--flag' : '';
-
       dropdown.innerHTML = '';
 
       if (!items.length) {
@@ -221,10 +185,10 @@
         // textContent, not innerHTML: item titles may be user data (track names).
         const label = document.createElement('span');
         label.className = 'label';
-        label.textContent = labelOf(item);
+        label.textContent = item.title;
         const desc = document.createElement('span');
         desc.className = 'desc';
-        desc.textContent = descOf(item);
+        desc.textContent = item.subtitle ?? '';
         row.append(label, desc);
         row.addEventListener('mousedown', e => { e.preventDefault(); send(resultFor(item)); });
         dropdown.appendChild(row);
@@ -250,18 +214,14 @@
         const item = items[activeIdx];
         if (!item) return;
         // Tab only autocompletes the highlighted item into the input — it never
-        // executes. The user commits with Enter (and can edit / add flags first).
-        if (mode === 'command') {
-          // Commands get a trailing space so you land in flag completion. Live
-          // objects fill their *path*, not their bare name — names collide
-          // constantly (multiple devices/tracks called "DefaultTracks", "EQ
-          // Eight", …), so completing to the name would just re-match every
-          // same-named object and strand you on an arbitrary one of them. The
-          // path is what's actually unique enough to land back on this object.
-          input.value = item.type === 'command' ? item.id + ' ' : (item.path ?? item.title);
-        } else {
-          input.value = input.value.slice(0, input.value.indexOf(' ')) + ' ' + item.name;
-        }
+        // executes. The user commits with Enter (and can edit first).
+        // Commands get a trailing space so you land in their arguments. Live
+        // objects fill their *path*, not their bare name — names collide
+        // constantly (multiple devices/tracks called "DefaultTracks", "EQ
+        // Eight", …), so completing to the name would just re-match every
+        // same-named object and strand you on an arbitrary one of them. The
+        // path is what's actually unique enough to land back on this object.
+        input.value = item.type === 'command' ? item.id + ' ' : (item.path ?? item.title);
         activeIdx = 0;
         render();
       } else if (e.key === 'ArrowDown') {
