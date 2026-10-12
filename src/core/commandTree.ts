@@ -63,6 +63,12 @@ export interface OptionDef {
   short?: string;
   /** If true the option consumes a value: `--name value` or `--name=value`. */
   takesValue?: boolean;
+  /**
+   * Allowed values of a value option (needs `takesValue`): the parser rejects
+   * anything else with a usage error listing them, ignores case and hands the
+   * handler the declared spelling. Same rules as enum argument choices.
+   */
+  choices?: string[];
   summary: string;
 }
 
@@ -181,6 +187,15 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
         if (optionShorts.has(opt.short)) problems.push(`${at}: duplicate short option "-${opt.short}"`);
         optionShorts.add(opt.short);
       }
+      if (opt.choices !== undefined) {
+        if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" has choices but takes no value`);
+        const lower = opt.choices.map((c) => c.toLowerCase());
+        if (!lower.length) problems.push(`${at}: option "--${opt.name}" has an empty choices list`);
+        if (new Set(lower).size !== lower.length) problems.push(`${at}: duplicate choices in option "--${opt.name}" (case is ignored)`);
+        if (opt.choices.some((c) => c === "" || c.startsWith("-") || /\s/.test(c))) {
+          problems.push(`${at}: a choice of option "--${opt.name}" is empty, starts with a dash or holds a space`);
+        }
+      }
     }
 
     const args = node.args ?? [];
@@ -234,6 +249,11 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
   return problems;
 }
 
+/** `value`, or `0|1` for an option with declared choices. */
+export function valueLabel(opt: OptionDef): string {
+  return opt.choices?.length ? opt.choices.join("|") : "value";
+}
+
 /** `pakabl install <id> [--force]` — the one-line usage of a node. */
 export function usage(node: CommandNode<any, any>, path: string[]): string {
   const parts = [...path];
@@ -242,7 +262,7 @@ export function usage(node: CommandNode<any, any>, path: string[]): string {
     return parts.join(" ");
   }
   for (const opt of node.options ?? []) {
-    parts.push(opt.takesValue ? `[--${opt.name} <value>]` : `[--${opt.name}]`);
+    parts.push(opt.takesValue ? `[--${opt.name} <${valueLabel(opt)}>]` : `[--${opt.name}]`);
   }
   for (const arg of node.args ?? []) {
     const shown = arg.kind === "enum" && arg.choices?.length ? arg.choices.join("|") : arg.name;
@@ -272,7 +292,7 @@ export function helpText(node: CommandNode<any, any>, path: string[]): string {
   if (node.options?.length) {
     lines.push("", "options:");
     for (const opt of node.options) {
-      const flag = `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${opt.takesValue ? " <value>" : ""}`;
+      const flag = `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${opt.takesValue ? ` <${valueLabel(opt)}>` : ""}`;
       lines.push(`  ${flag.padEnd(22)} ${opt.summary}`);
     }
   }

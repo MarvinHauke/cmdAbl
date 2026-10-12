@@ -15,7 +15,7 @@ const tree: CommandNode<void, string>[] = [
     description: "Toggles the mute state.",
     destructive: true,
     requires: ["bridge"],
-    options: [{ name: "all", short: "a", summary: "every | any match" }],
+    options: [{ name: "all", short: "a", summary: "every | any match" }, { name: "set", takesValue: true, choices: ["0", "1"], summary: "state" }],
     args: [{ name: "track", kind: "path", kinds: ["track"], variadic: true, summary: "the tracks" }],
     examples: [{ line: "mute /Kick", note: "mute one" }],
     run: () => {},
@@ -32,10 +32,11 @@ test("renderCommandReference: deterministic, sorted, with usage, arguments, opti
   assert.equal(renderCommandReference([...tree].reverse()), text);
   assert.ok(text.indexOf("## `grp`") < text.indexOf("## `mute`"));
   assert.ok(text.indexOf("## `mute`") < text.indexOf("## `zeta`"));
-  assert.match(text, /\*\*Usage:\*\* `mute \[--all\] <track>…`/);
+  assert.match(text, /\*\*Usage:\*\* `mute \[--all\] \[--set <0\|1>\] <track>…`/);
   assert.match(text, /\| `<track>…` \| path \(track\) \| yes \| the tracks \|/);
   assert.match(text, /\| `-a, --all` \| every \\\| any match \|/);
   assert.match(text, /mute tracks \(&lt;id>@&lt;version> &amp; `<code>`\)/);
+  assert.match(text, /\| `--set <0\|1>` \|/);
   assert.match(text, /Needs the Remote Script/);
   assert.match(text, /```\nmute \/Kick\n```\n\nmute one/);
   assert.match(text, /Removes or irreversibly changes something/);

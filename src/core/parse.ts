@@ -115,7 +115,18 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
     }
     const value = inlineValue ?? rest[++k]?.value;
     if (value === undefined) return error(ExitCode.USAGE, `option "--${def.name}" needs a value`);
-    options[def.name] = value;
+    if (def.choices) {
+      const hit = def.choices.find((c) => c.toLowerCase() === value.toLowerCase());
+      if (hit === undefined) {
+        return error(
+          ExitCode.USAGE,
+          `invalid value "${value}" for option "--${def.name}": choose one of ${def.choices.join(", ")}\nusage: ${usage(node, path)}`,
+        );
+      }
+      options[def.name] = hit;
+    } else {
+      options[def.name] = value;
+    }
   }
 
   // 3. Assign positionals to the declared arguments, in order.

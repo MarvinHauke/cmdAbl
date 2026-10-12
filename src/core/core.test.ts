@@ -389,3 +389,35 @@ test("description, examples and argument summaries: validated, shown by help, ca
     /examples belong on a runnable command/,
   );
 });
+
+test("option choices: the parser lists them on a bad value, usage shows <0|1>, the line is remembered with the option", () => {
+  const tree2: CommandNode<void, string>[] = [
+    {
+      name: "mute",
+      summary: "mute",
+      options: [{ name: "set", short: "s", takesValue: true, choices: ["0", "1"], summary: "set the state" }],
+      args: [{ name: "track", kind: "path", variadic: true }],
+      run: () => {},
+    },
+  ];
+  assert.deepEqual(validateTree(tree2), []);
+  assert.equal(usage(tree2[0]!, ["mute"]), "mute [--set <0|1>] <track>…");
+  assert.match(helpText(tree2[0]!, ["mute"]), /-s, --set <0\|1>/);
+  const good = parse("mute --set 0 /a", tree2);
+  assert.equal(good.kind, "run");
+  if (good.kind === "run") assert.deepEqual(good.invocation.options, { set: "0" });
+  const short = parse("mute -s 1 /a", tree2);
+  if (short.kind === "run") assert.deepEqual(short.invocation.options, { set: "1" });
+  const bad = parse("mute --set 2 /a", tree2);
+  assert.equal(bad.kind, "error");
+  if (bad.kind === "error") {
+    assert.equal(bad.result.code, ExitCode.USAGE);
+    assert.match(bad.result.message ?? "", /invalid value "2" for option "--set": choose one of 0, 1/);
+  }
+  const broken = (opt: object): string =>
+    validateTree([{ name: "x", summary: "s", options: [{ name: "o", summary: "s", ...opt }], run: () => {} } as CommandNode<void, string>]).join("\n");
+  assert.match(broken({ choices: ["a"] }), /has choices but takes no value/);
+  assert.match(broken({ takesValue: true, choices: ["a", "A"] }), /duplicate choices/);
+  assert.match(broken({ takesValue: true, choices: ["-a"] }), /starts with a dash/);
+  assert.match(broken({ takesValue: true, choices: [] }), /empty choices list/);
+});
