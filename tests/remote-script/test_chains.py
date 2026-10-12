@@ -89,7 +89,7 @@ class ThroughTheProtocol(unittest.TestCase):
 
         targets = [{"route": r, "offset": (offsets or {}).get(i, 0)} for i, r in enumerate(routes)]
         data = json.dumps({"v": 1, "id": "x", "op": "chains", "args": {"targets": targets}}).encode()
-        reply, _ = protocol.handle_request(data, {"chains": lambda a: chains(song, a)})
+        reply, _ = protocol.handle_request(data, {"chains": lambda a: chains(song, a)}, ())
         self.assertLessEqual(len(reply), 4096)
         return json.loads(reply)
 

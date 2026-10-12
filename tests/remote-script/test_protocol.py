@@ -13,7 +13,7 @@ def req(**kw):
 
 
 def run(data, ops=None):
-    reply, problem = protocol.handle_request(data, ops or {})
+    reply, problem = protocol.handle_request(data, ops or {}, ())
     return (json.loads(reply) if reply else None), problem
 
 

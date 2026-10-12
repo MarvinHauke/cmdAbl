@@ -80,6 +80,7 @@ class TrackFacts(unittest.TestCase):
         reply, _ = protocol.handle_request(
             json.dumps({"v": 1, "id": "x", "op": "track_facts", "args": {"targets": [{"route": [i]} for i in range(MAX_TARGETS)]}}).encode(),
             {"track_facts": lambda a: track_facts(song, a)},
+            (),
         )
         self.assertLess(len(reply), 4097)
 

@@ -43,11 +43,14 @@ class NoSocket(object):
 def surface(song, datagrams):
     from cmdAbl import cmdabl as mod
 
+    # No real port and, above all, no real token file: the user's own token must not be touched.
     real, mod.socket = mod.socket, NoSocket()
+    real_token, mod.create_token = mod.create_token, lambda *a, **k: None
     try:
         s = cmdAbl(None)
     finally:
         mod.socket = real
+        mod.create_token = real_token
     s._song = song
     s._socket = Sock(datagrams)
     return s

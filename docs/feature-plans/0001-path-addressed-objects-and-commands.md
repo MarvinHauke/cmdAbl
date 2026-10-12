@@ -545,54 +545,80 @@ Rules for every new operation: one handler in `ops/`, one typed function in `bri
 test on each side; described in §4 before it is built, and the script `VERSION` goes up with it;
 only selecting and reading until the access token exists.
 
-### 9. Write operations and the access token (proposal 2026-10-12 — the user confirms before anything is built)
+### 9. Write operations and the access token (confirmed by the user 2026-10-12; built in script 0.5.0)
 
 **Trigger:** `mute` and `solo` on chains and Drum Rack pads in 0.1.0 (`mute kick` → the Kick pad).
 
-**Can the SDK do it?** No (checked in the vendored `index.d.mts` / `index.mjs` and `docs/sdk-tree.md`).
+**The SDK cannot do it** (checked in the vendored `index.d.mts` / `index.mjs` and `docs/sdk-tree.md`):
 `Chain` has `devices`, `mixer`, `insertDevice`, `deleteDevice`, `duplicateDevice`; `DrumChain` adds
-`receivingNote`; `ChainMixer` has `volume`, `panning`, `sends` only. The data model has no
-`chainGetMute`/`chainSetMute`/solo/activator calls — mute/solo exist for `Track` and clip `muted`
-only. So the write goes through the Remote Script (LOM `Chain.mute`/`solo`, `DrumPad.mute`/`solo`,
-R/W per the LOM docs).
+`receivingNote`; `ChainMixer` has `volume`, `panning`, `sends` only; the data model has mute/solo
+for `Track` and clip `muted` only. So the write goes through the Remote Script (LOM `Chain.mute` /
+`Chain.solo`, R/W: "1 = muted (Chain Activator off)").
 
-**Which button the user sees.** In a Drum Rack the M/S buttons on a pad are the *pad's*
-(`DrumPad.mute`/`solo`, "1 = muted"); a chain's own `mute` is its Chain Activator ("1 = muted
-(Chain Activator off)"). Instrument/Audio/MIDI Rack chains have only the chain's. Proposal: for a
-drum chain, find its pad (scan `drum_pads` for the pad whose `chains` contain it — no back
-reference is known; unverified) and write the pad; for other chains write `chain.mute`/`solo`.
-Read-back after the write, like `select`. *Unverified in Live:* that `DrumPad.mute` is the visible
-pad button, and whether writing it also flips the chain's activator.
+**Which switch (decided): always the chain**, uniform for every rack type — `chain.mute` /
+`chain.solo`, no pad lookup. In a Drum Rack the pad's M/S buttons are `DrumPad.mute` / `solo`;
+whether the pad button follows the chain's switch is **unverified** and is the Live test.
+**Reference (user, 2026-10-12):** the buttons he wants `mute`/`solo` to switch are the speaker and
+`S` buttons of the chain *columns* in the Session mixer when a track's chains are shown (Kick,
+Drum1, …) — the chain's own activator (`mute`) and `solo`. The Live test checks that the chain's
+column in the mixer shows the change. A
+pad-based write (scan `drum_pads` for the pad whose `chains` contain the chain) is a possible later
+addition if the chain's switch turns out not to match the visible button.
 
-**Operation.** `chain_set {scope, route, expectName, mute?: bool, solo?: bool}` → `{name, mute,
-solo, via: "pad"|"chain"}` with the values read back; `stale` / `out_of_range` as for `select`,
-`failed` when the read-back differs. One request per command: several chains are
-`chain_set {targets: [...]}`, one entry each, like `track_facts`. Set semantics only (the caller
-computes the toggle from the values it read — `chains` replies carry `mute`/`solo` for this, a
-small addition).
+**Operations**
+- `chain_set` `{targets: [{scope, route, expectName, mute?, solo?}, …]}` (chain routes: odd length
+  ≥ 3, at most 20, `expectName` required, at least one of `mute`/`solo`, set semantics) →
+  `{chains: [{name, mute, solo} | {error: {code, text}}, …]}` read back after the write; `stale` /
+  `out_of_range` → exit 1 "the Live Set changed; run the command again" as for `select`; `failed`
+  if Live did not apply the change. A writing op: needs the access token.
+- `chains` replies carry `mute` / `solo` per chain **only when true** (absent = off, keeps the
+  entries small), so modules toggle from read values as for tracks.
+- Extension (`src/ableton/bridgeOps.ts`): `chainSwitches(bridge, nodes)` → current
+  `{name, mute, solo}` per chain node (one `chains` request for all racks involved, name checked);
+  `chainSet(bridge, [{…node, mute?, solo?}])` → `{name, mute, solo}` per chain read back. The
+  caller (cmdabl-modules) computes the toggle from `chainSwitches` and writes with `chainSet`.
 
-**Access token (mandatory before the first op that changes something).**
+**Access token** (mandatory before the first operation that changes something — built with the
+first one, `chain_set`)
 - *Threat model.* Any local process can send UDP to 127.0.0.1:27185. The same user can already
   change a Live Set in other ways, so the token protects against another local user and against
-  stray or hostile datagrams from sandboxed software — not against the user's own processes.
-- *Creation.* The script creates a random token (`secrets.token_hex(16)`) when it starts and writes
-  it to a file in a fixed per-user place, mode `0600` (proposal: the script's own folder in the
-  User Library, `Remote Scripts/cmdAbl/.token`, not in the repo, never logged). A new token per
-  Live start.
-- *Sharing.* The extension reads the file (it already reads that folder for the installed-script
-  check; assumption: the announced sandbox may forbid it — then the answer is exit 5, "cannot read
-  the bridge token", and only write commands are affected) and sends `token` with every request
-  of a *writing* op. Reads need no token.
-- *Checking.* The ops table marks each op `writes: True/False`; `protocol.handle_request`
-  refuses a writing op without the right token (`hmac.compare_digest`) with the error code
-  `forbidden` before any handler runs. The extension maps `forbidden` to exit 5 with "the Remote
-  Script refused the change (access token); restart Live or run `cmdabl --setup`", and drops its
-  cached token so the next call reads the file again (a Live restart changes it).
-- *Tests.* Script: writing op without / with a wrong / with the right token; read op without
-  token; the token never appears in a reply or a log line. Extension: the token is read from the
-  file lazily, never logged, re-read after `forbidden`.
-- *Alternative considered:* a token the extension generates and sends on the first write
-  (trust-on-first-use) — rejected, a hostile process could win the race at script start.
+  stray or hostile datagrams — not against the user's own processes.
+- *Creation.* The script creates a random token (`secrets.token_hex(16)`) when it starts and
+  writes it to `~/Library/Application Support/cmdAbl/bridge-token` (directory `0700`, file `0600`,
+  written through a temp file and renamed). New per Live start. **Not** in the script's folder (a
+  development install links that folder into the repository) and never in the repo; never logged;
+  never in a reply. On another platform the script creates no token and refuses writing ops with
+  `forbidden` and a clear text (0.1.0 is macOS-only).
+- *Sharing.* The extension reads the file lazily (`src/ableton/bridgeToken.ts`), keeps it in
+  memory and sends `token` with every request of a writing op; on `forbidden` it forgets the value,
+  re-reads the file once and retries once (a Live restart changes the token). Reads and `select`
+  need no token.
+- *Checking.* `ops/__init__.py` lists the writing ops in `WRITES`; `protocol.handle_request`
+  refuses a writing op without or with a wrong token (`hmac.compare_digest`) with the error code
+  `forbidden` **before** any handler runs and removes `token` from the args the handler sees.
+- *Files and limits.* The script's side is `access_token.py` (not `token.py`: that name would
+  shadow Python's standard `token` module, which `traceback` needs, whenever the folder is on
+  `sys.path`). `protocol.handle_request` takes `writes` as a required argument, so a caller
+  cannot forget the gate. Two Live instances: the second writes a new token file, the first
+  instance's script keeps its own and its writes stay `forbidden` until it restarts (out of
+  scope). The script creates a folder and a file in the user's Library at every start and the
+  extension reads outside its bundle (the announced stricter sandbox may forbid it: then only
+  writing commands answer exit 5) — listed in `docs/sdk-tree.md` §7.
+- *Undo.* `chain_set` wraps all its targets in one `song.begin_undo_step()` /
+  `end_undo_step()` pair (guarded), so one command is one undo step — if chain mute/solo are
+  undoable at all (unverified; Live test: Edit → Undo after `mute` on two pads). More than 20
+  targets are several requests, hence several steps. A target with both `mute` and `solo` can end
+  half-applied; its entry then carries the error.
+- *What the user sees.* `forbidden` → exit 5 "the Remote Script refused the change (access token);
+  restart Live or run `cmdabl --setup`"; an unreadable file → exit 5 "cannot read the bridge access
+  token; …"; not macOS → exit 5 "changing chains is available on macOS only".
+- *Tests.* Script: writing op without / with a wrong / with the right token, no token at all, read
+  ops and `select` without token, the token not in a reply or a handler's args, file mode `0600` /
+  directory `0700`, no token off macOS or on a failed write, the file not under the script folder.
+  Extension: lazy read, cache and forget, unreadable / malformed file, re-read once after
+  `forbidden`, no token sent for non-writing requests.
+- *Rejected:* a token the extension generates and sends on the first write (trust on first use) —
+  a hostile process could win the race at script start.
 
 ## Phased rollout
 

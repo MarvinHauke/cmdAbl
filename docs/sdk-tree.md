@@ -288,6 +288,11 @@ WarpMode           Beats=0 | Tones=1 | Texture=2 | Repitch=3 | Complex=4 | Compl
 
 ## 7. Non-obvious constraints
 
+- **cmdAbl's own reads/writes outside the extension bundle** (may stop working under a stricter
+  OS sandbox; every one fails soft): the installed-script check reads the User Library's
+  `Remote Scripts/cmdAbl/protocol.py`; writing commands read the bridge token file
+  `~/Library/Application Support/cmdAbl/bridge-token`, which the Remote Script creates at every
+  Live start (not the extension).
 - **`insertDevice()` (Track and Chain)** — built-in Live devices only; third-party plug-ins
   cannot be loaded this way
 - **`withinTransaction(fn)`** — callback must be **synchronous** (no `await` inside); return

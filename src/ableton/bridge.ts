@@ -1,4 +1,5 @@
 import { createBridgeClient, createUdpTransport, type Bridge } from "./bridgeClient.js";
+import { createTokenSource } from "./bridgeToken.js";
 import { inspectInstalledScript } from "./installedScript.js";
 
 // Access to the Remote Script bridge (the SDK cannot change Live's selection or
@@ -13,7 +14,11 @@ import { inspectInstalledScript } from "./installedScript.js";
 let shared: Bridge | null = null;
 export function getBridge(): Bridge {
   if (!shared) {
-    shared = createBridgeClient({ transport: createUdpTransport(), installed: () => inspectInstalledScript() });
+    shared = createBridgeClient({
+      transport: createUdpTransport(),
+      installed: () => inspectInstalledScript(),
+      token: createTokenSource(),
+    });
   }
   return shared;
 }

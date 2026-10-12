@@ -3,7 +3,7 @@
 Args: {targets: [{scope, route, offset?}, ...]} — each route addresses a rack
 device (even length: track, device, [chain, device]...), at most MAX_TARGETS.
 Result: {racks: [entry, ...]} in the order of `targets`; an entry is
-  {kind: "rack" | "drum", total, offset, chains: [{name, note?}], next?}
+  {kind: "rack" | "drum", total, offset, chains: [{name, note?, mute?, solo?}], next?}
 or {error: {code, text}}. `chains` are the rack's own `chains` in order, so the
 index of an entry is offset + its position, the same index as the SDK's
 `rack.chains` (the extension checks `total` against its own count). The name is
@@ -44,8 +44,21 @@ def _is_drum_rack(device):
         return False
 
 
+def _flag(chain, attr):
+    try:
+        return bool(getattr(chain, attr))
+    except Exception:
+        return None
+
+
 def _chain_entry(chain, drum):
     entry = {"name": chain.name}
+    # Present only when true: absent means off (keeps the usual entry small, so a dozen drum
+    # racks still fit one reply).
+    if _flag(chain, "mute"):
+        entry["mute"] = True
+    if _flag(chain, "solo"):
+        entry["solo"] = True
     if drum:
         try:
             note = getattr(chain, "in_note", None)
@@ -124,3 +137,81 @@ def chains(song, args):
         entries.append(result)
         budget -= _size(result)
     return {"racks": entries}
+
+
+# ---- chain_set: write mute / solo of chains (a writing op: needs the access token) -----------
+# A target with both `mute` and `solo` can end half-applied (`unsupported`/`failed` after the
+# first write); its entry then carries the error and the next read shows the real state.
+
+MAX_SET_TARGETS = 20
+
+
+def _set_one(song, target):
+    if not isinstance(target, dict):
+        raise OpError("bad_request", "target must be an object")
+    scope, route = parse_target(target)
+    if len(route) < 3 or len(route) % 2 != 1:
+        raise OpError("bad_request", "chain_set takes chain routes (odd length, at least 3)")
+    expect = target.get("expectName")
+    if not isinstance(expect, str):
+        raise OpError("bad_request", "expectName is required for a change")
+    wanted = {}
+    for key in ("mute", "solo"):
+        if key in target:
+            if not isinstance(target[key], bool):
+                raise OpError("bad_request", "%s must be true or false" % key)
+            wanted[key] = target[key]
+    if not wanted:
+        raise OpError("bad_request", "nothing to set: give mute and/or solo")
+    chain = resolve(song, scope, route)[-1]
+    if chain.name != expect:
+        raise OpError("stale", "name differs")
+    for key, value in wanted.items():
+        try:
+            setattr(chain, key, value)
+        except Exception as e:
+            raise OpError("unsupported", "cannot set %s: %s" % (key, e))
+    result = {"name": chain.name}
+    for key in ("mute", "solo"):
+        try:
+            result[key] = bool(getattr(chain, key))
+        except Exception as e:
+            raise OpError("unsupported", "cannot read %s back: %s" % (key, e))
+    for key, value in wanted.items():
+        if result[key] != value:
+            raise OpError("failed", "Live did not change %s" % key)
+    return result
+
+
+def chain_set(song, args):
+    targets = args.get("targets")
+    if not isinstance(targets, list) or not targets:
+        raise OpError("bad_request", "targets must be a non-empty list")
+    if len(targets) > MAX_SET_TARGETS:
+        raise OpError("bad_request", "at most %d targets per request" % MAX_SET_TARGETS)
+    entries = []
+    # One command = one undo step (guarded: not every Live version offers these calls).
+    begin = getattr(song, "begin_undo_step", None)
+    end = getattr(song, "end_undo_step", None)
+    opened = False
+    if callable(begin) and callable(end):
+        try:
+            begin()
+            opened = True
+        except Exception:
+            opened = False
+    try:
+        for target in targets:
+            try:
+                entries.append(_set_one(song, target))
+            except OpError as e:
+                entries.append({"error": {"code": e.code, "text": e.text}})
+            except Exception as e:  # an odd chain must not hide the others
+                entries.append({"error": {"code": "failed", "text": ("%s: %s" % (type(e).__name__, e))[:100]}})
+    finally:
+        if opened:
+            try:
+                end()
+            except Exception:
+                pass
+    return {"chains": entries}

@@ -16,7 +16,8 @@ import traceback
 
 from _Framework.ControlSurface import ControlSurface
 
-from .ops import OPS
+from .ops import OPS, WRITES
+from .access_token import create_token
 from .protocol import handle_request
 
 BRIDGE_HOST = "127.0.0.1"
@@ -28,6 +29,12 @@ class cmdAbl(ControlSurface):
     def __init__(self, c_instance):
         super().__init__(c_instance)
         self._socket = None
+        # The access token for writing ops: new per Live start, a file only the user can read.
+        # The value is never logged.
+        self._token = create_token()
+        self.log_message(
+            "cmdAbl bridge: access token %s" % ("written" if self._token else "unavailable (writing operations are refused)")
+        )
         try:
             self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self._socket.setblocking(False)
@@ -72,7 +79,7 @@ class cmdAbl(ControlSurface):
     def _handle(self, data, addr):
         # Every request has an id and an op; a datagram without them is dropped and logged
         # (this includes the old one-way `cmd` messages of extensions before 0.2.0).
-        reply, problem = handle_request(data, self._ops_for_song())
+        reply, problem = handle_request(data, self._ops_for_song(), WRITES, self._token)
         if problem:
             self.log_message("cmdAbl bridge: dropped datagram: %s" % problem)
         if reply is not None:

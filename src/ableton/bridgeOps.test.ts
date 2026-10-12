@@ -109,7 +109,7 @@ test("chains asks once per request, merges pages and keeps each rack's failure a
   ]);
   assert.equal(r.ok, true);
   if (!r.ok) return;
-  assert.deepEqual(r.value[0], { ok: true, value: { kind: "drum", names: all, notes: [36, 37, 38, 39] } });
+  assert.deepEqual(r.value[0], { ok: true, value: { kind: "drum", names: all, notes: [36, 37, 38, 39], mutes: [false, false, false, false], solos: [false, false, false, false] } });
   assert.equal(r.value[1]!.ok, false);
   assert.equal(calls.length, 2); // second round only for the paged rack
   assert.deepEqual(calls[1], [{ offset: 2 }]);
@@ -123,4 +123,62 @@ test("chains rejects malformed replies and passes outer failures through", async
   assert.equal((await chains(short, [{ scope: "regular", route: [0, 0] }])).ok, false);
   const down = createFakeBridge({ running: false });
   assert.equal((await chains(down, [{ scope: "regular", route: [0, 0] }])).ok, false);
+});
+
+import { chainSet, chainSwitches } from "./bridgeOps.js";
+
+const chainNode = (i: number, name: string) => ({ scope: "regular" as const, route: [0, 1, i], name });
+
+test("chainSwitches reads mute/solo from one chains request and checks the name", async () => {
+  const bridge = createFakeBridge({
+    ops: {
+      chains: () => ({
+        ok: true,
+        value: { racks: [{ kind: "drum", total: 2, offset: 0, chains: [{ name: "Kick", mute: true }, { name: "Snare", solo: true }] }] },
+      }),
+    },
+  });
+  const r = await chainSwitches(bridge, [chainNode(0, "Kick"), chainNode(1, "Snare"), chainNode(1, "Old")]);
+  assert.equal(bridge.calls.length, 1);
+  assert.deepEqual(bridge.calls[0]!.args, { targets: [{ scope: "regular", route: [0, 1], offset: 0 }] });
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.deepEqual(r.value[0], { ok: true, value: { name: "Kick", mute: true, solo: false } });
+  assert.deepEqual(r.value[1], { ok: true, value: { name: "Snare", mute: false, solo: true } });
+  assert.deepEqual(r.value[2], { ok: false, code: 1, text: "the Live Set changed; run the command again" });
+});
+
+test("chainSet sends set values with expectName and the token flag, and maps each entry", async () => {
+  const bridge = createFakeBridge({
+    ops: {
+      chain_set: () => ({
+        ok: true,
+        value: { chains: [{ name: "Kick", mute: true, solo: false }, { error: { code: "stale", text: "name differs" } }] },
+      }),
+    },
+  });
+  const r = await chainSet(bridge, [{ ...chainNode(0, "Kick"), mute: true }, { ...chainNode(1, "Snare"), solo: false }]);
+  assert.deepEqual(bridge.calls, [{
+    op: "chain_set",
+    args: { targets: [
+      { scope: "regular", route: [0, 1, 0], expectName: "Kick", mute: true },
+      { scope: "regular", route: [0, 1, 1], expectName: "Snare", solo: false },
+    ] },
+    changes: true,
+    token: true,
+  }]);
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.deepEqual(r.value[0], { ok: true, value: { name: "Kick", mute: true, solo: false } });
+  assert.deepEqual(r.value[1], { ok: false, code: 1, text: "the Live Set changed; run the command again" });
+});
+
+test("chainSet rejects malformed replies and passes outer failures through", async () => {
+  const odd = createFakeBridge({ ops: { chain_set: () => ({ ok: true, value: { chains: [{ name: "K", mute: "yes", solo: false }] } }) } });
+  const r = await chainSet(odd, [{ ...chainNode(0, "K"), mute: true }]);
+  assert.equal(r.ok && r.value[0]!.ok, false);
+  const short = createFakeBridge({ ops: { chain_set: () => ({ ok: true, value: { chains: [] } }) } });
+  assert.equal((await chainSet(short, [{ ...chainNode(0, "K"), mute: true }])).ok, false);
+  const refused = createFakeBridge({ ops: { chain_set: () => fail(5, "x") } });
+  assert.deepEqual(await chainSet(refused, [{ ...chainNode(0, "K"), mute: true }]), { ok: false, code: 5, text: "x" });
 });

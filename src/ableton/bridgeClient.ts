@@ -4,7 +4,9 @@ import {
   BRIDGE_PORT,
   PROTOCOL_VERSION,
   REQUEST_TIMEOUT_MS,
+  TEXT_FORBIDDEN,
   TEXT_NOT_INSTALLED,
+  TEXT_NO_TOKEN,
   TEXT_NOT_RUNNING,
   TEXT_NO_ANSWER,
   TEXT_OUTDATED,
@@ -17,6 +19,7 @@ import {
   type HelloInfo,
 } from "./bridgeProtocol.js";
 import type { InstalledScript } from "./installedScript.js";
+import type { TokenSource } from "./bridgeToken.js";
 
 // The request/response client. It sits behind the `Bridge` interface so
 // modules and tests never touch the UDP socket (see bridgeFake.ts).
@@ -39,9 +42,15 @@ export interface Bridge {
   ping(): Promise<BridgeResult<HelloInfo>>;
   /**
    * One request. `changes` marks a request that alters Live: a timeout then
-   * means "end state unknown". Never throws.
+   * means "end state unknown". `token` adds the access token (writing ops): it
+   * is read lazily from its file and re-read once when the script answers
+   * `forbidden`. Never throws.
    */
-  request(op: string, args?: Record<string, unknown>, options?: { changes?: boolean }): Promise<BridgeResult<Record<string, unknown>>>;
+  request(
+    op: string,
+    args?: Record<string, unknown>,
+    options?: { changes?: boolean; token?: boolean },
+  ): Promise<BridgeResult<Record<string, unknown>>>;
   close(): void;
 }
 
@@ -55,6 +64,8 @@ export interface Transport {
 export interface BridgeClientOptions {
   transport: Transport;
   installed: () => InstalledScript;
+  /** Where the access token for writing ops comes from; without one writing ops answer exit code 5. */
+  token?: TokenSource;
   timeoutMs?: number;
   /** Test hooks. */
   setTimer?: (fn: () => void, ms: number) => unknown;
@@ -162,16 +173,34 @@ export function createBridgeClient(options: BridgeClientOptions): Bridge {
     return r;
   }
 
+  /** The request args, with the access token added when the op needs one. */
+  function prepare(args: Record<string, unknown>, wantToken: boolean | undefined): BridgeResult<Record<string, unknown>> {
+    if (!wantToken) return { ok: true, value: args };
+    if (!options.token) return fail(5, TEXT_NO_TOKEN);
+    const token = options.token.get();
+    if (!token.ok) return token;
+    return { ok: true, value: { ...args, token: token.value } };
+  }
+
   async function request(
     op: string,
     args: Record<string, unknown> = {},
-    opts: { changes?: boolean } = {},
+    opts: { changes?: boolean; token?: boolean } = {},
   ): Promise<BridgeResult<Record<string, unknown>>> {
     try {
       const ready = await available();
       if (!ready.ok) return ready;
       if (!ready.value.ops.includes(op)) return fail(5, TEXT_OUTDATED);
-      const answer = await exchange(op, args);
+      const first = prepare(args, opts.token);
+      if (!first.ok) return first;
+      let answer = await exchange(op, first.value);
+      if (opts.token && answer !== "timeout" && answer !== "send_failed" && !answer.ok && answer.text === TEXT_FORBIDDEN) {
+        // The script restarted (a new token per Live start): read the file again, once.
+        options.token?.forget();
+        const again = prepare(args, true);
+        if (!again.ok) return again;
+        answer = await exchange(op, again.value);
+      }
       if (answer === "send_failed") return fail(1, "could not send to the Remote Script; nothing changed");
       if (answer === "timeout") {
         cached = null; // the script may have been reloaded: ask again next time

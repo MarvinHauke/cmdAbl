@@ -119,6 +119,9 @@ export interface RackChains {
   names: string[];
   /** MIDI input note per chain for drum chains, when Live reports it. */
   notes: Array<number | null>;
+  /** The chain's mute switch (Chain Activator off) and solo switch, in the same order. */
+  mutes: boolean[];
+  solos: boolean[];
 }
 
 /** At most this many racks go into one request. */
@@ -151,8 +154,11 @@ function parseRack(entry: unknown): { chains: RackChains | null; next: number | 
     const n = (c as { note?: unknown }).note;
     return typeof n === "number" ? n : null;
   });
+  // The script sends `mute` / `solo` only when true.
+  const mutes = list.map((c) => (c as { mute?: unknown }).mute === true);
+  const solos = list.map((c) => (c as { solo?: unknown }).solo === true);
   const next = typeof e.next === "number" ? e.next : null;
-  return { chains: { kind: e.kind, names, notes }, next, total: e.total, offset: e.offset };
+  return { chains: { kind: e.kind, names, notes, mutes, solos }, next, total: e.total, offset: e.offset };
 }
 
 /**
@@ -202,7 +208,13 @@ export async function chains(
           return;
         }
         const merged: RackChains = have
-          ? { kind: have.kind, names: [...have.names, ...parsed.chains.names], notes: [...have.notes, ...parsed.chains.notes] }
+          ? {
+              kind: have.kind,
+              names: [...have.names, ...parsed.chains.names],
+              notes: [...have.notes, ...parsed.chains.notes],
+              mutes: [...have.mutes, ...parsed.chains.mutes],
+              solos: [...have.solos, ...parsed.chains.solos],
+            }
           : parsed.chains;
         collected[p.index] = merged;
         if (parsed.next !== null && parsed.next > p.offset) next.push({ index: p.index, offset: parsed.next });
@@ -216,4 +228,88 @@ export async function chains(
     ok: true,
     value: results.map((r, i) => r ?? (collected[i] ? fail(1, "bad reply from the Remote Script: chains incomplete") : fail(1, "bad reply from the Remote Script: chains missing"))),
   };
+}
+
+/** The mute and solo switch of one chain as Live reports them right now. */
+export interface ChainSwitches {
+  name: string;
+  mute: boolean;
+  solo: boolean;
+}
+
+/**
+ * Read the current switches of chain nodes (for toggling: the caller computes the
+ * new value from what this returns, as `mute`/`solo` do for tracks). One `chains`
+ * request per rack involved, all racks in one request. Entries in the order given.
+ */
+export async function chainSwitches(
+  bridge: Bridge,
+  nodes: Array<Pick<ObjectNode, "scope" | "route" | "name">>,
+): Promise<BridgeResult<Array<BridgeResult<ChainSwitches>>>> {
+  const racks = new Map<string, { scope: ObjectNode["scope"]; route: number[] }>();
+  for (const n of nodes) racks.set(`${n.scope}:${n.route.slice(0, -1).join(".")}`, { scope: n.scope, route: n.route.slice(0, -1) });
+  const keys = [...racks.keys()];
+  const reply = await chains(bridge, [...racks.values()]);
+  if (!reply.ok) return reply;
+  const out: Array<BridgeResult<ChainSwitches>> = nodes.map((n) => {
+    const entry = reply.value[keys.indexOf(`${n.scope}:${n.route.slice(0, -1).join(".")}`)]!;
+    if (!entry.ok) return entry;
+    const index = n.route[n.route.length - 1]!;
+    const name = entry.value.names[index];
+    if (name === undefined) return fail(1, TEXT_STALE);
+    if (name !== n.name) return fail(1, TEXT_STALE);
+    return { ok: true, value: { name, mute: entry.value.mutes[index] === true, solo: entry.value.solos[index] === true } };
+  });
+  return { ok: true, value: out };
+}
+
+/** One change of a chain's switches: set what is given, leave the rest. */
+export interface ChainChange {
+  mute?: boolean;
+  solo?: boolean;
+}
+
+/**
+ * Set mute and/or solo of chain nodes and read the result back. A writing
+ * operation: it carries the access token (read from its file, re-read once on
+ * `forbidden`) and needs the node's current name (`expectName`). One request
+ * per `TRACK_FACTS_PER_REQUEST` chains (one normally). The outer result is the
+ * bridge/script outcome; each entry answers its own chain, in order. Never throws.
+ */
+export async function chainSet(
+  bridge: Bridge,
+  changes: Array<Pick<ObjectNode, "scope" | "route" | "name"> & ChainChange>,
+): Promise<BridgeResult<Array<BridgeResult<ChainSwitches>>>> {
+  const out: Array<BridgeResult<ChainSwitches>> = [];
+  for (const chunk of chunkTargets(changes)) {
+    const targets = chunk.map((c) => ({
+      scope: c.scope,
+      route: c.route,
+      expectName: c.name,
+      ...(c.mute === undefined ? {} : { mute: c.mute }),
+      ...(c.solo === undefined ? {} : { solo: c.solo }),
+    }));
+    const reply = await bridge.request("chain_set", { targets }, { changes: true, token: true });
+    if (!reply.ok) return reply;
+    const entries = reply.value.chains;
+    if (!Array.isArray(entries) || entries.length !== chunk.length) {
+      return fail(1, "bad reply from the Remote Script: chain_set without one entry per chain");
+    }
+    for (const entry of entries) out.push(parseSwitches(entry));
+  }
+  return { ok: true, value: out };
+}
+
+function parseSwitches(entry: unknown): BridgeResult<ChainSwitches> {
+  const e = entry as Record<string, unknown> | null;
+  if (typeof e !== "object" || e === null) return fail(1, "bad reply from the Remote Script: chain_set entry");
+  const err = e.error as Record<string, unknown> | undefined;
+  if (err && typeof err === "object") {
+    const text = typeof err.text === "string" ? err.text : "chain_set failed";
+    return fail(1, err.code === "stale" || err.code === "out_of_range" ? TEXT_STALE : `Remote Script: ${text}`);
+  }
+  if (typeof e.name !== "string" || typeof e.mute !== "boolean" || typeof e.solo !== "boolean") {
+    return fail(1, "bad reply from the Remote Script: chain_set entry");
+  }
+  return { ok: true, value: { name: e.name, mute: e.mute, solo: e.solo } };
 }

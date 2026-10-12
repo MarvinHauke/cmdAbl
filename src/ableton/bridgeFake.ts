@@ -13,7 +13,7 @@ export interface FakeBridgeOptions {
 }
 
 export interface FakeBridge extends Bridge {
-  calls: Array<{ op: string; args: Record<string, unknown>; changes: boolean }>;
+  calls: Array<{ op: string; args: Record<string, unknown>; changes: boolean; token?: true }>;
 }
 
 export function createFakeBridge(options: FakeBridgeOptions = {}): FakeBridge {
@@ -32,7 +32,7 @@ export function createFakeBridge(options: FakeBridgeOptions = {}): FakeBridge {
     available,
     ping: available, // always "fresh" in the fake; updates the state like available()
     async request(op, args = {}, opts = {}) {
-      calls.push({ op, args, changes: opts.changes ?? false });
+      calls.push({ op, args, changes: opts.changes ?? false, ...(opts.token ? { token: true as const } : {}) });
       const ready = await available();
       if (!ready.ok) return ready;
       const handler = ops[op];

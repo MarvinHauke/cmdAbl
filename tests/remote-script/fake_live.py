@@ -79,8 +79,16 @@ class FakeChain(object):
     def __init__(self, name, devices=None, in_note=None):
         self.name = name
         self.devices = devices or []
+        self.mute = False
+        self.solo = False
+        self.ignore_writes = False  # simulate Live not applying a change
         if in_note is not None:
             self.in_note = in_note
+
+    def __setattr__(self, key, value):
+        if key in ("mute", "solo") and self.__dict__.get("ignore_writes"):
+            return
+        object.__setattr__(self, key, value)
 
 
 class FakeTrackView(object):
@@ -134,6 +142,16 @@ class FakeSongView(object):
 
 
 class FakeSong(object):
+    undo_steps = None  # set to [] to record begin/end calls
+
+    def begin_undo_step(self):
+        if self.undo_steps is not None:
+            self.undo_steps.append("begin")
+
+    def end_undo_step(self):
+        if self.undo_steps is not None:
+            self.undo_steps.append("end")
+
     def __init__(self, tracks=None, returns=None, master=None):
         self.tracks = tracks or []
         self.return_tracks = returns or []
