@@ -102,17 +102,16 @@ Changing these after a release breaks what users have learned and what is stored
    control surface, or nothing), `cmdabl bridge`, `pakabl install|uninstall|update|upgrade|list`.
    No aliases (user, 2026-10-12): `cmdabl --setup` and `--bridge` are usage errors now, old
    history entries with them fail. `pakabl upgrade <id>` without a version installs the
-   index's version. In work: cmdabl-core removes the legacy `registry.register` path and
-   `ModuleApi.registry`. Live test 1g.
+   index's version. The legacy `registry.register` path and `ModuleApi.registry` are removed
+   (`a3ae115`). Live test 1g. Dead ends left until 0006: `FlagDef`/`PaletteItem.flags`, the
+   flags fallback in `extension.ts`, the flag phase in `ui/interface.html`.
 2. An `enum` argument kind with declared choices (`man <ableton|cmdabl>`, pakabl ids): usage
    text and, later, completion come from it.
 3. Object items of the palette run through `goto` (history entry, `next`/`prev` list); removes
    `registerResultHandler` — a `ModuleApi` change, confirmed by the user on 2026-10-12.
 4. Ports instead of the raw SDK context in `ModuleApi`, then the command-authoring guide
    (`docs/guides/adding-a-command.md`).
-5. Leftovers from before the rework (checked 2026-10-11): `pakabl`, `help` and `cmdabl` still
-   use the older `registry.register` path and parse their own flags (goes with 3.1; then remove
-   `ModuleApi.registry`); platform files still outside `src/core/` (`src/commandRegistry.ts`,
+5. Leftovers from before the rework: platform files still outside `src/core/` (`src/commandRegistry.ts`,
    `src/types.ts`, `src/providers/commandProvider.ts`, `src/setup.ts`) and an empty `src/ui/`
    folder — move them and extend the import-boundary test. No unused module was found.
 

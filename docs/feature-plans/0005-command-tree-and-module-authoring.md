@@ -113,8 +113,9 @@ api.commands.group("pakabl", "install and manage community extensions", (g) => {
 });
 ```
 
-The old `registry.register(name, description, flags?, handler)` stays during migration as an
-adapter that wraps the handler in a leaf node with a single variadic `text` argument.
+The old `registry.register(name, description, flags?, handler)` adapter is gone since
+2026-10-12 (`a3ae115`): every command is a node added with `api.commands.add`, and an unknown
+first word always gets the parser's "unknown command" answer.
 
 ### 5. Execution path
 
@@ -140,6 +141,12 @@ success unless it helps; return `CommandResult` instead of calling `showFeedback
 - Whether `args` should support named groups (e.g. `<from> <to>`) beyond ordered positionals.
 
 ## Phased rollout
+
+**Update (2026-10-12):** `pakabl` and `cmdabl` are groups on the tree (`e04989d`, `f795ac1`;
+no aliases for the old flags), `requires` is built, and the legacy `register()` path and
+`ModuleApi.registry` are removed (`a3ae115`). Left of this plan: the `enum` argument kind,
+palette object rows through `goto`, ports on `ModuleApi`, the authoring guide. The older
+notes below describe the state before that.
 
 **Update (2026-10-11, later):** step 2 and the resolver are in. `CommandRegistry.add(node)`
 (validated, rejects instead of throwing) and `ModuleApi.commands.add`; every typed line goes
