@@ -363,6 +363,29 @@ says what it points at (1 = track, 2 = device on the track, 3 = chain, 4 = devic
   `DrumChain.receivingNote`.
 - `select_chain` on a drum rack: a DrumChain has no back reference to its pad as far as the LOM
   docs show; finding the pad means scanning `drum_pads`. **Unverified**; first Live test.
+- **`showChains` on `select` (proposal 2026-10-12, user wish `goto --unfold` / `find --unfold`).**
+  Selecting a pad selects it in the Drum Rack but leaves the track's chains folded in the Session
+  mixer; the user likes that as the default and wants an option to show them.
+  - *Evidence (LOM docs, bundled skill references `track.md`, `rack.md`, `device.md`):*
+    `Track.can_show_chains` (R, "1 if track contains an Instrument Rack device that can show
+    chains") and `Track.is_showing_chains` (R/W, observable, "Instrument Rack chain visibility in
+    Session View"); `RackDevice` has the same pair. *Assumptions, to confirm in Live:* that a track
+    with a Drum Rack reports `can_show_chains` true (the user's mixer shows Drum Rack chains as
+    columns, so very likely), that setting `is_showing_chains` on the *track* is what unfolds those
+    columns, and that nothing else (selection) changes.
+  - *Proposal:* an optional boolean `showChains` in `select`'s args, default false. After the
+    selection (and only if it succeeded) the script resolves the route's track; if
+    `can_show_chains` and not `is_showing_chains` it sets `is_showing_chains = True` and reads it
+    back. It never sets it to false (nothing that is already shown is folded). Reply: the usual
+    `{name}` plus `chains_shown: true | false | null` — `null` when the track cannot show chains
+    (the flag was ignored), `false` when the write did not take. A selection that succeeded is
+    never turned into a failure by this.
+  - *Token:* not a writing op — it changes view state like the selection does and is reversible
+    by the user in one click. One reason to reconsider: Live stores the expanded state in the Set
+    (the Set becomes "modified"); it changes no content. The user decides.
+  - *Extension API:* `select(bridge, node, { showChains?: boolean })` in `bridgeOps.ts` returns
+    `{ name, chainsShown: boolean | null }`; `cmdabl-modules` maps `--unfold` to it for `goto`
+    and `find` (and, per its own design, for `next`/`prev`). Not built until the user confirms.
 - Identity stays the route, verified by `expectName`; nothing is cached in the script.
 - On a timeout, a *tree node* (chains) is omitted; a *command* answers with code 5/1 instead.
 
