@@ -68,10 +68,10 @@ your own:
 
 | Module    | Capability                                                                 |
 | --------- | -------------------------------------------------------------------------- |
-| `goto`    | `goto <path>` selects a track, device or chain / drum pad (via the Remote Script bridge); they are also listed in the palette |
-| `find`    | `find <pattern> [-t] [-d] [-c]` — every track, device and chain (rack chains, Drum Rack pads) whose path contains the pattern; the flags narrow it to tracks, devices or chains; `next` / `prev` step through the matches |
-| `mute`    | `mute <track>…` toggles mute per track; `unmute <track>…` always unmutes |
-| `solo`    | `solo <track>…` toggles solo per track; `unsolo <track>…` always unsolos |
+| `goto`    | `goto [--unfold] <path>` selects a track, device or chain / drum pad (via the Remote Script bridge); `--unfold` also shows the track's chains in the Session mixer (never folds); they are also listed in the palette |
+| `find`    | `find [--unfold] <pattern> [-t] [-d] [-c]` — every track, device and chain (rack chains, Drum Rack pads) whose path contains the pattern; the flags narrow it to tracks, devices or chains; `next` / `prev` step through the matches and keep the `find`'s `--unfold` |
+| `mute`    | `mute <track-or-chain>…` toggles mute per track, rack chain or Drum Rack pad; `unmute …` always unmutes. Tracks need no Remote Script and are applied separately from chains; chains do (macOS) |
+| `solo`    | `solo <track-or-chain>…` toggles solo per track, rack chain or Drum Rack pad; `unsolo …` always unsolos. Tracks need no Remote Script and are applied separately from chains; chains do (macOS) |
 | `arm`     | `arm <track>…` toggles record arm per track; `unarm <track>…` always disarms; return, main and group tracks cannot be armed and are reported as failed; with the Remote Script, so are tracks Live greys out (e.g. a MIDI track whose input device is not available — checked after the write, as the Live API cannot tell beforehand; a refused `arm` may leave an extra undo step); a script enabled mid-session is noticed after `cmdabl --bridge` or a `goto` |
 | `history` | Remembers your last 20 invocations and re-offers them as rerunnable entries |
 | `man`     | `man <topic>` opens a manual in the browser: `man ableton` (Live reference manual), `man cmdabl` (this documentation). `man ableton <words>` searches the Live 12 manual through Ecosia, e.g. `man ableton warp modes` |

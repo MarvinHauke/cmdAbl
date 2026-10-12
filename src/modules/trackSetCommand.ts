@@ -1,7 +1,9 @@
 import type { ModuleApi } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { trackFor } from "../ableton/trackLookup.js";
+import type { Bridge } from "../ableton/bridgeClient.js";
 import { getBridge } from "../ableton/bridge.js";
+import { setChainSwitch } from "./chainSwitch.js";
 import {
   armBase,
   armFactsLines,
@@ -43,13 +45,21 @@ export function registerTrackSetCommand(
   prop: "mute" | "solo" | "arm",
   value: TrackSetValue,
   summary: string,
+  /** The bridge, taken lazily — only chains and `arm` facts need it. Tests pass a fake. */
+  bridgeOf: () => Bridge = getBridge,
 ): void {
   api.commands.add({
     name,
     summary,
-    args: [{ name: "track", kind: "path", kinds: ["track"], variadic: true }],
+    // mute/solo also work on rack chains and Drum Rack pads (through the
+    // Remote Script); arm is for tracks only.
+    args: [{ name: "track", kind: "path", kinds: prop === "arm" ? ["track"] : ["track", "chain"], variadic: true }],
     run: async (invocation): Promise<CommandResult> => {
-      const nodes = (invocation.args[0] ?? []) as ObjectNode[];
+      const targets = (invocation.args[0] ?? []) as ObjectNode[];
+      // Tracks go through the SDK (no Remote Script needed); chains through the bridge.
+      const chainSlots = targets.map((n, i) => (n.kind === "chain" ? i : -1)).filter((i) => i >= 0);
+      const trackSlots = targets.map((n, i) => (n.kind === "chain" ? -1 : i)).filter((i) => i >= 0);
+      const nodes = trackSlots.map((i) => targets[i]!);
       const outcomes: TargetOutcome[] = [];
       const written: WrittenArm[] = [];
 
@@ -58,7 +68,7 @@ export function registerTrackSetCommand(
       // otherwise the SDK-only path below. The script's `arm` is the truth a
       // toggle starts from: the SDK's value can be wrong for a track Live
       // refused to arm.
-      const loaded = prop === "arm" ? await loadArmFacts(getBridge(), nodes) : undefined;
+      const loaded = prop === "arm" ? await loadArmFacts(bridgeOf(), nodes) : undefined;
       const facts = loaded?.facts;
       // Evidence for what Live reports (names and booleans only).
       if (loaded) for (const line of armFactsLines(nodes, loaded)) console.log(line);
@@ -108,11 +118,32 @@ export function registerTrackSetCommand(
 
       if (prop === "arm") verifyArm(api, written, outcomes);
       // With the script's facts, the script's read after the write decides.
-      if (prop === "arm" && facts) await verifyWithScript(api, written, outcomes);
+      if (prop === "arm" && facts) await verifyWithScript(api, written, outcomes, bridgeOf());
 
-      const failed = outcomes.filter((o) => !o.ok);
+      // Chains: their own switch through the bridge, after the tracks are done.
+      const byTarget: TargetOutcome[] = new Array(targets.length);
+      trackSlots.forEach((slot, k) => (byTarget[slot] = outcomes[k]!));
+      if (chainSlots.length > 0 && prop !== "arm") {
+        const chainNodes = chainSlots.map((i) => targets[i]!);
+        const results = await setChainSwitch(bridgeOf(), chainNodes, prop, value);
+        chainSlots.forEach((slot, k) => {
+          const r = results[k]!;
+          const path = targets[slot]!.path;
+          byTarget[slot] = r.ok
+            ? { path, ok: true }
+            : { path, ok: false, ...(r.code !== undefined ? { code: r.code } : {}), message: r.message ?? "failed" };
+        });
+      }
+      const all = byTarget.filter((o) => o !== undefined);
+
+      const failed = all.filter((o) => !o.ok);
       if (failed.length === 0) return ok();
-      return fail(ExitCode.FAILURE, `${name}: ${outcomes.length - failed.length} of ${outcomes.length} done`, outcomes);
+      // Only the script is missing/outdated/refusing: say so with exit code 5.
+      const code =
+        failed.length === all.length && failed.every((o) => o.code === ExitCode.UNAVAILABLE)
+          ? ExitCode.UNAVAILABLE
+          : ExitCode.FAILURE;
+      return fail(code, `${name}: ${all.length - failed.length} of ${all.length} done`, all);
     },
   });
 }
@@ -157,11 +188,16 @@ function verifyArm(api: ModuleApi, written: WrittenArm[], outcomes: TargetOutcom
  * value — is corrected to the script's value in a second transaction (a second
  * undo step, but never a wrong state). An unanswered track is no objection.
  */
-async function verifyWithScript(api: ModuleApi, written: WrittenArm[], outcomes: TargetOutcome[]): Promise<void> {
+async function verifyWithScript(
+  api: ModuleApi,
+  written: WrittenArm[],
+  outcomes: TargetOutcome[],
+  bridge: Bridge,
+): Promise<void> {
   const pending = written.filter((w) => outcomes[w.outcome]?.ok);
   if (pending.length === 0) return;
   const verdicts = await verifyArmWrites(
-    getBridge(),
+    bridge,
     pending.map((w) => ({ node: w.node, wanted: w.wanted })),
   );
   const corrections: Array<{ node: ObjectNode; actual: boolean }> = [];
