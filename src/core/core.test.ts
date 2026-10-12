@@ -246,33 +246,69 @@ test("presentResult: silent success, messages, failures with details", () => {
   assert.deepEqual(shown, ["done", "cmdAbl: muted 1/2\n  ✓ /a\n  × /b\n      not found"]);
 });
 
-test("cmdablUsage: lists every registered flag and points to man and help", async () => {
-  const { cmdablUsage } = await import("./builtins.js");
-  const text = cmdablUsage();
-  assert.match(text, /--setup/);
-  assert.match(text, /--help/);
-  assert.match(text, /man cmdabl/);
-  assert.match(text, /all commands: help/);
+async function builtins(deps: Parameters<typeof import("./builtins.js").registerBuiltins>[1] = {}) {
+  const { registerBuiltins } = await import("./builtins.js");
+  const { CommandRegistry } = await import("../commandRegistry.js");
+  const { runLine } = await import("./run.js");
+  const registry = new CommandRegistry();
+  registerBuiltins(registry, deps);
+  const run = (line: string) => runLine(line, { registry, liveNodes: () => [], pick: async () => null, log: () => {} });
+  return { registry, run };
+}
+
+test("cmdabl: a group on the tree — usage generated, unknown subcommand is a usage error naming the valid ones", async () => {
+  const { run } = await builtins();
+  for (const line of ["cmdabl", "cmdabl --help"]) {
+    const out = await run(line);
+    assert.equal(out.result.code, ExitCode.OK, line);
+    assert.match(out.result.message ?? "", /usage: cmdabl <command>/);
+    assert.match(out.result.message ?? "", /setup/);
+    assert.match(out.result.message ?? "", /bridge/);
+  }
+  const bad = await run("cmdabl nope");
+  assert.equal(bad.result.code, ExitCode.USAGE);
+  assert.match(bad.result.message ?? "", /unknown subcommand "nope"/);
+  assert.match(bad.result.message ?? "", /valid: setup, bridge/);
+  // the old flags are gone
+  assert.equal((await run("cmdabl --setup")).result.code, ExitCode.USAGE);
+  assert.equal((await run("cmdabl --bridge")).result.code, ExitCode.USAGE);
 });
 
-test("cmdabl --bridge: reports the bridge's answer, the usage lists the flag", async () => {
-  const { registerBuiltins, cmdablUsage } = await import("./builtins.js");
-  const { CommandRegistry } = await import("../commandRegistry.js");
+test("help stays a command and lists cmdabl", async () => {
+  const { run } = await builtins();
+  const out = await run("help");
+  assert.equal(out.result.code, ExitCode.OK);
+  assert.match(out.result.message ?? "", /cmdabl\s+configure cmdAbl/);
+});
+
+test("cmdabl bridge: reports the bridge's answer", async () => {
   const { SCRIPT_VERSION } = await import("../ableton/bridgeProtocol.js");
-  assert.match(cmdablUsage(), /--bridge/);
-  const run = async (answer: Parameters<typeof registerBuiltins>[1]) => {
-    const registry = new CommandRegistry();
-    registerBuiltins(registry, answer);
-    return registry.run("cmdabl", ["--bridge"]);
-  };
-  const good = await run({ bridge: () => ({ ping: async () => ({ ok: true, value: { script: SCRIPT_VERSION, v: 1, ops: ["hello"] } }) }) });
-  assert.equal(good.code, ExitCode.OK);
-  assert.ok((good.message ?? "").startsWith(`Remote Script ${SCRIPT_VERSION} is running`));
-  assert.match(good.message ?? "", /^Remote Script \S+ is running \(protocol v1; \d+ ms; operations: hello\)$/);
-  const down = await run({ bridge: () => ({ ping: async () => ({ ok: false, code: 5, text: "Remote Script not running" }) }) });
-  assert.equal(down.code, ExitCode.UNAVAILABLE);
-  assert.equal(down.message, "Remote Script not running");
-  assert.equal((await run({})).code, ExitCode.UNAVAILABLE);
+  const good = await (await builtins({
+    bridge: () => ({ ping: async () => ({ ok: true, value: { script: SCRIPT_VERSION, v: 1, ops: ["hello"] } }) }),
+  })).run("cmdabl bridge");
+  assert.equal(good.result.code, ExitCode.OK);
+  assert.match(good.result.message ?? "", /^Remote Script \S+ is running \(protocol v1; \d+ ms; operations: hello\)$/);
+  const down = await (await builtins({
+    bridge: () => ({ ping: async () => ({ ok: false, code: 5, text: "Remote Script not running" }) }),
+  })).run("cmdabl bridge");
+  assert.equal(down.result.code, ExitCode.UNAVAILABLE);
+  assert.equal(down.result.message, "Remote Script not running");
+  assert.equal((await (await builtins()).run("cmdabl bridge")).result.code, ExitCode.UNAVAILABLE);
+});
+
+test("cmdabl setup: the installer's text, then what to do about the Remote Script", async () => {
+  const { run } = await builtins({
+    setup: () => "OK: installed",
+    installed: () => ({ status: "current", version: "0.1.0" }),
+    shippedVersion: "0.1.0",
+    bridge: () => ({ ping: async () => ({ ok: true, value: { script: "0.0.9", v: 1, ops: [] } }) }),
+  });
+  const out = await run("cmdabl setup");
+  assert.equal(out.result.code, ExitCode.OK);
+  assert.equal(
+    out.result.message,
+    "OK: installed\n\nRemote Script 0.1.0 is installed, but Live still runs 0.0.9. Restart Live to load Remote Script 0.1.0.",
+  );
 });
 
 test("validateTree: requires must be a known companion on a runnable node", () => {

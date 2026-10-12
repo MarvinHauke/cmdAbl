@@ -135,7 +135,8 @@ Write-Output 'Next: open cmdabl.ahk manually to activate now, or restart to auto
 // ── Remote Script bridge ─────────────────────────────────────────────────────
 // Copies the companion Remote Script (which enables track selection) into Live's
 // User Library. Selecting it as a Control Surface and restarting Live can't be
-// automated — Live has no API for either — so we just install the files.
+// automated — Live has no API for either — so we just install the files; what
+// the user has to do next is advised by core/setupAdvice.ts from the versions.
 
 function remoteScriptSourcePath(): string {
   return path.resolve(__dirname, "../remote-script/cmdAbl");
@@ -148,10 +149,7 @@ const MAC_REMOTE_SCRIPTS_DIR = path.join(
 
 /** The User Library folder already is the repository's folder (a link): there is nothing to copy. */
 function linkedRemoteScriptMessage(source: string): string {
-  return [
-    `OK: Remote Script is linked to ${source} (nothing to copy)`,
-    "Next: restart Live, then Settings -> Link, Tempo & MIDI -> Control Surface -> cmdAbl",
-  ].join("\n");
+  return `OK: Remote Script is linked to ${source} (nothing to copy)`;
 }
 
 function runMacRemoteScriptSetup(): string {
@@ -167,7 +165,6 @@ fi
 mkdir -p "$CMDABL_RS_TARGET"
 cp -R "$CMDABL_RS_SOURCE"/. "$CMDABL_RS_TARGET"/
 echo "OK: Remote Script installed to $CMDABL_RS_TARGET"
-echo "Next: restart Live, then Settings -> Link, Tempo & MIDI -> Control Surface -> cmdAbl"
 `.trim();
 
   const result = spawnSync("bash", ["-c", script], {
@@ -199,7 +196,6 @@ if (-not (Test-Path $env:CMDABL_RS_SOURCE)) {
 New-Item -ItemType Directory -Force -Path $env:CMDABL_RS_TARGET | Out-Null
 Copy-Item -Path (Join-Path $env:CMDABL_RS_SOURCE '*') -Destination $env:CMDABL_RS_TARGET -Recurse -Force
 Write-Output "OK: Remote Script installed to $env:CMDABL_RS_TARGET"
-Write-Output 'Next: restart Live, then Settings -> Link, Tempo & MIDI -> Control Surface -> cmdAbl'
 `.trim();
 
   const result = spawnSync("powershell", ["-NonInteractive", "-Command", script], {

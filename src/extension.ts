@@ -95,7 +95,7 @@ export function activate(activation: ActivationContext) {
 
   // ── startup hint ─────────────────────────────────────────────────────────
   if (!isSetupDone()) {
-    console.log("cmdAbl: keyboard trigger not configured. Open the palette and run: cmdabl --setup");
+    console.log("cmdAbl: keyboard trigger not configured. Open the palette and run: cmdabl setup");
   }
 
   // ── open command mode ────────────────────────────────────────────────────

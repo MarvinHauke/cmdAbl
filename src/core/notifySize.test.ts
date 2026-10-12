@@ -31,8 +31,13 @@ test("notifySize: a 66-character line gets a width that fits it, with no slack r
 });
 
 test("notifySize: the cmdabl usage text fits the maximum width without wrapping", async () => {
-  const { cmdablUsage } = await import("./builtins.js");
-  const text = cmdablUsage();
+  const { registerBuiltins } = await import("./builtins.js");
+  const { CommandRegistry } = await import("../commandRegistry.js");
+  const { helpText } = await import("./commandTree.js");
+  const registry = new CommandRegistry();
+  registerBuiltins(registry);
+  const group = registry.roots().find((n) => n.name === "cmdabl")!;
+  const text = helpText(group, ["cmdabl"]);
   const longest = Math.max(...text.split("\n").map((l) => l.length));
   const { width, height } = notifySize(text);
   assert.ok(longest * 8.05 + 40 <= 760, `longest line ${longest} characters`);

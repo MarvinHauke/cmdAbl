@@ -68,7 +68,8 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
     if (rest.length === 0) return { kind: "help", node, path };
     return error(
       ExitCode.USAGE,
-      `unknown subcommand "${rest[0]!.value}" for "${path.join(" ")}"\nusage: ${usage(node, path)}`,
+      `unknown subcommand "${rest[0]!.value}" for "${path.join(" ")}"\n` +
+        `valid: ${node.children!.map((c) => c.name).join(", ")}\nusage: ${usage(node, path)}`,
     );
   }
 
