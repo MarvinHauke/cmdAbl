@@ -112,8 +112,12 @@ Changing these after a release breaks what users have learned and what is stored
    `1063875`): history entry, presenter, name check; a row whose object is gone never selects
    a neighbour. `registerResultHandler` is removed from `ModuleApi`. Note: `dbcb401` does not
    build on its own (a shared-index slip); irrelevant after a squash merge. Live test 1h.
-4. Ports instead of the raw SDK context in `ModuleApi`, then the command-authoring guide
-   (`docs/guides/adding-a-command.md`).
+4. Ports on `ModuleApi` instead of the raw SDK context — confirmed by the user 2026-10-12, on
+   the condition that the POSIX-like command contract stays as it is: `bridge`, `liveSet`,
+   `tracks` (SDK-backed, so track commands work without the script), `log`, `dialog` (through
+   the dialog queue). In work: cmdabl-core adds them, cmdabl-modules migrates module by module,
+   then `api.context` goes and an import rule is added. The authoring guide exists
+   (`docs/guides/command-authoring.md`, `3133603`) and is updated to the ports afterwards.
 5. Leftovers from before the rework: platform files still outside `src/core/` (`src/commandRegistry.ts`,
    `src/types.ts`, `src/providers/commandProvider.ts`, `src/setup.ts`) and an empty `src/ui/`
    folder — move them and extend the import-boundary test. No unused module was found.
@@ -160,6 +164,9 @@ and three developer guides; nothing for users.
   `description`, `examples`, and a summary per argument — the same texts show in `--help`. A
   test requires at least one example per command. Also generated: the list of Remote Script
   operations.
+- **Architecture overview** (cmdabl-docs; asked for by the user): `docs/architecture.md`, first
+  brief out together with "Getting started". Documentation fields are built (`845b971`,
+  `3133603`, `8ba50b1`); the generated pages and the CI check are core's last commit.
 - **User pages** (cmdabl-docs, one brief per page from the architect): install and
   `cmdabl setup`; the Remote Script (what it does, restarting Live, the access token); using it
   (palette, pick list, several words, "did you mean", history); known limits (macOS-only, SDK
