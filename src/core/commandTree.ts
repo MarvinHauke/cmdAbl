@@ -44,6 +44,16 @@ export interface ArgDef {
   choices?: string[];
   /** Key of a completer registered by a module; supplies the candidates. */
   complete?: string;
+  /** One line for help and the generated reference: what the argument is. */
+  summary?: string;
+}
+
+/** A worked example for help and the generated reference. */
+export interface CommandExample {
+  /** The line as typed, e.g. `mute /Kick, /Snare`. */
+  line: string;
+  /** What it does, in a few words. */
+  note?: string;
 }
 
 export interface OptionDef {
@@ -77,6 +87,14 @@ export interface CommandNode<P = unknown, V = string> {
   /** One line; shown in the palette and in help. */
   summary: string;
   aliases?: string[];
+  /**
+   * A sentence or two beyond `summary`: shown by `<command> --help` and in the
+   * generated reference (docs/reference/commands.md): help and the docs read it
+   * from here — one source.
+   */
+  description?: string;
+  /** Worked examples (runnable nodes). Every runnable command should have one. */
+  examples?: CommandExample[];
   /** Group node: has children and is not runnable on its own. */
   children?: CommandNode<P, V>[];
   options?: OptionDef[];
@@ -125,6 +143,21 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
       if (!NAME_RE.test(alias)) problems.push(`${at}: invalid alias "${alias}"`);
     }
     if (!node.summary.trim()) problems.push(`${at}: missing summary`);
+    if (node.description !== undefined && (typeof node.description !== "string" || !node.description.trim())) {
+      problems.push(`${at}: description must be a non-empty string`);
+    }
+    if (node.examples !== undefined) {
+      if (!Array.isArray(node.examples)) problems.push(`${at}: examples must be a list`);
+      else {
+        for (const example of node.examples) {
+          if (typeof example?.line !== "string" || !example.line.trim()) problems.push(`${at}: an example needs a line`);
+          else if (example.note !== undefined && (typeof example.note !== "string" || !example.note.trim())) {
+            problems.push(`${at}: the note of example "${example.line}" must be a non-empty string`);
+          }
+        }
+      }
+      if (node.children?.length) problems.push(`${at}: examples belong on a runnable command, not on a group`);
+    }
 
     const isGroup = (node.children?.length ?? 0) > 0;
     if (isGroup && node.run) problems.push(`${at}: a node has either children or run, not both`);
@@ -166,6 +199,9 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
         problems.push(`${at}: only the last argument may take the rest of the line ("${arg.name}")`);
       }
       if (arg.rest && arg.variadic) problems.push(`${at}: "${arg.name}" cannot be both rest and variadic`);
+      if (arg.summary !== undefined && (typeof arg.summary !== "string" || !arg.summary.trim())) {
+        problems.push(`${at}: the summary of argument "${arg.name}" must be a non-empty string`);
+      }
       if (arg.kind === "enum" && !(arg.choices?.length) && !arg.complete) {
         problems.push(`${at}: enum argument "${arg.name}" needs choices (or a complete source for a dynamic set)`);
       }
@@ -216,18 +252,35 @@ export function usage(node: CommandNode<any, any>, path: string[]): string {
   return parts.join(" ");
 }
 
-/** Multi-line help for a node: summary, usage, then its subcommands or options. */
+/**
+ * Multi-line help for a node: summary, description, usage, then its arguments,
+ * subcommands, options and examples.
+ */
 export function helpText(node: CommandNode<any, any>, path: string[]): string {
-  const lines = [node.summary, "", `usage: ${usage(node, path)}`];
+  const lines = [node.summary];
+  if (node.description) lines.push("", node.description);
+  lines.push("", `usage: ${usage(node, path)}`);
   if (node.children?.length) {
     lines.push("", "commands:");
     for (const child of node.children) lines.push(`  ${child.name.padEnd(12)} ${child.summary}`);
+  }
+  const described = (node.args ?? []).filter((arg) => arg.summary);
+  if (described.length) {
+    lines.push("", "arguments:");
+    for (const arg of described) lines.push(`  ${`<${arg.name}>`.padEnd(12)} ${arg.summary}`);
   }
   if (node.options?.length) {
     lines.push("", "options:");
     for (const opt of node.options) {
       const flag = `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${opt.takesValue ? " <value>" : ""}`;
       lines.push(`  ${flag.padEnd(22)} ${opt.summary}`);
+    }
+  }
+  if (node.examples?.length) {
+    lines.push("", "examples:");
+    for (const example of node.examples) {
+      lines.push(`  ${example.line}`);
+      if (example.note) lines.push(`      ${example.note}`);
     }
   }
   return lines.join("\n");

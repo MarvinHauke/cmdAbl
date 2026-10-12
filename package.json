@@ -10,6 +10,7 @@
     "build": "tsc --noEmit && tsx build.ts --production",
     "build:dev": "tsc --noEmit && tsx build.ts",
     "test": "tsx --test \"src/**/*.test.ts\"",
+    "docs:reference": "tsx scripts/gen-command-reference.ts",
     "start": "npm run build:dev && extensions-cli run",
     "package": "npm run build && extensions-cli package --include karabiner --include windows --include remote-script"
   },

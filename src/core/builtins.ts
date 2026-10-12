@@ -25,6 +25,8 @@ export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps =
   registry.add({
     name: "help",
     summary: "list the available commands",
+    description: "Prints every command with its one-line summary. Typing a command followed by --help shows that command in full.",
+    examples: [{ line: "help", note: "list the commands" }, { line: "cmdabl --help", note: "usage of the cmdabl commands" }],
     run: () => {
       const lines = registry
         .list()
@@ -37,10 +39,16 @@ export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps =
   registry.add({
     name: "cmdabl",
     summary: "configure cmdAbl",
+    description: "Setup and status commands of cmdAbl itself.",
     children: [
       {
         name: "setup",
         summary: "install trigger and Remote Script, then say what to do next",
+        description:
+          "Installs the keyboard trigger (Karabiner on macOS, AutoHotkey on Windows) and copies the Remote Script " +
+          "into Live's User Library, then compares the shipped, installed and running script versions and says " +
+          "what to do: restart Live, enable the control surface, or nothing.",
+        examples: [{ line: "cmdabl setup", note: "run once after installing, and again after updating cmdAbl" }],
         run: async () => {
           const installedText = (deps.setup ?? runSetup)();
           let running: BridgeResult<HelloInfo> | null = null;
@@ -62,6 +70,8 @@ export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps =
       {
         name: "bridge",
         summary: "show the Remote Script status (version, response time)",
+        description: "Sends one fresh request to the Remote Script and reports its version, protocol, response time and operations.",
+        examples: [{ line: "cmdabl bridge", note: "check that the Remote Script is installed and running" }],
         run: async () => {
           if (!deps.bridge) return fail(ExitCode.UNAVAILABLE, "the Remote Script bridge is not available in this build");
           // One fresh ping, answered at once: a dialog cannot show progress, and the

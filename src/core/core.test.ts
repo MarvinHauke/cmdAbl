@@ -354,3 +354,38 @@ test("enum: usage and help show <a|b>; the serialized tree carries the choices; 
   assert.match(validateTree(broken({ kind: "enum", choices: ["a"], rest: true })).join("\n"), /cannot take the rest/);
   assert.match(validateTree(broken({ kind: "text", choices: ["a"] })).join("\n"), /choices only applies to enum/);
 });
+
+// ── documentation fields ────────────────────────────────────────────────────
+
+test("description, examples and argument summaries: validated, shown by help, carried by the tree", () => {
+  const doc: CommandNode<void, string>[] = [
+    {
+      name: "mute",
+      summary: "mute tracks",
+      description: "Toggles the mute state of every named track.",
+      args: [{ name: "track", kind: "path", variadic: true, summary: "the tracks to mute" }],
+      examples: [{ line: "mute /Kick, /Snare", note: "mute both" }, { line: "mute vermona" }],
+      run: () => {},
+    },
+  ];
+  assert.deepEqual(validateTree(doc), []);
+  const text = helpText(doc[0]!, ["mute"]);
+  assert.match(text, /^mute tracks\n\nToggles the mute state of every named track\.\n\nusage: mute <track>…/);
+  assert.match(text, /arguments:\n  <track>\s+the tracks to mute/);
+  assert.match(text, /examples:\n  mute \/Kick, \/Snare\n      mute both\n  mute vermona$/);
+  const serialized = serializeTree(doc)[0]!;
+  assert.equal(serialized.description, "Toggles the mute state of every named track.");
+  assert.deepEqual(serialized.examples, doc[0]!.examples);
+  assert.equal(serialized.args![0]!.summary, "the tracks to mute");
+
+  const bad = (extra: object): string =>
+    validateTree([{ name: "x", summary: "s", run: () => {}, ...extra } as CommandNode<void, string>]).join("\n");
+  assert.match(bad({ description: " " }), /description must be a non-empty string/);
+  assert.match(bad({ examples: [{ line: "" }] }), /an example needs a line/);
+  assert.match(bad({ examples: [{ line: "x", note: "" }] }), /note of example/);
+  assert.match(bad({ args: [{ name: "a", kind: "text", summary: "" }] }), /summary of argument "a"/);
+  assert.match(
+    validateTree([{ name: "g", summary: "s", examples: [{ line: "g x" }], children: [{ name: "c", summary: "s", run: () => {} }] }]).join("\n"),
+    /examples belong on a runnable command/,
+  );
+});
