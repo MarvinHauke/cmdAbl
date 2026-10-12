@@ -9,6 +9,18 @@ import type { ObjectNode } from "./objectTree.js";
 /** What Live reports as selected after `select`. */
 export interface SelectResult {
   name: string;
+  /**
+   * Only meaningful when `showChains` was asked for: true = the track's chains are shown in the
+   * Session mixer (now or already), false = the write did not take, null = the track cannot show
+   * chains (or it was not asked for). `null` therefore means "nothing to report": it also covers a
+   * failed read/write and a script older than 0.6.0.
+   */
+  chainsShown: boolean | null;
+}
+
+export interface SelectOptions {
+  /** Also show the track's chains in the Session mixer; never folds anything. Default false. */
+  showChains?: boolean;
 }
 
 /**
@@ -16,12 +28,20 @@ export interface SelectResult {
  * with what it finds at the route and refuses with exit code 1 ("the Live Set
  * changed; run the command again") when they differ.
  */
-export async function select(bridge: Bridge, node: Pick<ObjectNode, "scope" | "route" | "name">): Promise<BridgeResult<SelectResult>> {
-  const reply = await bridge.request("select", { scope: node.scope, route: node.route, expectName: node.name }, { changes: true });
+export async function select(
+  bridge: Bridge,
+  node: Pick<ObjectNode, "scope" | "route" | "name">,
+  options: SelectOptions = {},
+): Promise<BridgeResult<SelectResult>> {
+  const args: Record<string, unknown> = { scope: node.scope, route: node.route, expectName: node.name };
+  if (options.showChains === true) args.showChains = true;
+  const reply = await bridge.request("select", args, { changes: true });
   if (!reply.ok) return reply;
   const name = reply.value.name;
   if (typeof name !== "string") return fail(1, "bad reply from the Remote Script: select without a name");
-  return { ok: true, value: { name } };
+  const shown = reply.value.chains_shown;
+  const chainsShown = typeof shown === "boolean" ? shown : null;
+  return { ok: true, value: { name, chainsShown } };
 }
 
 /** What the SDK cannot tell about one track (0001 §4). */

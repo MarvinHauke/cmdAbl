@@ -8,7 +8,7 @@ const node = { scope: "regular" as const, route: [2, 1], name: "EQ Eight" };
 
 test("select sends scope, route and expectName and returns the read-back name", async () => {
   const bridge = createFakeBridge({ ops: { select: () => ({ ok: true, value: { name: "EQ Eight" } }) } });
-  assert.deepEqual(await select(bridge, node), { ok: true, value: { name: "EQ Eight" } });
+  assert.deepEqual(await select(bridge, node), { ok: true, value: { name: "EQ Eight", chainsShown: null } });
   assert.deepEqual(bridge.calls, [{ op: "select", args: { scope: "regular", route: [2, 1], expectName: "EQ Eight" }, changes: true }]);
 });
 
@@ -181,4 +181,19 @@ test("chainSet rejects malformed replies and passes outer failures through", asy
   assert.equal((await chainSet(short, [{ ...chainNode(0, "K"), mute: true }])).ok, false);
   const refused = createFakeBridge({ ops: { chain_set: () => fail(5, "x") } });
   assert.deepEqual(await chainSet(refused, [{ ...chainNode(0, "K"), mute: true }]), { ok: false, code: 5, text: "x" });
+});
+
+test("select asks for showChains only when requested and maps chains_shown", async () => {
+  const bridge = createFakeBridge({ ops: { select: (a) => ({ ok: true, value: a.showChains ? { name: "Kick", chains_shown: true } : { name: "Kick" } }) } });
+  const plain = await select(bridge, node);
+  const unfold = await select(bridge, node, { showChains: true });
+  const no = await select(bridge, node, { showChains: false });
+  assert.deepEqual(bridge.calls.map((c) => "showChains" in c.args), [false, true, false]);
+  assert.deepEqual(plain, { ok: true, value: { name: "Kick", chainsShown: null } });
+  assert.deepEqual(unfold, { ok: true, value: { name: "Kick", chainsShown: true } });
+  assert.deepEqual(no, plain);
+  const cannot = createFakeBridge({ ops: { select: () => ({ ok: true, value: { name: "G", chains_shown: null } }) } });
+  assert.deepEqual(await select(cannot, node, { showChains: true }), { ok: true, value: { name: "G", chainsShown: null } });
+  const notTaken = createFakeBridge({ ops: { select: () => ({ ok: true, value: { name: "T", chains_shown: false } }) } });
+  assert.deepEqual(await select(notTaken, node, { showChains: true }), { ok: true, value: { name: "T", chainsShown: false } });
 });

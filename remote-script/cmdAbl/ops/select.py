@@ -6,6 +6,13 @@ Set changed in between and nothing is selected (`stale`).
 Result: {name} of what Live reports as selected after the change. If the
 read-back is not the requested object the reply is `failed`.
 
+Optional `showChains: true` (default false): after a successful selection the
+track's chains are shown in the Session mixer (`Track.is_showing_chains`) when
+the track can show them and does not already. Never folds anything. The reply
+then has `chains_shown`: true (shown now or already), false (the write did not
+take) or null (the track cannot show chains, or reading failed). It never
+turns a successful selection into a failure. View state, not a writing op.
+
 Route length: 1 track, 2 device on the track, 3 chain (selected in its rack's
 view), 4+ device inside a chain (see routes.py). Parent groups are unfolded
 first so the object is visible. Live's objects are wrappers, so the read-back compares with
@@ -21,11 +28,26 @@ def _fail(text):
     return OpError("failed", text)
 
 
+def _show_chains(track):
+    try:
+        if not track.can_show_chains:
+            return None
+        if track.is_showing_chains:
+            return True
+        track.is_showing_chains = True
+        return bool(track.is_showing_chains)
+    except Exception:
+        return None
+
+
 def select(song, args):
     scope, route = parse_target(args)
     expect = args.get("expectName")
     if expect is not None and not isinstance(expect, str):
         raise OpError("bad_request", "expectName must be a string")
+    show = args.get("showChains", False)
+    if not isinstance(show, bool):
+        raise OpError("bad_request", "showChains must be true or false")
     path = resolve(song, scope, route)
     target = path[-1]
     if expect is not None and target.name != expect:
@@ -56,4 +78,7 @@ def select(song, args):
             raise OpError("unsupported", "cannot read the selected chain: %s" % e)
         if selected != target:
             raise _fail("Live did not select the chain")
-    return {"name": target.name}
+    result = {"name": target.name}
+    if show:
+        result["chains_shown"] = _show_chains(track)
+    return result

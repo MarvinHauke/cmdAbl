@@ -106,6 +106,8 @@ class FakeTrack(object):
         self.view = FakeTrackView()
         self.can_be_armed = can_be_armed
         self._arm = arm
+        self.can_show_chains = any(hasattr(d, "chains") for d in self.devices)
+        self.is_showing_chains = False
 
     @property
     def is_grouped(self):

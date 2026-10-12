@@ -385,7 +385,10 @@ says what it points at (1 = track, 2 = device on the track, 3 = chain, 4 = devic
     (the Set becomes "modified"); it changes no content. The user decides.
   - *Extension API:* `select(bridge, node, { showChains?: boolean })` in `bridgeOps.ts` returns
     `{ name, chainsShown: boolean | null }`; `cmdabl-modules` maps `--unfold` to it for `goto`
-    and `find` (and, per its own design, for `next`/`prev`). Not built until the user confirms.
+    and `find` (and, per its own design, for `next`/`prev`). Built in script 0.6.0 (user confirmed 2026-10-12). `can_show_chains` / `is_showing_chains` are
+    LOM facts not yet seen in Live (unverified until the Live test). Whether `next`/`prev` take
+    the flag is up to the command side; it must not be the default. `chainsShown` is `null` when
+    not asked for or when the track cannot show chains.
 - Identity stays the route, verified by `expectName`; nothing is cached in the script.
 - On a timeout, a *tree node* (chains) is omitted; a *command* answers with code 5/1 instead.
 
