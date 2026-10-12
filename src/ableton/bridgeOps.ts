@@ -13,7 +13,7 @@ export interface SelectResult {
    * Only meaningful when `showChains` was asked for: true = the track's chains are shown in the
    * Session mixer (now or already), false = the write did not take, null = the track cannot show
    * chains (or it was not asked for). `null` therefore means "nothing to report": it also covers a
-   * failed read/write and a script older than 0.6.0.
+   * failed read/write and a script that lacks the `showChains` argument (it ignores it).
    */
   chainsShown: boolean | null;
 }

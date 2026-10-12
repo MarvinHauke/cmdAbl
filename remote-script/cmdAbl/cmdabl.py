@@ -78,7 +78,7 @@ class cmdAbl(ControlSurface):
 
     def _handle(self, data, addr):
         # Every request has an id and an op; a datagram without them is dropped and logged
-        # (this includes the old one-way `cmd` messages of extensions before 0.2.0).
+        # (this includes the old one-way `cmd` messages of early development builds).
         reply, problem = handle_request(data, self._ops_for_song(), WRITES, self._token)
         if problem:
             self.log_message("cmdAbl bridge: dropped datagram: %s" % problem)

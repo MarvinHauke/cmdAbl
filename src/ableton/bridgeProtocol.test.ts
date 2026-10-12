@@ -49,4 +49,12 @@ test("installed script check: missing, old, current, unknown", () => {
   const proto = (v: string) => (f: string) => (f === `${dir}/protocol.py` ? `VERSION = "${v}"\n` : null);
   assert.equal(inspectInstalledScript("darwin", proto(SCRIPT_VERSION), () => "present", home).status, "current");
   assert.equal(inspectInstalledScript("darwin", proto("0.0.9"), () => "present", home).status, "outdated");
+  // Equality, not ordering: a script version above this extension's (a dev install from before the
+  // 0.6.0 -> 0.1.0 reset) is "outdated" like any other difference, never "newer than shipped".
+  assert.equal(inspectInstalledScript("darwin", proto("0.6.0"), () => "present", home).status, "outdated");
+});
+
+// A tripwire: it fails on the first legitimate bump — read 0001 §3 "Versioning rule" before changing it.
+test("the script version is 0.1.0 until a release changes it (0001 §3 versioning rule)", () => {
+  assert.equal(SCRIPT_VERSION, "0.1.0");
 });

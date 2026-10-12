@@ -329,6 +329,20 @@ Reply: `{"v": 1, "id": "<same>", "ok": true, "result": { … }}` or
   selects with the old script today and returns exit code 5 after build step 2.
 - **Mismatch**: `v` differs, or an op the extension needs is missing from `ops` → exit code 5 with
   both versions and "run `cmdabl --setup`, restart Live".
+- **Versioning rule (user, 2026-10-12).** The script version follows the extension's release
+  line (cmdAbl 0.1.0 ships script 0.1.0; until the first release a changed script keeps `0.1.0`).
+  From the first release on, the third number goes up for every change to the script that is a
+  fix or a compatible addition (a new op, a new optional argument); middle number: only with a release whose script is not compatible with the previous
+  release's extension (an op removed or changed in meaning); protocol `v`: only when the envelope
+  changes. Compatibility is decided by the op list from `hello`, never by comparing versions;
+  versions are only compared for equality (installed-script check, `cmdabl --bridge`).
+  *During development* an installed copy from before a change has the same version as the new
+  one, so the installed-file check says "current" and `cmdabl --bridge` shows no "(this extension
+  ships …)"; only the op list tells, and only for a missing op — a fix inside an existing op is
+  invisible. A linked install plus a Live restart is the development routine; do not trust the
+  version number until the first release.
+  The script numbers 0.2.0 … 0.6.0 named elsewhere in this plan are the development-day numbers
+  before the reset to 0.1.0; they are history, not versions to look for.
 - `cmdabl --setup` (renamed to `cmdabl setup` in the syntax freeze, roadmap step 3; the texts above follow the rename) needs the installed `VERSION` (read from the file, no `hello`), and after
   copying always says that Live must be restarted (Python is loaded once per start).
 - The extension sends `hello` lazily on first bridge use and caches the answer for the session;
