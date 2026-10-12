@@ -42,11 +42,11 @@ export function activate(activation: ActivationContext) {
     title: string,
     candidates: ObjectNode[],
     multi = false,
-    extra: { nodes?: ObjectNode[]; preview?: PickPreview } = {},
+    extra: { nodes?: ObjectNode[]; preview?: PickPreview; details?: string[] } = {},
   ): Promise<ObjectNode[] | null> {
     // A module's own pick has no Live Set at hand; unique labels need it.
     const nodes = extra.nodes ?? liveNodes();
-    const chosen = await pickNodes(ui, { title, candidates, multi, nodes, preview: extra.preview });
+    const chosen = await pickNodes(ui, { title, candidates, multi, nodes, preview: extra.preview, details: extra.details });
     for (const listener of pickListeners) listener(candidates, chosen);
     return chosen;
   }
@@ -108,7 +108,8 @@ export function activate(activation: ActivationContext) {
         registry,
         liveNodes,
         bridge: () => getBridge(),
-        pick: ({ title, candidates, multi, nodes, preview }) => pick(title, candidates, multi, { nodes, preview }),
+        pick: ({ title, candidates, multi, nodes, preview, details }) =>
+          pick(title, candidates, multi, { nodes, preview, details }),
       });
       if (outcome.cancelled) return;
       present(outcome.result);

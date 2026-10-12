@@ -187,10 +187,10 @@ test("run: the pick preview splits the line around the ambiguous address", async
 test("run: resolved targets show as unique paths, unresolved ones as typed", async () => {
   const { deps, picks } = setup((c) => [c[0]!]);
   await runLine("mute /Vermona, /Kick, /Opal", deps);
-  // First ambiguous address is "/Vermona": nothing before; "/Opal" resolves uniquely, "/Kick" does not.
-  assert.deepEqual(picks[0]!.preview, { before: "mute", after: '/Kick "/Opal Lead"' });
-  // Second: "/Kick" — the picked "/Vermona MIDI" is now a resolved target before it.
-  assert.deepEqual(picks[1]!.preview, { before: 'mute "/Vermona MIDI"', after: '"/Opal Lead"' });
+  // "/Vermona" and "/Kick" are both ambiguous: ONE list answers them; "/Opal" resolves uniquely.
+  assert.equal(picks.length, 1);
+  assert.equal(picks[0]!.title, 'mute: "/Vermona", "/Kick" match 4');
+  assert.deepEqual(picks[0]!.preview, { before: "mute", after: '"/Opal Lead"' });
 });
 
 test("pickNodes: label is the unique path, value is the quoted unique path", async () => {
@@ -257,8 +257,9 @@ test("run: the remembered line is canonical — unique paths, each object once",
 test("run: the preview shows uniquely resolved text as its path, once", async () => {
   const { deps, picks } = setup((c) => [c[0]!]);
   await runLine('mute opal "/Opal Lead" kick vermona', deps);
-  // "kick" is ambiguous (picked first); opal and "/Opal Lead" are one object.
-  assert.deepEqual(picks[0]!.preview, { before: 'mute "/Opal Lead"', after: "vermona" });
+  // "kick" and "vermona" are ambiguous (one list); opal and "/Opal Lead" are one object.
+  assert.equal(picks.length, 1);
+  assert.deepEqual(picks[0]!.preview, { before: 'mute "/Opal Lead"', after: "" });
 });
 
 test("run: a lone dash inside an unquoted name, and a word equal to a declared flag", async () => {

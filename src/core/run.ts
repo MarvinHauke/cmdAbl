@@ -1,10 +1,10 @@
 import { ExitCode, fail, ok, type CommandResult } from "../types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
-import { resolvePath, uniquePath } from "../ableton/resolvePath.js";
+import { uniquePath } from "../ableton/resolvePath.js";
 import type { CommandRegistry } from "../commandRegistry.js";
 import { helpText, type CommandNode, type Invocation } from "./commandTree.js";
 import { parse } from "./parse.js";
-import { applyPick, normalizeTargets, resolveTargets, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
+import { alternativeHits, applyPick, lookupTarget, normalizeTargets, resolveTargets, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { PickPreview } from "./ui.js";
@@ -34,6 +34,8 @@ export interface RunDeps {
     nodes: ObjectNode[];
     /** The command text around the ambiguous address (see SelectRequest.preview). */
     preview: PickPreview;
+    /** Parallel to `candidates`: which typed text each row matched; absent = the kind. */
+    details?: string[];
   }) => Promise<ObjectNode[] | null>;
 }
 
@@ -56,7 +58,9 @@ function headWords(invocation: Invocation<string>): string[] {
 
 /** A target as it appears in a command line: resolved ones by unique path, others as typed. */
 function targetWord(value: Target, nodes: ObjectNode[]): string {
-  return quoteIfNeeded(typeof value === "string" ? value : uniquePath(nodes, value));
+  if (typeof value === "string") return quoteIfNeeded(value);
+  if ("joined" in value) return value.words.map(quoteIfNeeded).join(" ");
+  return quoteIfNeeded(uniquePath(nodes, value));
 }
 
 /**
@@ -89,16 +93,20 @@ function previewFor(
     const def = node.args?.[argIndex];
     const seen = new Set<string>(); // per argument, like resolveTargets
     values.forEach((value, valueIndex) => {
-      if (argIndex === request.argIndex && valueIndex === request.valueIndex) return;
+      // The texts this list answers are replaced by what the user marks.
+      if (argIndex === request.argIndex && request.texts.some((t) => t.valueIndex === valueIndex)) return;
       // Path text that resolves without a pick (one match, or `multiple: "all"`) shows as its objects.
       let expanded: Target[] = [value];
       if (typeof value === "string" && def?.kind === "path") {
-        const matches = resolvePath(nodes, value, def.kinds);
+        const matches = lookupTarget(nodes, value, def.kinds);
         if (matches.length === 1 || (matches.length > 1 && def.multiple === "all")) expanded = matches;
+      } else if (typeof value === "object" && "joined" in value) {
+        const hits = alternativeHits(nodes, value, def?.kinds).candidates;
+        if (hits.length === 1) expanded = hits;
       }
       const isBefore = argIndex < request.argIndex || (argIndex === request.argIndex && valueIndex < request.valueIndex);
       for (const target of expanded) {
-        if (typeof target !== "string") {
+        if (typeof target !== "string" && !("joined" in target)) {
           if (seen.has(target.handleId)) continue;
           seen.add(target.handleId);
         }
@@ -160,7 +168,7 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
     return { result: ok(lines.join("\n")) };
   }
 
-  const { node, invocation } = parsed;
+  const { node, invocation, quoted } = parsed;
 
   // Companions first: no point asking the user to pick for a command that cannot run.
   // A visible choice: with the script missing, a typo in the address answers
@@ -172,7 +180,7 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
 
   const needsLive = (node.args ?? []).some((def) => def.kind === "path");
   const nodes = needsLive ? deps.liveNodes() : [];
-  let targets = normalizeTargets(node, invocation, nodes);
+  let targets = normalizeTargets(node, invocation, nodes, quoted);
 
   // Resolve; every ambiguous address costs the user one pick.
   for (;;) {
@@ -180,8 +188,10 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
     if (step.kind === "error") return { result: step.result };
     if (step.kind === "pick") {
       const { request } = step;
+      const quotedTexts = request.texts.map((t) => `"${t.query}"`).join(", ");
       const chosen = await deps.pick({
-        title: `${invocation.path.join(" ")}: "${request.query}" matches ${request.candidates.length}`,
+        title: `${invocation.path.join(" ")}: ${request.texts.length > 1 ? `${quotedTexts} match` : `"${request.query}" matches`} ${request.candidates.length}`,
+        ...(request.details ? { details: request.details } : {}),
         candidates: request.candidates,
         multi: request.multi,
         nodes,

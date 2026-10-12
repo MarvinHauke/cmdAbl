@@ -16,6 +16,8 @@ export interface PickOptions {
   nodes?: ObjectNode[];
   /** The command text around the address being picked for. */
   preview?: PickPreview;
+  /** Row detail per candidate (which typed text it matched); default: the object's kind. */
+  details?: string[];
 }
 
 export async function pickNodes(ui: Ui, options: PickOptions): Promise<ObjectNode[] | null> {
@@ -23,9 +25,9 @@ export async function pickNodes(ui: Ui, options: PickOptions): Promise<ObjectNod
     title: options.title,
     multi: options.multi,
     ...(options.preview ? { preview: options.preview } : {}),
-    items: options.candidates.map((n) => {
+    items: options.candidates.map((n, i) => {
       const label = options.nodes ? uniquePath(options.nodes, n) : n.path;
-      return { label, detail: n.kind, value: quoteIfNeeded(label) };
+      return { label, detail: options.details?.[i] ?? n.kind, value: quoteIfNeeded(label) };
     }),
   });
   if (!indexes) return null;

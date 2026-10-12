@@ -7,7 +7,13 @@ import { tokenize, type Token } from "./tokenize.js";
 // Resolving `path` arguments against the Live Set is a separate, later step.
 
 export type ParseOutcome<P = unknown> =
-  | { kind: "run"; node: CommandNode<P, any>; invocation: Invocation<string> }
+  | {
+      kind: "run";
+      node: CommandNode<P, any>;
+      invocation: Invocation<string>;
+      /** Parallel to `invocation.args`: whether each value was typed in quotes (a joined `rest` value: false). */
+      quoted: boolean[][];
+    }
   /** `--help`, or a group typed without a subcommand. `node` is null for the top level. */
   | { kind: "help"; node: CommandNode<P, any> | null; path: string[] }
   | { kind: "error"; result: CommandResult };
@@ -69,6 +75,7 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
   // 2. Options and positionals of the leaf.
   const options: Record<string, string | true> = {};
   const positionals: string[] = [];
+  const positionalQuoted: boolean[] = [];
   const defs = node.options ?? [];
   let optionsEnded = false;
 
@@ -77,6 +84,7 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
     const text = token.value;
     if (optionsEnded || !startsOption(input, token) || text === "-") {
       positionals.push(text);
+      positionalQuoted.push(token.quoted);
       continue;
     }
     if (text === "--") {
@@ -112,19 +120,25 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
   // 3. Assign positionals to the declared arguments, in order.
   const argDefs = node.args ?? [];
   const args: string[][] = [];
+  const quoted: boolean[][] = [];
   let p = 0;
   for (const def of argDefs) {
     if (def.variadic) {
       args.push(positionals.slice(p));
+      quoted.push(positionalQuoted.slice(p));
       p = positionals.length;
     } else if (def.rest) {
       const joined = positionals.slice(p).join(" ");
       args.push(joined ? [joined] : []);
+      // One word keeps its quoting; several joined words are not "quoted".
+      quoted.push(joined ? [positionals.length - p === 1 && positionalQuoted[p] === true] : []);
       p = positionals.length;
     } else if (p < positionals.length) {
+      quoted.push([positionalQuoted[p] === true]);
       args.push([positionals[p++]!]);
     } else {
       args.push([]);
+      quoted.push([]);
     }
     if (def.required !== false && args[args.length - 1]!.length === 0) {
       return error(ExitCode.USAGE, `missing argument <${def.name}>\nusage: ${usage(node, path)}`);
@@ -134,5 +148,5 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
     return error(ExitCode.USAGE, `unexpected argument "${positionals[p]}"\nusage: ${usage(node, path)}`);
   }
 
-  return { kind: "run", node, invocation: { path, options, args } };
+  return { kind: "run", node, invocation: { path, options, args }, quoted };
 }
