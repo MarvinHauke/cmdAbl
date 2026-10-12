@@ -126,12 +126,11 @@ Changing these after a release breaks what users have learned and what is stored
   (`6f0527d`) use it. Path resolution stays strict. Behaviour change: the pick list filter
   matches words in any order and orders rows by fuzzy rank. The completion engine (0006, after
   0.1.0) builds on it. Live test: "Open Live tests", 1c.
-- Forgiving target resolution (approved by the user 2026-10-12; task out to cmdabl-core, rules
-  to be written into 0005 when built): (1) several bare words are one pattern first, "every
-  word occurs" like `find` — `mute vermona kick` means the Kick pad; no joint hit → each word
-  its own target; a comma, a `/` prefix or quotes separate targets; (2) one multi-select pick
-  list for all ambiguous targets of a command instead of one list after another; (3) nothing
-  matches → a "did you mean" pick list with the closest names, never a silent guess.
+- Forgiving target resolution (approved by the user 2026-10-12): built (`461c885`, `46f241a`,
+  `8588a8d`; rules in 0005, "Forgiving target resolution"). Behaviour changes: several bare
+  words are one pattern first (`mute vermona kick` → the Kick pad); `mute <group> <its child>`
+  asks instead of running both; two ambiguous texts share one pick list; a mistyped target
+  opens a "did you mean" list instead of failing at once. Live test 1f.
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
 - A generic `page` surface on `Ui` for module pages (decided, see "Decisions"); `pakabl list`
   moves onto it and into the dialog queue.
@@ -220,6 +219,13 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    done"; `goto --unfold <pad>` → chain columns appear in the mixer, without the flag nothing
    unfolds, `find --unfold kick` then `next` unfolds on each step; `arm kick` offers only the
    track.
+1f. Forgiving target resolution: `mute vermona kick` → the Kick pad is muted (or a pick list);
+   `goto vermona kick` → the pad; `mute sub vermona` → ONE list with the matches of both
+   words, the detail column names the word; `mute <group> <child of it>` → one list with both
+   readings; `mute /Opal Lead kick`, `mute "Opal Lead" kick`, `mute a, b` as before;
+   `mute vermna` → "did you mean" with the Vermona track, `Enter` mutes and the history holds
+   the correct path, `Esc` → "nothing matches", nothing in history; `mute zz` → plain "nothing
+   matches"; no suggestion lists on plain nonsense.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in

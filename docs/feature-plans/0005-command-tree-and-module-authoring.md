@@ -241,6 +241,29 @@ Cmd-clicking the buttons — and to be stated in the command reference.
   cached bridge state only, so opening never waits for a timeout. `--help` does not name the
   requirement yet.
 
+## Forgiving target resolution (2026-10-12; `461c885`, `46f241a`, `8588a8d`)
+
+How the platform reads the text of a `path` argument (`src/core/resolveArgs.ts`):
+
+- A comma always separates targets; a word starting with `/` and a quoted word are targets of
+  their own. Remembered lines consist of those, so they resolve exactly as before.
+- The remaining bare words are tried as one pattern: an exact path first, else "every word
+  occurs in the path" (`matches`, within the argument's `kinds`) — the rule of `find`.
+  `mute vermona kick` names the Kick pad.
+- The platform never chooses silently between two readings: if the joined words hit and every
+  word also resolves on its own to other objects (`mute drums kick` with a group "Drums"
+  holding "Kick"), it asks — one multi-select list, the joined hits first, then each word's.
+- No joined hit → each word is its own target, as before.
+- One pick list per command: all ambiguous texts of an argument share one multi-select list;
+  the row's detail names the text it matched. A single-target argument keeps a single-select
+  list and uses only the one-pattern rule.
+- Nothing matches → "did you mean": a pick list with the closest names (fuzzy, at most 8, no
+  suggestions for words under 3 characters). Never run unasked, even with one candidate; `Esc`
+  gives the original "nothing matches" (exit 3, nothing remembered). If one of several missing
+  texts has no plausible candidate, the command fails at once.
+- Authoring rule: declare `kinds` unless a command really means every kind — without them
+  most words resolve alone and multi-word input asks more often.
+
 ## Optional use of the bridge (2026-10-12, `7e4d787`)
 
 A command that works without the Remote Script but gets better with it does not declare
