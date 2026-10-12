@@ -428,7 +428,10 @@ Decided by the user and still governing future work.
   compared for equality only (0001 §3).
 - 2026-10-12: exclusive arm/solo is not applied by commands; naming several tracks is an explicit
   choice, like Cmd-clicking the buttons (accepted).
-- 2026-10-11: `mute`/`solo`/`arm` toggle; `unmute`/`unsolo`/`unarm` switch off (0005).
+- 2026-10-12: `mute`/`solo`/`arm` toggle by default and take `-s, --set <0|1>` to force the
+  state (1 = muted / soloed / armed, as in the LOM); `unmute`/`unsolo`/`unarm` are removed, no
+  aliases — fewer base commands. Replaces the decision of 2026-10-11 to keep the `un…`
+  commands. Task out to cmdabl-modules.
 - 2026-10-11: option (a) for module pages: a fourth generic surface `page` on `Ui`, reachable
   through `ModuleApi`; `pakabl list` keeps its page. Not built yet (roadmap step 4).
 - 2026-10-11: the parser stays strict for dash-words in unquoted names (0005, "Dash rules").

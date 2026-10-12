@@ -230,6 +230,14 @@ Taken from comparing a ChatGPT architecture proposal with this plan (full table 
     whether numbers get a special case when the first `number` argument exists, and say it in
     the authoring guide.
 
+## Toggle by default, `--set` to force (user, 2026-10-12)
+
+`mute`, `solo` and `arm` toggle each target; `-s, --set <0|1>` forces the state, where the value
+is the state the command is named after (1 = muted / soloed / armed), as in the LOM. The
+separate `unmute`, `unsolo`, `unarm` commands are removed without aliases. A remembered line
+keeps the option, so re-running it is deterministic. Pattern for later commands: one command
+per property, a toggle when it is boolean, `--set <value>` for an explicit value.
+
 ## Exclusive arm and solo (user, 2026-10-12)
 
 `arm` and `solo` do not follow Live's "Exclusive" settings: a write through the API changes only
