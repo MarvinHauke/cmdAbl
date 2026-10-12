@@ -68,7 +68,6 @@ export function activate(activation: ActivationContext) {
     pick,
     onPick: (listener) => pickListeners.push(listener),
     registerProvider: (provider, priority = 0) => providers.push({ provider, priority }),
-    registerResultHandler: () => {}, // unused: object rows run as `goto <path>`; removed from ModuleApi next
     onCommandRun: (listener) => commandRunListeners.push(listener),
     showFeedback,
   };

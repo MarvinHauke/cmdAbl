@@ -8,9 +8,7 @@
 import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { Command } from "../commandRegistry.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
-import type { PaletteResult, Provider } from "../types.js";
-
-export type ResultHandler = (result: PaletteResult) => void | Promise<void>;
+import type { Provider } from "../types.js";
 
 export interface ModuleApi {
   context: ExtensionContext<"1.0.0">;
@@ -30,12 +28,6 @@ export interface ModuleApi {
    * negative so recent invocations come first). Ties keep registration order.
    */
   registerProvider(provider: Provider, priority?: number): void;
-  /**
-   * @deprecated Does nothing: a picked Live-object row runs as the command line
-   * `goto <unique path>` through `runLine` (core/objectRow.ts). Removed once
-   * goto stops calling it.
-   */
-  registerResultHandler(action: string, handler: ResultHandler): void;
   /**
    * Notified after any command finishes with code 0 — fresh or re-run — with its
    * full canonical invocation string (e.g. "mute /vermona/kick, /vermona/snare").
