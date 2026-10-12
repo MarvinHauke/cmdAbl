@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import Fuse from "fuse.js";
-import { filterRanked, filterer, matches, rank, ranker } from "./match.js";
+import { filterRanked, filterer, matches, rank, ranker, suggest } from "./match.js";
 
 test("matches: every word occurs, any order, ignoring case", () => {
   assert.equal(matches("/Vermona MIDI/Drum Rack/Kick", "vermona kick"), true);
@@ -51,4 +51,14 @@ test("ranker and filterer: prepared once, same answers as the one-off forms", ()
   for (const query of ["kick", "", "kick drums", "pad"]) {
     assert.deepEqual(f(query), filterRanked(["/Bass/Kick Layer", "/Drums/Kick", "/Kick", "/Pad"], query, (l) => l), query);
   }
+});
+
+test("suggest: every word fits fuzzily; short words and no fit give nothing; capped", () => {
+  const paths = [{ path: "/Vermona MIDI" }, { path: "/Opal Lead" }, { path: "/Kick" }];
+  assert.deepEqual(suggest(paths, "vermoan", ["path"]).map((p) => p.path), ["/Vermona MIDI"]);
+  assert.deepEqual(suggest(paths, "vm", ["path"]), []);
+  assert.deepEqual(suggest(paths, "zzzzzz", ["path"]), []);
+  assert.deepEqual(suggest(paths, "", ["path"]), []);
+  const many = Array.from({ length: 20 }, (_, i) => ({ path: `/Track ${i}` }));
+  assert.ok(suggest(many, "trak", ["path"]).length <= 8);
 });

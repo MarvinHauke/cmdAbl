@@ -189,15 +189,23 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
     if (step.kind === "pick") {
       const { request } = step;
       const quotedTexts = request.texts.map((t) => `"${t.query}"`).join(", ");
+      const command = invocation.path.join(" ");
+      const title = request.suggestion
+        ? `${command}: nothing matches ${quotedTexts} — did you mean`
+        : `${command}: ${request.texts.length > 1 ? `${quotedTexts} match` : `"${request.query}" matches`} ${request.candidates.length}`;
       const chosen = await deps.pick({
-        title: `${invocation.path.join(" ")}: ${request.texts.length > 1 ? `${quotedTexts} match` : `"${request.query}" matches`} ${request.candidates.length}`,
+        title,
         ...(request.details ? { details: request.details } : {}),
         candidates: request.candidates,
         multi: request.multi,
         nodes,
         preview: previewFor(node, invocation, targets, request, nodes),
       });
-      if (!chosen || chosen.length === 0) return { result: ok(), cancelled: true };
+      if (!chosen || chosen.length === 0) {
+        // Esc on a suggestion list: nothing was found, as before (exit 3, nothing remembered).
+        if (request.suggestion) return { result: request.suggestion.onCancel };
+        return { result: ok(), cancelled: true };
+      }
       targets = applyPick(targets, request, request.multi ? chosen : chosen.slice(0, 1));
       continue;
     }

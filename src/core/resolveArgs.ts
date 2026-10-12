@@ -2,7 +2,7 @@ import { ExitCode, fail, type CommandResult, type TargetOutcome } from "../types
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { resolvePath, resolveStructural } from "../ableton/resolvePath.js";
 import type { NodeKind } from "../ableton/objectTree.js";
-import { matches } from "./match.js";
+import { matches, suggest } from "./match.js";
 import type { CommandNode, Invocation } from "./commandTree.js";
 
 // "Resolve before the handler": turns the raw strings of `path` arguments into
@@ -51,6 +51,12 @@ export interface PickRequest {
    * stays the object's kind.
    */
   details?: string[];
+  /**
+   * Set when the texts matched NOTHING and the candidates are "did you
+   * mean" suggestions (fuzzy hits, never executed unasked). Cancelling the
+   * list ends the run with `onCancel`: today's "nothing matches" failure.
+   */
+  suggestion?: { onCancel: CommandResult };
 }
 
 export type ResolveStep =
@@ -59,6 +65,7 @@ export type ResolveStep =
   | { kind: "error"; result: CommandResult };
 
 type AnyNode = CommandNode<any, any>;
+type AnyDef = NonNullable<AnyNode["args"]>[number];
 
 /**
  * The objects a typed target names: the strict rules of `resolvePath` first
@@ -221,6 +228,8 @@ export function resolveTargets(
   const command = invocation.path.join(" ");
   const args: ArgValue[][] = [];
   const missing: TargetOutcome[] = [];
+  // Where each missing text sits, for the "did you mean" list (step: nothing is ambiguous any more).
+  const missingAt: Array<{ argIndex: number; def: AnyDef; valueIndex: number; text: string }> = [];
 
   for (const [argIndex, def] of (node.args ?? []).entries()) {
     const values = targets[argIndex] ?? [];
@@ -237,7 +246,10 @@ export function resolveTargets(
         if (hits.candidates.length === 1) resolved.push(hits.candidates[0]!);
         else if (hits.candidates.length > 1) {
           ambiguous.push({ valueIndex, query: target.joined, candidates: hits.candidates, matched: hits.matched });
-        } else missing.push({ path: target.joined, ok: false, code: ExitCode.NOT_FOUND, message: "nothing matches" });
+        } else {
+          missing.push({ path: target.joined, ok: false, code: ExitCode.NOT_FOUND, message: "nothing matches" });
+          missingAt.push({ argIndex, def, valueIndex, text: target.joined });
+        }
         continue;
       }
       if (typeof target !== "string") {
@@ -247,6 +259,7 @@ export function resolveTargets(
       const found = lookupTarget(nodes, target, def.kinds);
       if (found.length === 0) {
         missing.push({ path: target, ok: false, code: ExitCode.NOT_FOUND, message: "nothing matches" });
+        missingAt.push({ argIndex, def, valueIndex, text: target });
       } else if (found.length === 1 || def.multiple === "all") {
         resolved.push(...found);
       } else {
@@ -264,7 +277,25 @@ export function resolveTargets(
       missing.length === 1
         ? `${command}: nothing matches "${missing[0]!.path}"`
         : `${command}: ${missing.length} targets not found`;
-    return { kind: "error", result: fail(ExitCode.NOT_FOUND, message, missing.length > 1 ? missing : undefined) };
+    const failure = fail(ExitCode.NOT_FOUND, message, missing.length > 1 ? missing : undefined);
+    // Never a silent guess: plausible fuzzy hits are offered in a list, and only
+    // what the user marks runs. A text nothing fits makes the command fail
+    // whatever the user marks, so that is decided first — no list, no wasted
+    // question. Otherwise the first argument with missing texts is asked about.
+    const suggested = missingAt.map((m) => {
+      const pool = m.def.kinds ? nodes.filter((n) => m.def.kinds!.includes(n.kind)) : nodes;
+      return { ...m, candidates: suggest(pool, m.text, ["path"]) };
+    });
+    if (suggested.every((m) => m.candidates.length > 0)) {
+      const argIndex = suggested[0]!.argIndex;
+      const mine = suggested.filter((m) => m.argIndex === argIndex);
+      const texts = mine.map((m) => ({ valueIndex: m.valueIndex, query: m.text, candidates: m.candidates }));
+      return {
+        kind: "pick",
+        request: { ...pickRequest(argIndex, mine[0]!.def.variadic === true, texts), suggestion: { onCancel: failure } },
+      };
+    }
+    return { kind: "error", result: failure };
   }
   return { kind: "resolved", invocation: { ...invocation, args } };
 }

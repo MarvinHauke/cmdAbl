@@ -43,6 +43,11 @@ const rootsC = [
 assignPaths(rootsC, "");
 const allC = flattenObjectTree(rootsC);
 
+// Typos: tracks only.
+const rootsD = [node("Vermona MIDI", "track"), node("Opal Lead", "track"), node("Kick", "track")];
+assignPaths(rootsD, "");
+const allD = flattenObjectTree(rootsD);
+
 function setup(
   pickAnswer: (candidates: ObjectNode[]) => ObjectNode[] | null = () => null,
   liveNodes: ObjectNode[] = all,
@@ -171,4 +176,66 @@ test("parse: quoted flags run parallel to the args", () => {
   ]);
   assert.equal(parsed.kind, "run");
   if (parsed.kind === "run") assert.deepEqual(parsed.quoted, [[true, false]]);
+});
+
+test("did you mean: a typo opens a suggestion list; the chosen target runs and is remembered", async () => {
+  const s = setup((c) => [c[0]!], allD);
+  const out = await runLine("mute vermoan", s.deps);
+  assert.equal(s.picks.length, 1);
+  assert.equal(s.picks[0]!.title, 'mute: nothing matches "vermoan" — did you mean');
+  assert.deepEqual(s.picks[0]!.offered, ["/Vermona MIDI"]);
+  assert.equal(out.result.code, 0);
+  assert.deepEqual(s.calls, [["/Vermona MIDI"]]);
+  assert.equal(out.line, 'mute "/Vermona MIDI"');
+});
+
+test("did you mean: Esc ends with today's failure — exit 3, nothing remembered", async () => {
+  const s = setup(() => null, allD);
+  const out = await runLine("mute vermoan", s.deps);
+  assert.equal(out.result.code, ExitCode.NOT_FOUND);
+  assert.equal(out.result.message, 'mute: nothing matches "vermoan"');
+  assert.equal(out.cancelled, undefined);
+  assert.equal(out.line, undefined);
+  assert.deepEqual(s.calls, []);
+});
+
+test("did you mean: no plausible candidate (or a word too short) fails at once, nothing asked", async () => {
+  let s = setup((c) => c, allD);
+  assert.equal((await runLine("mute zzzzzz", s.deps)).result.code, ExitCode.NOT_FOUND);
+  assert.equal(s.picks.length, 0);
+  s = setup((c) => c, allD);
+  assert.equal((await runLine("mute vm", s.deps)).result.code, ExitCode.NOT_FOUND);
+  assert.equal(s.picks.length, 0);
+});
+
+test("did you mean: a lone fuzzy hit is still asked about, never run unasked", async () => {
+  const s = setup((c) => c, allD);
+  await runLine("mute opel", s.deps);
+  assert.equal(s.picks.length, 1);
+  assert.deepEqual(s.picks[0]!.offered, ["/Opal Lead"]);
+});
+
+test("did you mean: several missing texts share one list, rows say which text they are for", async () => {
+  const s = setup((c) => c, allD);
+  const out = await runLine("mute vermoan, opel", s.deps);
+  assert.equal(s.picks.length, 1);
+  assert.equal(s.picks[0]!.title, 'mute: nothing matches "vermoan", "opel" — did you mean');
+  assert.deepEqual(s.picks[0]!.offered, ["/Vermona MIDI", "/Opal Lead"]);
+  assert.deepEqual(s.picks[0]!.details, ['"vermoan"', '"opel"']);
+  assert.deepEqual(s.calls, [["/Vermona MIDI", "/Opal Lead"]]);
+  assert.equal(out.result.code, 0);
+});
+
+test("did you mean: an exact target next to a typo stays a target", async () => {
+  const s = setup((c) => [c[0]!], allD);
+  await runLine("mute /Kick, vermoan", s.deps);
+  assert.deepEqual(s.picks[0]!.offered, ["/Vermona MIDI"]);
+  assert.deepEqual([...s.calls[0]!].sort(), ["/Kick", "/Vermona MIDI"]);
+});
+
+test("did you mean: a hopeless text next to a fixable one fails at once, nothing asked", async () => {
+  const s = setup((c) => c, allD);
+  const out = await runLine("mute vermoan, zzzzzz", s.deps);
+  assert.equal(s.picks.length, 0);
+  assert.equal(out.result.code, ExitCode.NOT_FOUND);
 });
