@@ -658,6 +658,24 @@ first one, `chain_set`)
 - *Rejected:* a token the extension generates and sends on the first write (trust on first use) —
   a hostile process could win the race at script start.
 
+### 10. Verified in Live (user, 2026-10-12)
+
+These replace the "unverified" notes above where they overlap:
+
+- A chain route selects a Drum Rack pad and the chains of an Instrument Rack (`select`).
+- `Chain.mute` / `Chain.solo` are the buttons of the chain's column in the Session mixer, and
+  a Drum Rack pad's own M button follows the chain's switch — the pad variant is not needed.
+- A chain mute can be undone in Live (which steps a mixed track + pad command leaves was not
+  noted).
+- `Track.is_showing_chains = true` unfolds the chain columns in the mixer (`--unfold`).
+- `Track.can_be_armed` is true for a MIDI track whose input device is unavailable; its `arm`
+  stays false after an SDK write, which is how `arm` detects the refusal.
+- Round trips: min 4 ms, median 51–62 ms, max 98–100 ms; the script answers while a dialog is
+  open.
+
+Still unverified: `in_note` on drum chains, renaming a pad between palette open and command,
+token re-read after the control surface was disabled and re-enabled.
+
 ## Phased rollout
 
 Three shippable increments, each independently testable (mirrors the existing Phase 0/1/2

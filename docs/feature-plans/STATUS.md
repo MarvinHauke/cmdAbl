@@ -85,17 +85,10 @@ Plans: 0001 "Phase 4 protocol", build order 0001 §7, layout 0001 §8, decisions
    version mismatch after an extension update and says when Live must be restarted. Open:
    `cmdabl --setup` installs today, but does not compare versions (0001 §7, step 7); the
    subcommand form is step 3.1.
-4. Operations, in this order: `select` with read-back (built, see 1); track facts (built, see
-   1; `arm` verifies through the script); chain nodes built (`bc46ca1`, `491e617`, script 0.4.0;
-   `91f6c9b`, `1565a06`): kind "chain", path `/Track/Rack/Chain`, names from one `chains`
-   request for all racks, cached; the tree build never waits; selecting uses `select`, so
-   step 5 needs no new op. Behaviour changes: the first palette open after a start lists no
-   chains yet (accepted); `find` also returns chains (new `-c`/`--chains`; `-t`/`-d`/`-c` now
-   add up); `goto <name>` asks to pick when a track and a pad share a name; a renamed pad
-   answers "the Live Set changed" or "is no longer there" until the cache refreshed.
-   Unverified until the Live test (1d): selecting a Drum Rack pad. Still planned: Drum Rack chains
-   and pads with their real names in the object tree, pad selection (`find vermona kick`);
-   reading the current selection (for restoring it later in follow mode).
+4. Operations — built and seen in Live: `select` with read-back, `track_facts` (`arm` verifies
+   through the script), chain nodes with `chains`, `chain_set` for `mute`/`solo` with the
+   access token, `showChains` for `--unfold`. Left: reading the current selection (for
+   restoring it later in follow mode); chains of racks nested inside a chain.
 5. Unit tests for the protocol on both sides (built for steps 1–2); a Live test list per
    operation.
 
@@ -182,53 +175,17 @@ Everything not yet confirmed by the user. Restart `npm start` first. Passed (use
 `help` lists the commands, pick list for `goto`/`find`, `mute` multi-select with one undo, the
 toggles incl. `arm` on audio/MIDI/return/main/group tracks.
 
-1. Remote Script step 2 (first `cmdabl --setup`, restart Live, `npm start`). Seen 2026-10-12:
-   `cmdabl --bridge` → 0.2.0 with `hello, select`; `goto` on a track, a device, a return track,
-   the main track and a track in a folded group; "not running" without a pick list when the
-   control surface is disabled; the first command right after `npm start` finds its track;
-   `find`, `next`, `prev`; `goto` does not feel slower; a track row and a device row picked in
-   the palette. Open: `cmdabl --help` lists `--bridge`;
-   `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open: answer, speed.
-1b. Remote Script step 3, `arm` verify (`ebeadf7`, texts `3306ee8`). Seen 2026-10-12: `arm` on
-   the MIDI track with the unavailable input device is reported (verify mismatch, decided on
-   the second look); together with a normal track the normal one is armed. Open: the new
-   message layout (`e975258`, `606e83e`; 0002): `arm` on a normal + the greyed-out track →
-   "arm: 1 of 2 done", `✓` line first, `×` line with the reason on two indented lines, Close
-   visible; `mute /a /nonexistent` → same layout; `find zzz` → one line as before; a normal
-   MIDI and an audio track armed on/off several times never fail; Edit → Undo after a refused
-   `arm` (what it shows, what one undo does).
-1c. Shared matcher (`f82ab56`, `ba229fc`, `6f0527d`): palette — `mte`, `opal`, a path fragment
-   give the same rows as before, flags still complete after a command name; pick list
-   (`mute vermona`) — `midi vermona` and `vermona midi` find the same rows, marks survive
-   filtering, no visible delay on open; `find vermona kick` as before.
-1d. Chains and pads (script 0.4.0). Seen 2026-10-12: `find vermona kick` and `find -c kick`
-   find the pad and Live shows it selected. Fixed in `54c1182` (script 0.4.1, needs
-   `cmdabl --setup` and a restart of Live): the chains of Instrument, Audio Effect and MIDI
-   Effect Racks were skipped (the script read a Drum-Rack-only property). Open: `find test
-   chain` finds the Instrument Rack's chain and selects it (the log shows `chains refresh: n
-   racks asked, n answered`); a rack added mid-session appears after the next palette open; `cmdabl --bridge`
-   → 0.4.0 with `chains`; the second palette open lists chain rows, picking one selects it;
-   `goto kick` with a track and a pad of that name asks to pick; rename a pad and use the old
-   name → "the Live Set changed; run the command again"; the matcher list (1c); the message
-   layout (1b).
-1e. Chain mute/solo and `--unfold` (`5a63bd4`, `8cf77a2`, `7ee66a8`, `957d78c`; script 0.1.0 after the reset:
-   `cmdabl --setup`, restart Live, `npm start`): Live's Log.txt says "access token written";
-   `cmdabl --bridge` → 0.1.0 with `chain_set`; `mute <pad>` → the speaker button in the chain's
-   mixer column changes, again → back, `unmute` twice stays on; `solo` likewise; does the
-   pad's own M button follow?; `mute <track> <pad>` → both, then Edit → Undo once and twice
-   (a mixed command leaves two undo steps; whether chain mute is undoable at all is unknown);
-   `mute kick` with a track and a pad of that name → pick list; control surface disabled:
-   `mute <track>` works, `mute <pad>` answers with the bridge's text, track + pad → "1 of 2
-   done"; `goto --unfold <pad>` → chain columns appear in the mixer, without the flag nothing
-   unfolds, `find --unfold kick` then `next` unfolds on each step; `arm kick` offers only the
-   track.
-1f. Forgiving target resolution: `mute vermona kick` → the Kick pad is muted (or a pick list);
-   `goto vermona kick` → the pad; `mute sub vermona` → ONE list with the matches of both
-   words, the detail column names the word; `mute <group> <child of it>` → one list with both
-   readings; `mute /Opal Lead kick`, `mute "Opal Lead" kick`, `mute a, b` as before;
-   `mute vermna` → "did you mean" with the Vermona track, `Enter` mutes and the history holds
-   the correct path, `Esc` → "nothing matches", nothing in history; `mute zz` → plain "nothing
-   matches"; no suggestion lists on plain nonsense.
+1. Remote Script and target resolution — **all seen by the user on 2026-10-12**: `select`
+   (track, device, return, main, folded group, palette rows), `find`/`next`/`prev`, `arm`
+   verify on the track with the unavailable input device and the new message layout, the shared
+   matcher in palette and pick list, chains and pads (also of an Instrument Rack), `mute`/`solo`
+   on pads (the mixer column's button changes and the pad's own M follows), `mute <track>
+   <pad>` with undo (which steps the undo takes was not noted), `--unfold`, one pick list for
+   several words (`mute sub vermona`), "did you mean" (`mute vermna`) and plain "nothing
+   matches" (`mute zz`). Left from this block: `cmdabl --help` lists `--bridge`;
+   `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open; `goto kick`
+   with a track and a pad of that name asks to pick; rename a pad and use the old name; token
+   handling after disabling and re-enabling the control surface.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
