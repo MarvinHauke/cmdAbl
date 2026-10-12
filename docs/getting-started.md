@@ -88,7 +88,7 @@ Start with these three. Type each one in the palette and press `Enter`.
 contains "drum". `goto` needs the Remote Script.
 
 **`mute <track>`** toggles the mute of a track. Type `mute drums` once to mute it, and again to unmute
-it. `mute` works on tracks without the Remote Script.
+it. To set the state without toggling, use `mute --set 1 drums` or `mute --set 0 drums`. `mute` works on tracks without the Remote Script.
 
 When a name matches more than one object, cmdAbl shows a **pick list** instead of guessing. Type to
 filter, press `↑` and `↓` to move, `Enter` to choose and `Esc` to cancel. Commands that take several
