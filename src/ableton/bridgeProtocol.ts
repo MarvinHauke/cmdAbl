@@ -25,13 +25,13 @@ export interface HelloInfo {
 }
 
 export const TEXT_STALE = "the Live Set changed; run the command again";
-export const TEXT_OUTDATED = "installed Remote Script is outdated; run `cmdabl --setup` and restart Live";
+export const TEXT_OUTDATED = "installed Remote Script is outdated; run `cmdabl setup` and restart Live";
 export const TEXT_NOT_RUNNING =
   "Remote Script not running (enable cmdAbl as a control surface in Live's preferences, then restart Live)";
-export const TEXT_NOT_INSTALLED = "Remote Script not installed; run `cmdabl --setup` and restart Live";
+export const TEXT_NOT_INSTALLED = "Remote Script not installed; run `cmdabl setup` and restart Live";
 export const TEXT_FORBIDDEN =
-  "the Remote Script refused the change (access token); restart Live (after `cmdabl --setup` if the script was updated)";
-export const TEXT_NO_TOKEN = "cannot read the bridge access token; restart Live (after `cmdabl --setup` if the script was updated)";
+  "the Remote Script refused the change (access token); restart Live (after `cmdabl setup` if the script was updated)";
+export const TEXT_NO_TOKEN = "cannot read the bridge access token; restart Live (after `cmdabl setup` if the script was updated)";
 export const TEXT_NO_WRITES = "changing chains is available on macOS only (no access token on this platform)";
 export const TEXT_NO_ANSWER = "the Remote Script did not answer; check Live";
 

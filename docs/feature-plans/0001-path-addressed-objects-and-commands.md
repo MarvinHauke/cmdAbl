@@ -325,23 +325,23 @@ Reply: `{"v": 1, "id": "<same>", "ok": true, "result": { … }}` or
   Live not restarted".
 - **Outdated script**: today's script logs "unknown cmd" and never replies, so `hello` times out.
   When the installed-file check says "installed, old version", the text is "installed script is
-  outdated; run `cmdabl --setup`, restart Live" — not "not running". **Behaviour change**: `goto`
+  outdated; run `cmdabl setup`, restart Live" — not "not running". **Behaviour change**: `goto`
   selects with the old script today and returns exit code 5 after build step 2.
 - **Mismatch**: `v` differs, or an op the extension needs is missing from `ops` → exit code 5 with
-  both versions and "run `cmdabl --setup`, restart Live".
+  both versions and "run `cmdabl setup`, restart Live".
 - **Versioning rule (user, 2026-10-12).** The script has its own version; it does not have to
   equal the extension's (cmdAbl 0.1.0 may ship script 0.1.7). The script was reset to `0.1.0`;
   from there **every change to the script raises the third number** (0.1.1, 0.1.2, …), also
-  during development, so a stale install shows in `cmdabl --bridge` ("(this extension ships
+  during development, so a stale install shows in `cmdabl bridge` ("(this extension ships
   X)") and in the installed-script check. The middle number goes up only with a release whose
   script is not compatible with the previous release's extension (an op removed or changed in
   meaning); protocol `v` only when the envelope changes. Compatibility is decided by the op list
   from `hello`, never by comparing versions; versions are only compared for equality (the
-  installed-script check, `cmdabl --bridge`). The script numbers 0.2.0 … 0.6.0 named elsewhere in
+  installed-script check, `cmdabl bridge`). The script numbers 0.2.0 … 0.6.0 named elsewhere in
   this plan are the development-day numbers before the reset to 0.1.0 — history, not versions to
   look for. Each version bump changes `VERSION` in `protocol.py` and `SCRIPT_VERSION` in
   `bridgeProtocol.ts` together (a test checks that they agree).
-- `cmdabl --setup` (renamed to `cmdabl setup` in the syntax freeze, roadmap step 3; the texts above follow the rename) needs the installed `VERSION` (read from the file, no `hello`), and after
+- `cmdabl setup` (formerly `cmdabl --setup`, renamed in the syntax freeze, roadmap step 3) needs the installed `VERSION` (read from the file, no `hello`), and after
   copying always says that Live must be restarted (Python is loaded once per start).
 - The extension sends `hello` lazily on first bridge use and caches the answer for the session;
   the cache is dropped on the first timeout.
@@ -440,7 +440,7 @@ docs. **Evidence** = read from those files; **assumption** = not backed here.
    `Defaults.TIMER_DELAY`, which is `0.1` (evidence): the framework itself assumes ~10 Hz, one
    call per 100 ms. That Live really calls it every 100 ms is the long-standing community value
    and consistent with our 14 / 24 / 43 ms single measurements (a wait of 0–100 ms); not
-   documented by Ableton in the LOM docs. `cmdabl --bridge` min/median/max over 20 round trips
+   documented by Ableton in the LOM docs. `cmdabl bridge` min/median/max over 20 round trips
    (cmdabl-core) is the measurement that settles it.
 2. **Mechanisms.**
    - `schedule_message(delay_in_ticks, fn)` — **no gain** (evidence): it adds a `Task.sequence`
@@ -522,7 +522,7 @@ background** (`src/ableton/chainNames.ts`):
   not walk into chains yet).
 - Behaviour changes: `goto <name>` also matches pads (a name shared by a track and a pad asks to
   pick); `goto` on a chain runs `select` with a route of length 3 (`rack.view.selected_chain`,
-  unverified). A 0.3.0 script keeps working (the op list decides); only `cmdabl --bridge` differs.
+  unverified). A 0.3.0 script keeps working (the op list decides); only `cmdabl bridge` differs.
 - Chain nodes: `kind: "chain"`, route `[track, device, chain]`, path under the rack
   (`/Vermona MIDI/Drum Rack/Kick`), no children in step 4 (devices inside chains stay out of the
   tree; the route scheme already addresses them).
@@ -541,13 +541,13 @@ background** (`src/ableton/chainNames.ts`):
    Drum Rack pad lookup stays unverified until the Live test (a pad's chain is selected through
    `rack.view.selected_chain`; if that fails the answer is `unsupported`).
 6. `selection` read for follow mode.
-7. `cmdabl setup` (today `cmdabl --setup`) version check and restart hint.
+7. `cmdabl setup` version check and restart hint.
 
 ### 8. Code layout (approved by the user 2026-10-11)
 
 Measured in Live after step 1: a `hello` round trip takes 14 ms, and 24 ms with the palette
 open — the script keeps answering while a dialog is open, so no faster drain is needed (D1, D2).
-After `cmdabl --setup` Live must be restarted before the new script answers.
+After `cmdabl setup` Live must be restarted before the new script answers.
 
 Remote Script (`remote-script/cmdAbl/`):
 
@@ -574,7 +574,7 @@ functions only, never `request("name", …)` with loose arguments.
 Response time (user, 2026-10-11): a command's round trip to the script stays under 100 ms where
 possible. A command needs one request in the normal case (`hello` is cached); an operation that
 needs several pieces of data returns them in one reply. Single measurements scatter (14, 24,
-43 ms) because the script reads its socket once per display tick; `cmdabl --bridge` reports
+43 ms) because the script reads its socket once per display tick; `cmdabl bridge` reports
 min / median / max over 20 round trips. A faster drain is built only if the maximum is above
 100 ms. Accepted exception: `arm` asks twice (facts before the write, verify after),
 because the SDK reads back `arm` as true for a track Live refuses to arm (measured 2026-10-12).
@@ -648,7 +648,7 @@ first one, `chain_set`)
   targets are several requests, hence several steps. A target with both `mute` and `solo` can end
   half-applied; its entry then carries the error.
 - *What the user sees.* `forbidden` → exit 5 "the Remote Script refused the change (access token);
-  restart Live or run `cmdabl --setup`"; an unreadable file → exit 5 "cannot read the bridge access
+  restart Live or run `cmdabl setup`"; an unreadable file → exit 5 "cannot read the bridge access
   token; …"; not macOS → exit 5 "changing chains is available on macOS only".
 - *Tests.* Script: writing op without / with a wrong / with the right token, no token at all, read
   ops and `select` without token, the token not in a reply or a handler's args, file mode `0600` /
