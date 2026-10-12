@@ -126,6 +126,12 @@ Changing these after a release breaks what users have learned and what is stored
   (`6f0527d`) use it. Path resolution stays strict. Behaviour change: the pick list filter
   matches words in any order and orders rows by fuzzy rank. The completion engine (0006, after
   0.1.0) builds on it. Live test: "Open Live tests", 1c.
+- Forgiving target resolution (approved by the user 2026-10-12; task out to cmdabl-core, rules
+  to be written into 0005 when built): (1) several bare words are one pattern first, "every
+  word occurs" like `find` — `mute vermona kick` means the Kick pad; no joint hit → each word
+  its own target; a comma, a `/` prefix or quotes separate targets; (2) one multi-select pick
+  list for all ambiguous targets of a command instead of one list after another; (3) nothing
+  matches → a "did you mean" pick list with the closest names, never a silent guess.
 - Feedback for `next`/`prev` (e.g. `2/5 /path`).
 - A generic `page` surface on `Ui` for module pages (decided, see "Decisions"); `pakabl list`
   moves onto it and into the dialog queue.
@@ -341,10 +347,16 @@ Decided by the user and still governing future work.
   outside the repo, never logged; writing operations are refused without it, reads and
   `select` need none); always the chain's own switch, for every rack type (whether a Drum
   Rack pad's M button follows is checked in Live). The reference is the chain's column in
-  the Session mixer (speaker button and S). In work: cmdabl-bridge, then cmdabl-modules.
+  the Session mixer (speaker button and S). Script side built (`5a63bd4`, script 0.5.0:
+  `chain_set`, the token, `chainSwitches`/`chainSet` in `bridgeOps.ts`; the token path is
+  outside the repo in every setup and nothing prints it). Task out to cmdabl-modules: the
+  commands. Seen in Live meanwhile: `find test chain` finds the Instrument Rack's chain
+  (fix `54c1182`).
 - 2026-10-12: selecting a pad or chain does not unfold the track's chains in the mixer — the
   user wants that as the default, plus an option `--unfold` on `goto`/`find` that shows them.
-  cmdabl-bridge checks whether Live's scripting interface can do it, after `chain_set`.
+  The LOM documents `Track.is_showing_chains` (unverified in Live); go given: `showChains` on
+  `select` (cmdabl-bridge), the flag (cmdabl-modules). Side effect: Live saves the fold state
+  with the Set, so the Set counts as modified. Opt-in only; never folds.
 - 2026-10-12: exclusive arm/solo is not applied by commands; naming several tracks is an explicit
   choice, like Cmd-clicking the buttons (accepted).
 - 2026-10-11: `mute`/`solo`/`arm` toggle; `unmute`/`unsolo`/`unarm` switch off (0005).
