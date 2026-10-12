@@ -129,9 +129,13 @@ Changing these after a release breaks what users have learned and what is stored
    `docs/reference/live-api.md` (`79513e3`); `lom <target>` (commands page `8af6c1c`); names
    follow the LOM (`isFoldable`, `isShowingChains`, wire `is_showing_chains`, `in_note`;
    `ab4ae8b`, `2d0fdbc`, script 0.1.1). Live test 1j.
-5. Leftovers from before the rework: platform files still outside `src/core/` (`src/commandRegistry.ts`,
-   `src/types.ts`, `src/providers/commandProvider.ts`, `src/setup.ts`) and an empty `src/ui/`
-   folder — move them and extend the import-boundary test. No unused module was found.
+5. Leftovers — done: platform files moved into `src/core/` (`c536de6`; `src/` is now
+   `ableton/`, `core/`, `modules/`, `extension.ts`, `httpTrigger.ts`), dead ends removed
+   (`b6722ec`, `82c1e5b`: `FlagDef`, `flags`/`action`/`route`/`scope` on palette items, the flag
+   phase of the palette page), import rule 6 for Node modules in `src/modules/` with
+   `pakabl/platform.ts` as the listed exception (`50b2d9e`).
+
+Step 3 is complete. Live smoke test: 1j plus `help`, `cmdabl setup`, a history row, an object row.
 
 ### 4. Small things that make it feel finished
 
@@ -155,10 +159,6 @@ Changing these after a release breaks what users have learned and what is stored
 - A generic `page` surface on `Ui` for module pages (decided, see "Decisions"); `pakabl list`
   moves onto it and into the dialog queue.
 - A larger maximum size for the pick list (0007).
-- Cleanup of dead ends (cmdabl-core with cmdabl-ui, one task): `PaletteItem`/`PaletteResult`
-  `action`/`route`/`scope`, `FlagDef` and `PaletteItem.flags`, the flags fallback in
-  `extension.ts`, the flag phase in `ui/interface.html`; README lines that still describe the
-  old palette.
 - Clean "not supported on this platform" answers everywhere off macOS (`cmdabl --help` and `man`
   already answer exit code 5 with the URL off macOS; Windows untested).
 - Note in `docs/sdk-tree.md` that `src/core/samePath.ts` is the first direct `node:fs` call in

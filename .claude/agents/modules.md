@@ -15,9 +15,9 @@ You build the commands of cmdAbl, a command palette for Ableton Live. You work a
 
 ## Your area
 
-`src/modules/*/`, `src/modules/index.ts` (the manifest), `src/modules/trackSetCommand.ts`,
-`src/core/builtins.ts`, `src/providers/`, `docs/guides/` (the command-authoring guide), `pakabl/`
-only when the task says so.
+`src/modules/*/`, `src/modules/index.ts` (the manifest), the shared helpers directly under
+`src/modules/` (not `types.ts` and `portMapping.ts`, which are cmdabl-core's),
+`docs/guides/command-authoring.md`, `pakabl/` only when the task says so.
 
 ## Rules
 

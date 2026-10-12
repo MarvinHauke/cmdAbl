@@ -13,7 +13,9 @@ You build the platform of cmdAbl, a command palette for Ableton Live. You work a
 
 ## Your area
 
-`src/core/`, `src/commandRegistry.ts`, `src/extension.ts`, `src/types.ts`, `src/modules/types.ts`
+`src/core/` (including `types.ts`, `commandRegistry.ts`, `setup.ts`), `src/extension.ts`,
+`src/httpTrigger.ts`, `src/architecture.test.ts`, the reference generator under `scripts/`,
+`src/modules/types.ts` and `src/modules/portMapping.ts`
 (the module interface — you are the only one who edits it; announce changes to cmdabl-modules and
 cmdabl-bridge).
 
