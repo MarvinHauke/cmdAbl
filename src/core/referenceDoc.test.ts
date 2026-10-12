@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { CommandNode } from "./commandTree.js";
-import { checkExamples, renderCommandReference, renderRemoteScriptReference } from "./referenceDoc.js";
+import { checkExamples, renderCommandReference, renderLiveApiReference, renderRemoteScriptReference } from "./referenceDoc.js";
 
 const tree: CommandNode<void, string>[] = [
   {
@@ -73,4 +73,36 @@ test("renderRemoteScriptReference: one row per operation, versions in the header
   assert.match(text, /Script version \*\*0\.1\.0\*\*, protocol \*\*v1\*\*/);
   assert.match(text, /\| `hello` \| Reports versions\. \| – \| no \|/);
   assert.match(text, /\| `chain_set` \| Mutes &lt;chains>\. \| `\{ a \\\| b \}` \| yes/);
+});
+
+test("renderLiveApiReference: scope table, path examples, port table, script table and checklist", () => {
+  const text = renderLiveApiReference({
+    ports: [
+      { port: "tracks.track().mute", via: "sdk", call: "`track.mute`", lom: ["Track.mute"] },
+      { port: "log", via: "platform", call: "console", lom: [], note: "a | b" },
+    ],
+    ops: [
+      { name: "hello", summary: "h", changesLive: false, lom: [], usesRoute: false, sdkAlternative: "none" },
+      {
+        name: "chain_set",
+        summary: "c",
+        changesLive: true,
+        lom: [{ object: "Chain", property: "mute", access: "set", page: "chain", type: "bool", documented: true }],
+        usesRoute: true,
+        sdkAlternative: "none yet <x>",
+      },
+    ],
+    routeLom: [{ object: "Song", property: "tracks", access: "get", page: "song", type: "list of Track", documented: true }],
+    pathExamples: [{ kind: "track", scope: "return", cmdablPath: "/Reverb", lomPath: "live_set return_tracks 0" }],
+    lomUrl: (n) => `https://example.test/${n.split(".")[0]!.toLowerCase()}`,
+    pageUrl: (page) => `https://example.test/p/${page}`,
+  });
+  assert.match(text, /\| `return` \| `return_tracks` \|/);
+  assert.match(text, /\| track \| return \| `\/Reverb` \| `live_set return_tracks 0` \|/);
+  assert.match(text, /\| `tracks.track\(\).mute` \| sdk \| `track.mute` \| \[`Track.mute`\]\(https:\/\/example.test\/track\) \|  \|/);
+  assert.match(text, /a \\\| b/);
+  assert.match(text, /\| `chain_set` \| \[`Chain.mute`\]\(https:\/\/example.test\/p\/chain\) \(set; bool\)<br>\+ walks the route \(below\) \| none yet &lt;x> \|/);
+  assert.match(text, /\| \[`Song.tracks`\]\(https:\/\/example.test\/p\/song\) \(get; list of Track\) \|/);
+  assert.match(text, /- `chain_set` — none yet &lt;x>/);
+  assert.ok(!text.includes("- `hello`"));
 });
