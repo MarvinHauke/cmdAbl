@@ -26,10 +26,7 @@ const registry = new CommandRegistry();
 registerBuiltins(registry);
 
 const stub: ModuleApi = {
-  // Touching the Live context at activation would be a module bug: fail loudly.
-  get context(): never {
-    throw new Error("a module used api.context while being activated; declare commands only");
-  },
+  // Touching a port at activation would be a module bug: the getters below fail loudly.
   get bridge(): never {
     throw new Error("a module used api.bridge while being activated; declare commands only");
   },

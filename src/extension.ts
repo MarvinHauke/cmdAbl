@@ -64,7 +64,6 @@ export function activate(activation: ActivationContext) {
 
   // ── default modules ──────────────────────────────────────────────────────
   const moduleApi: ModuleApi = {
-    context,
     get bridge() {
       return getBridge();
     },

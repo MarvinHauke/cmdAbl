@@ -5,7 +5,6 @@
 // A module declares commands as tree nodes (`commands.add`, docs/feature-plans/0005);
 // there is no other registration path.
 
-import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { Command } from "../commandRegistry.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
@@ -42,12 +41,6 @@ export interface LiveSetPort {
 }
 
 export interface ModuleApi {
-  /**
-   * @deprecated Reach Live through the ports below (`bridge`, `liveSet`,
-   * `tracks`, `dialog`): a command's `run` is then testable with fakes
-   * (src/modules/testPorts.ts). Removed once every module has migrated.
-   */
-  context: ExtensionContext<"1.0.0">;
   /** The Remote Script bridge (never throws; see ableton/bridgeClient.ts). Tests pass a fake. */
   readonly bridge: Bridge;
   /** The current Live Set as an object tree. */

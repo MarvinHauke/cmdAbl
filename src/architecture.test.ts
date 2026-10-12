@@ -21,6 +21,9 @@ import * as path from "node:path";
 //      or src/extension.
 //   3. src/ableton/…         does not import src/modules/, src/core/ui or
 //      src/extension.
+//   5. src/modules/…         reaches Live through the ModuleApi ports: it does
+//      not import src/ableton/bridge, src/ableton/trackLookup or the SDK
+//      (`@ableton-extensions/*`), so a command's `run` is testable with fakes.
 //   4. Only src/core/ui.ts opens dialogs (`showModalDialog`); a module hands
 //      its page to the UI surfaces instead.
 
@@ -60,11 +63,13 @@ export function importSpecifiers(source: string): string[] {
   for (const pattern of patterns) {
     for (const match of code.matchAll(pattern)) specifiers.push(match[1]!);
   }
-  return specifiers.filter((s) => s.startsWith("."));
+  // Relative imports, and the SDK (rule 5); other packages are not boundaries.
+  return specifiers.filter((s) => s.startsWith(".") || s.startsWith("@ableton-extensions/"));
 }
 
 /** The repo-relative path an import points at, without .js/.ts. */
 export function resolveImport(file: string, specifier: string): string {
+  if (!specifier.startsWith(".")) return specifier; // a package
   const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier));
   return target.replace(/\.(js|ts)$/, "");
 }
@@ -79,6 +84,10 @@ export function brokenRule(file: string, target: string): string | null {
       return `1: ${name ? "a module" : "a shared helper"} does not import a module folder (${other[1]})`;
     }
     if (target === "src/httpTrigger" || target === "src/extension") return `1: modules do not import ${target}`;
+    if (target === "src/ableton/bridge" || target === "src/ableton/trackLookup") {
+      return `5: modules reach Live through the ModuleApi ports, not ${target}`;
+    }
+    if (target.startsWith("@ableton-extensions/")) return `5: modules reach Live through the ModuleApi ports, not the SDK (${target})`;
     if (target.startsWith("ui/")) {
       const own = name !== undefined && !PLATFORM_PAGES.has(name)
         && new RegExp(`^ui/${escapeRegExp(name)}(-[^/]*)?\\.html$`).test(target);
@@ -174,9 +183,10 @@ test("architecture: the checker sees the imports and flags what it should", () =
       `const m = await import("./lazy.js");`,
       `// import { x } from "./commented.js";`,
       `import fs from "node:fs";`,
+      `import type { ExtensionContext } from "@ableton-extensions/sdk";`,
     ].join("\n"),
   );
-  assert.deepEqual(specifiers.sort(), ["../b.js", "./a.js", "./c.js", "./lazy.js", "./side.js"]);
+  assert.deepEqual(specifiers.sort(), ["../b.js", "./a.js", "./c.js", "./lazy.js", "./side.js", "@ableton-extensions/sdk"]);
   assert.equal(resolveImport("src/modules/goto/index.ts", "../mute/index.js"), "src/modules/mute/index");
 
   assert.match(brokenRule("src/modules/goto/index.ts", "src/modules/mute/index") ?? "", /^1:/);
@@ -189,6 +199,11 @@ test("architecture: the checker sees the imports and flags what it should", () =
   assert.equal(brokenRule("src/modules/index.ts", "src/modules/goto/index"), null);
   assert.match(brokenRule("src/modules/pick/index.ts", "ui/pick.html") ?? "", /^1:/); // a module named like a platform page
   assert.match(brokenRule("src/modules/pa/index.ts", "ui/pakabl-list.html") ?? "", /^1:/); // prefix is not a match
+  assert.match(brokenRule("src/modules/goto/index.ts", "src/ableton/bridge") ?? "", /^5:/);
+  assert.match(brokenRule("src/modules/trackSetCommand.ts", "src/ableton/trackLookup") ?? "", /^5:/);
+  assert.match(brokenRule("src/modules/goto/snapshot.ts", "@ableton-extensions/sdk") ?? "", /^5:/);
+  assert.equal(brokenRule("src/modules/goto/index.ts", "src/ableton/bridgeClient"), null); // the Bridge type is fine
+  assert.equal(brokenRule("src/extension.ts", "src/ableton/bridge"), null);
   assert.match(brokenRule("src/core/run.ts", "src/modules/find/matches") ?? "", /^2:/);
   assert.match(brokenRule("src/core/run.ts", "src/extension") ?? "", /^2:/);
   assert.match(brokenRule("src/ableton/select.ts", "src/extension") ?? "", /^3:/);

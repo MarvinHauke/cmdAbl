@@ -13,6 +13,8 @@ export interface FakeApiOptions {
   bridge?: FakeBridgeOptions;
   /** What the dialog answers (the string a page returns on close); null or empty = dismissed. */
   dialogAnswer?: string | null;
+  /** What `api.pick` answers (default: cancelled). Registered `onPick` listeners are notified like the platform does. */
+  pickAnswer?: (candidates: ObjectNode[], multi: boolean) => ObjectNode[] | null;
 }
 
 export interface FakeApi {
@@ -32,6 +34,7 @@ export interface FakeApi {
 
 export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   const bridge = createFakeBridge(options.bridge);
+  const pickListeners: Array<(candidates: ObjectNode[], chosen: ObjectNode[] | null) => void> = [];
   const nodes = options.nodes ?? [];
   const fake: FakeApi = {
     api: undefined as unknown as ModuleApi,
@@ -45,10 +48,6 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     transactions: 0,
   };
   fake.api = {
-    // The deprecated raw context: touching it in a test is a mistake.
-    get context(): never {
-      throw new Error("the fake ModuleApi has no SDK context; use the ports");
-    },
     bridge,
     liveSet: { nodes: () => nodes },
     tracks: {
@@ -72,8 +71,12 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       return options.dialogAnswer || null;
     },
     commands: { add: (command) => void fake.commands.push(command) },
-    pick: async () => null,
-    onPick: () => {},
+    pick: async (_title, candidates, multi = false) => {
+      const chosen = options.pickAnswer?.(candidates, multi) ?? null;
+      for (const listener of pickListeners) listener(candidates, chosen);
+      return chosen;
+    },
+    onPick: (listener) => void pickListeners.push(listener),
     registerProvider: (provider) => void fake.providers.push(provider),
     onCommandRun: () => {},
     showFeedback: (message) => void fake.feedback.push(message),
