@@ -335,6 +335,8 @@ Decided by the user and still governing future work.
   Built on the LOM's documented `Track.is_showing_chains` (unverified in Live): `showChains`
   on `select` (`7ee66a8`), the flag on `goto`/`find`, kept by `next`/`prev` (`957d78c`). Side effect: Live saves the fold state
   with the Set, so the Set counts as modified. Opt-in only; never folds.
+  Seen in Live: it unfolds; Undo does not fold again (view state). There is no command to
+  fold the chains back yet.
 - 2026-10-12: Remote Script versions grow conservatively. Reset to 0.1.0 (`2b2d448`; it had
   gone to 0.6.0 in a day). Every script change raises the third number, also during
   development; the middle number only with a release whose script is incompatible with the

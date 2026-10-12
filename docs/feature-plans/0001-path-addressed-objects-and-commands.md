@@ -668,6 +668,7 @@ These replace the "unverified" notes above where they overlap:
 - A chain mute can be undone in Live (which steps a mixed track + pad command leaves was not
   noted).
 - `Track.is_showing_chains = true` unfolds the chain columns in the mixer (`--unfold`).
+  Live's Undo does not fold them again: the fold state is view state, not an undo step.
 - `Track.can_be_armed` is true for a MIDI track whose input device is unavailable; its `arm`
   stays false after an SDK write, which is how `arm` detects the refusal.
 - Round trips: min 4 ms, median 51–62 ms, max 98–100 ms; the script answers while a dialog is
