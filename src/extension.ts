@@ -114,8 +114,8 @@ export function activate(activation: ActivationContext) {
   async function dispatch(result: PaletteResult): Promise<void> {
     let line: string;
     if (result.type === "command") {
-      // Older webview payloads carried {id, flags}; the raw line keeps quotes intact.
-      line = result.line ?? [result.id, ...(result.flags ?? [])].join(" ");
+      // The raw line keeps quotes intact.
+      line = result.line ?? result.id;
     } else {
       // A Live-object row is the command `goto <unique path>`, run like a typed line.
       const row = paletteItems.find((item) => item.id === result.id && item.type === result.type);

@@ -4,11 +4,6 @@
 // Provider. Today the only provider wraps the command registry, but tracks /
 // devices / clips will plug in here later without the UI needing to change.
 
-export interface FlagDef {
-  name: string;
-  description: string;
-}
-
 /**
  * "chain" is a rack chain or Drum Rack pad (route [track, device, chain]); the
  * object tree's NodeKind is an Extract of this type.
@@ -38,20 +33,8 @@ export interface PaletteItem {
   subtitle?: string;
   /** Extra terms to match against during search. */
   keywords?: string[];
-  /** Completable flags — commands only; drives the flag-completion phase. */
-  flags?: FlagDef[];
-  /** What to do with the item (e.g. "toggleMute"). Non-command items. */
-  action?: string;
   /** Display/address path from the song root, e.g. "/Vermona/Kick". Live objects only. */
   path?: string;
-  /**
-   * Index chain into the track collection named by `scope`, e.g. [2, 1] =
-   * <scope-collection>[2].devices[1]. Fallback for re-resolution when the
-   * handle id no longer matches anything live.
-   */
-  route?: number[];
-  /** Which track collection `route`'s first index resolves against. Tracks/devices only. */
-  scope?: TrackScope;
 }
 
 /**
@@ -62,15 +45,12 @@ export interface PaletteItem {
 export interface PaletteResult {
   type: PaletteItemType;
   id: string;
-  /** Commands: the raw typed line, parsed by the host (quotes intact). */
+  /**
+   * Commands: the raw typed line, parsed by the host (quotes intact). A Live
+   * object row carries only `type` and `id`; the platform turns it into
+   * `goto <unique path>` (core/objectRow.ts).
+   */
   line?: string;
-  flags?: string[];
-  /** Non-command action to perform (e.g. "toggleMute" on a track). */
-  action?: string;
-  /** Index chain fallback for re-resolving the object — see PaletteItem.route. */
-  route?: number[];
-  /** See PaletteItem.scope. */
-  scope?: TrackScope;
 }
 
 export interface Provider {
