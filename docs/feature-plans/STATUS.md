@@ -208,9 +208,9 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    `goto kick` with a track and a pad of that name asks to pick; rename a pad and use the old
    name → "the Live Set changed; run the command again"; the matcher list (1c); the message
    layout (1b).
-1e. Chain mute/solo and `--unfold` (`5a63bd4`, `8cf77a2`, `7ee66a8`, `957d78c`; script 0.6.0:
+1e. Chain mute/solo and `--unfold` (`5a63bd4`, `8cf77a2`, `7ee66a8`, `957d78c`; script 0.1.0 after the reset:
    `cmdabl --setup`, restart Live, `npm start`): Live's Log.txt says "access token written";
-   `cmdabl --bridge` → 0.6.0 with `chain_set`; `mute <pad>` → the speaker button in the chain's
+   `cmdabl --bridge` → 0.1.0 with `chain_set`; `mute <pad>` → the speaker button in the chain's
    mixer column changes, again → back, `unmute` twice stays on; `solo` likewise; does the
    pad's own M button follow?; `mute <track> <pad>` → both, then Edit → Undo once and twice
    (a mixed command leaves two undo steps; whether chain mute is undoable at all is unknown);
@@ -375,6 +375,11 @@ Decided by the user and still governing future work.
   Built on the LOM's documented `Track.is_showing_chains` (unverified in Live): `showChains`
   on `select` (`7ee66a8`), the flag on `goto`/`find`, kept by `next`/`prev` (`957d78c`). Side effect: Live saves the fold state
   with the Set, so the Set counts as modified. Opt-in only; never folds.
+- 2026-10-12: Remote Script versions grow conservatively. Reset to 0.1.0 (`2b2d448`; it had
+  gone to 0.6.0 in a day). Every script change raises the third number, also during
+  development; the middle number only with a release whose script is incompatible with the
+  previous release's extension. Compatibility is decided by the operation list, versions are
+  compared for equality only (0001 §3).
 - 2026-10-12: exclusive arm/solo is not applied by commands; naming several tracks is an explicit
   choice, like Cmd-clicking the buttons (accepted).
 - 2026-10-11: `mute`/`solo`/`arm` toggle; `unmute`/`unsolo`/`unarm` switch off (0005).
