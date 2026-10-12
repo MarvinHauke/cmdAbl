@@ -18,10 +18,27 @@ export function activate(api: ModuleApi): void {
   // answered by the platform (exit 5) before the path is resolved.
   api.commands.add({
     name: "goto",
-    summary: "select a track or device by path",
+    summary: "select a track, device, chain or drum pad by path",
+    description:
+      "Selects the object in Live: a track becomes the selected track; a device, chain or pad is selected in its track's device chain. Needs the cmdAbl Remote Script. " +
+      "Picking an object in the palette runs this command for you. When your words match several objects " +
+      "you are asked to choose one.",
+    examples: [
+      { line: "goto /Vermona MIDI", note: "select a track" },
+      { line: "goto /Vermona MIDI/Drum Rack/Kick", note: "select a pad inside a Drum Rack" },
+      { line: "goto kick", note: "select the object whose path contains \"kick\"" },
+      { line: "goto --unfold /Vermona MIDI", note: "select a track and show its chains in the Session mixer" },
+    ],
     requires: ["bridge"],
-    options: [{ name: "unfold", summary: "also show the track's chains in the mixer" }],
-    args: [{ name: "path", kind: "path", rest: true }],
+    options: [{ name: "unfold", summary: "also show the track's chains in the Session mixer (never folds anything)" }],
+    args: [
+      {
+        name: "path",
+        kind: "path",
+        rest: true,
+        summary: "Path of the track, device, chain or pad; spaces need no quotes",
+      },
+    ],
     run: (invocation) =>
       selectNodeResult(getBridge(), invocation.args[0]![0] as ObjectNode, { unfold: invocation.options.unfold === true }),
   });

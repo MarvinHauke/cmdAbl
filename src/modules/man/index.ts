@@ -13,12 +13,25 @@ export function activate(api: ModuleApi): void {
   api.commands.add({
     name: "man",
     summary: "open a manual, or search it: ableton, cmdabl",
+    description:
+      "Opens a manual in your web browser: the Ableton Live reference manual or the cmdAbl documentation. " +
+      "Words after ableton search the Live 12 manual through Ecosia. Needs an internet connection.",
+    examples: [
+      { line: "man ableton", note: "open the Live reference manual" },
+      { line: "man ableton warp modes", note: "search the Live manual for \"warp modes\"" },
+      { line: "man cmdabl", note: "open the cmdAbl documentation" },
+    ],
     // The topic is an enum: a bare `man` or an unknown topic is the platform's
     // usage error (exit 2), which lists the choices. The words after it are a
     // separate rest argument.
     args: [
-      { name: "topic", kind: "enum", choices: topicNames() },
-      { name: "words", kind: "text", required: false, rest: true },
+      {
+        name: "topic",
+        kind: "enum",
+        choices: topicNames(),
+        summary: "Which manual: ableton (Live reference manual) or cmdabl (this documentation)",
+      },
+      { name: "words", kind: "text", required: false, rest: true, summary: "What to search for; only for ableton" },
     ],
     run: async (invocation): Promise<CommandResult> => {
       const topic = invocation.args[0]?.[0] as string | undefined;

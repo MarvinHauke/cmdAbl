@@ -14,6 +14,7 @@ import {
   verifyArmWrites,
 } from "./armFacts.js";
 import { armDecision, armRefusal, factsRefusal, isGroupNode, nextTrackValue, notChanged, type TrackSetValue } from "./trackSetValue.js";
+import type { CommandExample } from "../core/commandTree.js";
 import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../types.js";
 
 // Shared by mute/unmute, solo/unsolo and arm/unarm. Two modes:
@@ -39,21 +40,40 @@ import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../t
 // The tracks arrive already resolved (the platform turns paths into objects
 // and asks the user when an address is ambiguous), so this only writes.
 
+/** The texts of `--help` and the generated command reference. */
+export interface TrackSetDocs {
+  description: string;
+  examples: CommandExample[];
+  /** What the target argument is, e.g. "Tracks, rack chains or Drum Rack pads to mute". */
+  targetSummary: string;
+}
+
 export function registerTrackSetCommand(
   api: ModuleApi,
   name: string,
   prop: "mute" | "solo" | "arm",
   value: TrackSetValue,
   summary: string,
+  docs: TrackSetDocs,
   /** The bridge, taken lazily — only chains and `arm` facts need it. Tests pass a fake. */
   bridgeOf: () => Bridge = getBridge,
 ): void {
   api.commands.add({
     name,
     summary,
+    description: docs.description,
+    examples: docs.examples,
     // mute/solo also work on rack chains and Drum Rack pads (through the
     // Remote Script); arm is for tracks only.
-    args: [{ name: "track", kind: "path", kinds: prop === "arm" ? ["track"] : ["track", "chain"], variadic: true }],
+    args: [
+      {
+        name: "track",
+        kind: "path",
+        kinds: prop === "arm" ? ["track"] : ["track", "chain"],
+        variadic: true,
+        summary: docs.targetSummary,
+      },
+    ],
     run: async (invocation): Promise<CommandResult> => {
       const targets = (invocation.args[0] ?? []) as ObjectNode[];
       // Tracks go through the SDK (no Remote Script needed); chains through the bridge.

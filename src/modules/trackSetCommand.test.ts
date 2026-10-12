@@ -4,7 +4,9 @@ import type { Command } from "../commandRegistry.js";
 import { resolvePath } from "../ableton/resolvePath.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { ModuleApi } from "./types.js";
-import { registerTrackSetCommand } from "./trackSetCommand.js";
+import { registerTrackSetCommand, type TrackSetDocs } from "./trackSetCommand.js";
+
+const docs: TrackSetDocs = { description: "d", examples: [{ line: "x" }], targetSummary: "t" };
 
 const node = (name: string, kind: string, route: number[]): ObjectNode =>
   ({ handleId: name, route, kind, scope: "regular", name, path: `/${name}`, children: [] }) as unknown as ObjectNode;
@@ -12,12 +14,12 @@ const node = (name: string, kind: string, route: number[]): ObjectNode =>
 test("arm/unarm accept tracks only; mute/solo also chains — a device is never offered", () => {
   const commands: Command[] = [];
   const api = { commands: { add: (c: Command) => commands.push(c) } } as unknown as ModuleApi;
-  registerTrackSetCommand(api, "mute", "mute", "toggle", "s");
-  registerTrackSetCommand(api, "unmute", "mute", false, "s");
-  registerTrackSetCommand(api, "solo", "solo", "toggle", "s");
-  registerTrackSetCommand(api, "unsolo", "solo", false, "s");
-  registerTrackSetCommand(api, "arm", "arm", "toggle", "s");
-  registerTrackSetCommand(api, "unarm", "arm", false, "s");
+  registerTrackSetCommand(api, "mute", "mute", "toggle", "s", docs);
+  registerTrackSetCommand(api, "unmute", "mute", false, "s", docs);
+  registerTrackSetCommand(api, "solo", "solo", "toggle", "s", docs);
+  registerTrackSetCommand(api, "unsolo", "solo", false, "s", docs);
+  registerTrackSetCommand(api, "arm", "arm", "toggle", "s", docs);
+  registerTrackSetCommand(api, "unarm", "arm", false, "s", docs);
   assert.equal(commands.length, 6);
 
   const tree = [node("Kick", "track", [0]), node("Kick", "device", [0, 0]), node("Kick", "chain", [0, 0, 0])];
@@ -45,7 +47,7 @@ function setup(bridge: ReturnType<typeof createFakeBridge>, name: string, prop: 
     commands: { add: (c: Command) => (command = c) },
   } as unknown as ModuleApi;
   let command: Command | undefined;
-  registerTrackSetCommand(api, name, prop, value, "s", () => bridge);
+  registerTrackSetCommand(api, name, prop, value, "s", docs, () => bridge);
   const run = async (targets: ObjectNode[]) =>
     (command!.run as (i: unknown, p: unknown) => Promise<CommandResult | void>)(
       { path: [name], options: {}, args: [targets] },

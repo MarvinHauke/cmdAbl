@@ -35,14 +35,26 @@ export function activate(api: ModuleApi): void {
   api.commands.add({
     name: "find",
     summary: "find tracks, devices and chains whose path contains a pattern",
+    description:
+      "Looks through the Live Set for tracks, devices, rack chains and Drum Rack pads whose path contains " +
+      "every word of the pattern, in any order and ignoring case. One match is selected; several are shown " +
+      "in a pick list. next and prev then step through the matches. Needs the cmdAbl Remote Script. " +
+      "find remembers its last list until the extension restarts.",
+    examples: [
+      { line: "find kick", note: "everything with \"kick\" in its path" },
+      { line: "find vermona kick", note: "paths containing both words" },
+      { line: "find -c kick", note: "only chains and drum pads" },
+      { line: "find -t -c kick", note: "only tracks and chains" },
+      { line: "find --unfold kick", note: "also show the track's chains in the Session mixer" },
+    ],
     requires: ["bridge"],
     options: [
       { name: "tracks", short: "t", summary: "only tracks" },
       { name: "devices", short: "d", summary: "only devices" },
       { name: "chains", short: "c", summary: "only chains and drum pads" },
-      { name: "unfold", summary: "also show the track's chains in the mixer when selecting" },
+      { name: "unfold", summary: "also show the track's chains in the Session mixer when selecting (never folds anything)" },
     ],
-    args: [{ name: "pattern", kind: "text", rest: true }],
+    args: [{ name: "pattern", kind: "text", rest: true, summary: "Words that must all occur in the path, in any order" }],
     run: async (invocation): Promise<CommandResult | void> => {
       const pattern = String(invocation.args[0]?.[0] ?? "");
       const kinds = findKinds(invocation.options);
@@ -62,10 +74,12 @@ export function activate(api: ModuleApi): void {
     },
   });
 
-  const stepCommand = (name: string, delta: 1 | -1, summary: string) =>
+  const stepCommand = (name: string, delta: 1 | -1, summary: string, description: string) =>
     api.commands.add({
       name,
       summary,
+      description,
+      examples: [{ line: name, note: summary }],
       requires: ["bridge"],
       run: async (): Promise<CommandResult> => {
         const entry = matches.step(delta);
@@ -78,6 +92,18 @@ export function activate(api: ModuleApi): void {
         return outcome;
       },
     });
-  stepCommand("next", 1, "go to the next match of the last find");
-  stepCommand("prev", -1, "go to the previous match of the last find");
+  stepCommand(
+    "next",
+    1,
+    "go to the next match of the last find",
+    "Selects the next object of the last find (or of the last pick list), wrapping around at the end. " +
+      "Keeps the find's --unfold choice (a list from another pick steps without it). Needs the cmdAbl Remote Script. Without an earlier find there is nothing to step through.",
+  );
+  stepCommand(
+    "prev",
+    -1,
+    "go to the previous match of the last find",
+    "Selects the previous object of the last find (or of the last pick list), wrapping around at the start. " +
+      "Keeps the find's --unfold choice (a list from another pick steps without it). Needs the cmdAbl Remote Script. Without an earlier find there is nothing to step through.",
+  );
 }
