@@ -193,13 +193,14 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    give the same rows as before, flags still complete after a command name; pick list
    (`mute vermona`) — `midi vermona` and `vermona midi` find the same rows, marks survive
    filtering, no visible delay on open; `find vermona kick` as before.
-1d. Chains and pads (script 0.4.0: `cmdabl --setup`, restart Live, `npm start`):
-   `cmdabl --bridge` → 0.4.0 with `chains`; open the palette once, then `find vermona kick` →
-   the Kick pad of the Drum Rack on "Vermona MIDI", selecting it shows the pad selected; the
-   second palette open lists chain rows, picking one selects it; `find -c kick` only pads;
-   `goto kick` with a track and a pad of that name asks to pick; `mute kick` offers only the
-   track; rename a pad and use the old name → "the Live Set changed; run the command again",
-   the new name works after the next palette open.
+1d. Chains and pads (script 0.4.0). Seen 2026-10-12: `find vermona kick` and `find -c kick`
+   find the pad and Live shows it selected. **Bug:** the chains of an Instrument Rack created
+   during the session ("Organ Softer", "Test chain", rack directly on the track) are not found
+   (`find test chain` → nothing); cause unknown, cmdabl-bridge is on it. Open: `cmdabl --bridge`
+   → 0.4.0 with `chains`; the second palette open lists chain rows, picking one selects it;
+   `goto kick` with a track and a pad of that name asks to pick; rename a pad and use the old
+   name → "the Live Set changed; run the command again"; the matcher list (1c); the message
+   layout (1b).
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
@@ -331,6 +332,10 @@ Decided by the user and still governing future work.
   typed functions).
 - 2026-10-11: keep a bridge round trip under 100 ms where possible (rule in 0001 §8).
 - 2026-10-11: no timer for the faster drain for now; candidate again with follow mode.
+- 2026-10-12: `mute` and `solo` shall also work on rack chains and Drum Rack pads in 0.1.0
+  (`mute kick` → the pad); `arm` stays tracks-only. cmdabl-bridge checks whether the SDK can
+  write a chain's mute/solo; if it needs a script operation, the access token comes first and
+  its design goes to the user for confirmation.
 - 2026-10-12: exclusive arm/solo is not applied by commands; naming several tracks is an explicit
   choice, like Cmd-clicking the buttons (accepted).
 - 2026-10-11: `mute`/`solo`/`arm` toggle; `unmute`/`unsolo`/`unarm` switch off (0005).
