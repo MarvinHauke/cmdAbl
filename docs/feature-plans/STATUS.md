@@ -97,8 +97,13 @@ Plans: 0001 "Phase 4 protocol", build order 0001 §7, layout 0001 §8, decisions
 
 Changing these after a release breaks what users have learned and what is stored in history.
 
-1. `cmdabl` and `pakabl` as subcommand groups (`cmdabl setup`, `cmdabl bridge`, `pakabl list`…).
-   No aliases: the old flags go (user, 2026-10-12: he is the only user so far).
+1. `cmdabl` and `pakabl` as subcommand groups — built (`e04989d`, `f795ac1`, `7b158eb`):
+   `cmdabl setup` (also says what to do about the Remote Script: restart Live, enable the
+   control surface, or nothing), `cmdabl bridge`, `pakabl install|uninstall|update|upgrade|list`.
+   No aliases (user, 2026-10-12): `cmdabl --setup` and `--bridge` are usage errors now, old
+   history entries with them fail. `pakabl upgrade <id>` without a version installs the
+   index's version. In work: cmdabl-core removes the legacy `registry.register` path and
+   `ModuleApi.registry`. Live test 1g.
 2. An `enum` argument kind with declared choices (`man <ableton|cmdabl>`, pakabl ids): usage
    text and, later, completion come from it.
 3. Object items of the palette run through `goto` (history entry, `next`/`prev` list); removes
@@ -188,6 +193,11 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open; `goto kick`
    with a track and a pad of that name asks to pick; rename a pad and use the old name; token
    handling after disabling and re-enabling the control surface.
+1g. Subcommand groups: `cmdabl` and `cmdabl --help` → usage with `setup` and `bridge`;
+   `cmdabl --setup` → usage error naming the valid subcommands; `cmdabl setup` with the script
+   running → the advice line; `cmdabl bridge` → one ms value; `pakabl` → help with five
+   subcommands, `pakabl nope` and `pakabl install` (no id) → usage errors; `pakabl update`,
+   `pakabl list` and its buttons as before.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
