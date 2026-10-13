@@ -172,7 +172,7 @@ export function activate(activation: ActivationContext) {
     if (outcome.cancelled) return;
     present(outcome.result);
     // History gets successful invocations that carry arguments, in their
-    // resolved form ("mute /Vermona MIDI"), so a re-run is never ambiguous.
+    // resolved form ("mute /Bass"), so a re-run is never ambiguous.
     const invocation = outcome.line ?? line;
     if (outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
       for (const listener of commandRunListeners) listener(invocation);

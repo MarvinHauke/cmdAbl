@@ -25,7 +25,7 @@ export interface PromptRequest {
   /**
    * Open with this text in the input and the caret at `cursor` (0 = at the
    * start): used when a pick list's Tab put an object into the prompt, e.g.
-   * ` "/Vermona MIDI/Drum Rack/Kick"` so the user types the command before it.
+   * ` "/2-808 Core Kit/808 Core Kit/Snare Drum"` so the user types the command before it.
    * Absent: an empty prompt.
    */
   initial?: { text: string; cursor: number };

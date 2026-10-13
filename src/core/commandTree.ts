@@ -22,7 +22,7 @@ export interface ArgDef {
   variadic?: boolean;
   /**
    * Takes the rest of the line as ONE value (tokens joined by a space), so a
-   * single-target command works without quoting: `goto /Opal Lead/Reverb`.
+   * single-target command works without quoting: `goto /2-808 Core Kit/808 Core Kit/Snare Drum`.
    * Only allowed on the last argument; not combinable with `variadic`.
    */
   rest?: boolean;
@@ -50,7 +50,7 @@ export interface ArgDef {
 
 /** A worked example for help and the generated reference. */
 export interface CommandExample {
-  /** The line as typed, e.g. `mute /Kick, /Snare`. */
+  /** The line as typed, e.g. `mute /bass, /lead`. */
   line: string;
   /** What it does, in a few words. */
   note?: string;

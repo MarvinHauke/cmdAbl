@@ -4,8 +4,8 @@ import Fuse from "fuse.js";
 // strict and separate: src/ableton/resolvePath.ts). Two levels:
 //
 //   matches(text, query)      every typed word occurs in the text, any order,
-//                             ignoring case — the filter ("vermona kick" finds
-//                             "/Vermona MIDI/Drum Rack/Kick")
+//                             ignoring case — the filter ("808 snare" finds
+//                             "/2-808 Core Kit/808 Core Kit/Snare Drum")
 //   rank / ranker             fuzzy ranking, best first — the palette's order
 //   filterRanked / filterer   the filter, ordered by the fuzzy rank
 //   (ranker and filterer build their index once, for use per keystroke)
@@ -39,8 +39,8 @@ function ownPart(word: string): string {
  * word occurs in the object's path, and at least one of them occurs in the
  * object's OWN name (`name`, the last path segment without its ordinal). A word
  * that only names a parent therefore never pulls in everything below that
- * parent: `e-piano` finds the track E-Piano, not its devices and chains;
- * `e-piano utility` finds the chain called Utility below it.
+ * parent: `lead` finds the track Lead, not its devices and chains;
+ * `lead utility` finds the device called Utility below it.
  */
 export function matchesNode(node: { path: string; name: string }, query: string): boolean {
   if (!matches(node.path, query)) return false;

@@ -33,7 +33,7 @@ export interface PaletteItem {
   subtitle?: string;
   /** Extra terms to match against during search. */
   keywords?: string[];
-  /** Display/address path from the song root, e.g. "/Vermona/Kick". Live objects only. */
+  /** Display/address path from the song root, e.g. "/808 Core Kit/Snare Drum". Live objects only. */
   path?: string;
 }
 

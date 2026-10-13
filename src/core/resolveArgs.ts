@@ -79,13 +79,13 @@ export function lookupTarget(nodes: ObjectNode[], text: string, kinds?: NodeKind
 /**
  * Split what the parser collected into individual targets. For an argument
  * that takes several paths:
- *   - a comma always separates targets: `mute /Opal Lead, /Kick`;
+ *   - a comma always separates targets: `mute /Bass, /Lead`;
  *   - a word starting with `/`, or a quoted word, starts its own target (the
  *     remembered lines are made of those). Bare words after a `/` word that
- *     together name an existing path stay with it: `mute /Opal Lead`;
+ *     together name an existing path stay with it: `mute /Lead Guitar`;
  *   - the other bare words are tried together first (an exact path, else
  *     text matching under the own-name rule): if they hit, that IS the
- *     reading — ONE target (`mute vermona kick`: one hit resolves, several
+ *     reading — ONE target (`mute 808 snare`: one hit resolves, several
  *     ask once with exactly those hits; no single-word hits, no parents).
  *     Only when they hit nothing is each word its own target, so
  *     `mute kick snare` names two tracks.

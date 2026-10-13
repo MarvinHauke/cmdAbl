@@ -13,8 +13,8 @@ import { ExitCode, type CommandResult } from "./types.js";
  * short message plus `details`:
  *
  *   cmdAbl: arm: 1 of 2 done
- *     ✓ /Sub37 Audio
- *     × /Sub 37 Midi
+ *     ✓ /Bass
+ *     × /Lead
  *         Live did not arm it: its arm button is disabled
  *         (e.g. the input device is not available)
  *
