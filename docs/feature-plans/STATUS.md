@@ -453,6 +453,13 @@ Decided by the user and still governing future work.
   contract (a "fill" outcome of `select`, an initial text for `prompt`; 0007 §4). Built
   (`ac821a6`, `797b38d`): completing a command in the refilled palette keeps the path.
   Later, with pipes: the caret may be better at the end of the filled text (user's note).
+- 2026-10-13: the dialog hang is accepted as a known issue for 0.1.0 (not seen again; cause
+  unknown; everything is beta). `POST /reset` stays as the documented recovery
+  (`docs/limits.md`); no watchdog for now. Roadmap step 1.2/1.3 is closed with that.
+- 2026-10-13: small items for 0.1.0: state symbols in the pick list (two contract additions,
+  cmdabl-core proposes the shapes) and a larger pick list. Feedback for `next`/`prev` is
+  dropped for now — a message after every step would have to be dismissed. `pakabl list`
+  already goes through the dialog queue since step 3.4 (`67655d5`), so the `page` item is done.
 - 2026-10-12: Remote Script versions grow conservatively. Reset to 0.1.0 (`2b2d448`; it had
   gone to 0.6.0 in a day). Every script change raises the third number, also during
   development; the middle number only with a release whose script is incompatible with the
