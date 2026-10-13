@@ -150,9 +150,9 @@ Take `mute vermona kick` as an example. Here is what happens, step by step.
      the typed words must all occur in the object's path, and at least one of them in the object's
      own name. So `mute e-piano` names the track E-Piano, and `mute vermona kick` names the Kick pad
      on Vermona. `find` is the one command that only needs the words in the path.
-   - If the words typed together name an object, and each word also names something on its own, the
-     platform asks once, with one pick list: the joined object first. If no object matches the words
-     together, each word is its own target.
+   - Words typed together win when they match: one object runs without a question, several objects
+     give one pick list with exactly those. Only when they match nothing together is each word its
+     own target; words that then match several share one pick list.
    - If nothing matches, the platform offers "did you mean": a pick list of the closest names. It
      never runs one of them without asking. `Esc` gives the original "nothing matches" answer.
 6. **Pick, if needed.** The pick list is a dialog. It returns the chosen indexes. The platform

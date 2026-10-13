@@ -36,10 +36,13 @@ A command takes objects as text. cmdAbl reads that text as follows:
   `tree`, every word you type must occur in the object's path, and at least one must occur in the object's own
   name. `mute e-piano` names the track E-Piano, not the devices and chains below it. `mute vermona kick` names
   the Kick pad on the track Vermona.
-- **Two readings ask once.** If the words typed together name an object, and each word also names something on its
-  own, cmdAbl asks once, with one pick list: the joined object first, then each word's. If no object matches the
-  words together, each word is its own target: `mute kick snare` mutes the Kick and the Snare.
-- **A comma always separates targets.** `mute vermona, kick` names the track Vermona and the Kick.
+- **Words typed together win when they match.** If they match exactly one object, the command runs on it without a
+  question. If they match several, one pick list offers exactly those objects. Only when they match nothing together
+  is each word its own target: `mute kick snare` mutes the Kick and the Snare. Words that then match several objects
+  share one pick list, and a word that matches nothing gets a "did you mean" list.
+- **This can surprise.** With a group "Drums" that holds a track "Kick", `mute drums kick` means the Kick, because the
+  words match one object together. To mean both the group and the track, write `mute drums, kick`.
+- **A comma always names several targets.** `mute vermona, kick` names the track Vermona and the Kick.
 - **`find` is a search.** It is looser on purpose: `find vermona` lists everything whose path contains the word,
   the track and everything below it. `-t`, `-d` and `-c` narrow the list to tracks, devices or chains.
 
@@ -111,7 +114,7 @@ Script runs. The [command reference](reference/commands.md) has the full usage.
 - `mute`, `solo` and `arm` **toggle** each object they name: a muted track is unmuted, an unmuted one is muted.
 - `--set 1` makes every named object muted, soloed or armed, whatever its state. `--set 0` switches them off. An
   object already in the wanted state counts as done. For example, `mute --set 1 /Kick, /Snare` mutes both, and
-  `solo --set 0 /Kick` unsolos the Kick.
+  `solo --set 0 /Kick` unsolos the Kick. The history shows the option as `--set 0`; typing `--set=0` works too.
 - `mute` and `solo` work on tracks, rack chains and Drum Rack pads. Chains and pads need the Remote Script
   and macOS.
 - `arm` works on tracks only. Return, main and group tracks cannot be armed, and cmdAbl reports them as failed.
