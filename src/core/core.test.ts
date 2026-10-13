@@ -421,3 +421,24 @@ test("option choices: the parser lists them on a bad value, usage shows <0|1>, t
   assert.match(broken({ takesValue: true, choices: ["-a"] }), /starts with a dash/);
   assert.match(broken({ takesValue: true, choices: [] }), /empty choices list/);
 });
+
+test("numeric option: whole numbers within a range, usage shows <n>, handler gets the text", () => {
+  const tree3: CommandNode<void, string>[] = [
+    { name: "tree", summary: "t", options: [{ name: "level", short: "L", takesValue: true, number: { min: 1, max: 12, integer: true }, summary: "depth" }], run: () => {} },
+  ];
+  assert.deepEqual(validateTree(tree3), []);
+  assert.equal(usage(tree3[0]!, ["tree"]), "tree [--level <n>]");
+  const ok = parse("tree -L 3", tree3);
+  assert.equal(ok.kind, "run");
+  if (ok.kind === "run") assert.deepEqual(ok.invocation.options, { level: "3" });
+  for (const bad of ["0", "13", "2.5", "abc", "-1", "1e3", ""]) {
+    const r = parse(`tree --level=${bad === "" ? '""' : bad}`, tree3);
+    assert.equal(r.kind, "error", bad);
+    if (r.kind === "error") assert.match(r.result.message ?? "", /for option "--level": a whole number from 1 to 12/);
+  }
+  const broken = (opt: object): string =>
+    validateTree([{ name: "x", summary: "s", options: [{ name: "o", summary: "s", ...opt }], run: () => {} } as CommandNode<void, string>]).join("\n");
+  assert.match(broken({ number: {} }), /numeric but takes no value/);
+  assert.match(broken({ takesValue: true, number: { min: 5, max: 1 } }), /min above max/);
+  assert.match(broken({ takesValue: true, number: {}, choices: ["1"] }), /both choices and number/);
+});

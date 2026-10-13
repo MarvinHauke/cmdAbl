@@ -1,5 +1,5 @@
 import { ExitCode, fail, type CommandResult } from "./types.js";
-import { type CommandNode, type Invocation, usage } from "./commandTree.js";
+import { checkNumber, numberRule, type CommandNode, type Invocation, usage } from "./commandTree.js";
 import { tokenize, type Token } from "./tokenize.js";
 
 // Turns a typed line into a matched leaf plus a (not yet resolved) invocation.
@@ -115,7 +115,15 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
     }
     const value = inlineValue ?? rest[++k]?.value;
     if (value === undefined) return error(ExitCode.USAGE, `option "--${def.name}" needs a value`);
-    if (def.choices) {
+    if (def.number) {
+      if (checkNumber(value, def.number) === null) {
+        return error(
+          ExitCode.USAGE,
+          `invalid value "${value}" for option "--${def.name}": ${numberRule(def.number)}\nusage: ${usage(node, path)}`,
+        );
+      }
+      options[def.name] = value.trim();
+    } else if (def.choices) {
       const hit = def.choices.find((c) => c.toLowerCase() === value.toLowerCase());
       if (hit === undefined) {
         return error(

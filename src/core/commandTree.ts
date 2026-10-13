@@ -69,6 +69,13 @@ export interface OptionDef {
    * handler the declared spelling. Same rules as enum argument choices.
    */
   choices?: string[];
+  /**
+   * A numeric value option (needs `takesValue`; not with `choices`): the parser
+   * rejects text that is not a number, a fraction when `integer` is set and
+   * values outside `min`/`max`, with a usage error that says what is
+   * accepted. The handler gets the typed text (a string, like every option).
+   */
+  number?: { min?: number; max?: number; integer?: boolean };
   summary: string;
 }
 
@@ -187,6 +194,12 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
         if (optionShorts.has(opt.short)) problems.push(`${at}: duplicate short option "-${opt.short}"`);
         optionShorts.add(opt.short);
       }
+      if (opt.number !== undefined) {
+        if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" is numeric but takes no value`);
+        if (opt.choices !== undefined) problems.push(`${at}: option "--${opt.name}" has both choices and number`);
+        const { min, max } = opt.number;
+        if (min !== undefined && max !== undefined && min > max) problems.push(`${at}: option "--${opt.name}" has min above max`);
+      }
       if (opt.choices !== undefined) {
         if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" has choices but takes no value`);
         const lower = opt.choices.map((c) => c.toLowerCase());
@@ -251,7 +264,28 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
 
 /** `value`, or `0|1` for an option with declared choices. */
 export function valueLabel(opt: OptionDef): string {
-  return opt.choices?.length ? opt.choices.join("|") : "value";
+  if (opt.choices?.length) return opt.choices.join("|");
+  return opt.number ? "n" : "value";
+}
+
+/** "a whole number from 1 to 12" — what a numeric option accepts. */
+export function numberRule(spec: NonNullable<OptionDef["number"]>): string {
+  const kind = spec.integer ? "a whole number" : "a number";
+  if (spec.min !== undefined && spec.max !== undefined) return `${kind} from ${spec.min} to ${spec.max}`;
+  if (spec.min !== undefined) return `${kind} of at least ${spec.min}`;
+  if (spec.max !== undefined) return `${kind} of at most ${spec.max}`;
+  return kind;
+}
+
+/** The value as a finite number when it follows the rule, else null. */
+export function checkNumber(text: string, spec: NonNullable<OptionDef["number"]>): number | null {
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(text.trim())) return null;
+  const value = Number(text);
+  if (!Number.isFinite(value)) return null;
+  if (spec.integer && !Number.isInteger(value)) return null;
+  if (spec.min !== undefined && value < spec.min) return null;
+  if (spec.max !== undefined && value > spec.max) return null;
+  return value;
 }
 
 /** `pakabl install <id> [--force]` — the one-line usage of a node. */
@@ -293,7 +327,7 @@ export function helpText(node: CommandNode<any, any>, path: string[]): string {
     lines.push("", "options:");
     for (const opt of node.options) {
       const flag = `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${opt.takesValue ? ` <${valueLabel(opt)}>` : ""}`;
-      lines.push(`  ${flag.padEnd(22)} ${opt.summary}`);
+      lines.push(`  ${flag.padEnd(22)} ${opt.summary}${opt.number ? ` (${numberRule(opt.number)})` : ""}`);
     }
   }
   if (node.examples?.length) {
