@@ -280,10 +280,11 @@ How the platform reads the text of a `path` argument (`src/core/resolveArgs.ts`)
   `mute vermona kick` names the Kick pad. A single text target follows the same rule.
 - `find` is a search and keeps the looser rule on purpose (user, 2026-10-13): it lists
   everything whose path contains the words. Two rules, stated in the docs.
-- (Confirmed by the user on 2026-10-13 against the simpler "together always means one": the
-  stricter rule stays.) The platform never chooses silently between two readings: if the joined words hit and every
-  word also resolves on its own to other objects (`mute drums kick` with a group "Drums"
-  holding "Kick"), it asks — one multi-select list, the joined hits first, then each word's.
+- **Joined words win when they hit** (user, 2026-10-13, after trying the stricter rule in
+  Live; replaces "never choose between two readings"): one joined hit → resolved without a
+  question; several joined hits → one pick list with exactly those. The single words are not
+  offered as an alternative. Accepted consequence: with a group "Drums" holding a track "Kick",
+  `mute drums kick` means Kick; both are `mute drums, kick`.
 - No joined hit → each word is its own target, as before.
 - One pick list per command: all ambiguous texts of an argument share one multi-select list;
   the row's detail names the text it matched. A single-target argument keeps a single-select

@@ -276,8 +276,8 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    (reported); `mute --set 2 /a` → usage error naming 0 and 1; `unmute /a` → unknown command;
    run `mute --set 0 /a` from history → still unmuted.
 1l. Own-name rule, `tree`, palette `Enter` (`60a1dc2`, `9730198`, `fafd273`, `1fe2a43`):
-   `mute e-piano` → only the track; `mute e-piano utility` → asks once, the chain first;
-   `mute vermona kick` → asks once, the pad first; `mute kick snare` → both tracks; `mute
+   `mute e-piano` → only the track (seen); after the change in work: `mute e-piano utility`
+   and `mute vermona kick` run without a question when one object matches; `mute kick snare` → both tracks; `mute
    vermna` → "did you mean" lists the track, not its chains; `find vermona` → the track and
    everything below it; `tree`, `tree --level 1`, `tree -L 3 /<rack track>`, `tree -L 0` →
    usage error; `unmute Kick` + `Enter` → "unknown command", nothing muted; `mut` + `Enter` →
@@ -442,8 +442,11 @@ Decided by the user and still governing future work.
   only user so far); removing `registerResultHandler` from `ModuleApi` is confirmed.
 - 2026-10-13: the "own name" rule — a command's text target must have at least one typed word
   in the object's own name, the others may match its parents (`60a1dc2`). `find` keeps "anywhere
-  in the path" on purpose. Words typed together that can be read two ways keep asking (the
-  stricter rule; the user chose it over "together always means one").
+  in the path" on purpose. Words typed together: if they hit as one pattern, that is the
+  reading — one hit runs, several open a pick list with those hits only; a comma names several
+  targets. (The user first chose "keep asking when two readings are possible", then corrected
+  it after the Live test: `mute vermona kick` must not ask when one pad matches.) Task out to
+  cmdabl-core, with the remembered line showing `--set 0` instead of `--set=0`.
 - 2026-10-12: Remote Script versions grow conservatively. Reset to 0.1.0 (`2b2d448`; it had
   gone to 0.6.0 in a day). Every script change raises the third number, also during
   development; the middle number only with a release whose script is incompatible with the
