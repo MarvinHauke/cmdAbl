@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import Fuse from "fuse.js";
-import { filterRanked, filterer, matches, rank, ranker, suggest } from "./match.js";
+import { filterRanked, filterer, matches, matchesNode, rank, ranker, suggest } from "./match.js";
 
 test("matches: every word occurs, any order, ignoring case", () => {
   assert.equal(matches("/Vermona MIDI/Drum Rack/Kick", "vermona kick"), true);
@@ -61,4 +61,25 @@ test("suggest: every word fits fuzzily; short words and no fit give nothing; cap
   assert.deepEqual(suggest(paths, "", ["path"]), []);
   const many = Array.from({ length: 20 }, (_, i) => ({ path: `/Track ${i}` }));
   assert.ok(suggest(many, "trak", ["path"]).length <= 8);
+});
+
+test("matchesNode: every word in the path, at least one in the object's own name", () => {
+  const track = { path: "/E-Piano", name: "E-Piano" };
+  const chain = { path: "/E-Piano/DefaultTracks/EQ Eight | Utility", name: "EQ Eight | Utility" };
+  assert.equal(matchesNode(track, "e-piano"), true);
+  assert.equal(matchesNode(chain, "e-piano"), false); // only the parent is named
+  assert.equal(matchesNode(chain, "e-piano utility"), true);
+  assert.equal(matchesNode(chain, "utility"), true);
+  assert.equal(matchesNode(chain, "zzz"), false);
+  assert.equal(matchesNode({ path: "/Drums/Kick#2", name: "Kick" }, "kick#2"), true); // a typed ordinal
+  assert.equal(matchesNode({ path: "/Vermona MIDI/Kick", name: "Kick" }, "midi/kick"), true); // path fragment: last part names the object
+});
+
+test("suggest with an own-name field: a close parent name alone does not suggest what sits below it", () => {
+  const items = [
+    { path: "/Vermona MIDI", name: "Vermona MIDI" },
+    { path: "/Vermona MIDI/Kick", name: "Kick" },
+  ];
+  assert.deepEqual(suggest(items, "vermoan", ["path"], 8, "name").map((i) => i.path), ["/Vermona MIDI"]);
+  assert.equal(suggest(items, "vermoan", ["path"]).length, 2); // without the own-name field both come
 });

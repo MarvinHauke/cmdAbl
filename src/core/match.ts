@@ -29,6 +29,28 @@ export function matches(text: string, query: string): boolean {
   return needles.length > 0 && needles.every((word) => haystack.includes(word));
 }
 
+/** The part of a typed word that names an object itself: after the last "/", without a trailing "#n". */
+function ownPart(word: string): string {
+  return word.slice(word.lastIndexOf("/") + 1).replace(/#\d+$/, "");
+}
+
+/**
+ * Text matching for an object of the Live Set (the "own name" rule): every typed
+ * word occurs in the object's path, and at least one of them occurs in the
+ * object's OWN name (`name`, the last path segment without its ordinal). A word
+ * that only names a parent therefore never pulls in everything below that
+ * parent: `e-piano` finds the track E-Piano, not its devices and chains;
+ * `e-piano utility` finds the chain called Utility below it.
+ */
+export function matchesNode(node: { path: string; name: string }, query: string): boolean {
+  if (!matches(node.path, query)) return false;
+  const own = node.name.toLowerCase();
+  return words(query).some((word) => {
+    const part = ownPart(word);
+    return part !== "" && own.includes(part);
+  });
+}
+
 /**
  * Fuzzy ranking over `keys`, prepared once (the index is built here, not per
  * keystroke): returns a function from query to the items whose fuzzy score
@@ -100,7 +122,14 @@ export const MIN_SUGGEST_WORD = 3;
  * own (the palette's threshold); an item's rank is the sum of its per-word
  * ranks. Empty when the query is empty or a word is too short to mean anything.
  */
-export function suggest<T>(items: readonly T[], query: string, keys: string[], limit = MAX_SUGGESTIONS): T[] {
+export function suggest<T>(
+  items: readonly T[],
+  query: string,
+  keys: string[],
+  limit = MAX_SUGGESTIONS,
+  /** When given, at least one word must also fit this field fuzzily (an object's own name). */
+  ownKey?: string,
+): T[] {
   const needles = words(query);
   if (needles.length === 0 || needles.some((w) => w.length < MIN_SUGGEST_WORD)) return [];
   const all = [...items];
@@ -121,6 +150,15 @@ export function suggest<T>(items: readonly T[], query: string, keys: string[], l
       }
     }
   });
+  if (ownKey) {
+    const own = new Fuse(
+      all.map((_, index) => ({ index, [ownKey]: String((all[index] as Record<string, unknown>)[ownKey] ?? "") })),
+      { ...FUZZY_OPTIONS, threshold: SUGGEST_THRESHOLD, keys: [ownKey] },
+    );
+    const ownFit = new Set<number>();
+    for (const word of needles) for (const hit of own.search(ownPart(word) || word)) ownFit.add(hit.item.index);
+    for (const index of [...totals.keys()]) if (!ownFit.has(index)) totals.delete(index);
+  }
   return [...totals.entries()]
     .sort((a, b) => a[1] - b[1] || a[0] - b[0])
     .slice(0, limit)

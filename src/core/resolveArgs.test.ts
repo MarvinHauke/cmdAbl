@@ -48,6 +48,18 @@ const rootsD = [node("Vermona MIDI", "track"), node("Opal Lead", "track"), node(
 assignPaths(rootsD, "");
 const allD = flattenObjectTree(rootsD);
 
+// The own-name rule: a track E-Piano with a chain below it, a device named like its track.
+const rootsE = [
+  node("E-Piano", "track", [
+    node("E-Piano", "device"),
+    node("DefaultTracks", "device", [node("EQ Eight | Utility", "device"), node("Reverb", "device")]),
+  ]),
+  node("Opal Lead", "track", [node("Reverb", "device")]),
+  node("Vermona MIDI", "track", [node("Drum Rack", "device", [node("Kick", "device")])]),
+];
+assignPaths(rootsE, "");
+const allE = flattenObjectTree(rootsE);
+
 function setup(
   pickAnswer: (candidates: ObjectNode[]) => ObjectNode[] | null = () => null,
   liveNodes: ObjectNode[] = all,
@@ -133,16 +145,11 @@ test("`sel kick snare`: no path holds both words, so two targets (each word name
   assert.deepEqual(s.calls, [["/Kick", "/Snare"]]);
 });
 
-test("several hits for the joined words ask once", async () => {
+test("several hits for the joined words ask once: the joined hit first, then each word's", async () => {
   const s = setup((c) => [c[0]!]);
-  await runLine("sel drum rack", s.deps); // Drum Rack and its two pads; "drum" alone also finds Drums
+  await runLine("sel drum rack", s.deps); // "drum rack" is the rack's own name; "drum" alone also names the Drums track
   assert.equal(s.picks.length, 1);
-  assert.deepEqual(s.picks[0]!.offered.slice(0, 3), [
-    "/Vermona MIDI/Drum Rack",
-    "/Vermona MIDI/Drum Rack/Kick",
-    "/Vermona MIDI/Drum Rack/Snare",
-  ]);
-  assert.equal(s.picks[0]!.offered[3], "/Drums");
+  assert.deepEqual(s.picks[0]!.offered, ["/Vermona MIDI/Drum Rack", "/Drums"]);
 });
 
 test("a comma always separates targets", async () => {
@@ -238,4 +245,54 @@ test("did you mean: a hopeless text next to a fixable one fails at once, nothing
   const out = await runLine("mute vermoan, zzzzzz", s.deps);
   assert.equal(s.picks.length, 0);
   assert.equal(out.result.code, ExitCode.NOT_FOUND);
+});
+
+test("own name: `sel e-piano` is exactly the track (a structural hit), not what sits below it", async () => {
+  const s = setup(() => null, allE);
+  const out = await runLine("sel e-piano", s.deps);
+  assert.equal(out.result.code, 0);
+  assert.deepEqual(s.calls, [["/E-Piano"]]);
+  assert.equal(s.picks.length, 0);
+});
+
+test("own name: `sel piano` (not the whole name) finds objects whose OWN name contains it, not their children", async () => {
+  const s = setup((c) => c, allE);
+  await runLine("sel piano", s.deps);
+  assert.deepEqual(s.picks[0]!.offered, ["/E-Piano", "/E-Piano/E-Piano"]); // not DefaultTracks/… below the track
+});
+
+test("own name: `sel e-piano utility` offers the chain first (both readings), then the track", async () => {
+  const s = setup((c) => [c[0]!], allE);
+  const out = await runLine("sel e-piano utility", s.deps);
+  assert.equal(out.result.code, 0);
+  assert.deepEqual(s.picks[0]!.offered, ["/E-Piano/DefaultTracks/EQ Eight | Utility", "/E-Piano"]);
+  assert.deepEqual(s.calls, [["/E-Piano/DefaultTracks/EQ Eight | Utility"]]);
+});
+
+test("own name: `sel vermona kick` — parent word plus own-name word; the pad comes first", async () => {
+  const s = setup((c) => [c[0]!], allE);
+  await runLine("sel vermona kick", s.deps);
+  assert.equal(s.picks[0]!.offered[0], "/Vermona MIDI/Drum Rack/Kick");
+  assert.deepEqual(s.calls, [["/Vermona MIDI/Drum Rack/Kick"]]);
+});
+
+test("own name: a word that only occurs in a parent finds nothing (then suggestions or not found)", async () => {
+  const s = setup((c) => c, allE);
+  await runLine("sel vermona", s.deps); // own name Vermona MIDI only — not Drum Rack or Kick below it
+  assert.deepEqual(s.calls, [["/Vermona MIDI"]]);
+  const t = setup(() => null, allE);
+  const out = await runLine("sel defaulttracks eq", t.deps); // parents only for the chain's children? "eq" is the own name
+  assert.equal(out.result.code, 0);
+  const u = setup(() => null, allE);
+  const miss = await runLine("mute drum", u.deps); // mute: tracks only; "drum" names a device (not a track) and no track
+  assert.equal(miss.result.code, ExitCode.NOT_FOUND);
+});
+
+test("own name: multi-word own names and a name shared by two devices", async () => {
+  const s = setup(() => null, allE);
+  await runLine('sel "opal lead"', s.deps);
+  assert.deepEqual(s.calls, [["/Opal Lead"]]);
+  const t = setup((c) => c, allE);
+  await runLine("sel reverb", t.deps);
+  assert.deepEqual(t.picks[0]!.offered, ["/E-Piano/DefaultTracks/Reverb", "/Opal Lead/Reverb"]);
 });

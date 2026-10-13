@@ -1,8 +1,8 @@
 import { ExitCode, fail, type CommandResult, type TargetOutcome } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
-import { resolvePath, resolveStructural } from "../ableton/resolvePath.js";
+import { resolveStructural } from "../ableton/resolvePath.js";
 import type { NodeKind } from "../ableton/objectTree.js";
-import { matches, suggest } from "./match.js";
+import { matchesNode, suggest } from "./match.js";
 import type { CommandNode, Invocation } from "./commandTree.js";
 
 // "Resolve before the handler": turns the raw strings of `path` arguments into
@@ -68,16 +68,22 @@ type AnyNode = CommandNode<any, any>;
 type AnyDef = NonNullable<AnyNode["args"]>[number];
 
 /**
- * The objects a typed target names: the strict rules of `resolvePath` first
- * (same segments, then a substring of the path); when they find nothing and
- * the text has several words, every word occurring in the path, in any order
- * (`matches`, the same rule as `find`), restricted to `kinds`. A text the
- * strict rules already found never widens.
+ * The objects a typed target names. Two steps, the first that finds anything
+ * wins:
+ *   1. the structural rules of `resolveStructural`: the text IS the object's
+ *      path (same segments, then ignoring case; `#n` picks a sibling);
+ *   2. text matching under the "own name" rule (`matchesNode`): every word
+ *      occurs in the path and at least one occurs in the object's own name —
+ *      a word that only names a parent never pulls in what sits below it.
+ * Both are restricted to `kinds`. The strict `resolvePath` of src/ableton is not
+ * used for text: its "anywhere in the path" substring rule is what this
+ * replaces (the own-name filter lives here, where every text path goes through).
  */
 export function lookupTarget(nodes: ObjectNode[], text: string, kinds?: NodeKind[]): ObjectNode[] {
-  const strict = resolvePath(nodes, text, kinds);
-  if (strict.length > 0 || !/\s/.test(text.trim())) return strict;
-  return nodes.filter((n) => (!kinds || kinds.includes(n.kind)) && matches(n.path, text));
+  const structural = resolveStructural(nodes, text, kinds);
+  if (structural.length > 0) return structural;
+  if (!text.trim()) return [];
+  return nodes.filter((n) => (!kinds || kinds.includes(n.kind)) && matchesNode(n, text));
 }
 
 /**
@@ -108,7 +114,7 @@ export function alternativeHits(
     }
   };
   add(alt.joined, lookupTarget(nodes, alt.joined, kinds), true);
-  for (const word of alt.words) add(word, resolvePath(nodes, word, kinds), false);
+  for (const word of alt.words) add(word, lookupTarget(nodes, word, kinds), false);
   return { candidates, matched };
 }
 
@@ -206,7 +212,7 @@ export function normalizeTargets(
           targets.push(text);
         } else if (run.length > 1 && lookupTarget(nodes, text, def.kinds).length > 0) {
           const alt: Alternatives = { joined: text, words: run };
-          const bothWays = run.every((word) => resolvePath(nodes, word, def.kinds).length > 0);
+          const bothWays = run.every((word) => lookupTarget(nodes, word, def.kinds).length > 0);
           // Two readings only matter when they name different objects.
           targets.push(bothWays && alternativeHits(nodes, alt, def.kinds).candidates.length > 1 ? alt : text);
         } else {
@@ -284,7 +290,7 @@ export function resolveTargets(
     // question. Otherwise the first argument with missing texts is asked about.
     const suggested = missingAt.map((m) => {
       const pool = m.def.kinds ? nodes.filter((n) => m.def.kinds!.includes(n.kind)) : nodes;
-      return { ...m, candidates: suggest(pool, m.text, ["path"]) };
+      return { ...m, candidates: suggest(pool, m.text, ["path"], undefined, "name") };
     });
     if (suggested.every((m) => m.candidates.length > 0)) {
       const argIndex = suggested[0]!.argIndex;
