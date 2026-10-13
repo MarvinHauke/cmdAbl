@@ -13,18 +13,8 @@ import type { CommandNode, Invocation } from "./commandTree.js";
 /** What a handler finds in `invocation.args`: resolved objects for path arguments, text otherwise. */
 export type ArgValue = string | ObjectNode;
 
-/**
- * Bare words that can be read two ways: as one pattern (`joined`: every word
- * occurs in a path) and as separate targets (each of `words` names objects on
- * its own). The platform never chooses between the readings silently.
- */
-export interface Alternatives {
-  joined: string;
-  words: string[];
-}
-
 /** A target is still text until it has been resolved (or picked by the user). */
-export type Target = string | ObjectNode | Alternatives;
+export type Target = string | ObjectNode;
 
 /** One typed text the pick list answers. */
 export interface PickText {
@@ -46,8 +36,8 @@ export interface PickRequest {
   /** ALL ambiguous texts of the argument — one list answers them together. */
   texts: PickText[];
   /**
-   * Parallel to `candidates` when the list answers several texts or two
-   * readings: which typed text(s) each row matched. Absent: the row detail
+   * Parallel to `candidates` when the list answers several texts: which
+   * typed text(s) each row matched. Absent: the row detail
    * stays the object's kind.
    */
   details?: string[];
@@ -87,53 +77,22 @@ export function lookupTarget(nodes: ObjectNode[], text: string, kinds?: NodeKind
 }
 
 /**
- * The objects each reading of `alt` names, in order: the joined pattern first,
- * then each word on its own (strict rules); each object once, with the typed
- * texts it matched.
- */
-export function alternativeHits(
-  nodes: ObjectNode[],
-  alt: Alternatives,
-  kinds?: NodeKind[],
-): { candidates: ObjectNode[]; matched: string[][] } {
-  const candidates: ObjectNode[] = [];
-  const matched: string[][] = [];
-  // An object the joined text hit is labelled with it alone; a word only labels
-  // objects the joined text did not hit (or another word did).
-  const joinedHits = new Set<string>();
-  const add = (text: string, hits: ObjectNode[], isJoined: boolean) => {
-    for (const hit of hits) {
-      const at = candidates.findIndex((c) => c.handleId === hit.handleId);
-      if (isJoined) joinedHits.add(hit.handleId);
-      if (at < 0) {
-        candidates.push(hit);
-        matched.push([text]);
-      } else if (!joinedHits.has(hit.handleId) && !matched[at]!.includes(text)) {
-        matched[at]!.push(text);
-      }
-    }
-  };
-  add(alt.joined, lookupTarget(nodes, alt.joined, kinds), true);
-  for (const word of alt.words) add(word, lookupTarget(nodes, word, kinds), false);
-  return { candidates, matched };
-}
-
-/**
  * Split what the parser collected into individual targets. For an argument
  * that takes several paths:
  *   - a comma always separates targets: `mute /Opal Lead, /Kick`;
  *   - a word starting with `/`, or a quoted word, starts its own target (the
  *     remembered lines are made of those). Bare words after a `/` word that
  *     together name an existing path stay with it: `mute /Opal Lead`;
- *   - the other bare words are tried together first: if they name a path, or
- *     every word occurs in some path (`matches`), they are ONE target
- *     (`mute vermona kick`; one hit resolves, several ask the user). With no
- *     hit each word is its own target, so `mute kick snare` names two tracks.
- *   - when the joined words hit AND every word also names objects on its own
- *     (a group "Drums" holding "Kick": `mute drums kick`), both readings are
- *     plausible and the platform does not choose: the target becomes
- *     `Alternatives`, answered by one pick list (joined hits first, then each
- *     word's). The comma (`mute drums, kick`) says "two targets" outright.
+ *   - the other bare words are tried together first (an exact path, else
+ *     text matching under the own-name rule): if they hit, that IS the
+ *     reading — ONE target (`mute vermona kick`: one hit resolves, several
+ *     ask once with exactly those hits; no single-word hits, no parents).
+ *     Only when they hit nothing is each word its own target, so
+ *     `mute kick snare` names two tracks.
+ *
+ * Known and accepted consequence: with a group "Drums" holding a track
+ * "Kick", `mute drums kick` means the track Kick; for both write
+ * `mute drums, kick` (a comma always separates).
  *
  * A single-target argument (`goto` takes `rest`) arrives as one text and
  * follows the one-pattern rule in `lookupTarget`.
@@ -211,10 +170,7 @@ export function normalizeTargets(
         if (run.length > 1 && resolveStructural(nodes, text, def.kinds).length > 0) {
           targets.push(text);
         } else if (run.length > 1 && lookupTarget(nodes, text, def.kinds).length > 0) {
-          const alt: Alternatives = { joined: text, words: run };
-          const bothWays = run.every((word) => lookupTarget(nodes, word, def.kinds).length > 0);
-          // Two readings only matter when they name different objects.
-          targets.push(bothWays && alternativeHits(nodes, alt, def.kinds).candidates.length > 1 ? alt : text);
+          targets.push(text); // the joined words hit: that is the reading
         } else {
           targets.push(...run);
         }
@@ -245,19 +201,8 @@ export function resolveTargets(
     }
 
     const resolved: ObjectNode[] = [];
-    const ambiguous: Array<PickText & { matched?: string[][] }> = [];
+    const ambiguous: PickText[] = [];
     for (const [valueIndex, target] of values.entries()) {
-      if (typeof target === "object" && "joined" in target) {
-        const hits = alternativeHits(nodes, target, def.kinds);
-        if (hits.candidates.length === 1) resolved.push(hits.candidates[0]!);
-        else if (hits.candidates.length > 1) {
-          ambiguous.push({ valueIndex, query: target.joined, candidates: hits.candidates, matched: hits.matched });
-        } else {
-          missing.push({ path: target.joined, ok: false, code: ExitCode.NOT_FOUND, message: "nothing matches" });
-          missingAt.push({ argIndex, def, valueIndex, text: target.joined });
-        }
-        continue;
-      }
       if (typeof target !== "string") {
         resolved.push(target);
         continue;
@@ -314,13 +259,13 @@ export function resolveTargets(
 function pickRequest(
   argIndex: number,
   multi: boolean,
-  texts: Array<PickText & { matched?: string[][] }>,
+  texts: PickText[],
 ): PickRequest {
   const candidates: ObjectNode[] = [];
   const labels: string[][] = [];
   for (const entry of texts) {
-    entry.candidates.forEach((candidate, k) => {
-      const names = entry.matched?.[k] ?? [entry.query];
+    entry.candidates.forEach((candidate) => {
+      const names = [entry.query];
       const at = candidates.findIndex((c) => c.handleId === candidate.handleId);
       if (at < 0) {
         candidates.push(candidate);
@@ -331,7 +276,7 @@ function pickRequest(
     });
   }
   const first = texts[0]!;
-  const describe = texts.length > 1 || texts.some((t) => t.matched !== undefined);
+  const describe = texts.length > 1;
   return {
     argIndex,
     valueIndex: first.valueIndex,

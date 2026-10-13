@@ -4,7 +4,7 @@ import { uniquePath } from "../ableton/resolvePath.js";
 import type { CommandRegistry } from "./commandRegistry.js";
 import { helpText, type CommandNode, type Invocation } from "./commandTree.js";
 import { parse } from "./parse.js";
-import { alternativeHits, applyPick, lookupTarget, normalizeTargets, resolveTargets, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
+import { applyPick, lookupTarget, normalizeTargets, resolveTargets, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { PickPreview } from "./ui.js";
@@ -34,7 +34,7 @@ export interface RunDeps {
     nodes: ObjectNode[];
     /** The command text around the ambiguous address (see SelectRequest.preview). */
     preview: PickPreview;
-    /** Parallel to `candidates`: which typed text each row matched; absent = the kind. */
+    /** Parallel to `candidates`: which typed text each row matched (several texts); absent = the kind. */
     details?: string[];
   }) => Promise<ObjectNode[] | null>;
 }
@@ -51,7 +51,11 @@ export interface RunOutcome {
 function headWords(invocation: Invocation<string>): string[] {
   const words = [...invocation.path];
   for (const [name, value] of Object.entries(invocation.options)) {
-    words.push(value === true ? `--${name}` : `--${name}=${quoteIfNeeded(value)}`);
+    // `--name value`, the form the docs use; `=` only where a space would be wrong
+    // (an empty value, or one starting with a dash that would read as an option).
+    if (value === true) words.push(`--${name}`);
+    else if (value === "" || value.startsWith("-")) words.push(`--${name}=${quoteIfNeeded(value)}`);
+    else words.push(`--${name}`, quoteIfNeeded(value));
   }
   return words;
 }
@@ -59,7 +63,6 @@ function headWords(invocation: Invocation<string>): string[] {
 /** A target as it appears in a command line: resolved ones by unique path, others as typed. */
 function targetWord(value: Target, nodes: ObjectNode[]): string {
   if (typeof value === "string") return quoteIfNeeded(value);
-  if ("joined" in value) return value.words.map(quoteIfNeeded).join(" ");
   return quoteIfNeeded(uniquePath(nodes, value));
 }
 
@@ -100,13 +103,10 @@ function previewFor(
       if (typeof value === "string" && def?.kind === "path") {
         const matches = lookupTarget(nodes, value, def.kinds);
         if (matches.length === 1 || (matches.length > 1 && def.multiple === "all")) expanded = matches;
-      } else if (typeof value === "object" && "joined" in value) {
-        const hits = alternativeHits(nodes, value, def?.kinds).candidates;
-        if (hits.length === 1) expanded = hits;
       }
       const isBefore = argIndex < request.argIndex || (argIndex === request.argIndex && valueIndex < request.valueIndex);
       for (const target of expanded) {
-        if (typeof target !== "string" && !("joined" in target)) {
+        if (typeof target !== "string") {
           if (seen.has(target.handleId)) continue;
           seen.add(target.handleId);
         }

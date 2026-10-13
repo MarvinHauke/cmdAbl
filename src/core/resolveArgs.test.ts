@@ -93,42 +93,34 @@ test("`mute vermona kick` where only the pad is named kick: tracks hold no \"kic
   assert.equal(out.result.code, ExitCode.NOT_FOUND);
 });
 
-test("no kinds: both readings of `sel vermona kick` are offered, the joined hit first", async () => {
-  const s = setup((c) => [c[0]!], allB);
+test("joined words that hit ARE the reading: `sel vermona kick` resolves the pad, no list, no parents", async () => {
+  const s = setup(() => null, allB);
   const out = await runLine("sel vermona kick", s.deps);
   assert.equal(out.result.code, 0);
-  assert.equal(s.picks.length, 1);
-  assert.equal(s.picks[0]!.offered[0], "/Vermona MIDI/Drum Rack/Kick");
+  assert.equal(s.picks.length, 0);
   assert.deepEqual(s.calls, [["/Vermona MIDI/Drum Rack/Kick"]]);
   assert.equal(out.line, 'sel "/Vermona MIDI/Drum Rack/Kick"');
 });
 
-test("two readings (group + child): one pick list, joined hits first, rows say what they matched", async () => {
+test("several joined hits: one list with exactly those, nothing from single words or parents", async () => {
   const s = setup((c) => c, allC);
-  const out = await runLine("mute drums kick", s.deps);
+  const out = await runLine("mute drums kick", s.deps); // /Drums/Kick and /Snare Drums/Kick 2 (the group "Drums" is not offered)
   assert.equal(s.picks.length, 1);
-  assert.equal(s.picks[0]!.title, 'mute: "drums kick" matches 3');
-  assert.equal(s.picks[0]!.offered[0], "/Drums/Kick"); // the joined reading first
-  assert.deepEqual(s.picks[0]!.details?.[0], '"drums kick"');
-  assert.ok(s.picks[0]!.offered.includes("/Drums")); // the other reading: group and ...
-  assert.ok(s.picks[0]!.offered.includes("/Snare Drums/Kick 2")); // ... every "kick"
+  assert.equal(s.picks[0]!.title, 'mute: "drums kick" matches 2');
+  assert.deepEqual(s.picks[0]!.offered, ["/Drums/Kick", "/Snare Drums/Kick 2"]);
   assert.equal(out.result.code, 0);
-  // choosing replaces the whole text; the remembered line is canonical
-  assert.equal(out.line?.startsWith("mute "), true);
 });
 
-test("two readings: marking the group and the child runs both", async () => {
-  const s = setup((c) => c.filter((n) => n.path === "/Drums" || n.path === "/Drums/Kick"), allC);
+test("the accepted consequence: group Drums with a track Kick — `drums kick` means Kick; a comma gives both", async () => {
+  const roots = [node("Drums", "track", [node("Kick", "track")])];
+  assignPaths(roots, "");
+  const flat = flattenObjectTree(roots);
+  const s = setup(() => null, flat);
   await runLine("mute drums kick", s.deps);
-  assert.deepEqual([...s.calls[0]!].sort(), ["/Drums", "/Drums/Kick"]);
-});
-
-test("two readings: a group \"Snare Drums\" with \"Kick 2\" — `mute kick snare` asks, not decides", async () => {
-  const s = setup(() => null, allC);
-  const out = await runLine("mute kick snare", s.deps);
-  assert.equal(s.picks.length, 1); // asked
-  assert.equal(out.cancelled, true); // Esc: nothing ran
-  assert.deepEqual(s.calls, []);
+  assert.deepEqual(s.calls, [["/Drums/Kick"]]);
+  const t = setup(() => null, flat);
+  await runLine("mute drums, kick", t.deps);
+  assert.deepEqual([...t.calls[0]!].sort(), ["/Drums", "/Drums/Kick"]);
 });
 
 test("`mute kick snare` still names two tracks (no path holds both words)", async () => {
@@ -143,13 +135,6 @@ test("`sel kick snare`: no path holds both words, so two targets (each word name
   const s = setup();
   await runLine("sel kick snare", s.deps);
   assert.deepEqual(s.calls, [["/Kick", "/Snare"]]);
-});
-
-test("several hits for the joined words ask once: the joined hit first, then each word's", async () => {
-  const s = setup((c) => [c[0]!]);
-  await runLine("sel drum rack", s.deps); // "drum rack" is the rack's own name; "drum" alone also names the Drums track
-  assert.equal(s.picks.length, 1);
-  assert.deepEqual(s.picks[0]!.offered, ["/Vermona MIDI/Drum Rack", "/Drums"]);
 });
 
 test("a comma always separates targets", async () => {
@@ -261,18 +246,18 @@ test("own name: `sel piano` (not the whole name) finds objects whose OWN name co
   assert.deepEqual(s.picks[0]!.offered, ["/E-Piano", "/E-Piano/E-Piano"]); // not DefaultTracks/… below the track
 });
 
-test("own name: `sel e-piano utility` offers the chain first (both readings), then the track", async () => {
-  const s = setup((c) => [c[0]!], allE);
+test("own name: `sel e-piano utility` is the chain directly (the joined words hit once)", async () => {
+  const s = setup(() => null, allE);
   const out = await runLine("sel e-piano utility", s.deps);
   assert.equal(out.result.code, 0);
-  assert.deepEqual(s.picks[0]!.offered, ["/E-Piano/DefaultTracks/EQ Eight | Utility", "/E-Piano"]);
+  assert.equal(s.picks.length, 0);
   assert.deepEqual(s.calls, [["/E-Piano/DefaultTracks/EQ Eight | Utility"]]);
 });
 
-test("own name: `sel vermona kick` — parent word plus own-name word; the pad comes first", async () => {
-  const s = setup((c) => [c[0]!], allE);
+test("own name: `sel vermona kick` — parent word plus own-name word; the pad, no list", async () => {
+  const s = setup(() => null, allE);
   await runLine("sel vermona kick", s.deps);
-  assert.equal(s.picks[0]!.offered[0], "/Vermona MIDI/Drum Rack/Kick");
+  assert.equal(s.picks.length, 0);
   assert.deepEqual(s.calls, [["/Vermona MIDI/Drum Rack/Kick"]]);
 });
 
