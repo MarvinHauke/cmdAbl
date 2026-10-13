@@ -267,6 +267,14 @@ argument. They are the single source for `<cmd> --help` and for the generated co
 reference (`npm run docs:reference`, checked in CI). Every runnable command has at least one
 example, and every example line must parse — both are tests. Write them for a user of Live.
 
+## `pickState` on the node (2026-10-13)
+
+A runnable command may declare `pickState: { label, read(nodes, invocation) }`. When the
+platform is about to open a pick list for that command, it calls `read` with the candidates
+and shows the returned state (true / false / null) per row under `label` ("muted"). It is
+never called on the direct path, is capped at 600 ms, and any failure means "no symbols".
+`mute`, `solo` and `arm` declare it. Details: 0007 §4, "State symbols".
+
 ## Forgiving target resolution (2026-10-12; `461c885`, `46f241a`, `8588a8d`)
 
 How the platform reads the text of a `path` argument (`src/core/resolveArgs.ts`):

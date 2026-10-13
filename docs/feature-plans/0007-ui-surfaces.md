@@ -40,7 +40,7 @@ own page, without touching the core or any module.
 | Surface | In | Out |
 |---|---|---|
 | `prompt` — the palette | `{ items: PaletteItem[], initial? }` (later also the command tree and keymap, see 0006) | a `PaletteResult`, or null when dismissed |
-| `select` — the pick list | `{ title, multi, items: [{ label, detail?, value? }], preview?, fill? }` (`preview`/`value`/`fill`: see section 4) | indexes of the chosen items, `{ fill: index }`, or null when cancelled |
+| `select` — the pick list | `{ title, multi, items: [{ label, detail?, value?, state? }], preview?, fill?, state? }` (`preview`/`value`/`fill`/`state`: see section 4) | indexes of the chosen items, `{ fill: index }`, or null when cancelled |
 | `notify` — a message | `{ text, code }` (`code` = the exit code it belongs to) | nothing |
 
 Everything is plain JSON. A page receives its request through a build-time placeholder and
@@ -118,19 +118,23 @@ instead of running; `Enter` runs as before. Multi-select lists keep `Tab` = mark
   mean"); a module's own `api.pick` opts in with `{ fill: true }`, as `find` does.
 - Hint line: "Enter run · Tab put in prompt · Esc cancel".
 
-**State symbols (draft, wanted by the user 2026-10-12; not built).** When `mute`, `solo` or
-`arm` opens a pick list, each row shows a small symbol for the state the command is about
-(muted, soloed, armed), so a toggle is not applied blindly. No symbol for commands without
-such a state (`goto`, `find`).
+**State symbols (wanted by the user 2026-10-12; contract accepted 2026-10-13, in work).** When
+`mute`, `solo` or `arm` opens a pick list, each row shows whether that object is already muted,
+soloed or armed, so a toggle is not applied blindly. Commands without such a state (`goto`,
+`find`, `lom`) show nothing.
 
-- Sources: track mute and solo from the SDK; track arm from the Remote Script (`track_facts`,
-  because the SDK reads `arm` wrongly for tracks Live refuses to arm; without the script the
-  SDK value); chain and pad mute/solo from the script (`chainSwitches`; no script → no symbol).
-- Opening the list waits for at most one request to the script, and only when arm or chains
-  are involved. The symbol shows the state when the list opened and does not update.
-- Contract changes, to be confirmed with the user before building: `SelectRequest.items[]`
-  gets an optional state field (on / off / unknown); a command node gets an optional way to
-  read that state for its candidates (0005).
+- Page: `SelectRequest.state?: { label }` names the state ("muted"); `items[].state?:
+  "on" | "off"` (absent = unknown, no symbol). A leading `●` / `○` before the label, and the
+  hint line spells it out ("● muted · ○ not muted") — readable without colour.
+- Command node: `pickState?: { label, read(nodes, invocation) }` on a runnable command;
+  `read` returns true / false / null per candidate (0005).
+- Platform: `read` is called only when a pick list is about to open (ambiguity and "did you
+  mean" alike), capped at 600 ms; a failure, a timeout or a wrong-length answer means no
+  symbols — never an error.
+- Sources: track mute and solo from the SDK; track arm from the Remote Script (`track_facts`)
+  when it answers, else the SDK value; chain and pad mute/solo from the script
+  (`chainSwitches`); no script → no symbol for chains.
+- The symbol shows the state when the list opened and does not update.
 
 **Follow mode (draft, depends on the spike in 0006).** The active row is selected in Live while
 the pick list is open (a track or a device, through `selectNode`), for every pick list including
