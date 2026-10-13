@@ -15,7 +15,7 @@ export interface ScriptFacts {
 }
 
 const ENABLE =
-  "enable cmdAbl as a control surface (Live Settings → Link, Tempo & MIDI → Control Surface → cmdAbl)";
+  "enable cmdAbl as a control surface (Live Settings → Tempo & MIDI → Control Surface → cmdAbl)";
 
 export function adviseRemoteScript(facts: ScriptFacts): string {
   const { shipped, installed, running } = facts;
