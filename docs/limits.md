@@ -32,9 +32,11 @@ maintainers already know about each one.
 - **`arm` can only detect a refused track with the Remote Script.** Live can refuse to arm a track, for example a
   MIDI track whose input device is missing, and the SDK reads back "armed" anyway. The check that catches this
   needs the [Remote Script](remote-script.md). Without it, cmdAbl cannot tell that the track was not armed.
-- **A dialog can, rarely, stop responding.** Twice in testing, the palette did not open after a command. It
-  could not be made to happen on demand. The one time the way out was recorded, the palette came back only after
-  the extension was restarted. No other recovery is shipped yet.
+- **The palette can, rarely, stop opening.** It has not happened again, and its cause is not known. If `:` opens
+  nothing and no cmdAbl window is visible, you can try `curl -X POST http://127.0.0.1:27184/reset` in a terminal, and
+  then press `:` again. Run the reset only when no cmdAbl window is open. This has not been tested on a real hang: it
+  makes cmdAbl forget the stuck dialog, and Live may still not open a new one. If that does not help, try disabling and
+  re-enabling the extension. Restarting Live is the safe last step.
 
 ## Pads, chains and racks
 
