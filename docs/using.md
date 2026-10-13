@@ -99,7 +99,6 @@ Live Object Model.
 - `--set 1` makes every named object muted, soloed or armed, whatever its state. `--set 0` switches them off. An
   object already in the wanted state counts as done. For example, `mute --set 1 /Kick, /Snare` mutes both, and
   `solo --set 0 /Kick` unsolos the Kick.
-- `unmute`, `unsolo` and `unarm` no longer exist. Use `--set 0` instead.
 - `mute` and `solo` work on tracks, rack chains and Drum Rack pads. Chains and pads need the Remote Script
   and macOS.
 - `arm` works on tracks only. Return, main and group tracks cannot be armed, and cmdAbl reports them as failed.
