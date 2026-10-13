@@ -124,8 +124,9 @@ soloed or armed, so a toggle is not applied blindly. Commands without such a sta
 `find`, `lom`) show nothing.
 
 - Page: `SelectRequest.state?: { label }` names the state ("muted"); `items[].state?:
-  "on" | "off"` (absent = unknown, no symbol). A leading `●` / `○` before the label, and the
-  hint line spells it out ("● muted · ○ not muted") — readable without colour.
+  "on" | "off"` (absent = unknown, no symbol). A leading `●` / `○` before the label, and a
+  legend next to the filter spells it out ("● muted  ○ not muted") — readable without colour.
+  Page built in `e852014`.
 - Command node: `pickState?: { label, read(nodes, invocation) }` on a runnable command;
   `read` returns true / false / null per candidate (0005).
 - Platform: `read` is called only when a pick list is about to open (ambiguity and "did you
