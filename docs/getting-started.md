@@ -15,8 +15,8 @@ commands.
 ## 1. Install the extension
 
 Download the latest `.ablx` file from the
-[Releases page](https://github.com/MarvinHauke/cmdAbl/releases/latest). Double-click it. Live installs
-and loads the extension automatically.
+[Releases page](https://github.com/MarvinHauke/cmdAbl/releases/latest). Drop it onto the Extensions
+page in Live's settings. If an older cmdAbl is installed, remove it first and restart Live.
 
 ## 2. Run `cmdabl setup`
 
