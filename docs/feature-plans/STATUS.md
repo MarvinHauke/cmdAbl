@@ -178,7 +178,9 @@ and three developer guides; nothing for users.
 - Built: documentation fields and the generator (`845b971`, `3133603`, `8ba50b1`), the
   generated pages `docs/reference/commands.md` and `remote-script.md` with the CI check
   (`e616318`), "Getting started" and "Architecture" (`27a74c3`, `44399ed`), the authoring
-  guide. Open: "Using cmdAbl", "Remote Script", "Known limits", README, images.
+  guide, "Using cmdAbl", "The Remote Script", "Known limits" (`6099aa7`, `4ebbac0`,
+  `69075ed`). Open (cmdabl-docs has the briefs): Home, the README, the `node:fs` note, `tree`
+  and the own-name rule in "Using cmdAbl"; three images from the user.
 - **User pages** (cmdabl-docs, one brief per page from the architect): install and
   `cmdabl setup`; the Remote Script (what it does, restarting Live, the access token); using it
   (palette, pick list, several words, "did you mean", history); known limits (macOS-only, SDK
@@ -380,18 +382,17 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
   `docs/sdk-tree.md`, section 7. `openUrl` validates with a plain string check (`827f326`).
 - **Undo History**: no call in the LOM documentation or the SDK types opens the panel (from the
   documents, not tried in Live). The idea is dropped unless Ableton adds one.
-- **Open from the Live test of 2026-10-12, to pick up next session (user paused):**
-  - `mute`/`solo` offer too much since they accept chains: `mute e-piano` also lists (and can
-    mark) chains below the track, e.g. `/E-Piano/DefaultTracks/EQ Eight | Utility`, because the
-    chain's path contains the track's name. The user did not mean the rack. To decide: tracks
-    only by default and chains with a flag (`-c`, as in `find`; the user suggested a flag), or
-    rank and filter by the object's own name before matches through a parent's name.
-  - Typing `unmute` (removed) and pressing `Enter` runs `mute`: the log shows no `unmute` run,
-    so the palette ran its best fuzzy row instead of the typed line. Expected: "unknown
-    command". To check in `ui/interface.html`: when the first word is not a command, `Enter`
-    should run the typed line unless a row was chosen with the arrow keys.
-  - Seen working: `solo --set 2` → usage error naming 0 and 1; `lom` on a pad (path
-    `live_set tracks 18 devices 0 chains 0`); `help` with `lom`.
+- **From the Live test of 2026-10-12, decided 2026-10-13, tasks out:**
+  - `mute e-piano` also matched a chain below the track, because text matching is "anywhere in
+    the path". New rule (user approved): at least one typed word must occur in the object's
+    own name, the others may match its parents — cmdabl-core. Rules go into 0005 when built.
+  - `tree [path] [-L depth]`: a new read-only command showing the Set as an indented list —
+    cmdabl-modules.
+  - Typing a removed command (`unmute`) and pressing `Enter` ran the best fuzzy row (`mute`):
+    `Enter` shall run the typed line when its first word is no command and no row was chosen —
+    cmdabl-ui.
+  - Seen working: `solo --set 2` → usage error naming 0 and 1; `lom` on a pad; `help` with
+    `lom`.
 - **pakabl and the sandbox** (user, 2026-10-12): pakabl installs Ableton Live extensions
   (`.ablx`) by writing into Live's Extensions folder from the Extension Host. It works today; a
   stricter sandbox announced by Ableton may block installing in a later Live. Documented as a
