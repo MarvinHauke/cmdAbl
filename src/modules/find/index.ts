@@ -37,6 +37,8 @@ export function activate(api: ModuleApi): void {
       "Looks through the Live Set for tracks, devices, rack chains and Drum Rack pads whose path contains " +
       "every word of the pattern, in any order and ignoring case. One match is selected; several are shown " +
       "in a pick list. next and prev then step through the matches. Needs the cmdAbl Remote Script. " +
+      "Unlike commands that act on a target, which need at least one word in the object's own name, find is a " +
+      "search: it lists everything whose path contains the words, including what sits below a matching parent. " +
       "find remembers its last list until the extension restarts.",
     examples: [
       { line: "find kick", note: "everything with \"kick\" in its path" },

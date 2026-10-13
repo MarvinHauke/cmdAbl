@@ -98,3 +98,20 @@ test("next: a remembered object that is gone is \"no longer there\", never a nei
   assert.match(result.message ?? "", /no longer there/);
   assert.equal(fake.bridge.calls.length, 1); // only the find's own select
 });
+
+test("find is a search: a word naming only a parent lists the parent and everything below it", async () => {
+  const { fake, run, answer } = setup();
+  const offered: string[][] = [];
+  answer((candidates) => {
+    offered.push(candidates.map((n) => n.path));
+    return [candidates[0]!];
+  });
+  assert.equal(code(await run("find", {}, "vermona")), ExitCode.OK);
+  assert.deepEqual(offered[0], [
+    "/Vermona MIDI",
+    "/Vermona MIDI/Drum Rack",
+    "/Vermona MIDI/Drum Rack/Kick",
+    "/Vermona MIDI/Drum Rack/Snare",
+  ]);
+  assert.equal(fake.bridge.calls.length, 1);
+});
