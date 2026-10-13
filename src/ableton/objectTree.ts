@@ -13,9 +13,9 @@ import { findRacks, getChainNameCache, type ChainNameCache } from "./chainNames.
 // no chain nodes.
 //
 // Two things are deliberately kept distinct:
-//   - `path`  is the *display/address* hierarchy ("/Vermona/Kick") — it follows
-//     groupTrack relationships, because that's how a user thinks of "the Kick
-//     track inside the Vermona group".
+//   - `path`  is the *display/address* hierarchy ("/2-808 Core Kit/808 Core Kit/Snare Drum") — it
+//     follows groupTrack relationships, because that's how a user thinks of "the
+//     Snare Drum pad inside the 2-808 Core Kit group".
 //   - `route` is the *LOM access path* ("song.tracks[2].devices[1]") — it's
 //     always the flat collection index first, because that's what re-resolving
 //     a track (and the host bridge's select_track) actually needs. song.tracks
