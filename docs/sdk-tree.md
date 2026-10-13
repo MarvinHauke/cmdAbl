@@ -293,6 +293,17 @@ WarpMode           Beats=0 | Tones=1 | Texture=2 | Repitch=3 | Complex=4 | Compl
   `Remote Scripts/cmdAbl/protocol.py`; writing commands read the bridge token file
   `~/Library/Application Support/cmdAbl/bridge-token`, which the Remote Script creates at every
   Live start (not the extension).
+- **File access outside the bundle (pending check; each fails soft):** host code reads files with the Node file API
+  in `src/ableton/installedScript.ts` (the installed Remote Script folder and its `protocol.py`; any error other than
+  "not found" means "unknown") and `src/ableton/bridgeToken.ts` (the token file; unreadable or malformed means exit 5,
+  "cannot read the bridge access token"). `src/core/samePath.ts` calls `realpathSync` on two paths (any error means
+  "not the same"; it never throws). Some file work is done by shelling out through `node:child_process`, so it uses
+  no file API: `src/modules/pakabl/platform.ts` reads and writes Live's Extensions folder with `curl`, `unzip`,
+  `rm -rf` and `cat` (the index cache, installed manifests, installs and removals), and `src/core/setup.ts` writes
+  outside the bundle with `ln -sf` (the Karabiner rule) and `cp -R` (the Remote Script into the User Library).
+  `src/core/openUrl.ts` runs macOS `open`; a failed open is exit 1, or exit 5 where no opener exists. The Remote
+  Script (Python, inside Live) is the one place that writes a file with a file API: it creates the bridge token at
+  each start, and if that fails, writing operations are refused.
 - **`insertDevice()` (Track and Chain)** — built-in Live devices only; third-party plug-ins
   cannot be loaded this way
 - **`withinTransaction(fn)`** — callback must be **synchronous** (no `await` inside); return
