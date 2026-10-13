@@ -179,7 +179,7 @@ select a pad inside a Drum Rack
 goto kick
 ```
 
-select the object whose path contains "kick"
+select the object with "kick" in its name (you choose when there are several)
 
 ```
 goto --unfold /Vermona MIDI
@@ -239,7 +239,7 @@ the LOM path of a pad inside a Drum Rack
 lom kick
 ```
 
-the object whose path contains "kick"
+the object with "kick" in its name
 
 ## `man`
 

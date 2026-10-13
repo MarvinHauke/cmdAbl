@@ -25,7 +25,7 @@ export function activate(api: ModuleApi): void {
     examples: [
       { line: "goto /Vermona MIDI", note: "select a track" },
       { line: "goto /Vermona MIDI/Drum Rack/Kick", note: "select a pad inside a Drum Rack" },
-      { line: "goto kick", note: "select the object whose path contains \"kick\"" },
+      { line: "goto kick", note: "select the object with \"kick\" in its name (you choose when there are several)" },
       { line: "goto --unfold /Vermona MIDI", note: "select a track and show its chains in the Session mixer" },
     ],
     requires: ["bridge"],

@@ -25,7 +25,7 @@ export function activate(api: ModuleApi): void {
     examples: [
       { line: "lom /Vermona MIDI", note: "the LOM path of a track" },
       { line: "lom /Vermona MIDI/Drum Rack/Kick", note: "the LOM path of a pad inside a Drum Rack" },
-      { line: "lom kick", note: "the object whose path contains \"kick\"" },
+      { line: "lom kick", note: "the object with \"kick\" in its name" },
     ],
     args: [
       {

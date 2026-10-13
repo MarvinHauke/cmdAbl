@@ -1,5 +1,5 @@
 import type { ModuleApi } from "../types.js";
-import { resolvePath, uniquePath } from "../../ableton/resolvePath.js";
+import { resolveStructural, uniquePath } from "../../ableton/resolvePath.js";
 import { selectNodeResult } from "../selectNode.js";
 import { ExitCode, fail, type CommandResult } from "../../core/types.js";
 import { matches as matchesPattern } from "../../core/match.js";
@@ -82,7 +82,7 @@ export function activate(api: ModuleApi): void {
       run: async (): Promise<CommandResult> => {
         const entry = matches.step(delta);
         if (!entry) return fail(ExitCode.NOT_FOUND, `${name}: no matches to step through — run "find <pattern>" first`);
-        const found = resolvePath(liveNodes(), entry.path);
+        const found = resolveStructural(liveNodes(), entry.path);
         if (found.length !== 1) return fail(ExitCode.NOT_FOUND, `${name}: "${entry.path}" is no longer there`);
         const outcome = await selectNodeResult(api.bridge, found[0]!, { unfold });
         // A failed select must not use up a step: go back so a re-run tries the same match.

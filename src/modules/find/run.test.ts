@@ -87,3 +87,14 @@ test("next without an earlier find is exit 3", async () => {
   const { run } = setup();
   assert.equal(code(await run("next", {})), ExitCode.NOT_FOUND);
 });
+
+test("next: a remembered object that is gone is \"no longer there\", never a neighbour whose path contains it", async () => {
+  const { fake, run } = setup();
+  // one hit remembered: /Kick Bus (the only match of "bus")
+  assert.equal(code(await run("find", {}, "bus")), ExitCode.OK);
+  fake.api.liveSet.nodes = () => [node("9", "track", [0], "/Kick Bus 2", "Kick Bus 2")];
+  const result = (await run("next", {})) as CommandResult;
+  assert.equal(result.code, ExitCode.NOT_FOUND);
+  assert.match(result.message ?? "", /no longer there/);
+  assert.equal(fake.bridge.calls.length, 1); // only the find's own select
+});
