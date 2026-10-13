@@ -85,6 +85,7 @@
 
     let items     = [];   // current completion candidates
     let activeIdx = 0;
+    let chosen    = false; // the user moved the selection (arrows, Tab) since the last keystroke
 
     // ── messaging ──────────────────────────────────────────────────────────
     // Returns a structured PaletteResult to the host as a JSON string (the
@@ -156,6 +157,21 @@
       return result;
     }
 
+    // Enter with a fuzzy command row active that the user did not choose: a
+    // typed line whose first word is no command name ("unmute Kick") must reach
+    // the platform as typed, so it answers "unknown command" — running the
+    // nearest fuzzy row would run a different command than the one typed. A
+    // lone prefix of the row's name ("mut") still completes to it, as does an
+    // empty input (first row / history). Object rows are not affected: typing
+    // part of a name and Enter selects that object.
+    function typedLineWins(item) {
+      if (chosen || item.type !== 'command') return false;
+      const raw = input.value.trim();
+      if (!raw) return false;
+      if (!raw.includes(' ') && item.id.toLowerCase().startsWith(raw.toLowerCase())) return false;
+      return true;
+    }
+
     // ── structured payload for free-typed input (no active item) ─────────────
     function rawResult() {
       const raw = input.value.trim();
@@ -198,7 +214,7 @@
     }
 
     // ── keyboard ───────────────────────────────────────────────────────────
-    input.addEventListener('input', () => { activeIdx = 0; render(); });
+    input.addEventListener('input', () => { activeIdx = 0; chosen = false; render(); });
 
     input.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
@@ -207,7 +223,7 @@
       } else if (e.key === 'Enter') {
         e.preventDefault();
         const item = items[activeIdx];
-        const result = item ? resultFor(item) : rawResult();
+        const result = item && !typedLineWins(item) ? resultFor(item) : rawResult();
         if (result) send(result);
       } else if (e.key === 'Tab') {
         e.preventDefault();
@@ -223,13 +239,14 @@
         // path is what's actually unique enough to land back on this object.
         input.value = item.type === 'command' ? item.id + ' ' : (item.path ?? item.title);
         activeIdx = 0;
+        chosen = true;
         render();
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        if (items.length) { activeIdx = (activeIdx + 1) % items.length; render(); }
+        if (items.length) { activeIdx = (activeIdx + 1) % items.length; chosen = true; render(); }
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        if (items.length) { activeIdx = (activeIdx - 1 + items.length) % items.length; render(); }
+        if (items.length) { activeIdx = (activeIdx - 1 + items.length) % items.length; chosen = true; render(); }
       }
     });
 
