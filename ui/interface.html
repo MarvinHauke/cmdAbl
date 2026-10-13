@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[]. Out (close_and_send): JSON PaletteResult, or '' when dismissed. -->
+<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). Out (close_and_send): JSON PaletteResult, or '' when dismissed. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -73,6 +73,9 @@
     // Injected by the extension before the dialog opens. PaletteItem[]:
     //   { id, type, title, subtitle?, keywords?, path? }
     const ITEMS = /*ITEMS_PLACEHOLDER*/null;
+    // null, or { text, cursor }: the input starts with `text` and the caret at `cursor`
+    // (0 = start), e.g. a path put in the prompt from a pick list.
+    const INITIAL = /*INITIAL_PLACEHOLDER*/null;
 
     const input     = document.getElementById('input');
     const dropdown  = document.getElementById('dropdown');
@@ -85,6 +88,7 @@
 
     let items     = [];   // current completion candidates
     let activeIdx = 0;
+    let newLine   = null;  // rows + ranker without history lines, built on first use
     let chosen    = false; // the user moved the selection (arrows, Tab) since the last keystroke
 
     // ── messaging ──────────────────────────────────────────────────────────
@@ -121,12 +125,32 @@
       return { phase: 'command', query: raw.trim() };
     }
 
+    // A line like ` "/path"` (a path put in the prompt) leaves the caret in front of
+    // a space-led rest: the user types the command there. Only the word before the
+    // caret is then ranked and completed; the rest stays untouched.
+    function wordAtCaret() {
+      const v = input.value, caret = input.selectionStart ?? v.length;
+      const head = v.slice(0, caret), tail = v.slice(caret);
+      return !head.includes(' ') && tail.startsWith(' ') ? { head, tail } : null;
+    }
+
     // ── build completion list (fuzzy) ──────────────────────────────────────
     function computeItems(raw) {
-      const { phase, query } = parse(raw);
+      const part = wordAtCaret();
+      // The word before the caret is a complete command name: its arguments follow, no completion.
+      if (part && itemsById[part.head]?.type === 'command') return [];
+      const { phase, query } = parse(part ? part.head : raw);
+      // Around a path put in the prompt the user builds a new line: a stored full
+      // invocation (history row) would run on an old target and drop that path.
+      if (part && !newLine) newLine = (() => {
+        const rows = ITEMS.filter(i => !(i.type === 'command' && i.id.includes(' ')));
+        return { rows, rank: CmdMatch.ranker(rows, ['title', 'subtitle', 'keywords', 'path']) };
+      })();
+      const rows = part ? newLine.rows : ITEMS;
+      const rank = part ? newLine.rank : itemRank;
 
       if (phase === 'args') return []; // no completion — literal pass-through via rawResult()
-      if (!query) return ITEMS;
+      if (!query) return rows;
 
       // Drop "canned full invocation" items (command-type, multi-word id —
       // e.g. a history entry "mute A, B") that the user has already typed
@@ -134,7 +158,7 @@
       // otherwise leave the shorter, stale row fuzzy-matched and active, so
       // Enter would silently run the old invocation instead of the new one.
       // Forward-completable matches (entry.startsWith(query)) stay.
-      return itemRank(query).filter(item =>
+      return rank(query).filter(item =>
         !(item.type === 'command' && item.id.includes(' ')
           && query.length > item.id.length && query.startsWith(item.id)));
     }
@@ -146,6 +170,12 @@
       // (rawResult, below) so it runs through the very same {id, line} path
       // a fresh invocation would — the host never needs to know it came from
       // a stored entry rather than the keyboard.
+      // A command row taken while text follows the caret (a path put in the
+      // prompt) keeps that text: `mu` + Enter on `mute` runs `mute "<path>"`.
+      const part = wordAtCaret();
+      if (item.type === 'command' && !item.id.includes(' ') && part) {
+        return { type: 'command', id: item.id, line: item.id + part.tail };
+      }
       if (item.type === 'command' && item.id.includes(' ')) {
         const sp = item.id.indexOf(' ');
         return { type: 'command', id: item.id.slice(0, sp), line: item.id };
@@ -168,7 +198,11 @@
       if (chosen || item.type !== 'command') return false;
       const raw = input.value.trim();
       if (!raw) return false;
-      if (!raw.includes(' ') && item.id.toLowerCase().startsWith(raw.toLowerCase())) return false;
+      const part = wordAtCaret();
+      // With text after the caret only the word before it is the candidate prefix.
+      const word = part ? part.head : raw;
+      if (part && !word) return true;
+      if (!word.includes(' ') && item.id.toLowerCase().startsWith(word.toLowerCase())) return false;
       return true;
     }
 
@@ -216,6 +250,11 @@
     // ── keyboard ───────────────────────────────────────────────────────────
     input.addEventListener('input', () => { activeIdx = 0; chosen = false; render(); });
 
+    // Moving the caret can change which word is completed.
+    input.addEventListener('keyup', e => {
+      if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) { activeIdx = 0; chosen = false; render(); }
+    });
+
     input.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -237,7 +276,15 @@
         // Eight", …), so completing to the name would just re-match every
         // same-named object and strand you on an arbitrary one of them. The
         // path is what's actually unique enough to land back on this object.
-        input.value = item.type === 'command' ? item.id + ' ' : (item.path ?? item.title);
+        const part = wordAtCaret();
+        if (part) {
+          // Complete only the word before the caret; its rest (e.g. a prefilled path) stays.
+          const word = item.type === 'command' ? item.id : (item.path ?? item.title);
+          input.value = word + part.tail;
+          input.setSelectionRange(word.length, word.length);
+        } else {
+          input.value = item.type === 'command' ? item.id + ' ' : (item.path ?? item.title);
+        }
         activeIdx = 0;
         chosen = true;
         render();
@@ -251,7 +298,15 @@
     });
 
     // ── init ───────────────────────────────────────────────────────────────
-    document.addEventListener('DOMContentLoaded', () => { render(); input.focus(); });
+    document.addEventListener('DOMContentLoaded', () => {
+      input.focus();
+      if (INITIAL && typeof INITIAL.text === 'string') {
+        input.value = INITIAL.text;
+        const at = Math.max(0, Math.min(Number(INITIAL.cursor) || 0, input.value.length));
+        input.setSelectionRange(at, at);   // before render: the caret decides which word is ranked
+      }
+      render();
+    });
   </script>
 
 </body>
