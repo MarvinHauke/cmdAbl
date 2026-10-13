@@ -49,9 +49,10 @@
     /* Zone indicator: filter active = caret + soft row; list active = strong row, no caret. */
     body.zone-list #filter { caret-color: transparent; }
     body.zone-list .row.active { background: var(--border); box-shadow: inset 2px 0 0 var(--accent); }
-    .mark { width: 10px; color: var(--accent); }
-    .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .detail { color: var(--dim); font-size: 11px; }
+    .mark { flex: none; width: 10px; color: var(--accent); }
+    /* One line per row: the label keeps its width up to the row, the detail gives way first. */
+    .label { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .detail { flex: 1 1 0; min-width: 0; text-align: right; color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     #hint {
       padding: 5px 12px;

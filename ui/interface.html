@@ -53,8 +53,9 @@
     .row.active { background: var(--bg-row); }
     .row.active .label { color: var(--accent); }
 
-    .label { min-width: 90px; font-weight: 600; }
-    .desc  { color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* One line per row: the title keeps its width up to the row, the grey text gives way first. */
+    .label { flex: 0 1 auto; min-width: 90px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .desc  { flex: 1 1 0; min-width: 0; color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   </style>
 </head>
 <body>
