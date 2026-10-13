@@ -14,6 +14,9 @@ const nodes = [
   node("4", "chain", [0, 0, 1], "/Vermona MIDI/Drum Rack/Snare", "Snare"),
   node("5", "track", [1], "/Kick Bus", "Kick Bus"),
 ];
+// the flattened list keeps the parent/children relation, like the real tree
+nodes[1]!.children.push(nodes[2]!, nodes[3]!);
+nodes[0]!.children.push(nodes[1]!);
 const selectOk = (args: Record<string, unknown>) => ({
   ok: true as const,
   value: { name: String(args.expectName) },
@@ -114,4 +117,55 @@ test("find is a search: a word naming only a parent lists the parent and everyth
     "/Vermona MIDI/Drum Rack/Snare",
   ]);
   assert.equal(fake.bridge.calls.length, 1);
+});
+
+// ── -L and the pattern-less forms ───────────────────────────────────────────
+
+test("find: -L is a whole number 0..12 (the platform rejects the rest with exit 2)", async () => {
+  const { fake } = setup();
+  const { parse } = await import("../../core/parse.js");
+  for (const line of ["find kick -L 0", "find -L 12 kick", "find --level=3 kick", "find -t", "find -L 1"]) {
+    assert.equal(parse(line, fake.commands).kind, "run", line);
+  }
+  for (const line of ["find kick -L 13", "find kick -L -1", "find kick -L 1.5", "find kick -L two"]) {
+    const outcome = parse(line, fake.commands);
+    assert.equal(outcome.kind, "error", line);
+    if (outcome.kind === "error") assert.equal(outcome.result.code, ExitCode.USAGE, line);
+  }
+});
+
+test("find -L 0 lists only objects with the word in their own name", async () => {
+  const { fake, run, answer } = setup();
+  const offered: string[][] = [];
+  answer((c) => {
+    offered.push(c.map((n) => n.path));
+    return [c[0]!];
+  });
+  assert.equal(code(await run("find", { level: "0" }, "vermona")), ExitCode.OK);
+  assert.equal(offered.length, 0); // one hit: selected directly
+  assert.deepEqual(fake.bridge.calls.map((c) => c.args.route), [[0]]);
+  assert.equal(code(await run("find", { level: "1" }, "vermona")), ExitCode.OK);
+  assert.deepEqual(offered[0], ["/Vermona MIDI", "/Vermona MIDI/Drum Rack"]);
+});
+
+test("find without a pattern: a bare find is a usage error; -t and -L list from the top", async () => {
+  const { fake, run, answer } = setup();
+  assert.equal(code(await run("find", {})), ExitCode.USAGE);
+  const offered: string[][] = [];
+  answer((c) => {
+    offered.push(c.map((n) => n.path));
+    return [c[0]!];
+  });
+  assert.equal(code(await run("find", { tracks: true })), ExitCode.OK);
+  assert.deepEqual(offered[0], ["/Vermona MIDI", "/Kick Bus"]);
+  assert.equal(code(await run("find", { level: "1" })), ExitCode.OK);
+  assert.deepEqual(offered[1], ["/Vermona MIDI", "/Kick Bus"]);
+  assert.equal(code(await run("find", { level: "0" })), ExitCode.USAGE); // 0 levels below the Set is nothing
+  assert.equal(fake.bridge.calls.length, 2);
+});
+
+test("find -L 2 -c kick: a kind flag combines with -L", async () => {
+  const { fake, run } = setup();
+  assert.equal(code(await run("find", { level: "2", chains: true }, "kick")), ExitCode.OK);
+  assert.deepEqual(fake.bridge.calls.map((c) => c.args.route), [[0, 0, 0]]);
 });

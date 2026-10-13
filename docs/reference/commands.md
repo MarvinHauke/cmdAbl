@@ -94,16 +94,17 @@ check that the Remote Script is installed and running
 
 find tracks, devices and chains whose path contains a pattern
 
-Looks through the Live Set for tracks, devices, rack chains and Drum Rack pads whose path contains every word of the pattern, in any order and ignoring case. One match is selected; several are shown in a pick list. next and prev then step through the matches. Needs the cmdAbl Remote Script. Unlike commands that act on a target, which need at least one word in the object's own name, find is a search: it lists everything whose path contains the words, including what sits below a matching parent. find remembers its last list until the extension restarts.
+Looks through the Live Set for tracks, devices, rack chains and Drum Rack pads whose path contains every word of the pattern, in any order and ignoring case. One match is selected; several are shown in a pick list. next and prev then step through the matches. Needs the cmdAbl Remote Script. Unlike commands that act on a target, which need at least one word in the object's own name, find is a search: it lists everything whose path contains the words, including what sits below a matching parent. -L limits that: with -L n, an object is listed only if it, or an object at most n levels above it, has one of the words in its own name — so -L 0 lists only the objects named like the pattern, -L 1 adds their direct children, -L 2 their grandchildren. Without a pattern, find needs -L or one of -t, -d, -c and lists from the top of the Set: with -L n, n levels below the Set (1 = top-level tracks, 2 = tracks and their devices, and the tracks inside groups). The kind flags add up and narrow what is listed. find remembers its last list until the extension restarts.
 
-**Usage:** `find [--tracks] [--devices] [--chains] [--unfold] <pattern>`
+**Usage:** `find [--level <n>] [--tracks] [--devices] [--chains] [--unfold] [<pattern>]`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
-| `<pattern>` | text | yes | Words that must all occur in the path, in any order (takes the rest of the line) |
+| `<pattern>` | text | no | Words that must all occur in the path, in any order; optional with -L or a kind flag (takes the rest of the line) |
 
 | Option | Description |
 | --- | --- |
+| `-L, --level <n>` | how far below an object named like the pattern results go (0 = only those); without a pattern, levels below the Set (a whole number from 0 to 12) |
 | `-t, --tracks` | only tracks |
 | `-d, --devices` | only devices |
 | `-c, --chains` | only chains and drum pads |
@@ -120,22 +121,28 @@ find kick
 everything with "kick" in its path
 
 ```
-find vermona kick
+find vermona -L 0
 ```
 
-paths containing both words
+only objects with "vermona" in their own name
 
 ```
-find -c kick
+find vermona -L 1
 ```
 
-only chains and drum pads
+those, plus their direct children
 
 ```
-find -t -c kick
+find -t
 ```
 
-only tracks and chains
+all tracks
+
+```
+find -L 2 -c kick
+```
+
+chains and pads named like kick, at most two levels below a match
 
 ```
 find --unfold kick
@@ -527,45 +534,3 @@ solo drums, kick
 ```
 
 a comma separates targets
-
-## `tree`
-
-list the tracks, devices and chains of the Live Set as a tree
-
-Lists the Live Set as an indented tree: tracks (regular, return, main), their devices, and the chains and drum pads of racks, each with its kind, and a last line counting what is listed. Without a path it starts at the whole Set; with a path it starts at that track, device or chain. -L sets how many levels below the start are shown (default 2). Only reads; chains and pads appear when the cmdAbl Remote Script is running. A listing of more than 200 lines is cut: pass a path or a smaller -L.
-
-**Usage:** `tree [--level <n>] [<path>]`
-
-| Argument | Kind | Required | Description |
-| --- | --- | --- | --- |
-| `<path>` | path (track / device / chain) | no | Where the listing starts: a track, device or chain; without it, the whole Set (takes the rest of the line) |
-
-| Option | Description |
-| --- | --- |
-| `-L, --level <n>` | how many levels below the start are shown (default 2) (a whole number from 1 to 12) |
-
-**Examples**
-
-```
-tree
-```
-
-the whole Set, two levels: tracks and their devices
-
-```
-tree /Vermona MIDI
-```
-
-one track with its devices and chains
-
-```
-tree -L 3 vermona
-```
-
-three levels below the object matching "vermona"
-
-```
-tree --level 1
-```
-
-only the tracks
