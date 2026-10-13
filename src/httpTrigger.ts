@@ -10,9 +10,12 @@ export function startTriggerServer(
   port: number,
   onTrigger: () => void,
   getIsOpen: () => boolean,
-  /** POST /reset: manual diagnostic after a dialog hang; returns a short description of what it did. */
+  /**
+   * POST /reset: the documented recovery for the rare dialog hang (docs/limits.md); local only, not yet
+   * exercised against a real hang. Returns a short description of what it did.
+   */
   onReset: () => string = () => "not supported",
-  /** GET /bridge: timed hellos to the Remote Script (min / median / max); answers a plain-text line. */
+  /** GET /bridge: a diagnostic for measuring round trips — timed hellos to the Remote Script (min / median / max); answers a plain-text line. */
   onBridge: () => Promise<string> = async () => "not supported",
 ): void {
   const server = http.createServer((req, res) => {
@@ -22,8 +25,8 @@ export function startTriggerServer(
     } else if (req.url === "/state") {
       res.writeHead(200).end(getIsOpen() ? "open" : "closed");
     } else if (req.url === "/bridge") {
-      // Temporary diagnostic: time a hello while a modal dialog is open. It
-      // opens no dialog and never throws.
+      // Diagnostic for measuring round trips: time hellos while a modal dialog is
+      // open. It opens no dialog and never throws.
       if (fromBrowserPage(req)) {
         res.writeHead(403).end("forbidden");
         return;
@@ -44,7 +47,8 @@ export function startTriggerServer(
         fail(e);
       }
     } else if (req.url === "/reset") {
-      // Temporary diagnostic (see docs/feature-plans/STATUS.md, "Dialog hang").
+      // The supported recovery for a dialog that never closed (docs/limits.md): forgets
+      // the open and queued dialogs so the next one opens a new modal.
       if (req.method !== "POST") {
         res.writeHead(405, { Allow: "POST" }).end();
         return;

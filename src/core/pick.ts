@@ -20,6 +20,8 @@ export interface PickOptions {
   details?: string[];
   /** Single-select only: allow Tab to answer "fill" (the object goes into the prompt). */
   fill?: boolean;
+  /** Current state per candidate (true on, false off, null unknown) and its name. */
+  state?: { label: string; values: Array<boolean | null> };
 }
 
 export async function pickNodes(ui: Ui, options: PickOptions): Promise<ObjectNode[] | { fill: ObjectNode } | null> {
@@ -28,9 +30,16 @@ export async function pickNodes(ui: Ui, options: PickOptions): Promise<ObjectNod
     multi: options.multi,
     ...(options.preview ? { preview: options.preview } : {}),
     ...(options.fill && !options.multi ? { fill: true } : {}),
+    ...(options.state?.values.some((v) => v !== null) ? { state: { label: options.state.label } } : {}),
     items: options.candidates.map((n, i) => {
       const label = options.nodes ? uniquePath(options.nodes, n) : n.path;
-      return { label, detail: options.details?.[i] ?? n.kind, value: quoteIfNeeded(label) };
+      const state = options.state?.values[i];
+      return {
+        label,
+        detail: options.details?.[i] ?? n.kind,
+        value: quoteIfNeeded(label),
+        ...(state === true ? { state: "on" as const } : state === false ? { state: "off" as const } : {}),
+      };
     }),
   });
   if (!indexes) return null;

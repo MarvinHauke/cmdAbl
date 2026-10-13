@@ -25,6 +25,8 @@ export interface RunDeps {
    * resolved the pick as cancelled. Returns it once (and forgets it). Absent: no fill.
    */
   takeFill?: () => string | undefined;
+  /** Longest wait for a command's `pickState.read` (default 600 ms: a bridge request times out at 500); beyond it the list opens without symbols. */
+  stateCapMs?: number;
   /** Log sink and clock; default console.log and Date.now. */
   log?: (line: string) => void;
   now?: () => number;
@@ -41,6 +43,8 @@ export interface RunDeps {
     preview: PickPreview;
     /** Parallel to `candidates`: which typed text each row matched (several texts); absent = the kind. */
     details?: string[];
+    /** The command's `pickState`, read for the candidates: shown as symbols (see SelectRequest.state). */
+    state?: { label: string; values: Array<boolean | null> };
   }) => Promise<ObjectNode[] | null>;
 }
 
@@ -145,6 +149,36 @@ export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome>
   }
 }
 
+/**
+ * The state symbols for a pick list of `node`, or undefined: the command's
+ * `pickState.read` under a time cap. Never throws; a failure, a wrong-length
+ * answer or a timeout means "no symbols".
+ */
+async function readPickState(
+  node: CommandNode<any, any>,
+  candidates: ObjectNode[],
+  invocation: Invocation<string>,
+  capMs: number,
+): Promise<{ label: string; values: Array<boolean | null> } | undefined> {
+  const spec = node.pickState;
+  if (!spec) return undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const values = await Promise.race([
+      spec.read(candidates, invocation),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), capMs);
+      }),
+    ]);
+    if (!Array.isArray(values) || values.length !== candidates.length) return undefined;
+    return { label: spec.label, values: values.map((v) => (v === true || v === false ? v : null)) };
+  } catch {
+    return undefined;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 /** A failing result when the Remote Script bridge cannot be used, else null. */
 async function bridgeUnavailable(deps: RunDeps): Promise<CommandResult | null> {
   if (!deps.bridge) return fail(ExitCode.UNAVAILABLE, "the Remote Script bridge is not available in this build");
@@ -194,8 +228,10 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
       const title = request.suggestion
         ? `${command}: nothing matches ${quotedTexts} — did you mean`
         : `${command}: ${request.texts.length > 1 ? `${quotedTexts} match` : `"${request.query}" matches`} ${request.candidates.length}`;
+      const state = await readPickState(node, request.candidates, invocation, deps.stateCapMs ?? 600);
       const chosen = await deps.pick({
         title,
+        ...(state ? { state } : {}),
         ...(request.details ? { details: request.details } : {}),
         candidates: request.candidates,
         multi: request.multi,

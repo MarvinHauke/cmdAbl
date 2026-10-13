@@ -2,7 +2,7 @@ import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { PaletteItem, PaletteResult } from "./types.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize } from "./notifySize.js";
-import { pickHeight } from "./pickSize.js";
+import { pickHeight, pickWidth } from "./pickSize.js";
 import { inlineJson } from "./inlineJson.js";
 import { createDialogQueue, type DialogQueue } from "./dialogQueue.js";
 import promptTemplate from "../../ui/interface.html";
@@ -50,12 +50,21 @@ export interface SelectRequest {
    * keeps Tab = mark).
    */
   fill?: boolean;
+  /**
+   * Names the state the rows' `state` shows ("muted", "soloed", "armed"):
+   * present only when at least one row has a state. The page draws `●` for on
+   * and `○` for off before the label and names the state once (hint or header),
+   * so the meaning does not depend on colour. Rows without `state` show no symbol.
+   */
+  state?: { label: string };
   items: {
     /** The row's text (for a pick: the unique path, unquoted). */
     label: string;
     detail?: string;
     /** What this row contributes to the line (for a pick: the quoted unique path). */
     value?: string;
+    /** The row's current state (see `SelectRequest.state`); absent = unknown. */
+    state?: "on" | "off";
   }[];
 }
 
@@ -116,7 +125,9 @@ export function createDefaultUi(
     async select(request) {
       const html = selectTemplate.replace("/*PICK_PLACEHOLDER*/null", () => inlineJson(request));
       const height = pickHeight(request.items.length, request.preview !== undefined);
-      const raw = await show("pick", html, 560, height);
+      const longest = (texts: Array<string | undefined>) => texts.reduce((m, t) => Math.max(m, t?.length ?? 0), 0);
+      const width = pickWidth(longest(request.items.map((i) => i.label)), longest(request.items.map((i) => i.detail)));
+      const raw = await show("pick", html, width, height);
       const answer = parseSelectAnswer(raw, request.items.length);
       // A page that answers "fill" where it was not offered is treated as cancelled.
       if (answer && !Array.isArray(answer) && !(request.fill && !request.multi)) return null;

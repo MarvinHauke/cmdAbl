@@ -124,3 +124,75 @@ test("run: a handler that fails after a fill keeps its failure; the fill is drop
   assert.equal(out.result.code, 1);
   assert.equal(fill, undefined); // consumed, so it cannot reach the next command
 });
+
+// ── state symbols ───────────────────────────────────────────────────────────
+
+test("pickNodes: state values become row symbols; none known → no state field at all", async () => {
+  const requests: SelectRequest[] = [];
+  const ui = {
+    select: async (r: SelectRequest) => (requests.push(r), [0]),
+    prompt: async () => null,
+    notify: () => {},
+    page: async () => null,
+  } satisfies Ui;
+  await pickNodes(ui, { title: "t", candidates: all, multi: true, state: { label: "muted", values: [true, false, null] } });
+  assert.deepEqual(requests[0]!.state, { label: "muted" });
+  assert.deepEqual(requests[0]!.items.map((i) => i.state), ["on", "off", undefined]);
+  await pickNodes(ui, { title: "t", candidates: all, multi: true, state: { label: "muted", values: [null, null, null] } });
+  assert.equal("state" in requests[1]!, false);
+  assert.ok(requests[1]!.items.every((i) => !("state" in i)));
+});
+
+function stateSetup(read: () => Promise<Array<boolean | null>>, cap = 50) {
+  const registry = new CommandRegistry();
+  const seen: unknown[] = [];
+  registry.add({
+    name: "mute",
+    summary: "m",
+    options: [{ name: "set", takesValue: true, choices: ["0", "1"], summary: "state" }],
+    args: [{ name: "track", kind: "path", variadic: true }],
+    pickState: { label: "muted", read: async () => read() },
+    run: () => {},
+  });
+  const deps: RunDeps = {
+    registry,
+    liveNodes: () => all,
+    log: () => {},
+    stateCapMs: cap,
+    pick: async (request) => {
+      seen.push(request.state);
+      return null;
+    },
+  };
+  return { deps, seen };
+}
+
+test("run: a pick list for a command with pickState carries the read state (also with --set)", async () => {
+  const { deps, seen } = stateSetup(async () => [true, false]);
+  await runLine("mute --set 0 kick", deps); // two Kick tracks → ambiguity list
+  assert.deepEqual(seen, [{ label: "muted", values: [true, false] }]);
+});
+
+test("run: a failing, wrong-length or too slow read means no symbols — never an error, never a long wait", async () => {
+  for (const read of [
+    async () => {
+      throw new Error("bridge down");
+    },
+    async () => [true], // wrong length
+    () => new Promise<Array<boolean | null>>(() => {}), // never answers
+  ]) {
+    const { deps, seen } = stateSetup(read, 30);
+    const started = Date.now();
+    const out = await runLine("mute kick", deps);
+    assert.equal(seen[0], undefined);
+    assert.equal(out.cancelled, true); // the pick was answered (cancelled) as usual
+    assert.ok(Date.now() - started < 1000);
+  }
+});
+
+test("run: the direct path never reads state", async () => {
+  let reads = 0;
+  const { deps } = stateSetup(async () => (reads++, [true]));
+  await runLine("mute /Opal Lead", deps); // one object: no list
+  assert.equal(reads, 0);
+});

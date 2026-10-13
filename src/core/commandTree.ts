@@ -1,5 +1,5 @@
 import type { CommandResult } from "./types.js";
-import type { NodeKind } from "../ableton/objectTree.js";
+import type { NodeKind, ObjectNode } from "../ableton/objectTree.js";
 
 // The declarative command tree — the single source of truth for execution,
 // help and completion (docs/feature-plans/0005-command-tree-and-module-authoring.md).
@@ -79,6 +79,23 @@ export interface OptionDef {
   summary: string;
 }
 
+/**
+ * How a command tells the platform to read a state for its pick-list rows. The
+ * platform calls `read` only when a pick list is about to open for the command
+ * (never on the direct path), with a time cap: a throw, a rejection, a
+ * wrong-length answer or a timeout means "no symbols" — never an error.
+ */
+export interface PickState {
+  /** Names the state in the list: "muted", "soloed", "armed". */
+  label: string;
+  /**
+   * `nodes` are the candidates in list order; the invocation is the parsed,
+   * not yet resolved one (options such as `--set` are visible). Per candidate:
+   * true = on, false = off, null = unknown.
+   */
+  read(nodes: ObjectNode[], invocation: Invocation<string>): Promise<Array<boolean | null>>;
+}
+
 /** What a handler receives. `V` is the argument value type (raw strings until resolved). */
 export interface Invocation<V = string> {
   /** The command words that were matched, e.g. ["pakabl", "install"]. */
@@ -123,6 +140,12 @@ export interface CommandNode<P = unknown, V = string> {
   requires?: "bridge"[];
   /** Removes or irreversibly changes something — such commands may not fan out via `multiple: "all"`. */
   destructive?: boolean;
+  /**
+   * Reads the current state of the candidates of a pick list this command is
+   * about to open (muted / soloed / armed), so the list can show it. Leaf only;
+   * see `PickState`.
+   */
+  pickState?: PickState;
   /** Leaf node only. */
   run?: CommandRun<P, V>;
 }
@@ -176,6 +199,11 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
     if (isGroup && node.run) problems.push(`${at}: a node has either children or run, not both`);
     if (!isGroup && !node.run) problems.push(`${at}: a leaf needs run (or children to be a group)`);
     if (isGroup && node.args?.length) problems.push(`${at}: a group cannot declare arguments`);
+    if (node.pickState !== undefined) {
+      if (isGroup) problems.push(`${at}: pickState belongs on the runnable node, not on a group`);
+      if (typeof node.pickState.label !== "string" || !node.pickState.label.trim()) problems.push(`${at}: pickState needs a label`);
+      if (typeof node.pickState.read !== "function") problems.push(`${at}: pickState needs a read function`);
+    }
     if (isGroup && node.requires?.length) problems.push(`${at}: requires belongs on the runnable node, not on a group`);
     for (const need of node.requires ?? []) {
       if (need !== "bridge") problems.push(`${at}: unknown requirement "${String(need)}"`);
@@ -341,13 +369,13 @@ export function helpText(node: CommandNode<any, any>, path: string[]): string {
 }
 
 /** The tree without handlers — plain JSON for the palette webview. */
-export type SerializedNode = Omit<CommandNode<never, never>, "run" | "children"> & {
+export type SerializedNode = Omit<CommandNode<never, never>, "run" | "children" | "pickState"> & {
   children?: SerializedNode[];
   runnable: boolean;
 };
 
 export function serializeTree(roots: CommandNode<any, any>[]): SerializedNode[] {
-  return roots.map(({ run, children, ...rest }) => ({
+  return roots.map(({ run, children, pickState: _pickState, ...rest }) => ({
     ...rest,
     runnable: Boolean(run),
     ...(children?.length ? { children: serializeTree(children) } : {}),

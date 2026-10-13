@@ -55,7 +55,13 @@ export function activate(activation: ActivationContext) {
     title: string,
     candidates: ObjectNode[],
     multi = false,
-    extra: { nodes?: ObjectNode[]; preview?: PickPreview; details?: string[]; fill?: boolean } = {},
+    extra: {
+      nodes?: ObjectNode[];
+      preview?: PickPreview;
+      details?: string[];
+      fill?: boolean;
+      state?: { label: string; values: Array<boolean | null> };
+    } = {},
   ): Promise<ObjectNode[] | null> {
     // A module's own pick has no Live Set at hand; unique labels need it.
     const nodes = extra.nodes ?? liveNodes();
@@ -67,6 +73,7 @@ export function activate(activation: ActivationContext) {
       preview: extra.preview,
       details: extra.details,
       fill: extra.fill,
+      state: extra.state,
     });
     if (answer && !Array.isArray(answer)) {
       // Tab: the object goes into the prompt as ` <unique path>`; the pick counts as cancelled.
@@ -113,8 +120,8 @@ export function activate(activation: ActivationContext) {
   // ── HTTP trigger server ──────────────────────────────────────────────────
   // Karabiner (or any external tool) can POST/GET http://127.0.0.1:27184/open
   // to open the command palette without a context menu; GET /state reports
-  // open|closed; POST /reset and GET /bridge are temporary
-  // diagnostics (a hung dialog; a timed hello while a dialog is open).
+  // open|closed; POST /reset is the supported recovery for a hung dialog and
+  // GET /bridge a diagnostic for measuring round trips.
   startTriggerServer(TRIGGER_PORT, () => {
     context.commands.executeCommand("cmdabl.open");
   }, () => isOpen || dialogs.describe() !== null, () => {
@@ -158,8 +165,8 @@ export function activate(activation: ActivationContext) {
       bridge: () => getBridge(),
       takeFill,
       // The platform's own lists: Tab may put a single-select row into the prompt.
-      pick: ({ title, candidates, multi, nodes, preview, details }) =>
-        pick(title, candidates, multi, { nodes, preview, details, fill: true }),
+      pick: ({ title, candidates, multi, nodes, preview, details, state }) =>
+        pick(title, candidates, multi, { nodes, preview, details, state, fill: true }),
     });
     if (outcome.fill !== undefined) return outcome.fill;
     if (outcome.cancelled) return;

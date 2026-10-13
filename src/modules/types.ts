@@ -84,7 +84,7 @@ export interface ModuleApi {
   registerProvider(provider: Provider, priority?: number): void;
   /**
    * Notified after any command finishes with code 0 — fresh or re-run — with its
-   * full canonical invocation string (e.g. "mute /vermona/kick, /vermona/snare").
+   * full canonical invocation string (e.g. "mute --set 0 bass, lead").
    * Failed runs are not reported, and neither are bare invocations with no
    * arguments. The only window a module gets into *every* command run
    * regardless of who registered it.

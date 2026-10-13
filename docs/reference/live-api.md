@@ -10,7 +10,7 @@ the tables below, not the modules.
 
 ## cmdAbl path ↔ LOM path
 
-A cmdAbl path names an object by its names (`/Vermona MIDI/Drum Rack/Kick`); every object also has a LOM
+A cmdAbl path names an object by its names (`/2-808 Core Kit/808 Core Kit/Snare Drum`); every object also has a LOM
 path, built from its scope and position (`lomPath`). The scope selects the LOM list:
 
 | Scope | LOM list |
