@@ -139,6 +139,10 @@ pakabl installs Ableton Live extensions (`.ablx` files) from cmdAbl's curated li
 Run `pakabl update` once to fetch the list. Then `pakabl list` shows the extensions, with buttons to install,
 update or remove each one. Restart Live after a change.
 
+![The pakabl extension index window: a scrollable list of extensions, each with its name, version and id, and an Install and a Repo button for each, with a Close button at the bottom](assets/images/pakabl-list.png)
+
+*Install installs the extension. Repo opens its GitHub page.*
+
 Installing through pakabl writes into Live's Extensions folder, which works today. Ableton has announced a
 stricter sandbox for extensions. If it arrives, installing through pakabl may be blocked in a later version of
 Live. pakabl as a whole may then stop working. See [Known limits](limits.md).
