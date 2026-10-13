@@ -32,8 +32,8 @@ A command takes objects as text. cmdAbl reads that text as follows:
   siblings with the same name: `/Drums/Kick#2`. A name with spaces needs no quotes for one target:
   `goto /Opal Lead`. Quotes or a leading `/` make the text one target of its own, and that target can still be
   ambiguous: `/Drums/Kick` with two siblings named Kick asks.
-- **Other words must match the path, and one must match the name.** For `mute`, `solo`, `arm`, `goto`, `lom` and
-  `tree`, every word you type must occur in the object's path, and at least one must occur in the object's own
+- **Other words must match the path, and one must match the name.** For `mute`, `solo`, `arm`, `goto` and
+  `lom`, every word you type must occur in the object's path, and at least one must occur in the object's own
   name. `mute e-piano` names the track E-Piano, not the devices and chains below it. `mute vermona kick` names
   the Kick pad on the track Vermona.
 - **Words typed together win when they match.** If they match exactly one object, the command runs on it without a
@@ -44,7 +44,7 @@ A command takes objects as text. cmdAbl reads that text as follows:
   words match one object together. To mean both the group and the track, write `mute drums, kick`.
 - **A comma always names several targets.** `mute vermona, kick` names the track Vermona and the Kick.
 - **`find` is a search.** It is looser on purpose: `find vermona` lists everything whose path contains the word,
-  the track and everything below it. `-t`, `-d` and `-c` narrow the list to tracks, devices or chains.
+  the track and everything below it. `-t`, `-d` and `-c` narrow the list to tracks, devices or chains, and `-L` limits how far below a matching object the results go.
 
 When a name matches more than one object, cmdAbl asks. It never picks one for you.
 
@@ -102,12 +102,18 @@ reference page for its kind. Use it when you write a script, or to check what cm
 [Live API mapping](reference/live-api.md) shows how cmdAbl's ports and Remote Script operations map to the
 Live Object Model.
 
-## See the Set as a tree
+## List the Set with `find -L`
 
-`tree` lists the Set as an indented tree: tracks, their devices, and the chains and pads of racks. It shows two
-levels by default. `tree /Vermona MIDI` starts at one track, and `-L` sets how many levels to show, from 1 to 12.
-A long listing is cut with a hint; pass a path or a smaller `-L`. Chains and pads appear only while the Remote
-Script runs. The [command reference](reference/commands.md) has the full usage.
+`find -L <n>` lists the Set from the top: tracks, their devices, and the tracks inside groups.
+Without a pattern, `find` needs `-L` or one of `-t`, `-d` or `-c`; a bare `find` is an error.
+
+- `find -L 1` lists the top-level tracks.
+- `find -L 2` lists the tracks and their devices.
+- `find -t` lists all tracks.
+- `find vermona -L 1` lists the track Vermona and its direct children.
+
+`-L` takes a whole number from 0 to 12 with a pattern, and from 1 without one. `find` needs the [Remote Script](remote-script.md). The
+[command reference](reference/commands.md) has the full usage.
 
 ## Toggles, and what they do not do
 
