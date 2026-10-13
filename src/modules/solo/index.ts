@@ -15,7 +15,8 @@ export function activate(api: ModuleApi): void {
       { line: "solo /Kick, /Snare", note: "several targets, separated by a comma" },
       { line: "solo --set 1 /Kick", note: "make sure Kick is soloed" },
       { line: "solo --set 0 /Kick, /Snare", note: "make sure neither is soloed" },
-      { line: "solo vermona kick", note: "words that all occur in one path; if each word also names something on its own, you are asked which you mean" },
+      { line: "solo vermona kick", note: "words typed together name one object when they fit it; if several fit you are asked, if none fits together each word is its own target" },
+      { line: "solo drums, kick", note: "a comma separates targets" },
     ],
     targetSummary: "Tracks, rack chains or Drum Rack pads; separate several with commas",
   });

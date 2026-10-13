@@ -278,7 +278,7 @@ open the cmdAbl documentation
 
 toggle mute on tracks, chains and drum pads
 
-Switches mute on for each target that is not muted and off for each that is, one by one. With --set 1 every target ends up muted, with --set 0 unmuted, whatever it was before; a target that is already in that state counts as done. Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the cmdAbl Remote Script and macOS. When a word matches several objects you are asked to choose.
+Switches mute on for each target that is not muted and off for each that is, one by one. With --set 1 every target ends up muted, with --set 0 unmuted, whatever it was before; a target that is already in that state counts as done. Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the cmdAbl Remote Script and macOS. When the words match several objects you are asked to choose.
 
 **Usage:** `mute [--set <0|1>] <track>…`
 
@@ -320,7 +320,13 @@ make sure Kick is not muted
 mute vermona kick
 ```
 
-words that all occur in one path; if each word also names something on its own, you are asked which you mean
+words typed together name one object when they fit it; if several fit you are asked, if none fits together each word is its own target
+
+```
+mute drums, kick
+```
+
+a comma separates targets
 
 ## `next`
 
@@ -514,7 +520,13 @@ make sure neither is soloed
 solo vermona kick
 ```
 
-words that all occur in one path; if each word also names something on its own, you are asked which you mean
+words typed together name one object when they fit it; if several fit you are asked, if none fits together each word is its own target
+
+```
+solo drums, kick
+```
+
+a comma separates targets
 
 ## `tree`
 
