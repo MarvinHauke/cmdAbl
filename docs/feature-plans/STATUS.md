@@ -275,6 +275,14 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    --set 1` on a normal track, a group (refused) and the MIDI track with the unavailable input
    (reported); `mute --set 2 /a` → usage error naming 0 and 1; `unmute /a` → unknown command;
    run `mute --set 0 /a` from history → still unmuted.
+1l. Own-name rule, `tree`, palette `Enter` (`60a1dc2`, `9730198`, `fafd273`, `1fe2a43`):
+   `mute e-piano` → only the track; `mute e-piano utility` → asks once, the chain first;
+   `mute vermona kick` → asks once, the pad first; `mute kick snare` → both tracks; `mute
+   vermna` → "did you mean" lists the track, not its chains; `find vermona` → the track and
+   everything below it; `tree`, `tree --level 1`, `tree -L 3 /<rack track>`, `tree -L 0` →
+   usage error; `unmute Kick` + `Enter` → "unknown command", nothing muted; `mut` + `Enter` →
+   `mute`; `hlp` + `Enter` → unknown command, `hlp` `↓` `Enter` → help; `find kick`, `next`,
+   then with the object gone → "is no longer there".
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
@@ -386,17 +394,6 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
   `docs/sdk-tree.md`, section 7. `openUrl` validates with a plain string check (`827f326`).
 - **Undo History**: no call in the LOM documentation or the SDK types opens the panel (from the
   documents, not tried in Live). The idea is dropped unless Ableton adds one.
-- **From the Live test of 2026-10-12, decided 2026-10-13, tasks out:**
-  - `mute e-piano` also matched a chain below the track, because text matching is "anywhere in
-    the path". New rule (user approved): at least one typed word must occur in the object's
-    own name, the others may match its parents — cmdabl-core. Rules go into 0005 when built.
-  - `tree [path] [-L depth]`: a new read-only command showing the Set as an indented list —
-    cmdabl-modules.
-  - Typing a removed command (`unmute`) and pressing `Enter` ran the best fuzzy row (`mute`):
-    `Enter` shall run the typed line when its first word is no command and no row was chosen —
-    cmdabl-ui.
-  - Seen working: `solo --set 2` → usage error naming 0 and 1; `lom` on a pad; `help` with
-    `lom`.
 - **pakabl and the sandbox** (user, 2026-10-12): pakabl installs Ableton Live extensions
   (`.ablx`) by writing into Live's Extensions folder from the Extension Host. It works today; a
   stricter sandbox announced by Ableton may block installing in a later Live. Documented as a
@@ -443,6 +440,10 @@ Decided by the user and still governing future work.
   fold the chains back yet.
 - 2026-10-12: renamed commands get no alias for the old spelling before 0.1.0 (the user is the
   only user so far); removing `registerResultHandler` from `ModuleApi` is confirmed.
+- 2026-10-13: the "own name" rule — a command's text target must have at least one typed word
+  in the object's own name, the others may match its parents (`60a1dc2`). `find` keeps "anywhere
+  in the path" on purpose. Words typed together that can be read two ways keep asking (the
+  stricter rule; the user chose it over "together always means one").
 - 2026-10-12: Remote Script versions grow conservatively. Reset to 0.1.0 (`2b2d448`; it had
   gone to 0.6.0 in a day). Every script change raises the third number, also during
   development; the middle number only with a release whose script is incompatible with the

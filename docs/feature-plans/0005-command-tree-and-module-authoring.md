@@ -273,10 +273,15 @@ How the platform reads the text of a `path` argument (`src/core/resolveArgs.ts`)
 
 - A comma always separates targets; a word starting with `/` and a quoted word are targets of
   their own. Remembered lines consist of those, so they resolve exactly as before.
-- The remaining bare words are tried as one pattern: an exact path first, else "every word
-  occurs in the path" (`matches`, within the argument's `kinds`) — the rule of `find`.
-  `mute vermona kick` names the Kick pad.
-- The platform never chooses silently between two readings: if the joined words hit and every
+- The remaining bare words are tried as one pattern: an exact path first, else text matching
+  within the argument's `kinds`: every word occurs in the object's path **and at least one
+  word occurs in the object's own name** (the "own name" rule, user 2026-10-13, `60a1dc2`).
+  `mute e-piano` names the track E-Piano, not the devices and chains below it;
+  `mute vermona kick` names the Kick pad. A single text target follows the same rule.
+- `find` is a search and keeps the looser rule on purpose (user, 2026-10-13): it lists
+  everything whose path contains the words. Two rules, stated in the docs.
+- (Confirmed by the user on 2026-10-13 against the simpler "together always means one": the
+  stricter rule stays.) The platform never chooses silently between two readings: if the joined words hit and every
   word also resolves on its own to other objects (`mute drums kick` with a group "Drums"
   holding "Kick"), it asks — one multi-select list, the joined hits first, then each word's.
 - No joined hit → each word is its own target, as before.
