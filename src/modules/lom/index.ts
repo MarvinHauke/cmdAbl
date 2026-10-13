@@ -23,9 +23,9 @@ export function activate(api: ModuleApi): void {
       "Only reads; it does not need the cmdAbl Remote Script. When your words match several objects " +
       "you are asked to choose one.",
     examples: [
-      { line: "lom /Vermona MIDI", note: "the LOM path of a track" },
-      { line: "lom /Vermona MIDI/Drum Rack/Kick", note: "the LOM path of a pad inside a Drum Rack" },
-      { line: "lom kick", note: "the object with \"kick\" in its name" },
+      { line: "lom /Bass", note: "the LOM path of a track" },
+      { line: "lom /2-808 Core Kit/808 Core Kit/Snare Drum", note: "the LOM path of a pad inside a Drum Rack" },
+      { line: "lom snare", note: "the object with \"snare\" in its name" },
     ],
     args: [
       {

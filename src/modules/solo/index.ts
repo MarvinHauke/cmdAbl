@@ -11,12 +11,11 @@ export function activate(api: ModuleApi): void {
       "Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the " +
       "cmdAbl Remote Script and macOS. Live's Exclusive Solo setting is not applied: naming several targets solos all of them.",
     examples: [
-      { line: "solo /Kick", note: "solo or unsolo the track Kick" },
-      { line: "solo /Kick, /Snare", note: "several targets, separated by a comma" },
-      { line: "solo --set 1 /Kick", note: "make sure Kick is soloed" },
-      { line: "solo --set 0 /Kick, /Snare", note: "make sure neither is soloed" },
-      { line: "solo vermona kick", note: "words typed together name one object when they fit it; if several fit you are asked, if none fits together each word is its own target" },
-      { line: "solo drums, kick", note: "a comma separates targets" },
+      { line: "solo bass", note: "solo or unsolo the track named like bass" },
+      { line: "solo bass, lead", note: "several targets, separated by a comma" },
+      { line: "solo --set 1 bass", note: "make sure the track is soloed" },
+      { line: "solo --set 0 bass, lead", note: "make sure neither is soloed" },
+      { line: "solo 808 bass", note: "words typed together name one object when they fit it (here the Bass Drum pad of the 808 Core Kit); if several fit you are asked, if none fits together each word is its own target" },
     ],
     targetSummary: "Tracks, rack chains or Drum Rack pads; separate several with commas",
   });

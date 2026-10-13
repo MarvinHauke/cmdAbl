@@ -115,19 +115,19 @@ Looks through the Live Set for tracks, devices, rack chains and Drum Rack pads w
 **Examples**
 
 ```
-find kick
+find 808
 ```
 
-everything with "kick" in its path
+everything with "808" in its path
 
 ```
-find vermona -L 0
+find 808 -L 0
 ```
 
-only objects with "vermona" in their own name
+only objects with "808" in their own name
 
 ```
-find vermona -L 1
+find 808 -L 1
 ```
 
 those, plus their direct children
@@ -139,13 +139,19 @@ find -t
 all tracks
 
 ```
-find -L 2 -c kick
+find -c snare
 ```
 
-chains and pads named like kick, at most two levels below a match
+only chains and drum pads with "snare" in their path
 
 ```
-find --unfold kick
+find -L 2 -c snare
+```
+
+chains and pads named like snare, at most two levels below a match
+
+```
+find --unfold snare
 ```
 
 also show the track's chains in the Session mixer
@@ -171,25 +177,25 @@ Selects the object in Live: a track becomes the selected track; a device, chain 
 **Examples**
 
 ```
-goto /Vermona MIDI
+goto /Lead
 ```
 
 select a track
 
 ```
-goto /Vermona MIDI/Drum Rack/Kick
+goto /2-808 Core Kit/808 Core Kit/Snare Drum
 ```
 
 select a pad inside a Drum Rack
 
 ```
-goto kick
+goto snare
 ```
 
-select the object with "kick" in its name (you choose when there are several)
+select the object with "snare" in its name (you choose when there are several)
 
 ```
-goto --unfold /Vermona MIDI
+goto --unfold /2-808 Core Kit
 ```
 
 select a track and show its chains in the Session mixer
@@ -231,22 +237,22 @@ Shows the object's cmdAbl path, its Live Object Model path (the address used by 
 **Examples**
 
 ```
-lom /Vermona MIDI
+lom /Bass
 ```
 
 the LOM path of a track
 
 ```
-lom /Vermona MIDI/Drum Rack/Kick
+lom /2-808 Core Kit/808 Core Kit/Snare Drum
 ```
 
 the LOM path of a pad inside a Drum Rack
 
 ```
-lom kick
+lom snare
 ```
 
-the object with "kick" in its name
+the object with "snare" in its name
 
 ## `man`
 
@@ -300,40 +306,34 @@ Switches mute on for each target that is not muted and off for each that is, one
 **Examples**
 
 ```
-mute /Kick
+mute bass
 ```
 
-mute or unmute the track Kick
+mute or unmute the track named like bass
 
 ```
-mute /Kick, /Snare
+mute bass, lead
 ```
 
 several targets, separated by a comma
 
 ```
-mute --set 1 /Kick, /Snare
+mute --set 1 bass, lead
 ```
 
 make sure both are muted
 
 ```
-mute --set 0 /Kick
+mute --set 0 bass, lead
 ```
 
-make sure Kick is not muted
+make sure neither is muted
 
 ```
-mute vermona kick
+mute 808 snare
 ```
 
-words typed together name one object when they fit it; if several fit you are asked, if none fits together each word is its own target
-
-```
-mute drums, kick
-```
-
-a comma separates targets
+words typed together name one object when they fit it (here the Snare Drum pad of the 808 Core Kit); if several fit you are asked, if none fits together each word is its own target
 
 ## `next`
 
@@ -500,37 +500,31 @@ Switches solo on for each target that is not soloed and off for each that is, on
 **Examples**
 
 ```
-solo /Kick
+solo bass
 ```
 
-solo or unsolo the track Kick
+solo or unsolo the track named like bass
 
 ```
-solo /Kick, /Snare
+solo bass, lead
 ```
 
 several targets, separated by a comma
 
 ```
-solo --set 1 /Kick
+solo --set 1 bass
 ```
 
-make sure Kick is soloed
+make sure the track is soloed
 
 ```
-solo --set 0 /Kick, /Snare
+solo --set 0 bass, lead
 ```
 
 make sure neither is soloed
 
 ```
-solo vermona kick
+solo 808 bass
 ```
 
-words typed together name one object when they fit it; if several fit you are asked, if none fits together each word is its own target
-
-```
-solo drums, kick
-```
-
-a comma separates targets
+words typed together name one object when they fit it (here the Bass Drum pad of the 808 Core Kit); if several fit you are asked, if none fits together each word is its own target

@@ -23,10 +23,10 @@ export function activate(api: ModuleApi): void {
       "Picking an object in the palette runs this command for you. When your words match several objects " +
       "you are asked to choose one.",
     examples: [
-      { line: "goto /Vermona MIDI", note: "select a track" },
-      { line: "goto /Vermona MIDI/Drum Rack/Kick", note: "select a pad inside a Drum Rack" },
-      { line: "goto kick", note: "select the object with \"kick\" in its name (you choose when there are several)" },
-      { line: "goto --unfold /Vermona MIDI", note: "select a track and show its chains in the Session mixer" },
+      { line: "goto /Lead", note: "select a track" },
+      { line: "goto /2-808 Core Kit/808 Core Kit/Snare Drum", note: "select a pad inside a Drum Rack" },
+      { line: "goto snare", note: "select the object with \"snare\" in its name (you choose when there are several)" },
+      { line: "goto --unfold /2-808 Core Kit", note: "select a track and show its chains in the Session mixer" },
     ],
     requires: ["bridge"],
     options: [{ name: "unfold", summary: "also show the track's chains in the Session mixer (never folds anything)" }],

@@ -3,7 +3,7 @@ import type { ModuleApi } from "../types.js";
 const MAX_ENTRIES = 20;
 
 /**
- * Remembers recent full command invocations (e.g. "mute /vermona/kick, /vermona/snare")
+ * Remembers recent full command invocations (e.g. "mute --set 0 bass, lead")
  * and re-offers them as their own re-runnable palette entries, most-recent-first —
  * so a complex command can be run again without retyping its arguments.
  *

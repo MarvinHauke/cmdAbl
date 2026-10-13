@@ -47,12 +47,13 @@ export function activate(api: ModuleApi): void {
       "their devices, and the tracks inside groups). The kind flags add up and narrow what is listed. find remembers its last list until " +
       "the extension restarts.",
     examples: [
-      { line: "find kick", note: "everything with \"kick\" in its path" },
-      { line: "find vermona -L 0", note: "only objects with \"vermona\" in their own name" },
-      { line: "find vermona -L 1", note: "those, plus their direct children" },
+      { line: "find 808", note: "everything with \"808\" in its path" },
+      { line: "find 808 -L 0", note: "only objects with \"808\" in their own name" },
+      { line: "find 808 -L 1", note: "those, plus their direct children" },
       { line: "find -t", note: "all tracks" },
-      { line: "find -L 2 -c kick", note: "chains and pads named like kick, at most two levels below a match" },
-      { line: "find --unfold kick", note: "also show the track's chains in the Session mixer" },
+      { line: "find -c snare", note: "only chains and drum pads with \"snare\" in their path" },
+      { line: "find -L 2 -c snare", note: "chains and pads named like snare, at most two levels below a match" },
+      { line: "find --unfold snare", note: "also show the track's chains in the Session mixer" },
     ],
     requires: ["bridge"],
     options: [
