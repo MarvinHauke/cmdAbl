@@ -62,8 +62,18 @@ export interface ModuleApi {
    * only then calls `run` — see docs/feature-plans/0005.
    */
   commands: { add(command: Command): void };
-  /** Show the pick list; resolves with the chosen objects, or null if cancelled. */
-  pick(title: string, candidates: ObjectNode[], multi?: boolean): Promise<ObjectNode[] | null>;
+  /**
+   * Show the pick list; resolves with the chosen objects, or null if cancelled.
+   * `options.fill` (single-select only) lets Tab put the object into the
+   * prompt instead of choosing it: the platform then ends the command without a
+   * message and reopens the palette; the module sees a cancelled pick.
+   */
+  pick(
+    title: string,
+    candidates: ObjectNode[],
+    multi?: boolean,
+    options?: { fill?: boolean },
+  ): Promise<ObjectNode[] | null>;
   /** Notified whenever a pick list was shown, with what was offered and what was chosen. */
   onPick(listener: (candidates: ObjectNode[], chosen: ObjectNode[] | null) => void): void;
   /**

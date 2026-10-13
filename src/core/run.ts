@@ -20,6 +20,11 @@ export interface RunDeps {
    * Only `available()` is used (it never throws). Absent: such commands answer exit 5.
    */
   bridge?: () => Pick<Bridge, "available">;
+  /**
+   * A pick answered "fill" (Tab): the platform put the object's text here and
+   * resolved the pick as cancelled. Returns it once (and forgets it). Absent: no fill.
+   */
+  takeFill?: () => string | undefined;
   /** Log sink and clock; default console.log and Date.now. */
   log?: (line: string) => void;
   now?: () => number;
@@ -45,6 +50,8 @@ export interface RunOutcome {
   line?: string;
   /** The user backed out of a pick: nothing ran and nothing should be shown. */
   cancelled?: boolean;
+  /** Tab on a pick list: nothing ran; reopen the palette with this text in the prompt. */
+  fill?: string;
 }
 
 /** The command and its options, before any target. */
@@ -133,7 +140,7 @@ export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome>
     outcome = await runLineInner(input, deps);
     return outcome;
   } finally {
-    const code = outcome ? (outcome.cancelled ? "cancelled" : String(outcome.result.code)) : "threw";
+    const code = outcome ? (outcome.fill !== undefined ? "filled" : outcome.cancelled ? "cancelled" : String(outcome.result.code)) : "threw";
     log(`cmdAbl: run: ${outcome?.line ?? input.trim()} -> ${code} (${now() - started} ms)`);
   }
 }
@@ -195,6 +202,8 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
         nodes,
         preview: previewFor(node, invocation, targets, request, nodes),
       });
+      const filled = deps.takeFill?.();
+      if (filled !== undefined) return { result: ok(), cancelled: true, fill: filled };
       if (!chosen || chosen.length === 0) {
         // Esc on a suggestion list: nothing was found, as before (exit 3, nothing remembered).
         if (request.suggestion) return { result: request.suggestion.onCancel };
@@ -210,6 +219,10 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
     } catch (e: unknown) {
       result = fail(ExitCode.FAILURE, `${invocation.path.join(" ")}: ${e instanceof Error ? e.message : String(e)}`);
     }
+    // A pick the handler opened itself (`api.pick`) may have been answered "fill".
+    // A failing handler keeps its failure (the fill is dropped): nothing fails silently.
+    const filled = deps.takeFill?.();
+    if (filled !== undefined && result.code === ExitCode.OK) return { result: ok(), cancelled: true, fill: filled };
     return { result, line: canonicalLine(invocation, step.invocation.args, nodes) };
   }
 }

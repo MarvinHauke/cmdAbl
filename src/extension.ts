@@ -12,6 +12,8 @@ import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
 import { objectRowLine } from "./core/objectRow.js";
 import { pickNodes } from "./core/pick.js";
+import { quoteIfNeeded } from "./core/tokenize.js";
+import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type Ui } from "./core/ui.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
@@ -40,18 +42,40 @@ export function activate(activation: ActivationContext) {
 
   const liveNodes = () => flattenObjectTree(buildObjectTree(context));
 
+  // Set when a pick list answered "fill" (Tab): the text for the next prompt.
+  let pendingFill: string | undefined;
+  const takeFill = (): string | undefined => {
+    const text = pendingFill;
+    pendingFill = undefined;
+    return text;
+  };
+
   /** The one pick list — used by the platform for ambiguous addresses and by modules. */
   async function pick(
     title: string,
     candidates: ObjectNode[],
     multi = false,
-    extra: { nodes?: ObjectNode[]; preview?: PickPreview; details?: string[] } = {},
+    extra: { nodes?: ObjectNode[]; preview?: PickPreview; details?: string[]; fill?: boolean } = {},
   ): Promise<ObjectNode[] | null> {
     // A module's own pick has no Live Set at hand; unique labels need it.
     const nodes = extra.nodes ?? liveNodes();
-    const chosen = await pickNodes(ui, { title, candidates, multi, nodes, preview: extra.preview, details: extra.details });
-    for (const listener of pickListeners) listener(candidates, chosen);
-    return chosen;
+    const answer = await pickNodes(ui, {
+      title,
+      candidates,
+      multi,
+      nodes,
+      preview: extra.preview,
+      details: extra.details,
+      fill: extra.fill,
+    });
+    if (answer && !Array.isArray(answer)) {
+      // Tab: the object goes into the prompt as ` <unique path>`; the pick counts as cancelled.
+      pendingFill = ` ${quoteIfNeeded(uniquePath(nodes, answer.fill))}`;
+      for (const listener of pickListeners) listener(candidates, null);
+      return null;
+    }
+    for (const listener of pickListeners) listener(candidates, answer);
+    return answer;
   }
   let isOpen = false;
 
@@ -76,7 +100,7 @@ export function activate(activation: ActivationContext) {
     log: (line) => console.log(line),
     dialog: (html, width, height, name = "module page") => ui.page(name, html, width, height),
     commands: { add: (command) => void registry.add(command) },
-    pick,
+    pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill }),
     onPick: (listener) => pickListeners.push(listener),
     registerProvider: (provider, priority = 0) => providers.push({ provider, priority }),
     onCommandRun: (listener) => commandRunListeners.push(listener),
@@ -111,7 +135,9 @@ export function activate(activation: ActivationContext) {
 
   // ── open command mode ────────────────────────────────────────────────────
   // Act on what the prompt surface returned.
-  async function dispatch(result: PaletteResult): Promise<void> {
+  /** Runs what the palette returned; resolves with text to open the palette with again (Tab on a pick list), if any. */
+  async function dispatch(result: PaletteResult): Promise<string | undefined> {
+    pendingFill = undefined; // a fill left over from a pick outside a run must not end this command
     let line: string;
     if (result.type === "command") {
       // The raw line keeps quotes intact.
@@ -122,7 +148,7 @@ export function activate(activation: ActivationContext) {
       const mapped = objectRowLine({ id: result.id, kind: result.type, path: row?.path }, liveNodes());
       if (!mapped) {
         present(fail(ExitCode.NOT_FOUND, `that ${result.type} is no longer available`));
-        return;
+        return undefined;
       }
       line = mapped;
     }
@@ -130,9 +156,12 @@ export function activate(activation: ActivationContext) {
       registry,
       liveNodes,
       bridge: () => getBridge(),
+      takeFill,
+      // The platform's own lists: Tab may put a single-select row into the prompt.
       pick: ({ title, candidates, multi, nodes, preview, details }) =>
-        pick(title, candidates, multi, { nodes, preview, details }),
+        pick(title, candidates, multi, { nodes, preview, details, fill: true }),
     });
+    if (outcome.fill !== undefined) return outcome.fill;
     if (outcome.cancelled) return;
     present(outcome.result);
     // History gets successful invocations that carry arguments, in their
@@ -141,6 +170,7 @@ export function activate(activation: ActivationContext) {
     if (outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
       for (const listener of commandRunListeners) listener(invocation);
     }
+    return undefined;
   }
 
   /** The single place results become user-visible (see src/core/present.ts). */
@@ -163,8 +193,13 @@ export function activate(activation: ActivationContext) {
       const ordered = [...providers].sort((a, b) => a.priority - b.priority);
       const items = (await Promise.all(ordered.map((p) => p.provider.getItems()))).flat();
       paletteItems = items;
-      const result = await ui.prompt({ items });
-      if (result) await dispatch(result);
+      // Tab on a pick list puts an object into the prompt: reopen with it (same queue, same guard).
+      let initial: string | undefined;
+      for (;;) {
+        const result = await ui.prompt({ items, ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
+        initial = result ? await dispatch(result) : undefined;
+        if (initial === undefined) break;
+      }
     } catch (e: unknown) {
       console.error(e instanceof Error ? e.message : String(e));
     } finally {
