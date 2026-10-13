@@ -275,14 +275,21 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    --set 1` on a normal track, a group (refused) and the MIDI track with the unavailable input
    (reported); `mute --set 2 /a` → usage error naming 0 and 1; `unmute /a` → unknown command;
    run `mute --set 0 /a` from history → still unmuted.
-1l. Own-name rule, `tree`, palette `Enter` (`60a1dc2`, `9730198`, `fafd273`, `1fe2a43`):
-   `mute e-piano` → only the track (seen); after the change in work: `mute e-piano utility`
-   and `mute vermona kick` run without a question when one object matches; `mute kick snare` → both tracks; `mute
-   vermna` → "did you mean" lists the track, not its chains; `find vermona` → the track and
-   everything below it; `tree`, `tree --level 1`, `tree -L 3 /<rack track>`, `tree -L 0` →
-   usage error; `unmute Kick` + `Enter` → "unknown command", nothing muted; `mut` + `Enter` →
-   `mute`; `hlp` + `Enter` → unknown command, `hlp` `↓` `Enter` → help; `find kick`, `next`,
-   then with the object gone → "is no longer there".
+1l. Round of 2026-10-13 (`60a1dc2`, `daf16e9`, `1fe2a43`, `5437203`, `ac821a6`, `797b38d`).
+   Seen: `mute e-piano` names only the track. Open:
+   - targets: `mute vermona kick` with one pad → muted at once; `mute kick snare` → both;
+     `mute drums, kick` → two targets; `mute vermna` → "did you mean" lists the track;
+   - `find`: `find vermona` → the track and everything below; `find vermona -L 0` → only objects
+     so named, `-L 1` adds direct children; `find -t`; `find -L 1` → top-level tracks; bare
+     `find` and `tree` → errors; `find kick`, `next`, with the object gone → "is no longer
+     there";
+   - `Tab` fill: `find kick` with several hits, `Tab` on a row → the palette reopens with the
+     quoted path and the caret in front; `mu` `Tab` → `mute "<path>"`; `Enter` mutes it; `Esc`
+     there runs nothing; in a multi-select list `Tab` still marks; three fills in a row, no hang;
+   - palette `Enter`: `unmute Kick` → "unknown command"; `mut` → `mute`; `hlp` → unknown
+     command, `hlp` `↓` `Enter` → help;
+   - `--set`: `mute --set 1 /a, /b` with one already muted → both; the history row reads
+     `mute --set 0 "/a"`.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
@@ -445,16 +452,16 @@ Decided by the user and still governing future work.
   in the path" on purpose. Words typed together: if they hit as one pattern, that is the
   reading — one hit runs, several open a pick list with those hits only; a comma names several
   targets. (The user first chose "keep asking when two readings are possible", then corrected
-  it after the Live test: `mute vermona kick` must not ask when one pad matches.) Task out to
-  cmdabl-core, with the remembered line showing `--set 0` instead of `--set=0`.
+  it after the Live test: `mute vermona kick` must not ask when one pad matches.) Built
+  (`daf16e9`), with the remembered line showing `--set 0` instead of `--set=0`.
 - 2026-10-13: `tree` (built the same day, `9730198`) is removed again — fewer base commands.
   Its use moves into `find -L, --level <n>`: how far below the object whose own name matches
   the results go (`-L 0` = only that object); `find` without a pattern is allowed with `-L` or
-  a kind flag. Task out to cmdabl-modules.
+  a kind flag. Built (`5437203`).
 - 2026-10-13: in a single-select pick list (`find`'s), `Tab` puts the chosen object's path into
   the palette for a follow-up command; `Enter` runs as before. Needs two additions to the `Ui`
-  contract (a "fill" outcome of `select`, an initial text for `prompt`). Task out to
-  cmdabl-core and cmdabl-ui; 0007 follows core's proposal.
+  contract (a "fill" outcome of `select`, an initial text for `prompt`; 0007 §4). Built
+  (`ac821a6`, `797b38d`): completing a command in the refilled palette keeps the path.
 - 2026-10-12: Remote Script versions grow conservatively. Reset to 0.1.0 (`2b2d448`; it had
   gone to 0.6.0 in a day). Every script change raises the third number, also during
   development; the middle number only with a release whose script is incompatible with the
