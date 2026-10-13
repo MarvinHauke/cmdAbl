@@ -2,6 +2,8 @@
 
 cmdAbl is a command palette for Ableton Live. Press `:` while Live is focused and type a command.
 
+![Live's Session view with the cmdAbl palette open: the command prompt above a list of commands with one-line summaries](assets/images/hero.png)
+
 - It runs on the open Set. You name tracks, devices, rack chains and Drum Rack pads by their names or paths.
 - Commands select, mute, solo and arm objects, find them, and show their Live Object Model path.
 - A pick list asks you when a name matches more than one object. It never guesses.
