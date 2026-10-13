@@ -16,11 +16,11 @@ Type each line in the palette and press `Enter`:
 
 ```
 cmdabl setup         set up the keyboard key and the Remote Script (once, after installing)
-goto drums           select the track whose name contains "drums"
-mute drums           toggle the mute of that track
-mute --set 0 drums   unmute it, whatever its state is now
-find -c kick         list every chain and drum pad whose path contains "kick"
-lom kick             show the Live Object Model path of the object named "kick"
+goto /Lead           select the track Lead
+mute /Bass           toggle the mute of the track Bass
+mute --set 0 /Bass   unmute it, whatever its state is now
+find -c snare        list every chain and drum pad whose path contains "snare"
+lom /Lead            show the Live Object Model path of the track Lead
 ```
 
 ## Pages

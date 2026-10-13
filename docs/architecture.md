@@ -6,7 +6,7 @@ about the layer you plan to touch.
 
 ## What cmdAbl is
 
-cmdAbl is a command palette for Ableton Live. You type a short line such as `mute drums` and cmdAbl
+cmdAbl is a command palette for Ableton Live. You type a short line such as `mute /Bass` and cmdAbl
 runs it on the open Live Set. It is built on the Ableton Extensions SDK. The SDK lets a TypeScript
 extension run inside Live's Extension Host, a background process that Live starts with the
 extension. Most of cmdAbl is TypeScript in that host.
@@ -38,8 +38,8 @@ cmdAbl's commands follow the model of POSIX and GNU command-line tools such as `
 
 ```
 cmdabl setup                       a command, then a subcommand
-find -c kick                       a command, an option, then a text argument
-mute /Vermona/Kick, /Vermona/Snare a command, then several path arguments
+find -c snare                      a command, an option, then a text argument
+mute /Bass, /Lead                  a command, then several path arguments
 ```
 
 - Bare words name a command or a subcommand.
@@ -129,7 +129,7 @@ no test needs Live.
 
 ## The path of one command
 
-Take `mute vermona kick` as an example. Here is what happens, step by step.
+Take `mute 808 snare` as an example. Here is what happens, step by step.
 
 1. **Trigger.** You press `:` with Live focused, or you choose `: cmdAbl` from a clip, track, clip
    slot or scene's context menu. Both start the same extension command, `cmdabl.open`. The `:`
@@ -138,7 +138,7 @@ Take `mute vermona kick` as an example. Here is what happens, step by step.
    history, and the objects of the Live Set. It opens the palette dialog with them. The dialog
    returns one string when it closes: the line you typed, or the item you picked.
 3. **Parse.** `src/core/parse.ts` walks the command tree by the bare words. `mute` is found;
-   `vermona` and `kick` are its arguments. A usage error ends here with exit code 2.
+   `808` and `snare` are its arguments. A usage error ends here with exit code 2.
 4. **`requires` check.** A command may declare `requires: ["bridge"]`. The platform then asks the
    bridge whether the Remote Script is ready. If it is not, the command answers exit code 5 and the
    handler is not called. The check runs before any pick, so nobody is asked to choose for a command
@@ -148,8 +148,8 @@ Take `mute vermona kick` as an example. Here is what happens, step by step.
    - A comma separates targets, and a word that starts with `/` is a whole path.
    - A full path is a target of its own, and `#2` picks the second of two same-named siblings. Otherwise
      the typed words must all occur in the object's path, and at least one of them in the object's
-     own name. So `mute e-piano` names the track E-Piano, and `mute vermona kick` names the Kick pad
-     on Vermona. `find` is the one command that only needs the words in the path.
+     own name. So `mute lead` names the track Lead, and `mute 808 snare` names the Snare Drum pad
+     of the 808 kit. `find` is the one command that only needs the words in the path.
    - Words typed together win when they match: one object runs without a question, several objects
      give one pick list with exactly those. Only when they match nothing together is each word its
      own target; words that then match several share one pick list.

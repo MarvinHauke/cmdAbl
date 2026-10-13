@@ -1,6 +1,6 @@
 # Getting started
 
-cmdAbl is a command palette for Ableton Live. You type a short line such as `mute drums`, and cmdAbl
+cmdAbl is a command palette for Ableton Live. You type a short line such as `mute /Bass`, and cmdAbl
 runs it on the Set that is open. This page takes you from installing cmdAbl to your first three
 commands.
 
@@ -93,11 +93,11 @@ Start with these three. Type each one in the palette and press `Enter`.
 **`help`** lists every command with a one-line summary. Type a command followed by `--help`, for example
 `mute --help`, to see its full usage. This works without the Remote Script.
 
-**`goto <track>`** selects a track in Live. Partial names work: `goto drum` finds the track whose path
-contains "drum". `goto` needs the Remote Script.
+**`goto <track>`** selects a track in Live. A full path such as `goto /Lead` selects one track. Partial names work
+too, and `goto` needs the Remote Script.
 
-**`mute <track>`** toggles the mute of a track. Type `mute drums` once to mute it, and again to unmute
-it. To set the state without toggling, use `mute --set 1 drums` or `mute --set 0 drums`. `mute` works on tracks without the Remote Script.
+**`mute <track>`** toggles the mute of a track. Type `mute /Bass` once to mute it, and again to unmute
+it. To set the state without toggling, use `mute --set 1 /Bass` or `mute --set 0 /Bass`. `mute` works on tracks without the Remote Script.
 
 When a name matches more than one object, cmdAbl shows a **pick list** instead of guessing. Type to
 filter, press `↑` and `↓` to move, `Enter` to choose and `Esc` to cancel. Commands that take several

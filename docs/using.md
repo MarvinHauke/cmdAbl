@@ -28,23 +28,29 @@ After a command runs, the palette closes. Nothing stays open except a message or
 
 A command takes objects as text. cmdAbl reads that text as follows:
 
-- **A full path is a target of its own.** `/Vermona/Kick` is one target. `#2` picks the second of two
-  siblings with the same name: `/Drums/Kick#2`. A name with spaces needs no quotes for one target:
-  `goto /Opal Lead`. Quotes or a leading `/` make the text one target of its own, and that target can still be
-  ambiguous: `/Drums/Kick` with two siblings named Kick asks.
-- **Other words must match the path, and one must match the name.** For `mute`, `solo`, `arm`, `goto` and
-  `lom`, every word you type must occur in the object's path, and at least one must occur in the object's own
-  name. `mute e-piano` names the track E-Piano, not the devices and chains below it. `mute vermona kick` names
-  the Kick pad on the track Vermona.
+- **A full path is a target of its own.** `/Lead` is one target. Live's default track names carry their number,
+  and cmdAbl keeps it: the track shown as "2 808 Core Kit" is `2-808 Core Kit`, and "1 Audio" is `1-Audio`. A path
+  with spaces needs no quotes when it is the only target: `goto /2-808 Core Kit`. Among several targets, quote it:
+  `solo /Bass "/2-808 Core Kit"`. `goto "/2-808 Core Kit"` works too.
+- **`#2` picks a sibling with the same name.** Two tracks called Bass appear as `/Bass` and `/Bass#2`. A quoted or
+  `/` text is still a target of its own, and that target can be ambiguous: `/Bass` asks when two tracks are named Bass.
+- **Other words must match the path, and one must match the name.** For `mute`, `solo`, `arm`, `goto` and `lom`,
+  every word you type must occur in the object's path, and at least one must occur in the object's own name.
+  A word that is exactly the name of a top-level track is that track's full path, so it names the track even when
+  other names contain it: `mute bass` names the track Bass, not the Bass Drum pad. This does not hold for objects
+  further down: there a word matches every name that contains it. `mute lead` names the track Lead, not the devices
+  and chains below it. `mute 808 snare` names the Snare Drum pad
+  of the 808 kit: only that object holds both words in its path, and one of them in its own name.
 - **Words typed together win when they match.** If they match exactly one object, the command runs on it without a
   question. If they match several, one pick list offers exactly those objects. Only when they match nothing together
-  is each word its own target: `mute kick snare` mutes the Kick and the Snare. Words that then match several objects
-  share one pick list, and a word that matches nothing gets a "did you mean" list.
-- **This can surprise.** With a group "Drums" that holds a track "Kick", `mute drums kick` means the Kick, because the
-  words match one object together. To mean both the group and the track, write `mute drums, kick`.
-- **A comma always names several targets.** `mute vermona, kick` names the track Vermona and the Kick.
-- **`find` is a search.** It is looser on purpose: `find vermona` lists everything whose path contains the word,
-  the track and everything below it. `-t`, `-d` and `-c` narrow the list to tracks, devices or chains, and `-L` limits how far below a matching object the results go.
+  is each word its own target. A word that matches several objects then asks once, with one pick list: `mute drum`
+  asks in a Set with the pads "Bass Drum" and "Snare Drum".
+- **This can surprise.** In a Set with a group Drums that holds a track Kick, `mute drums kick` means the Kick, because
+  the words match one object together. To mean both the group and the track, write `mute drums, kick`.
+- **A comma always names several targets.** `mute bass, lead` names the track Bass and the track Lead.
+- **`find` is a search.** It is looser on purpose: `find 808` lists everything whose path contains the word, the 808
+  track and everything below it. `-t`, `-d` and `-c` narrow the list to tracks, devices or chains, and `-L` limits how
+  far below a matching object the results go.
 
 When a name matches more than one object, cmdAbl asks. It never picks one for you.
 
@@ -52,7 +58,7 @@ When a name matches more than one object, cmdAbl asks. It never picks one for yo
 
 - A word that starts with `-` is read as an option. `mute /Bass -6dB` is therefore an error, because `-6dB`
   is not a known option. Quote the name, or put `--` before it: `mute -- /Bass -6dB`.
-- A lone `-` is an ordinary word. A track called `Kick - Sub` can be typed without quotes.
+- A lone `-` is an ordinary word. A track called `Hi - Hat` can be typed without quotes.
 - `--` ends the options. Everything after it is a name.
 
 ## The pick list
@@ -81,14 +87,15 @@ list unless you choose a row. `Esc` gives the plain "nothing matches" answer.
 
 Drum Rack pads and the chains of other racks are objects too. Their path goes through the track and the rack:
 
-- `/Drums/Drum Rack/Kick` is the Kick pad of the Drum Rack on the track `Drums`.
-- `mute kick` finds the same pad when `kick` is the only match.
+- `/2-808 Core Kit/808 Core Kit/Snare Drum` is the Snare Drum pad of the Drum Rack on the track `2-808 Core Kit`.
+- `mute 808 snare` finds the same pad, because the two words name only that object.
 
 Use `find` to list everything that matches a pattern:
 
-- `find kick` lists every track, device and chain whose path contains `kick`.
-- `find -c kick` lists only chains and drum pads.
-- `find -t kick` lists only tracks, and `find -d kick` only devices.
+- `find 808` lists every track, device and chain whose path contains `808`: the 808 track and everything below it.
+- `find 808 -L 0` lists only the objects named `808`: the track and its Drum Rack.
+- `find -c snare` lists only chains and drum pads.
+- `find -t bass` lists only tracks, and `find -d 808` only devices.
 - `next` and `prev` step through the last `find` list.
 
 Selecting a pad or a chain does not change how the track is shown. Add `--unfold` to `goto` or `find` to show the
@@ -110,7 +117,7 @@ Without a pattern, `find` needs `-L` or one of `-t`, `-d` or `-c`; a bare `find`
 - `find -L 1` lists the top-level tracks.
 - `find -L 2` lists the tracks and their devices.
 - `find -t` lists all tracks.
-- `find vermona -L 1` lists the track Vermona and its direct children.
+- `find 808 -L 1` also lists what sits one level below those objects, such as the pads of the Drum Rack.
 
 `-L` takes a whole number from 0 to 12 with a pattern, and from 1 without one. `find` needs the [Remote Script](remote-script.md). The
 [command reference](reference/commands.md) has the full usage.
@@ -119,14 +126,14 @@ Without a pattern, `find` needs `-L` or one of `-t`, `-d` or `-c`; a bare `find`
 
 - `mute`, `solo` and `arm` **toggle** each object they name: a muted track is unmuted, an unmuted one is muted.
 - `--set 1` makes every named object muted, soloed or armed, whatever its state. `--set 0` switches them off. An
-  object already in the wanted state counts as done. For example, `mute --set 1 /Kick, /Snare` mutes both, and
-  `solo --set 0 /Kick` unsolos the Kick. The history shows the option as `--set 0`; typing `--set=0` works too.
+  object already in the wanted state counts as done. For example, `mute --set 1 /Bass, /Lead` mutes both, and
+  `solo --set 0 /Bass` unsolos the Bass track. The history shows the option as `--set 0`; typing `--set=0` works too.
 - `mute` and `solo` work on tracks, rack chains and Drum Rack pads. Chains and pads need the Remote Script
   and macOS.
 - `arm` works on tracks only. Return, main and group tracks cannot be armed, and cmdAbl reports them as failed.
 
 **Exclusive arm and solo are not applied.** If Live's "Exclusive" setting is on for arm or solo, cmdAbl does
-not follow it. `arm /a /b` arms both tracks. `arm /a` does not disarm other tracks. Name every track you want
+not follow it. `arm /Bass /Lead` arms both tracks. `arm /Bass` does not disarm other tracks. Name every track you want
 explicitly. This is a choice, like Cmd-clicking the buttons in Live.
 
 ## What the palette tells you

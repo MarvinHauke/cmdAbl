@@ -1,7 +1,7 @@
 # cmdAbl
 
-A command palette for Ableton Live. Press `:` while Live is focused, type a command such as `mute drums`
-or `goto /Opal Lead`, and cmdAbl runs it on the open Set. Commands take the names of tracks, devices, rack
+A command palette for Ableton Live. Press `:` while Live is focused, type a command such as `mute /Bass`
+or `goto /Lead`, and cmdAbl runs it on the open Set. Commands take the names of tracks, devices, rack
 chains and Drum Rack pads, and a pick list asks when a name matches more than one object.
 
 ![Live's Session view with the cmdAbl palette open: the command prompt above a list of commands with one-line summaries](docs/assets/images/hero.png)

@@ -28,7 +28,7 @@ maintainers already know about each one.
 - **No commands from other extensions.** An extension can only run the commands it registered itself, so
   cmdAbl cannot start a command of another extension.
 - **Exclusive arm and solo are not applied.** If Live's "Exclusive" setting is on, cmdAbl does not follow it.
-  `arm /a /b` arms both tracks. Name every track you want to change.
+  `arm /Bass /Lead` arms both tracks. Name every track you want to change.
 - **`arm` can only detect a refused track with the Remote Script.** Live can refuse to arm a track, for example a
   MIDI track whose input device is missing, and the SDK reads back "armed" anyway. The check that catches this
   needs the [Remote Script](remote-script.md). Without it, cmdAbl cannot tell that the track was not armed.
