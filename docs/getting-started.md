@@ -17,7 +17,7 @@ commands.
 Download the latest `.ablx` file from the
 [Releases page](https://github.com/MarvinHauke/cmdAbl/releases/latest). Then open Live's **Settings → Extensions**
 and either drag the `.ablx` file onto the box that says "Drag and drop to install", or click **Choose file** and pick
-it. cmdAbl then appears under "Installed Extensions". If an older cmdAbl is installed, remove it first and restart Live.
+it. `cmdabl` then appears under "Installed Extensions". If an older cmdAbl is installed, remove it first and restart Live.
 
 ![Live's Settings → Extensions page: the box for dropping an extension, with a Choose file button, and the list of installed extensions, which includes cmdabl](assets/images/extensions-install.png)
 
