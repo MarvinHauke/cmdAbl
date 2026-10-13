@@ -447,6 +447,14 @@ Decided by the user and still governing future work.
   targets. (The user first chose "keep asking when two readings are possible", then corrected
   it after the Live test: `mute vermona kick` must not ask when one pad matches.) Task out to
   cmdabl-core, with the remembered line showing `--set 0` instead of `--set=0`.
+- 2026-10-13: `tree` (built the same day, `9730198`) is removed again — fewer base commands.
+  Its use moves into `find -L, --level <n>`: how far below the object whose own name matches
+  the results go (`-L 0` = only that object); `find` without a pattern is allowed with `-L` or
+  a kind flag. Task out to cmdabl-modules.
+- 2026-10-13: in a single-select pick list (`find`'s), `Tab` puts the chosen object's path into
+  the palette for a follow-up command; `Enter` runs as before. Needs two additions to the `Ui`
+  contract (a "fill" outcome of `select`, an initial text for `prompt`). Task out to
+  cmdabl-core and cmdabl-ui; 0007 follows core's proposal.
 - 2026-10-12: Remote Script versions grow conservatively. Reset to 0.1.0 (`2b2d448`; it had
   gone to 0.6.0 in a day). Every script change raises the third number, also during
   development; the middle number only with a release whose script is incompatible with the
