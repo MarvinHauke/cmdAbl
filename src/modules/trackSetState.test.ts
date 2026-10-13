@@ -83,3 +83,11 @@ test("never throws: a track the port cannot find is unknown", async () => {
   const fake = setup([], { running: false });
   assert.deepEqual(await readSwitchStates(fake.api, "mute", [A]), [null]);
 });
+
+test("a bridge that does not answer in time: track rows keep their SDK symbol, chain rows are unknown", async () => {
+  const fake = setup([A], undefined, { A: { mute: true, arm: true } });
+  // the script's hello never comes back
+  fake.bridge.available = () => new Promise(() => {});
+  assert.deepEqual(await readSwitchStates(fake.api, "mute", [A, KICK], 20), [true, null]);
+  assert.deepEqual(await readSwitchStates(fake.api, "arm", [A], 20), [true]); // the SDK's value stays
+});
