@@ -5,6 +5,7 @@ Task-oriented manuals for working on cmdAbl. (Design docs live in
 
 | Guide | Use it when |
 |---|---|
+| [Writing a command](command-authoring.md) | You add a command or a module, or write its `--help` text |
 | [Releasing cmdAbl](release-cmdabl.md) | You want to publish a new cmdAbl version |
 | [pakabl index](pakabl-index.md) | An extension has a new version, or you want to add one to `pakabl list` |
 | [CI](ci.md) | You want to know what runs on a PR / push and what the results mean |

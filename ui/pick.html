@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, items: [{ label, detail?, value? }] }. Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes, or '' when cancelled. -->
+<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, fill?: boolean, items: [{ label, detail?, value? }] }. Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes, or '' when cancelled; with fill (single-select only) Tab answers {"fill": index} instead. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -49,9 +49,10 @@
     /* Zone indicator: filter active = caret + soft row; list active = strong row, no caret. */
     body.zone-list #filter { caret-color: transparent; }
     body.zone-list .row.active { background: var(--border); box-shadow: inset 2px 0 0 var(--accent); }
-    .mark { width: 10px; color: var(--accent); }
-    .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .detail { color: var(--dim); font-size: 11px; }
+    .mark { flex: none; width: 10px; color: var(--accent); }
+    /* One line per row: the label keeps its width up to the row, the detail gives way first. */
+    .label { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .detail { flex: 1 1 0; min-width: 0; text-align: right; color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     #hint {
       padding: 5px 12px;
@@ -73,8 +74,11 @@
   <div id="list"></div>
   <div id="hint"></div>
 
+  <!-- Shared matcher, inlined as a `CmdMatch` global at build time. -->
+  <script>/*MATCH_PLACEHOLDER*/</script>
+
   <script>
-    // Injected by the extension: { title, multi, preview?, items: [{ label, detail?, value? }] }
+    // Injected by the extension: { title, multi, preview?, fill?, items: [{ label, detail?, value? }] }
     const PICK = /*PICK_PLACEHOLDER*/null;
 
     const filter = document.getElementById('filter');
@@ -94,18 +98,23 @@
     let visible  = [];          // indexes into PICK.items, after filtering
     let active   = 0;           // position within `visible`
 
-    function send(indexes) {
-      const payload = indexes && indexes.length ? JSON.stringify(indexes) : '';
+    // Every typed word must occur in the label (any order); better fuzzy hits first.
+    const allIndexes = PICK.items.map((_, i) => i);
+    const filterIndexes = CmdMatch.filterer(allIndexes, i => PICK.items[i].label);
+
+    // `fill` (single-select only): Tab puts the active row into the prompt instead of running it.
+    const canFill = !!PICK.fill && !PICK.multi;
+
+    function send(indexes, fillIndex) {
+      const payload = fillIndex !== undefined ? JSON.stringify({ fill: fillIndex })
+        : indexes && indexes.length ? JSON.stringify(indexes) : '';
       const msg = { method: 'close_and_send', params: [payload] };
       if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(msg);
       else if (window.chrome?.webview) window.chrome.webview.postMessage(msg);
     }
 
     function render() {
-      const needle = filter.value.trim().toLowerCase();
-      visible = PICK.items
-        .map((_, i) => i)
-        .filter(i => !needle || PICK.items[i].label.toLowerCase().includes(needle));
+      visible = filterIndexes(filter.value);
       active = Math.min(active, Math.max(visible.length - 1, 0));
 
       list.innerHTML = '';
@@ -156,7 +165,8 @@
     function renderZone() {
       document.body.classList.toggle('zone-list', zone === 'list');
       const text = !PICK.multi
-        ? 'Enter choose · Esc cancel · type to filter'
+        ? (canFill ? 'Enter run · Tab put in prompt · Esc cancel · type to filter'
+                   : 'Enter choose · Esc cancel · type to filter')
         : zone === 'list'
           ? 'Space mark · Tab mark · Enter confirm · Esc cancel · type to filter'
           : 'Tab mark · ↓ list · Enter confirm · Esc cancel · type to filter';
@@ -243,7 +253,9 @@
         markActive();
       } else if (e.key === 'Tab') {
         e.preventDefault();
-        if (!PICK.multi || !visible.length) return;
+        if (!visible.length) return;
+        if (canFill) { send(null, visible[active]); return; }
+        if (!PICK.multi) return;
         toggle(visible[active]);
         move(1);
       } else if (e.key === 'Enter') {

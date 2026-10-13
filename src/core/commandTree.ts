@@ -1,4 +1,4 @@
-import type { CommandResult } from "../types.js";
+import type { CommandResult } from "./types.js";
 import type { NodeKind } from "../ableton/objectTree.js";
 
 // The declarative command tree — the single source of truth for execution,
@@ -34,8 +34,26 @@ export interface ArgDef {
    * match is passed on. Different from `variadic`, which is about tokens.
    */
   multiple?: "one" | "all";
+  /**
+   * `enum` arguments: the allowed values, fixed at declaration time (a
+   * dynamic set is an `enum` with a `complete` source and no `choices`: the
+   * parser then accepts any text and the handler checks it). The parser rejects
+   * anything else with a usage error that lists them; matching ignores case and
+   * the handler receives the declared spelling.
+   */
+  choices?: string[];
   /** Key of a completer registered by a module; supplies the candidates. */
   complete?: string;
+  /** One line for help and the generated reference: what the argument is. */
+  summary?: string;
+}
+
+/** A worked example for help and the generated reference. */
+export interface CommandExample {
+  /** The line as typed, e.g. `mute /Kick, /Snare`. */
+  line: string;
+  /** What it does, in a few words. */
+  note?: string;
 }
 
 export interface OptionDef {
@@ -45,6 +63,19 @@ export interface OptionDef {
   short?: string;
   /** If true the option consumes a value: `--name value` or `--name=value`. */
   takesValue?: boolean;
+  /**
+   * Allowed values of a value option (needs `takesValue`): the parser rejects
+   * anything else with a usage error listing them, ignores case and hands the
+   * handler the declared spelling. Same rules as enum argument choices.
+   */
+  choices?: string[];
+  /**
+   * A numeric value option (needs `takesValue`; not with `choices`): the parser
+   * rejects text that is not a number, a fraction when `integer` is set and
+   * values outside `min`/`max`, with a usage error that says what is
+   * accepted. The handler gets the typed text (a string, like every option).
+   */
+  number?: { min?: number; max?: number; integer?: boolean };
   summary: string;
 }
 
@@ -69,12 +100,26 @@ export interface CommandNode<P = unknown, V = string> {
   /** One line; shown in the palette and in help. */
   summary: string;
   aliases?: string[];
+  /**
+   * A sentence or two beyond `summary`: shown by `<command> --help` and in the
+   * generated reference (docs/reference/commands.md): help and the docs read it
+   * from here — one source.
+   */
+  description?: string;
+  /** Worked examples (runnable nodes). Every runnable command should have one. */
+  examples?: CommandExample[];
   /** Group node: has children and is not runnable on its own. */
   children?: CommandNode<P, V>[];
   options?: OptionDef[];
   /** Leaf node: positional arguments, in order. */
   args?: ArgDef[];
-  /** Optional companions the command needs; checked before `run` (code 5 if absent). */
+  /**
+   * Companions the command cannot work without. The platform checks them
+   * right after parsing — before resolving or asking the user to pick — and
+   * ends the run with the companion's own code and text (exit 5: not
+   * installed / outdated / not running) without calling `run`. "bridge" is the
+   * Remote Script. Leaf nodes only.
+   */
   requires?: "bridge"[];
   /** Removes or irreversibly changes something — such commands may not fan out via `multiple: "all"`. */
   destructive?: boolean;
@@ -111,11 +156,30 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
       if (!NAME_RE.test(alias)) problems.push(`${at}: invalid alias "${alias}"`);
     }
     if (!node.summary.trim()) problems.push(`${at}: missing summary`);
+    if (node.description !== undefined && (typeof node.description !== "string" || !node.description.trim())) {
+      problems.push(`${at}: description must be a non-empty string`);
+    }
+    if (node.examples !== undefined) {
+      if (!Array.isArray(node.examples)) problems.push(`${at}: examples must be a list`);
+      else {
+        for (const example of node.examples) {
+          if (typeof example?.line !== "string" || !example.line.trim()) problems.push(`${at}: an example needs a line`);
+          else if (example.note !== undefined && (typeof example.note !== "string" || !example.note.trim())) {
+            problems.push(`${at}: the note of example "${example.line}" must be a non-empty string`);
+          }
+        }
+      }
+      if (node.children?.length) problems.push(`${at}: examples belong on a runnable command, not on a group`);
+    }
 
     const isGroup = (node.children?.length ?? 0) > 0;
     if (isGroup && node.run) problems.push(`${at}: a node has either children or run, not both`);
     if (!isGroup && !node.run) problems.push(`${at}: a leaf needs run (or children to be a group)`);
     if (isGroup && node.args?.length) problems.push(`${at}: a group cannot declare arguments`);
+    if (isGroup && node.requires?.length) problems.push(`${at}: requires belongs on the runnable node, not on a group`);
+    for (const need of node.requires ?? []) {
+      if (need !== "bridge") problems.push(`${at}: unknown requirement "${String(need)}"`);
+    }
 
     const optionNames = new Set<string>();
     const optionShorts = new Set<string>();
@@ -129,6 +193,21 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
         if (RESERVED_SHORTS.has(opt.short)) problems.push(`${at}: short option "-${opt.short}" is reserved`);
         if (optionShorts.has(opt.short)) problems.push(`${at}: duplicate short option "-${opt.short}"`);
         optionShorts.add(opt.short);
+      }
+      if (opt.number !== undefined) {
+        if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" is numeric but takes no value`);
+        if (opt.choices !== undefined) problems.push(`${at}: option "--${opt.name}" has both choices and number`);
+        const { min, max } = opt.number;
+        if (min !== undefined && max !== undefined && min > max) problems.push(`${at}: option "--${opt.name}" has min above max`);
+      }
+      if (opt.choices !== undefined) {
+        if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" has choices but takes no value`);
+        const lower = opt.choices.map((c) => c.toLowerCase());
+        if (!lower.length) problems.push(`${at}: option "--${opt.name}" has an empty choices list`);
+        if (new Set(lower).size !== lower.length) problems.push(`${at}: duplicate choices in option "--${opt.name}" (case is ignored)`);
+        if (opt.choices.some((c) => c === "" || c.startsWith("-") || /\s/.test(c))) {
+          problems.push(`${at}: a choice of option "--${opt.name}" is empty, starts with a dash or holds a space`);
+        }
       }
     }
 
@@ -148,6 +227,21 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
         problems.push(`${at}: only the last argument may take the rest of the line ("${arg.name}")`);
       }
       if (arg.rest && arg.variadic) problems.push(`${at}: "${arg.name}" cannot be both rest and variadic`);
+      if (arg.summary !== undefined && (typeof arg.summary !== "string" || !arg.summary.trim())) {
+        problems.push(`${at}: the summary of argument "${arg.name}" must be a non-empty string`);
+      }
+      if (arg.kind === "enum" && !(arg.choices?.length) && !arg.complete) {
+        problems.push(`${at}: enum argument "${arg.name}" needs choices (or a complete source for a dynamic set)`);
+      }
+      if (arg.kind === "enum") {
+        const lower = (arg.choices ?? []).map((c) => c.toLowerCase());
+        if (new Set(lower).size !== lower.length) problems.push(`${at}: duplicate choices in "${arg.name}" (case is ignored)`);
+        if ((arg.choices ?? []).some((c) => c === "" || c.startsWith("-") || /\s/.test(c))) {
+          problems.push(`${at}: a choice of "${arg.name}" is empty, starts with a dash or holds a space`);
+        }
+        if (arg.rest) problems.push(`${at}: enum argument "${arg.name}" cannot take the rest of the line`);
+      }
+      if (arg.choices && arg.kind !== "enum") problems.push(`${at}: choices only applies to enum arguments ("${arg.name}")`);
       if (arg.kinds && arg.kind !== "path") problems.push(`${at}: kinds only applies to path arguments ("${arg.name}")`);
       if (arg.multiple === "all" && arg.kind !== "path") {
         problems.push(`${at}: multiple: "all" only applies to path arguments ("${arg.name}")`);
@@ -168,6 +262,32 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
   return problems;
 }
 
+/** `value`, or `0|1` for an option with declared choices. */
+export function valueLabel(opt: OptionDef): string {
+  if (opt.choices?.length) return opt.choices.join("|");
+  return opt.number ? "n" : "value";
+}
+
+/** "a whole number from 1 to 12" — what a numeric option accepts. */
+export function numberRule(spec: NonNullable<OptionDef["number"]>): string {
+  const kind = spec.integer ? "a whole number" : "a number";
+  if (spec.min !== undefined && spec.max !== undefined) return `${kind} from ${spec.min} to ${spec.max}`;
+  if (spec.min !== undefined) return `${kind} of at least ${spec.min}`;
+  if (spec.max !== undefined) return `${kind} of at most ${spec.max}`;
+  return kind;
+}
+
+/** The value as a finite number when it follows the rule, else null. */
+export function checkNumber(text: string, spec: NonNullable<OptionDef["number"]>): number | null {
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(text.trim())) return null;
+  const value = Number(text);
+  if (!Number.isFinite(value)) return null;
+  if (spec.integer && !Number.isInteger(value)) return null;
+  if (spec.min !== undefined && value < spec.min) return null;
+  if (spec.max !== undefined && value > spec.max) return null;
+  return value;
+}
+
 /** `pakabl install <id> [--force]` — the one-line usage of a node. */
 export function usage(node: CommandNode<any, any>, path: string[]): string {
   const parts = [...path];
@@ -176,27 +296,45 @@ export function usage(node: CommandNode<any, any>, path: string[]): string {
     return parts.join(" ");
   }
   for (const opt of node.options ?? []) {
-    parts.push(opt.takesValue ? `[--${opt.name} <value>]` : `[--${opt.name}]`);
+    parts.push(opt.takesValue ? `[--${opt.name} <${valueLabel(opt)}>]` : `[--${opt.name}]`);
   }
   for (const arg of node.args ?? []) {
-    const label = arg.variadic ? `<${arg.name}>…` : `<${arg.name}>`;
+    const shown = arg.kind === "enum" && arg.choices?.length ? arg.choices.join("|") : arg.name;
+    const label = arg.variadic ? `<${shown}>…` : `<${shown}>`;
     parts.push(arg.required === false ? `[${label}]` : label);
   }
   return parts.join(" ");
 }
 
-/** Multi-line help for a node: summary, usage, then its subcommands or options. */
+/**
+ * Multi-line help for a node: summary, description, usage, then its arguments,
+ * subcommands, options and examples.
+ */
 export function helpText(node: CommandNode<any, any>, path: string[]): string {
-  const lines = [node.summary, "", `usage: ${usage(node, path)}`];
+  const lines = [node.summary];
+  if (node.description) lines.push("", node.description);
+  lines.push("", `usage: ${usage(node, path)}`);
   if (node.children?.length) {
     lines.push("", "commands:");
     for (const child of node.children) lines.push(`  ${child.name.padEnd(12)} ${child.summary}`);
   }
+  const described = (node.args ?? []).filter((arg) => arg.summary);
+  if (described.length) {
+    lines.push("", "arguments:");
+    for (const arg of described) lines.push(`  ${`<${arg.name}>`.padEnd(12)} ${arg.summary}`);
+  }
   if (node.options?.length) {
     lines.push("", "options:");
     for (const opt of node.options) {
-      const flag = `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${opt.takesValue ? " <value>" : ""}`;
-      lines.push(`  ${flag.padEnd(22)} ${opt.summary}`);
+      const flag = `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${opt.takesValue ? ` <${valueLabel(opt)}>` : ""}`;
+      lines.push(`  ${flag.padEnd(22)} ${opt.summary}${opt.number ? ` (${numberRule(opt.number)})` : ""}`);
+    }
+  }
+  if (node.examples?.length) {
+    lines.push("", "examples:");
+    for (const example of node.examples) {
+      lines.push(`  ${example.line}`);
+      if (example.note) lines.push(`      ${example.note}`);
     }
   }
   return lines.join("\n");

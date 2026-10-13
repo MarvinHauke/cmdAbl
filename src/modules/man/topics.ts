@@ -53,7 +53,3 @@ export function findTopic(
   return Object.prototype.hasOwnProperty.call(topics, key) ? topics[key] : undefined;
 }
 
-/** "ableton, cmdabl" — for usage and not-found messages. */
-export function topicList(topics: Readonly<Record<string, ManTopic>> = TOPICS): string {
-  return topicNames(topics).join(", ");
-}

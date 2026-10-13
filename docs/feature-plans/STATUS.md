@@ -2,308 +2,476 @@
 
 The working state of the project: what is on which branch, what still needs a test in Live, and
 what comes next. Maintained by the architect — update it whenever a task lands or priorities
-change. Design decisions live in the numbered plans; this file only tracks progress.
+change. Design decisions live in the numbered plans; this file only tracks progress. Finished
+work is in the git history, not here.
 
-_Last updated: 2026-10-11._
+_Last updated: 2026-10-12._
 
 ## Where the code is
 
 - `main`: contains the command platform rework since 2026-10-11 (PR #9 `refactor/core-modules`,
-  squash-merged at the user's request). The Live test was not finished: the rows marked "no" and
-  the open steps of the Live test list below still apply, now against `main`. The version is
-  still 0.0.1, so the merge published no release.
+  squash-merged at the user's request). The Live test was not finished; the list below applies
+  against `main`. The version is still 0.0.1, so the merge published no release.
+- `feat/bridge-replies` (from `main`): pushed on 2026-10-12, draft PR #10; CI (`build` with
+  the Remote Script tests, `gitleaks`, `docs-build`) is green. It holds roadmap step 2 and the
+  forgiving target resolution; step 3 continues on it. The agents share one working tree, so
+  all current work is on this branch. Merge when the user says so.
 - `main` is protected since 2026-10-11 by the ruleset "Protect main" (id 24888213): pull request
   required (0 approvals), required checks `build` and `gitleaks`, no force push, no deletion. The
   repository admin may bypass, but only when merging a pull request — a direct push to `main` is
   refused for everyone.
 - `docs/sdk-tree-check` (local only, no changes yet): parked task, see "Parked".
 - PR #8 `pakabl/index-update` (opened by the daily crawler, not reviewed yet): check the diff —
-  if only star counts or push dates in `candidates.json` changed, it is the known noise (see "Parked").
+  if only star counts or push dates in `candidates.json` changed, it is the known noise.
 
-## Built in PR #9 (merged 2026-10-11, Live test still open in parts)
+## Roadmap to 0.1.0
 
-| Area | What | Tested in Live? |
-|---|---|---|
-| Results | `CommandResult` with exit codes, one presenter, history records only successes | partly (messages seen) |
-| Core | `help`, `cmdabl` as the only built-ins; module manifest; provider priority | `help` seen |
-| Parser | tokenizer, command tree, validator, parser, `registry.add` / `api.commands.add` | implicitly, through the commands below |
-| Resolver | paths → Live objects before the handler; `#n` for same-named siblings | `goto` not-found / ambiguous seen |
-| Pick list | shown for ambiguous paths; `Tab` multi-select for multi-target commands | shown for `goto` and `find`; multi-select **not confirmed yet** |
-| Commands | `goto`; `mute`/`solo`/`arm` toggle per track, `unmute`/`unsolo`/`unarm` switch off (one undo step; the resolver counts a track named twice once) | `goto` yes; the toggles **no** (rebuilt in `145fd98`) |
-| `find` | `find <words> [-t\|-d]`, `next`, `prev` | **yes** (`find`, `-t`, `next`, `prev`) |
-| `pakabl` | `pakabl list` unchanged | yes |
-| UI contract | `prompt` / `select` / `notify` in `src/core/ui.ts` | no (no behaviour change intended) |
-| Fix | Karabiner `cmdabl_open` flag reset on startup | no |
-| Team | `CLAUDE.md`, `.claude/agents/`, `scripts/agents.sh` | — |
+0.1.0 means: the first version someone else can install on macOS and rely on. Order approved by
+the user on 2026-10-11 (macOS-only; the completion engine, 0006, comes after).
 
-### Live test list for the work of PR #9 (restart `npm start` first)
+### 1. Reliable (blocks everything else)
 
-1. `help` lists the commands, including `goto`, `find`, `arm`.
-2. `goto vermona` → pick list; `Enter` selects; `Esc` does nothing and adds no history entry.
-3. `mute vermona` → pick list; mark two with `Tab`; `Enter` flips both; one undo reverts both.
-4. Toggles (`145fd98`):
-   - `solo /x` twice → on, then off.
-   - `mute a b` with one already muted → both flip; one undo reverts both.
-   - `mute /a /a` → flips once.
-   - `unsolo /x` on a track that is not soloed → nothing changes; same for `unmute`.
-   - `arm` on an audio and on a MIDI track → armed, **no message**; `arm` again → disarmed.
-   - `arm` on a return or the main track → "cannot be armed"; `unarm` there → no message.
-   - `arm` on a group track → "did not change".
-   - `arm /a /b` on two ordinary tracks → both armed, no message (with Live's Exclusive Arm
-     preference on, only one stays armed and the other is reported — expected).
-   - Re-run `mute /x` from history → toggles back (intended).
-5. `mute /Opal Lead` (unquoted space) and `mute /a, /b` (comma form) still work.
-6. ~~`find vermona` → pick list; then `next` / `prev` step through the matches.~~ Passed.
-7. History (`b09108c`, `972b67a`):
-   - `mute opal` with one match → history shows `mute "/Opal Lead"`; the re-run asks nothing.
-   - Add a second track containing "opal", re-run the entry → still the first track, no pick.
-   - `mute /Kick#1 kick`, pick Kick#1 → history shows `mute /Kick#1`.
-   - `goto vermona`, pick a device → the history entry re-runs to the same device.
-8. `cmdabl --setup` unchanged; an unknown command shows `unknown command`.
-9. Check the pick list's size and that the filter field has focus when it opens.
-10. Pick list rows (`900f89d`): with two tracks named `Kick`, `mute kick` shows `/Kick#1` and
-    `/Kick#2`; a track named `a</script>b` does not break the pick list.
-11. Dashes (`d7ba529`, `fa31212`):
-    - A track `Kick - Sub`: `mute /Kick - Sub` works unquoted; history shows it quoted.
-    - A track `Bass -6dB`: `mute /Bass -6dB` → "unknown option" with the quoting hint;
-      `mute "/Bass -6dB"` works.
-    - `find "-d"` is remembered as `find "-d"`; `mute -- --help` does not print help.
-12. One dialog at a time (`6ad8884`):
-    - `help`, then trigger the palette while the message is up → nothing opens; the log says
-      `trigger ignored: message`. Dismiss it → the palette opens again.
-    - `mute` on a missing track (failure message), dismiss, trigger → opens.
-    - `goto vermona` → pick list → `Esc` → trigger → opens.
-    - `pakabl list` still opens and its buttons work.
-    - If the palette sticks again: look in the `npm start` log for `dialog open: X` without a
-      matching `dialog closed`, or `trigger ignored: a command is still running`.
-13. pakabl (`504a606`, `9dc9ec7`):
-    - `pakabl update` → "index refreshed (16 extensions)", no note about ignored entries.
-    - `pakabl list` → Install, Uninstall, Update and Repo each work.
-    - `pakabl install ../x` and `pakabl uninstall A.b` → "not a valid extension id"; nothing
-      on disk is touched.
-    - `pakabl uninstall some.thing` (not installed) → "not installed".
-    - Install, then uninstall a real extension → its folder appears, then is gone.
-    - `pakabl upgrade federico-pepe.snake@9.9.9` → a version-mismatch failure.
-14. Reduced environment for child processes (`c28c70d`, `e1674bf`; step 13 covers pakabl):
-    - ~~`cmdabl --setup` → same output as before.~~ Passed in Live.
-    - ~~`:` opens the palette, and types a colon while the palette is open.~~ Passed in Live.
-    - `man ableton` opens the Live manual in the browser, `man cmdabl` the docs site (once the
-      `man` module is in); `cmdabl --help` shows a usage text and opens nothing.
-15. Pick list page (`1b305f6`, `d8ca020`; `Space` marking and the `> mute …` line already seen
-    working in Live):
-    - The dialog opens with focus in the filter; typing works at once.
-    - `mute vermona`, type `vermona midi` → the space appears, the list filters, nothing is marked.
-    - `↓` → the hint switches to `Space mark` and the first row stays active; `Space` marks it
-      and moves on. `↑` from the filter also only enters the list.
-    - In the list: stronger row highlight and no caret. A typed letter, `Backspace` or `←`/`→`
-      returns to the filter; the marks stay.
-    - `Tab` marks in both zones; `Enter` runs on the marked tracks and the history entry equals
-      the line; `Esc` cancels without a history entry. A mouse click marks in a multi-select list.
-    - `goto vermona` or `find vermona` (single-select): the first `↓` moves to the second row;
-      `Space` types a space.
-    - A very long track name: the line stays on one row, clipped.
-    - A pick with two rows: no scrollbar, nothing cut off (`bd13a52`).
-16. `man` and `cmdabl --help` (`fcb7296`, `69452e9`):
-    - ~~`man ableton` → the Live manual opens; `man cmdabl` → the docs site.~~ Passed in Live
-      after `827f326`. Still open: `man Ableton` (capital letter) → the same.
-    - `man ableton warp modes` → Ecosia opens with results from the Live manual only (which
-      language?);
-      `man ableton it's a & b` → the words arrive intact; `man cmdabl foo` → "cmdabl has no
-      search"; the history entry of a search re-runs it.
-    - `man` → usage with the topics; `man foo` → `no manual for "foo"` and the topics;
-      `man ableton extra` → a usage error.
-    - `help` lists `man`; a successful `man ableton` is in the history and re-runs.
-    - `cmdabl --help` and bare `cmdabl` show the usage text; `cmdabl --foo` adds `unknown flag`.
-17. Messages (`1b6d254`, `b6b208a`):
-    - ~~`man foo` (one line) → a small window, no scrollbar; `Esc` and `Enter` close; the long
-      path in `cmdabl --setup` wraps.~~ Passed in Live.
-    - `cmdabl --help` → passed in Live. `help` → every line on one row, the last line visible, no scrollbar
-      (failed with `b6b208a`; corrected in `5e6b339`).
-    - `cmdabl --setup` → "Remote Script is linked to … (nothing to copy)", no `cp:` line.
-    - Where a scrollbar does appear, it is thin and dim (`158502d`).
-    - `Esc` closes, `Enter` closes; `↓`/`PageDown` scroll a long text; Close stays visible.
+1. Finish the Live test of the merged work: see "Open Live tests".
+2. Dialog hang (see "Known issues"): 0.1.0 does not ship with "only a restart helps". Either the
+   cause is found and fixed, or the palette recovers by itself (a watchdog in
+   `src/core/dialogQueue.ts` that abandons a dialog which never appeared — only buildable once a
+   `/reset` after a real hang has shown that a new dialog can open). If the SDK allows neither:
+   a documented known issue and a report to Ableton.
+3. Remove the temporary `POST /reset`, or turn it into that recovery.
 
-### Found in the Live test (2026-10-11, still running)
+### 2. Remote Script as a two-way channel (cmdabl-bridge) — the main piece
 
-- Passed so far: `help`, pick list for `goto` and `find`, `find -t`, `next`/`prev`, `pakabl list`.
-  Later the same day: `Space` marking and the command line with `mute`; `man ableton`, `man cmdabl`.
-- The `help` window is too small (text wraps at 500×180) — see "Dialog size" in 0007.
-- Open decision: do `next`/`prev` stay once the pick list has a follow mode? Kept until the spike.
-- **Palette stuck "open"**: after some tests (last command probably `mute`) the palette could not
-  be opened until `npm start` was restarted; `/state` answered `open`, no window was visible, no
-  log captured. Suspected, unverified: a message dialog (`notify`, not covered by `isOpen`) was
-  still up when the palette was triggered. Task out to cmdabl-core: one dialog at a time, "open"
-  covers messages, log lines for open/close. **The cause stays unverified after that lands**: the
-  queue does not help if a dialog promise never settles; the new log lines are there to tell.
-- **`pakabl list` opens its dialog itself** (`src/modules/pakabl/index.ts`), outside the `Ui`
-  contract and the dialog queue. No collision today. **Decided by the user (2026-10-11): option
-  (a)** — a fourth generic surface (`page`) on `Ui`, reachable through `ModuleApi`; `pakabl list`
-  keeps its page. Not built yet; it is a contract change for cmdabl-core, to be ordered with the
-  candidates (the manual index needs a pick list for non-Live items, a related change).
-- `pakabl list` inlined downloaded index data unescaped (`</script>` in a name breaks the page).
-  Task out to cmdabl-modules, using core's `inlineJson`.
-- `Space` "did not mark" in the pick list: resolved, not a bug. The user had used `find`, which is
-  single-select; with `mute` marking and the command line work in Live.
-- The first `↓` skipping the first row felt odd. Changed in `d8ca020`: in a multi-select pick the
-  first arrow only enters the list.
-- **`man ableton` refuses a valid URL** (`refusing to open "https://www.ableton.com/en/manual/"`).
-  `new URL()` in `src/core/openUrl.ts` fails in the Extension Host although it works in plain Node
-  and in the unit tests. Suspected, unverified: the `URL` global is missing in the host's context.
-  Task out to cmdabl-core: validate without the global, never swallow the reason, log at startup
-  which web globals the host has. If confirmed, it belongs in `docs/sdk-tree.md` as a constraint.
-  Fixed in `827f326` (plain string check, no `URL` global; reviewed) — **the cause is still a
-  hypothesis** until the startup log line `cmdAbl: host globals: …` has been read in Live.
-  **Confirmed 2026-10-11:** the host reports `URL`, `URLSearchParams`, `structuredClone`,
-  `TextEncoder` and `crypto` as `undefined` (`fetch`, `AbortController` exist). Recorded in
-  `docs/sdk-tree.md`, section 7.
-- `cmdabl --setup` works with the reduced environment (rule already linked, Remote Script
-  installed). Its message has a horizontal scrollbar: a long path does not wrap, and the window is
-  too small again. Task out: the page wraps (cmdabl-ui), then the host sizes the window from the
-  text (cmdabl-core).
-- The dialog log lines work (`dialog open: palette`, `dialog closed: palette (returned a value)`,
-  `dialog open: message`).
-- Message sizing in Live (`b6b208a`): a one-line message and `cmdabl --setup` are right; `Esc` and
-  `Enter` close. `help` and `cmdabl --help` still wrap their longest line and get a scrollbar: a
-  character is about 8.0 px wide in Live's webview, not 7.83 as in headless Chrome. The requested
-  height is the content height (the title band is extra), line height 18 px is right. The
-  scrollbar track is bright white.
-- `cmdabl --setup` prints a raw `cp: … are identical (not copied)` line when the Remote Script
-  folder is a symlink to the repo.
-- `5e6b339` in Live: the linked-Remote-Script line is right. `cmdabl --help` still scrolls — the
-  window is about 1.5 px too low (the fixed height around the text is about 66.5 px in Live, not
-  65), the scrollbar then narrows the text and the long line wraps. The scrollbar is still a
-  white native one in the message page and in `pakabl list`; `158502d` has no visible effect.
-- **Confirmed in Live after `ac885e2` and `63bba87`:** `cmdabl --help` shows all six lines on one
-  row each without a scrollbar; the scrollbar in `pakabl list` is slim and dim (the dark colour
-  scheme and the single rule family work in Live's webview). Still to look at: `help`, a long
-  pick list, the palette dropdown, caret and selection.
-- **Confirmed in Live (evening):** `:` opens the palette by shortcut and types a colon while it is
-  open (reduced environment works with Karabiner); `pakabl list` → Install put "Device Manager"
-  into Live's Extensions settings; `man ableton warp modes` opens Ecosia, and the provider honours
-  the path in `site:`.
-- `arm` on a track that cannot be armed does nothing and shows no message (the SDK write neither
-  throws nor takes effect). Task out to cmdabl-modules.
-- The Ecosia results mix manual versions 11 and 12. Narrowing to `/live-manual/12`.
-- **Palette stuck again, now with evidence (20:59):** `arm` on the group track "Analog Rytm", run
-  twice, showed no message; the next trigger logged `dialog open: palette` and nothing after it —
-  no window in Live, `/state` answers `open`, only a restart helps. So `showModalDialog` was
-  called and neither showed a window nor settled. Suspected, unverified: the rejected write
-  inside `withinTransaction` leaves something pending on Live's side. Mitigation (cmdabl-modules):
-  refuse `arm` on group tracks before writing. Investigation (cmdabl-bridge).
-- `arm` on a MIDI track whose input device is missing (arm button greyed out) shows no error. Not
-  yet known whether the build with the read-back was running; if it was, the SDK cannot tell and
-  it needs the Remote Script (`can_be_armed`, replies).
+Plans: 0001 "Phase 4 protocol", build order 0001 §7, layout 0001 §8, decisions in 0004.
 
-### Dialog hang — what is known (cmdabl-bridge, 2026-10-11)
+1. Protocol with replies (confirmed by the user 2026-10-11 as proposed in 0001): UDP
+   127.0.0.1:27185, `{v, id, op, args}` → `{v, id, ok, result | error}`, timeout 500 ms,
+   `hello` → `{script, v, ops}`. Built: protocol, `hello`, `Bridge` interface, fake,
+   installed-script check (`99b6e00`, `3b37b0d`, `6d899db`); `cmdabl --bridge` and a temporary
+   `GET /bridge` (`e4fa6f3`, `730fbfb`; seen in Live 2026-10-11: 14 ms, 24 ms with the palette
+   open; the script answers while a dialog is open; Live must be restarted after
+   `cmdabl --setup`, re-selecting the control surface was not enough); `requires: ["bridge"]`
+   (`25b467a`, 0005 "`requires` as built"); script 0.2.0 layout (`ops/`, `routes.py`, `legacy.py`
+   for the old one-way messages) and `select` with name check and read-back (`50ced39`,
+   `84f8865`); `goto`, `find`, `next`, `prev` and the palette's object rows select through it and
+   declare `requires` (`8587279`).
+   - Behaviour change: with an old or missing script these answer "outdated / not installed /
+     not running" (`goto` with the old script: "installed Remote Script is outdated; run
+     `cmdabl setup` and restart Live"); a failed selection is a failing result (not remembered).
+     **Live test still open** ("Open Live tests", 1). Unverified until then: read-back equality
+     in Live, the main track's name, selecting a rack chain.
+   - Response time: 20 round trips measured in Live (user, 2026-10-11, script 0.2.0; `9c55d49`):
+     min 4 ms, median 62 ms, max 98 ms — the 0–100 ms wait for the display tick. Research on a
+     faster drain (0001 §6, `76bbb5d`): the tick is 0.1 s in Live's bundled framework;
+     `schedule_message` gives no gain; the one option is a `Live.Base.Timer` at about 20 ms
+     (main-thread behaviour and CPU cost unmeasured). No timer for now (see "Decisions").
+   - Old one-way messages removed (`a462647`). Step 3 built: `track_facts` (`1d625db`, script
+     0.3.0; `trackFacts()` in `bridgeOps.ts`: `canBeArmed`, `isGroup`, `isGrouped`, `arm`, one
+     request for up to 20 tracks). Unverified until Live: `can_be_armed` for a MIDI track
+     without its input device, for a group and for the main track. Task out to cmdabl-modules:
+     `arm` uses the facts when the script is there and behaves as today when it is not (`arm`
+     does not require the bridge). Built in `7e4d787` (reviewed): one `track_facts` request
+     before the write; `canBeArmed` false → "Live does not allow arming this track (e.g. no
+     input device)"; without the script exactly today's behaviour. A cached "unavailable" is
+     not retried by `arm` (noticed after `cmdabl --bridge` or a `goto`). Live test: "Open Live
+     tests", 1b.
+   - Known gaps, for roadmap steps 3.3/3.4: a failing palette row is shown as a plain message
+     (the result handler cannot return a `CommandResult`); a row whose object is gone can fall
+     back to the route and select another object (no name in the item); modules call
+     `getBridge()` directly instead of getting the bridge through `ModuleApi`.
+2. Availability: the extension knows whether the script is installed, running and of a matching
+   version (hello and installed-script check built, see 1); commands declare `requires` and
+   answer with exit code 5 and a clear text. Built. Left: marking unavailable commands when the
+   palette opens (cached state only; optional for 0.1.0).
+3. Install and update for a user: `cmdabl setup` installs or updates the script, detects a
+   version mismatch after an extension update and says when Live must be restarted. Open:
+   `cmdabl --setup` installs today, but does not compare versions (0001 §7, step 7); the
+   subcommand form is step 3.1.
+4. Operations — built and seen in Live: `select` with read-back, `track_facts` (`arm` verifies
+   through the script), chain nodes with `chains`, `chain_set` for `mute`/`solo` with the
+   access token, `showChains` for `--unfold`. Left: reading the current selection (for
+   restoring it later in follow mode); chains of racks nested inside a chain.
+5. Unit tests for the protocol on both sides (built for steps 1–2); a Live test list per
+   operation.
 
-- Evidence: `track.arm = v` is a synchronous native call wrapped in its own transaction; the SDK
-  has no channel for a failure that arrives later. Our handler is synchronous and nothing in the
-  code drops a rejected promise. The log shows no `dialog failed` and no `trigger ignored`: the
-  hang is inside `showModalDialog`, whose promise never settles.
-- `arm` is a toggle, so the two runs on the group were arm, then unarm. The palette opened fine
-  after the first. No message is the expected result of a write that does not throw and reads
-  back equal — it is not evidence that Live refused it.
-- So "a write to a group track" is **not** established as the cause. The earlier hang followed a
-  `mute`. The shared factor: a data-model write ran in the continuation of a pick dialog's close,
-  and a later dialog request then hung.
+### 3. Freeze the command syntax (cmdabl-core, cmdabl-modules) — the rest of 0005
+
+Changing these after a release breaks what users have learned and what is stored in history.
+
+1. `cmdabl` and `pakabl` as subcommand groups — built (`e04989d`, `f795ac1`, `7b158eb`):
+   `cmdabl setup` (also says what to do about the Remote Script: restart Live, enable the
+   control surface, or nothing), `cmdabl bridge`, `pakabl install|uninstall|update|upgrade|list`.
+   No aliases (user, 2026-10-12): `cmdabl --setup` and `--bridge` are usage errors now, old
+   history entries with them fail. `pakabl upgrade <id>` without a version installs the
+   index's version. The legacy `registry.register` path and `ModuleApi.registry` are removed
+   (`a3ae115`). Seen in Live (1g). Dead ends left until 0006: `FlagDef`/`PaletteItem.flags`, the
+   flags fallback in `extension.ts`, the flag phase in `ui/interface.html`.
+2. `enum` argument kind — built (`dbcb401`; `man <ableton|cmdabl>` in `32e04f9`): choices are
+   checked when parsing (exit 2 with the list), usage shows `<a|b>`. pakabl ids stay plain text
+   until a completion source exists.
+3. Object rows of the palette run as `goto <unique path>` — built (`ee64867`, `9c6246c`,
+   `1063875`): history entry, presenter, name check; a row whose object is gone never selects
+   a neighbour. `registerResultHandler` is removed from `ModuleApi`. Note: `dbcb401` does not
+   build on its own (a shared-index slip); irrelevant after a squash merge. Live test 1h.
+4. Ports on `ModuleApi` — built (`ddc055d`, `2c98b8b`, `c5949a2`, `67655d5`, `1a33851`;
+   confirmed by the user on the condition that the POSIX-like command contract stays):
+   `bridge`, `liveSet`, `tracks` (SDK-backed), `log`, `dialog` (through the dialog queue).
+   `api.context` is gone; an import rule keeps modules off the SDK and the bridge module;
+   commands are tested at `run` level with fakes. Behaviour change: `pakabl list` waits in the
+   dialog queue, and a page that fails to open counts as dismissed. Live test 1i.
+4b. Live API mapping (approved by the user 2026-10-12; source for LOM names and paths:
+   https://docs.cycling74.com/apiref/lom/): names follow the LOM; every Remote Script
+   operation and every port records the LOM properties or SDK calls behind it and whether it
+   runs through the SDK or the script — so when a later SDK covers more, only the adapter
+   behind a port changes; `lomPath(node)`; a generated page "Live API mapping" checked in CI;
+   a command that shows a target's LOM path. All for 0.1.0. After 0.1.0: reading or setting
+   arbitrary LOM properties by command. Built: the LOM check against the reference, per-op
+   LOM properties, `lomPath` (`0c05cda`); port ↔ SDK/LOM table and the generated page
+   `docs/reference/live-api.md` (`79513e3`); `lom <target>` (commands page `8af6c1c`); names
+   follow the LOM (`isFoldable`, `isShowingChains`, wire `is_showing_chains`, `in_note`;
+   `ab4ae8b`, `2d0fdbc`, script 0.1.1). Live test 1j.
+5. Leftovers — done: platform files moved into `src/core/` (`c536de6`; `src/` is now
+   `ableton/`, `core/`, `modules/`, `extension.ts`, `httpTrigger.ts`), dead ends removed
+   (`b6722ec`, `82c1e5b`: `FlagDef`, `flags`/`action`/`route`/`scope` on palette items, the flag
+   phase of the palette page), import rule 6 for Node modules in `src/modules/` with
+   `pakabl/platform.ts` as the listed exception (`50b2d9e`).
+
+Step 3 is complete. Live smoke test: 1j plus `help`, `cmdabl setup`, a history row, an object row.
+
+### 4. Small things that make it feel finished
+
+- Import-boundary test is built (`921dd43`, `9ee97c3`; rules in 0005, "Import boundaries"). One
+  listed exception is left: `pakabl list` opening its own dialog (goes away with the `page`
+  surface below).
+- One shared matcher (approved by the user 2026-10-12): built — `src/core/match.ts`, embedded
+  into the pages as `CmdMatch` (`f82ab56`); `find` (`ba229fc`), palette and pick list
+  (`6f0527d`) use it. Path resolution stays strict. Behaviour change: the pick list filter
+  matches words in any order and orders rows by fuzzy rank. The completion engine (0006, after
+  0.1.0) builds on it. Live test: "Open Live tests", 1c.
+- Forgiving target resolution (approved by the user 2026-10-12): built (`461c885`, `46f241a`,
+  `8588a8d`; rules in 0005, "Forgiving target resolution"). Behaviour changes: several bare
+  words are one pattern first (`mute vermona kick` → the Kick pad); `mute <group> <its child>`
+  asks instead of running both; two ambiguous texts share one pick list; a mistyped target
+  opens a "did you mean" list instead of failing at once. Live test 1f.
+- State symbols in the pick list of `mute`/`solo`/`arm`: which rows are already muted, soloed
+  or armed (noted by the user 2026-10-12; draft in 0007 §4; two contract changes to confirm
+  before building: a state field on pick list rows, a state reader on the command node).
+- Feedback for `next`/`prev` (e.g. `2/5 /path`).
+- A generic `page` surface on `Ui` for module pages (decided, see "Decisions"); `pakabl list`
+  moves onto it and into the dialog queue.
+- A larger maximum size for the pick list (0007).
+- Clean "not supported on this platform" answers everywhere off macOS (`cmdabl --help` and `man`
+  already answer exit code 5 with the URL off macOS; Windows untested).
+- Note in `docs/sdk-tree.md` that `src/core/samePath.ts` is the first direct `node:fs` call in
+  host code (fails soft). Live confirmed it works (the linked-Remote-Script line); the note is
+  not written yet.
+
+### 5. Release 0.1.0
+
+Documentation (plan approved by the user 2026-10-12). Today the docs site has a 9-line home page
+and three developer guides; nothing for users.
+
+- **Generated command reference** (cmdabl-core): a script writes a page from the command tree;
+  CI checks it is current. New optional fields on the command node, confirmed by the user:
+  `description`, `examples`, and a summary per argument — the same texts show in `--help`. A
+  test requires at least one example per command. Also generated: the list of Remote Script
+  operations.
+- Built: documentation fields and the generator (`845b971`, `3133603`, `8ba50b1`), the
+  generated pages `docs/reference/commands.md` and `remote-script.md` with the CI check
+  (`e616318`), "Getting started" and "Architecture" (`27a74c3`, `44399ed`), the authoring
+  guide, "Using cmdAbl", "The Remote Script", "Known limits" (`6099aa7`, `4ebbac0`,
+  `69075ed`). Open (cmdabl-docs has the briefs): Home, the README, the `node:fs` note, `tree`
+  and the own-name rule in "Using cmdAbl"; three images from the user.
+- **User pages** (cmdabl-docs, one brief per page from the architect): install and
+  `cmdabl setup`; the Remote Script (what it does, restarting Live, the access token); using it
+  (palette, pick list, several words, "did you mean", history); known limits (macOS-only, SDK
+  beta).
+- **"Adding a command"** (cmdabl-modules), after step 3.4.
+- **README** shortened to a pointer to the site; stale passages out. The `node:fs` note in
+  `docs/sdk-tree.md`.
+- **Images:** only where they explain what text cannot. Dialog-only screenshots are generated
+  by a script (cmdabl-ui, headless browser, sample data) into `docs/assets/`; shots with Live
+  in them come from the user, from a short list with exact contents and file names. Private
+  parts (home path, user name, project names) are covered with an opaque box rather than left
+  out — never a blur. The architect looks at every image before it is committed.
+- **`cmdabl-docs`**: a new on-demand agent (haiku; `scripts/agents.sh docs`,
+  `.claude/agents/docs.md`) for `docs/` (not `feature-plans/`), `README.md`, `mkdocs.yml`,
+  `docs/assets/`. If the writing quality does not hold, it moves to sonnet.
+
+Release:
+
+- From "Parked", what affects a release: the runner image before 2026-10-19, index pull requests
+  that start the required checks, the pakabl index noise.
+- Decide the temporary diagnostics on the trigger server: `POST /reset` and `GET /bridge` —
+  remove, or keep `/reset` as a documented recovery.
+- Release test: install the packaged `.ablx` into a Live without Developer Mode, run setup, run
+  the full Live test list once.
+- Bump the version in `package.json` and `manifest.json`, merge; the release workflow publishes.
+- Release notes for 0.1.0 must say what changed for a user of 0.0.1 (its README documented
+  them): `unmute`, `unsolo`, `unarm` removed — use `mute|solo|arm --set 0`; `cmdabl --setup` →
+  `cmdabl setup`; the Remote Script is required for selecting; macOS only. The generated notes
+  do not carry this; add it by hand to the release.
+
+### After 0.1.0 (order to be set then)
+
+- 0.2.0: the completion engine (0006) — ghost text, level-by-level paths; builds on the tree
+  from step 2.
+- Keymap (0006): UI keys as named actions, a user `keymap.json`, keys bindable to command lines.
+- Dialog-channel spike (the four checks in 0006), then follow mode for the pick list (0007 §4)
+  and navigation mode. Open: do `next`/`prev` stay once follow mode exists? Kept until the spike.
+  A timer for faster bridge replies becomes a candidate again with follow mode.
+- 0007: theme file, replacement pages with fallback, `api.ui.register`; configurable dialog
+  sizes.
+- An index of the Ableton manual for `man ableton <words>` (wanted by the user, 2026-10-11)
+  instead of a search-engine query: match the words against chapter and section titles
+  (chapters are `/en/live-manual/12/<chapter>/#<section>`) and open the section, with the pick
+  list on several hits (needs a pick list for things other than Live objects — a `ModuleApi`
+  change).
+- History as a log (user, 2026-10-11: wanted, but later): `history` shows the last commands
+  newest first with success or failure, `Enter` runs a row again; failed commands are kept in
+  the log too. Today the entries are only the first rows of the empty palette, marked
+  `(history)` — at most 20, in memory only.
+- Windows: an opener in core's `openUrl`, a trigger key, Remote Script install paths, a tester.
+  (`man` and pakabl's Repo button are untested on Windows; `man` answers with the URL, exit 5.)
+
+## Open Live tests
+
+Everything not yet confirmed by the user. Restart `npm start` first. Passed (user, 2026-10-12):
+`help` lists the commands, pick list for `goto`/`find`, `mute` multi-select with one undo, the
+toggles incl. `arm` on audio/MIDI/return/main/group tracks.
+
+1. Remote Script and target resolution — **all seen by the user on 2026-10-12**: `select`
+   (track, device, return, main, folded group, palette rows), `find`/`next`/`prev`, `arm`
+   verify on the track with the unavailable input device and the new message layout, the shared
+   matcher in palette and pick list, chains and pads (also of an Instrument Rack), `mute`/`solo`
+   on pads (the mixer column's button changes and the pad's own M follows), `mute <track>
+   <pad>` with undo (which steps the undo takes was not noted), `--unfold`, one pick list for
+   several words (`mute sub vermona`), "did you mean" (`mute vermna`) and plain "nothing
+   matches" (`mute zz`). Left from this block: `cmdabl --help` lists `--bridge`;
+   `curl http://127.0.0.1:27184/bridge` with a pick list and with a message open; `goto kick`
+   with a track and a pad of that name asks to pick; rename a pad and use the old name; token
+   handling after disabling and re-enabling the control surface.
+1g. Subcommand groups — seen by the user on 2026-10-12: `cmdabl --setup` → usage error with
+   the valid subcommands, `cmdabl setup` with the advice line, `cmdabl bridge` (32 ms), `pakabl`
+   help, `pakabl nolpe` → usage error, `pakabl list`. Not reported: the buttons of
+   `pakabl list`, `pakabl install` without an id.
+1h. Palette rows and `man`: pick a track, a device and a pad row → each is selected and the
+   history shows `goto …`, re-runnable; with two same-named siblings the second row selects
+   the second; control surface disabled → the row answers with the bridge's message; `man` and
+   `man nope` → usage errors naming both topics; `man Ableton`, `man ableton warp modes`,
+   `man cmdabl` as before.
+1i. After the ports rework: `mute /a, /b`, `solo`, `unmute`, `unsolo` (one undo step each);
+   `arm` on a normal track, a group and the MIDI track with the unavailable input; `mute
+   <pad>` with the script on and off; `pakabl list` opens, its buttons work, `Esc` closes
+   without a message; `goto`, `find kick`, `next`, `prev`, a palette row; `mute --help` shows
+   description and examples.
+1j. Script 0.1.1 and `lom` (`cmdabl setup`, restart Live, `npm start`): `cmdabl bridge` →
+   0.1.1; `goto --unfold <rack track>` shows the chains; `find -c kick`, `mute <pad>`,
+   `solo <chain>` as before; `arm` on a group is refused; `lom /<track>`, `lom` on a return
+   track, the main track, a device, a rack, a pad → three lines (cmdAbl path, LOM path, link);
+   one device path checked in Max for Live (`live.path`) → the same device; can the text of the
+   message be selected and copied?; `lom` works with the control surface disabled.
+1k. `--set`: `mute /a` toggles; `mute --set 1 /a, /b` with one already muted → both muted, no
+   failure; `mute --set 0 /a, /b` → both unmuted; the same for `solo`, also on a pad; `arm
+   --set 1` on a normal track, a group (refused) and the MIDI track with the unavailable input
+   (reported); `mute --set 2 /a` → usage error naming 0 and 1; `unmute /a` → unknown command;
+   run `mute --set 0 /a` from history → still unmuted.
+1l. Round of 2026-10-13 — **seen by the user on 2026-10-13**: the own-name rule, joined words
+   running at once, `find -L` (he first expected `-L 0` to mean tracks only; it means "objects
+   whose own name matches", which includes a rack named like its track — kept), `Tab` fill,
+   the palette `Enter` cases, `--set` and its history form. He reported "all other tests seem
+   to work" without going through them one by one.
+2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
+   `POST /reset` answers "no
+   dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
+   the Edit menu, Cmd+Z, switch apps, `POST /reset`, press `:`, report whether a palette appears
+   plus the log from the last `run start:` line on.
+3. History (`b09108c`, `972b67a`): `mute opal` with one match → history shows
+   `mute "/Opal Lead"`, the re-run asks nothing; add a second "opal" track, re-run → still the
+   first, no pick; `mute /Kick#1 kick`, pick Kick#1 → history `mute /Kick#1`; `goto vermona`,
+   pick a device → the entry re-runs to the same device.
+4. `mute /Opal Lead` (unquoted space) and `mute /a, /b` (comma form) still work.
+5. Dashes (`d7ba529`, `fa31212`): track `Kick - Sub`: `mute /Kick - Sub` works, history shows it
+   quoted; track `Bass -6dB`: `mute /Bass -6dB` → "unknown option" with the quoting hint,
+   `mute "/Bass -6dB"` works; `find "-d"` is remembered as `find "-d"`; `mute -- --help` prints
+   no help.
+6. Pick list rows (`900f89d`): two tracks named `Kick`, `mute kick` shows `/Kick#1`, `/Kick#2`;
+   a track named `a</script>b` does not break the pick list.
+7. Pick list page (`1b305f6`, `d8ca020`, `bd13a52`; `Space` marking and the `> mute …` line seen):
+   focus in the filter on open, typing works, size; `mute vermona`, type `vermona midi` → space
+   appears, list filters, nothing marked; `↓` → hint `Space mark`, first row stays active,
+   `Space` marks and moves on, `↑` from the filter only enters the list; in the list: stronger
+   highlight, no caret, a typed letter / `Backspace` / `←`/`→` returns to the filter, marks stay;
+   `Tab` marks in both zones, `Enter` runs on the marked tracks and the history entry equals
+   the line, `Esc` cancels without history, a mouse click marks; `goto`/`find` (single-select):
+   first `↓` moves to row two, `Space` types a space; a very long name stays on one clipped row;
+   a pick with two rows has no scrollbar; sizing of a long list.
+8. One dialog at a time (`6ad8884`; a trigger during a message opening nothing, and the log
+   lines, were seen): `mute` on a missing track, dismiss, trigger → opens; `goto vermona` →
+   pick → `Esc` → trigger → opens; `pakabl list` opens and its buttons work. If the palette
+   sticks: look in the `npm start` log for `dialog open: X` without `dialog closed`, or
+   `trigger ignored: a command is still running`.
+9. pakabl (`504a606`, `9dc9ec7`, `82beafd`, `4a479ce`, `931615b`; `Install` seen): `pakabl update`
+   → "index refreshed (16 extensions)", no note about ignored entries; `pakabl list` → Update,
+   Uninstall, Repo (opens the extension's GitHub page) work; `pakabl install ../x` and
+   `pakabl uninstall A.b` → "not a valid extension id", nothing on disk touched;
+   `pakabl uninstall some.thing` → "not installed"; install then uninstall a real extension;
+   `pakabl upgrade federico-pepe.snake@9.9.9` → version-mismatch failure.
+10. `cmdabl --setup` unchanged (the linked line was seen right); unknown command shows
+    `unknown command`; Karabiner `cmdabl_open` flag reset on startup (never reported).
+11. `man` (`fcb7296`, `69452e9`, `0db7d6b`, `ddd15cb`, `e885674`, `9edd84f`; `man ableton`,
+    `man cmdabl`, `cmdabl --help` seen; Ecosia opens and honours the path in `site:`):
+    `man Ableton` (capital) → the Live manual; `man ableton warp modes` → results from manual
+    version 12 only (untested narrowing), which language, is `/en/` the wanted one;
+    `man ableton it's a & b` → words arrive intact; `man cmdabl foo` → "cmdabl has no search";
+    a search entry in history re-runs; `man` → usage with topics; `man foo` →
+    `no manual for "foo"` and topics; `man ableton extra` → usage error; `help` lists `man`; a
+    successful `man ableton` is in history and re-runs; bare `cmdabl` shows the usage;
+    `cmdabl --foo` adds `unknown flag`.
+12. Messages and scrollbar (`1b6d254`, `b6b208a`, `5e6b339`, `ac885e2`, `158502d`, `63bba87`;
+    `cmdabl --help` on six rows and the slim dim scrollbar in `pakabl list` seen): `help` → every
+    line on one row, last line visible, no scrollbar; `Esc`/`Enter` close; `↓`/`PageDown` scroll
+    a long text, Close stays visible; slim dim scrollbar in the message page and pick list; no
+    white flash on open; palette dropdown, caret and selection still readable.
+13. Not Live: the next pull request shows three checks (`build`, `gitleaks`, `docs-build`,
+    `e23c043`); the next manual run of the pakabl index workflow proves the pinned
+    `peter-evans/create-pull-request` (`a5e1adc`).
+
+## Known issues and open questions
+
+### Dialog hang
+
+- Seen twice: after a `mute` (palette could not be opened until `npm start` was restarted;
+  `/state` answered `open`, no window); and 2026-10-11, 20:59, after `arm` run twice on the group
+  track "Analog Rytm": the next trigger logged `dialog open: palette` and nothing after it.
+- Facts: `track.arm = v` is a synchronous native call in its own transaction; the SDK has no
+  channel for a failure that arrives later. Our handler is synchronous and nothing drops a
+  rejected promise. The log shows no `dialog failed` and no `trigger ignored`: the hang is inside
+  `showModalDialog`, whose promise never settles. `arm` is a toggle (the two runs were arm, then
+  unarm; the palette opened after the first); "no message" is the expected result of a write
+  that does not throw and reads back equal. "A write to a group track" is **not** established as
+  the cause; the shared factor of both hangs: a data-model write ran in the continuation of a
+  dialog's close, and a later dialog request then hung.
 - Hypotheses: (H1) group arm specifically; (H2) a transaction executed inside a modal's close
   callback overlaps the modal's teardown, timing dependent; (H3) unrelated to writes; (H4) Live
   holds the dialog because of a pending undo step.
-- Experiments for the user (group arm is refused since `aa98b7a`, so use `mute`): `mute` on a
-  normal track through the pick list several times, then by direct path (separates "write after a
-  pick" from "write"); after a hang: what Live's Edit menu shows for Undo, whether Cmd+Z
-  brings the dialog, whether switching apps reveals a hidden window.
-- **Result of the experiment (user, 2026-10-11):** `mute` through the pick list about ten times
-  and by direct path about ten times: no hang in either round. H2 is not supported (not excluded
-  either, it would be timing dependent). The hang is rare and cannot be reproduced on demand, so
-  neither candidate fix below is shipped: there is nothing to verify it against.
-- Next step instead: better evidence for the next occurrence (task to cmdabl-core): a log line
-  per command run (line, exit code, duration), and a manual `/reset` on the local trigger server
-  that clears the "dialog open" state, to learn whether a new dialog can open after a hang
-  without restarting. The checks after a hang stay: Undo entry in the Edit menu, Cmd+Z,
-  switching apps.
-- Built in `689e673`: log lines `run start: <typed line>` and
-  `run: <canonical line> -> <code|cancelled|threw> (<ms> ms)`; `dialog open: X (N ms after the
-  previous dialog closed)` and `dialog closed: X (…, open for N ms)`; and
-  `curl -X POST http://127.0.0.1:27184/reset` (local only, refuses requests with an `Origin`
-  header, `GET` answers 405). `/reset` is temporary and only for after a hang: on a healthy
-  dialog it drops the result and the next trigger opens a second modal over the first; queued
-  messages are lost; `pakabl list` opens outside the queue, so a hang there answers "no dialog
-  was open".
-- Live test: (1) after a restart, `mute <track>` and an unknown command show the `run start`,
-  `run:` and timed `dialog` lines; (2) with nothing open, `POST /reset` answers "no dialog was
-  open" and `GET /reset` answers 405; (3) after the next real hang, before restarting: Undo
-  entry, Cmd+Z, app switch, then `POST /reset`, press `:`, and report whether a palette appears
-  plus the log from the last `run start:` line on.
-- `arm` on a MIDI track whose input device is missing (arm button greyed out in Live): no message
-  even with the read-back of `e885674` running (user, 2026-10-11). The SDK accepts the write and
-  shows no difference; detecting it needs Remote Script replies (`can_be_armed`), see "Next".
-- Candidate fixes, kept until a hang can be tied to a cause: run the handler one macrotask after
-  a dialog closes (cmdabl-core); drop the outer `withinTransaction` for a single-track write.
+- Experiment (user, 2026-10-11): `mute` through the pick list about ten times and by direct path
+  about ten times: no hang. H2 is not supported (not excluded). The hang is rare and cannot be
+  reproduced on demand, so neither candidate fix is shipped (run the handler one macrotask after
+  a dialog closes; drop the outer `withinTransaction` for a single-track write). `arm` refuses
+  group tracks before writing (`aa98b7a`, seen working) — it avoids one possible trigger only.
+- After a hang (`689e673`): log lines `run start: <typed line>`, `run: <canonical line> ->
+  <code|cancelled|threw> (<ms> ms)`, timed `dialog open/closed`. Check Undo in the Edit menu,
+  Cmd+Z, switching apps; then `curl -X POST http://127.0.0.1:27184/reset` (local only, refuses
+  requests with an `Origin` header, `GET` answers 405) and press `:`. `/reset` is temporary: on
+  a healthy dialog it drops the result and the next trigger opens a second modal over the first;
+  queued messages are lost; `pakabl list` opens outside the queue, so a hang there answers "no
+  dialog was open". Test 2 in "Open Live tests".
 
-### In progress (tasks out, 2026-10-11)
+### Other
 
-| Task | Agent | State |
-|---|---|---|
-| `mute`/`solo`/`arm` toggle again; `un…` stay as "off" (0005) | cmdabl-modules | committed `145fd98` + `083c288`, reviewed; needs the Live test (step 4 above) |
-| `SelectRequest.preview` and `items[].value` for the command line in the pick list (0007 §4) | cmdabl-core | committed `900f89d`, reviewed (also escapes `<` in the data inlined into all three dialogs); the line itself is not visible until the page task is done |
-| Remembered line fully canonical: unique paths, each object once (0005) | cmdabl-core | committed `b09108c` + `972b67a` (option parsing fix, reviewed OK). `b09108c` alone has one failing test — squash before merging if a clean history matters |
-| Dash handling: quote leading-dash words in the remembered line, `--` ends options, lone `-` is a word, hint in "unknown option" (0005) | cmdabl-core | committed `d7ba529` + `fa31212`, reviewed; needs the Live test (step 11 above) |
-| One dialog at a time, "open" covers messages, open/close log lines | cmdabl-core | committed `6ad8884`, reviewed; needs the Live test (step 12 above). Behaviour change: a trigger while a message is up is ignored |
-| `inlineJson` in its own file; `pakabl list` escapes the index data with it | cmdabl-core, then cmdabl-modules | committed `cc5c62f` + `504a606`, reviewed; Live: `pakabl list` and its buttons as before |
-| pakabl hardening: validate ids before unzip and delete, open only repo URLs from the index, fail on a missing page placeholder | cmdabl-modules | committed `9dc9ec7`, reviewed; needs the Live test (step 13 above). Behaviour changes: pakabl errors are failing results now (no history entry); `pakabl uninstall` refuses folder names outside the id shape, e.g. hand-installed ones |
-| Child processes get an allowlisted environment instead of all of `process.env` (`src/setup.ts`, pakabl's `platform.ts`) | cmdabl-core, then cmdabl-modules | committed `c28c70d` (setup and `cmdabl --help`) + `e1674bf` (pakabl), reviewed; no spawn passes the whole environment any more; needs the Live test (steps 13 and 14). `cmdabl --help` off macOS now returns exit code 5 with the URL instead of spawning `open`; Windows untested |
-| `pakabl list` page sends `repo:<id>` instead of a URL (one line in `ui/pakabl-list.html`) | cmdabl-modules (host), cmdabl-ui (page) | committed `82beafd` + `4a479ce`; needs the Live test: the Repo button opens the extension's GitHub page (step 13) |
-| Pick list page: two zones (`Space` marks in the list), command line (0007 §4) | cmdabl-ui | committed `1b305f6`, reviewed; keys checked with a scripted browser run, the look is unchecked; needs the Live test (step 15 above). Dialog height for the extra line: cmdabl-core, committed `bd13a52`, reviewed |
-| Pick list: first arrow enters the list without moving; robust `Space` detection; `Ctrl+Shift+D` key diagnostic | cmdabl-ui | committed `d8ca020`, reviewed; needs the Live test (step 15) |
-| Secret scan in CI (`.github/workflows/secret-scan.yml`, gitleaks 8.30.1 pinned by checksum, `docs/guides/ci.md`) | cmdabl-core | committed `1092e4e`, reviewed. Full history scanned locally: 0 findings. Verified on GitHub after the push: the push run and the pull-request run (78 commits) scan their ranges, a manual run scans the whole history (117 commits) — no leaks |
-| Pin `peter-evans/create-pull-request` in `pakabl-index.yml` to a commit SHA | cmdabl-core | committed `a5e1adc` (v7.0.11), reviewed; the next manual run of the index workflow after a push is the check |
-| `cmdabl --help` prints usage instead of opening the Ableton manual; `openUrl` in its own file | cmdabl-core | committed `fcb7296`, reviewed. The usage text points to `man cmdabl` — **do not push before the `man` module is in**. Live: `cmdabl --help` and bare `cmdabl` show the usage, `cmdabl --foo` adds `unknown flag`, `cmdabl --setup` unchanged |
-| New module `man`: `man ableton` (Live manual), `man cmdabl` (docs site) | cmdabl-modules | committed `69452e9`, reviewed; needs the Live test (step 16). On Windows `man` answers with the URL (exit 5) until core's `openUrl` has a Windows opener |
-| pakabl's Repo button opens through core's `openUrl` (macOS); the Windows branch stays, with an https check | cmdabl-modules | committed `931615b`, reviewed; Windows untested |
-| `man ableton <words>`: DuckDuckGo search limited to the manual (`site:ableton.com inurl:live-manual`; the user chose the engine) | cmdabl-modules | committed `0db7d6b`, reviewed; needs the Live test (step 16). Quotes are not passed on (no exact phrase); a word starting with `-` needs `--`; the typed words go to DuckDuckGo |
-| Manual search uses Ecosia instead of DuckDuckGo (`site:ableton.com/en/live-manual`; user decision) | cmdabl-modules | committed `ddd15cb`, reviewed; needs the Live test: does Ecosia honour the path in `site:`, and is the English manual (`/en/`) the wanted one? |
-| Message page: long lines wrap, Close stays visible, `Esc`/`Enter` close; then the window height follows the text | cmdabl-ui, then cmdabl-core | page committed `1b6d254`, reviewed (checked in headless Chrome only; held-key repeats do not close a message; arrows and PageDown scroll the text); window sizing committed `b6b208a`, reviewed (width 500…760, height 110…420; short messages now open smaller); needs the Live test (step 17) |
-| Message sizing with Live's character width (8.05 px); setup reports a linked Remote Script instead of the `cp` line | cmdabl-core | committed `5e6b339`, reviewed; needs the Live test (step 17). The first direct `node:fs` call in host code (`src/core/samePath.ts`, fails soft) — note it in `docs/sdk-tree.md` once Live confirms |
-| Themed scrollbar in the dialogs (`ui/shared.css`) | cmdabl-ui | committed `158502d`, reviewed; checked in headless Chrome for the message and pick pages only; needs the Live test (thin dim scrollbar, no white track, in all four pages) |
-| Message height: fixed part 65 → 72 px | cmdabl-core | committed `ac885e2`, reviewed; needs the Live test: `cmdabl --help` shows six lines without a scrollbar |
-| Scrollbar still white in Live: `color-scheme: dark`, one rule family per engine, better integration | cmdabl-ui | committed `63bba87`, reviewed; verified in headless Chrome only, **not in Live's webview**; needs the Live test (slim dim bar in all four pages, caret and selection still readable, no white flash on open) |
-| `arm` reports tracks that cannot be armed; manual search pinned to `/live-manual/12` | cmdabl-modules | committed `e885674` + `9edd84f`, reviewed; needs the Live test (step 4). The read-back after arming is unverified against the SDK: if ordinary tracks report "did not change", it comes out again (one function) |
-| Docs workflow's build job gets its own check name (`docs-build`) | cmdabl-core | committed `e23c043`, reviewed; the next pull-request run on GitHub is the proof (three checks: `build`, `gitleaks`, `docs-build`) |
-| `arm` refuses group tracks before writing | cmdabl-modules | committed `aa98b7a`, reviewed; needs the Live test. It avoids one possible trigger; it does not explain the hang |
-| Why a dialog never appears after a write to a group track's `arm` (transaction, rejected write) | cmdabl-bridge | findings in (no code changed), see "Dialog hang" above; the user's experiment did not reproduce it |
-| Evidence for the next dialog hang: log line per command run, manual `/reset` on the trigger server | cmdabl-core | committed `689e673`, reviewed; needs the Live test (see "Dialog hang" above) |
+- **`arm` on a MIDI track whose input device is missing** (arm button greyed out) shows no error.
+  Measured in Live (2026-10-12, log lines of `ff32196`): the script reports `can_be_armed` true
+  for it; the SDK reads back `arm` true after the write, but the script still reports `arm`
+  false on the next run — Live does not arm the track and the SDK's value is wrong. So it can
+  be detected: task out to cmdabl-modules — toggle from the script's value and verify with a
+  second `track_facts` after the write (two requests for `arm`, an accepted exception to "one
+  request per command"). Built in `ebeadf7` (reviewed); a mismatch is asked once more after
+  100 ms before it counts. Without the script the limit stays. Live test 1b.
+- Live's Log.txt shows a `SyntaxError` at startup for `import ableton-live-midi-remote-scripts`:
+  a folder of that name in a Remote Scripts directory, not cmdAbl. Harmless; the user may
+  remove or rename the folder.
+- `cmdabl --bridge` took 2–3 s with nothing visible (user: looks like a hang). Task out to
+  cmdabl-core: the command pings once and answers at once; the 20-round-trip measurement
+  stays on `GET /bridge` only.
+- **Exclusive Arm / Solo**: `arm /a /b` arms both tracks although "Exclusive: Arm" is on, and
+  `solo` likewise with "Exclusive: Solo"; a write through the API does not apply the exclusive
+  rule. Accepted by the user (2026-10-12); `arm /a` therefore does not disarm other tracks.
+- **Host globals**: the Extension Host reports `URL`, `URLSearchParams`, `structuredClone`,
+  `TextEncoder` and `crypto` as `undefined` (`fetch`, `AbortController` exist); in
+  `docs/sdk-tree.md`, section 7. `openUrl` validates with a plain string check (`827f326`).
+- **Undo History**: no call in the LOM documentation or the SDK types opens the panel (from the
+  documents, not tried in Live). The idea is dropped unless Ableton adds one.
+- **pakabl and the sandbox** (user, 2026-10-12): pakabl installs Ableton Live extensions
+  (`.ablx`) by writing into Live's Extensions folder from the Extension Host. It works today; a
+  stricter sandbox announced by Ableton may block installing in a later Live. Documented as a
+  limit. Its texts said "cmdAbl extensions" — being corrected to "Ableton Live extensions".
+- **Windows**: untested (see "After 0.1.0").
+- Known gaps of the bridge-based palette rows: see roadmap step 2, "Known gaps".
 
-### Candidates (not ordered yet — order them with the user after the test)
+## Decisions
 
-- Follow mode for the pick list (0007 §4; needs the spike in 0006).
-- Dialog sizes, the rest: a larger pick list, configurable sizes (0007). `notify` is sized from
-  its text since `b6b208a`.
-- A `history` command: show the list and re-run an entry. Today the entries are only the first
-  rows of the empty palette, marked `(history)` — at most 20, in memory only.
-- Feedback for `next`/`prev` (e.g. `2/5 /path`).
-- Object items in the palette routed through `goto` (0005).
-- A generic `page` surface on `Ui` for module pages (decided, see above); `pakabl list` moves
-  onto it.
-- An `enum` argument kind with declared choices (0005 mentions it for pakabl ids): `man` would
-  then show `usage: man <ableton|cmdabl>` instead of `man [topic]`, and get completion.
-- A Windows opener in core's `openUrl` (`man` and `cmdabl` answer with the URL there today;
-  pakabl keeps its own `Start-Process` branch until then).
-- **Wanted by the user (2026-10-11): index the Ableton manual** instead of sending a query to a
-  search engine, which feels odd to him. A section index for the Ableton manual: match `man ableton <words>` against chapter and section
-  titles and open the section directly, with the pick list on several hits (needs a pick list for
-  things other than Live objects — a `ModuleApi` change). The web search below is the first step.
-- An `enum` argument kind with declared choices (0005 mentions it for pakabl ids): `man` would
-  then show `usage: man <ableton|cmdabl>` instead of `man [topic]`, and get completion.
-- A Windows opener in core's `openUrl` (`man` and `cmdabl` answer with the URL there today;
-  pakabl keeps its own `Start-Process` branch until then).
-- Search in the Ableton manual: `man ableton <words>`. The online manual has no search of its own
-  (checked 2026-10-11; chapters are `/en/live-manual/12/<chapter>/#<section>`). Options: (a) open
-  a web search limited to the manual; (b) ship an index of chapter and section titles, match the
-  words against it and open the section, with the pick list on several hits (needs a pick list
-  for things other than Live objects — a `ModuleApi` change). Waiting for the user's choice.
+Decided by the user and still governing future work.
 
-Decided by the user: the parser stays strict for dash-words in unquoted names (0005, "Dash rules").
+- 2026-10-11: 0.1.0 is macOS-only; the completion engine (0006) comes after it; the roadmap
+  order was approved the same day.
+- 2026-10-11: the Remote Script protocol as proposed in 0001. No `hello` reply → exit code 5 with
+  what to do; the Live Set changed since the command was typed (route out of range, name
+  differs) → exit code 1 "the Live Set changed; run the command again"; a faster drain than
+  Live's display rate only if a measurement asks for it. The bridge sits behind an interface
+  with a fake for tests; replies are validated where they arrive.
+- 2026-10-11: no access token while the bridge operations only select and read — mandatory before
+  the first operation that changes or deletes.
+- 2026-10-11: Remote Script layout of 0001 §8 approved (`ops/`, `routes.py`; `bridgeOps.ts` with
+  typed functions).
+- 2026-10-11: keep a bridge round trip under 100 ms where possible (rule in 0001 §8).
+- 2026-10-11: no timer for the faster drain for now; candidate again with follow mode.
+- 2026-10-12: `mute` and `solo` shall also work on rack chains and Drum Rack pads in 0.1.0
+  (`mute kick` → the pad); `arm` stays tracks-only. The SDK cannot write a chain's mute/solo,
+  so the script gets a writing operation `chain_set` (0001 §9). Confirmed by the user: the
+  access token (new per Live start, in `~/Library/Application Support/cmdAbl/bridge-token`,
+  outside the repo, never logged; writing operations are refused without it, reads and
+  `select` need none); always the chain's own switch, for every rack type (whether a Drum
+  Rack pad's M button follows is checked in Live). The reference is the chain's column in
+  the Session mixer (speaker button and S). Script side built (`5a63bd4`, script 0.5.0:
+  `chain_set`, the token, `chainSwitches`/`chainSet` in `bridgeOps.ts`; the token path is
+  outside the repo in every setup and nothing prints it). Commands built (`8cf77a2`): tracks
+  through the SDK as before, chains through the script; exit 5 only when every target failed
+  with 5. Live test 1e. Seen in Live meanwhile: `find test chain` finds the Instrument Rack's chain
+  (fix `54c1182`).
+- 2026-10-12: selecting a pad or chain does not unfold the track's chains in the mixer — the
+  user wants that as the default, plus an option `--unfold` on `goto`/`find` that shows them.
+  Built on the LOM's documented `Track.is_showing_chains` (unverified in Live): `showChains`
+  on `select` (`7ee66a8`), the flag on `goto`/`find`, kept by `next`/`prev` (`957d78c`). Side effect: Live saves the fold state
+  with the Set, so the Set counts as modified. Opt-in only; never folds.
+  Seen in Live: it unfolds; Undo does not fold again (view state). There is no command to
+  fold the chains back yet.
+- 2026-10-12: renamed commands get no alias for the old spelling before 0.1.0 (the user is the
+  only user so far); removing `registerResultHandler` from `ModuleApi` is confirmed.
+- 2026-10-13: the "own name" rule — a command's text target must have at least one typed word
+  in the object's own name, the others may match its parents (`60a1dc2`). `find` keeps "anywhere
+  in the path" on purpose. Words typed together: if they hit as one pattern, that is the
+  reading — one hit runs, several open a pick list with those hits only; a comma names several
+  targets. (The user first chose "keep asking when two readings are possible", then corrected
+  it after the Live test: `mute vermona kick` must not ask when one pad matches.) Built
+  (`daf16e9`), with the remembered line showing `--set 0` instead of `--set=0`.
+- 2026-10-13: `tree` (built the same day, `9730198`) is removed again — fewer base commands.
+  Its use moves into `find -L, --level <n>`: how far below the object whose own name matches
+  the results go (`-L 0` = only that object); `find` without a pattern is allowed with `-L` or
+  a kind flag. Built (`5437203`).
+- 2026-10-13: in a single-select pick list (`find`'s), `Tab` puts the chosen object's path into
+  the palette for a follow-up command; `Enter` runs as before. Needs two additions to the `Ui`
+  contract (a "fill" outcome of `select`, an initial text for `prompt`; 0007 §4). Built
+  (`ac821a6`, `797b38d`): completing a command in the refilled palette keeps the path.
+  Later, with pipes: the caret may be better at the end of the filled text (user's note).
+- 2026-10-12: Remote Script versions grow conservatively. Reset to 0.1.0 (`2b2d448`; it had
+  gone to 0.6.0 in a day). Every script change raises the third number, also during
+  development; the middle number only with a release whose script is incompatible with the
+  previous release's extension. Compatibility is decided by the operation list, versions are
+  compared for equality only (0001 §3).
+- 2026-10-12: exclusive arm/solo is not applied by commands; naming several tracks is an explicit
+  choice, like Cmd-clicking the buttons (accepted).
+- 2026-10-12: `mute`/`solo`/`arm` toggle by default and take `-s, --set <0|1>` to force the
+  state (1 = muted / soloed / armed, as in the LOM); `unmute`/`unsolo`/`unarm` are removed, no
+  aliases — fewer base commands. Replaces the decision of 2026-10-11 to keep the `un…`
+  commands. Built (`6af692b`, `8fa17a9`). Live test 1k.
+- 2026-10-11: option (a) for module pages: a fourth generic surface `page` on `Ui`, reachable
+  through `ModuleApi`; `pakabl list` keeps its page. Not built yet (roadmap step 4).
+- 2026-10-11: the parser stays strict for dash-words in unquoted names (0005, "Dash rules").
+- 2026-10-11: manual search uses Ecosia (`site:ableton.com/en/live-manual/12`) instead of
+  DuckDuckGo.
+- 2026-10-11: an index of the Ableton manual for `man ableton <words>` is wanted, after 0.1.0.
+- 2026-10-11: history as a log is wanted, but later.
+- 2026-10-11: the dialog hang must not ship as "only a restart helps" (roadmap step 1.2).
 
 ### Secrets (rule from the user, 2026-10-11)
 
@@ -311,28 +479,8 @@ No environment variable or secret may reach the git history. An API key is expor
 shell on the user's machine. Agents do not print environments, refer to variables by name only,
 and the reviewer checks every diff for secret-shaped strings. The architect scans the commits to
 be pushed before every push. `.env*`, `.envrc`, `*.pem`, `*.key` are git-ignored. Scan of all
-refs and the working tree on 2026-10-11: clean.
-
-## Next, in order
-
-1. **Live test of PR #9**, fix what it shows, merge.
-2. **Remote Script with replies + Drum Rack pads** (cmdabl-bridge). The user searched for
-   `find vermona kick`: the pads ("Kick", "Snare", …) are chains of a Drum Rack, which are not in
-   the object tree — the SDK exposes chains and their MIDI note but not their names. Recommended
-   and presented to the user, not yet explicitly confirmed: request/response protocol (`hello`
-   with version and op list, request ids, timeout), chains in the tree with real names, pad
-   selection, `select {route, expectName}` read-back. Plans: 0001 Phase 4, decisions in 0004.
-3. **Keymap** (cmdabl-core + cmdabl-ui): UI keys as named actions, defaults plus a user
-   `keymap.json`, keys bindable to command lines. Described in 0006.
-4. **Dialog-channel spike** — decides two features, navigation mode and the pick list's follow
-   mode: can the dialog page `fetch` the local server, does the Remote Script process messages
-   while a modal is open, does Live repaint behind it? Then build, or fall back to global hotkeys
-   via Karabiner/AutoHotkey. The four checks are listed in 0006.
-5. **Rest of 0005**: ports instead of the raw `ModuleApi` context, `requires: ["bridge"]` checks,
-   `pakabl` and `cmdabl` as subcommand groups (`cmdabl setup`, old flag as alias), the
-   command-authoring guide (`docs/guides/adding-a-command.md`).
-6. **0007**: theme file, replacement pages with fallback, `api.ui.register`.
-7. **0006**: tree-driven completion in the palette (ghost text, level-by-level paths).
+refs and the working tree on 2026-10-11: clean. Secret scan in CI (gitleaks, `1092e4e`): the full
+history was scanned locally and on GitHub, no findings.
 
 ## Parked
 
@@ -343,7 +491,7 @@ refs and the working tree on 2026-10-11: clean.
   workflow can open a PR when nothing relevant changed. Fix: only rewrite it when the set of repos
   or `.ablx` names changes.
 - **First-party actions by tag**: `actions/*` are pinned by tag (`@v4`, …) in the four older
-  workflows; pin them by SHA when convenient. The third-party one is being pinned now.
+  workflows; pin them by SHA when convenient.
 - **pakabl index workflow permissions**: the crawl step runs over third-party repositories and
   their `.ablx` files with a token that may write (`contents`, `pull-requests`), because the
   permissions are set for the whole workflow. Split into a read-only crawl job that uploads the

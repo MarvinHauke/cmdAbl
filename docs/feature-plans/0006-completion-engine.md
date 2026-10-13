@@ -95,6 +95,8 @@ to one of:
   1. May the dialog page `fetch` `http://127.0.0.1:27184` — from a `data:` page (origin `null`,
      so the server must send CORS headers), or only when the page itself is served from there?
   2. Does the Remote Script (`update_display`, ~10 Hz) process bridge messages while a modal is open?
+     **Yes** (measured in Live, 2026-10-11): a `hello` round trip takes 14 ms with no dialog
+     and 24 ms with the palette open.
   3. Does Live repaint the selection behind the modal?
   4. On the side: does `window.resizeTo` do anything in the webview? (Expected: no.)
 - **Two zones in the pick list (precursor, no spike needed):** the list zone of `ui/pick.html`

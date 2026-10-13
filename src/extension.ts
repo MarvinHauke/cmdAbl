@@ -1,17 +1,23 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
-import { CommandRegistry } from "./commandRegistry.js";
-import { createCommandProvider } from "./providers/commandProvider.js";
-import { type Provider, type PaletteResult, type CommandResult, ExitCode, fail } from "./types.js";
-import type { Module, ModuleApi, ResultHandler } from "./modules/types.js";
+import { CommandRegistry } from "./core/commandRegistry.js";
+import { createCommandProvider } from "./core/commandProvider.js";
+import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail } from "./core/types.js";
+import type { Module, ModuleApi } from "./modules/types.js";
 import { startTriggerServer } from "./httpTrigger.js";
-import { isSetupDone, setKarabinerPaletteOpen } from "./setup.js";
+import { isSetupDone, setKarabinerPaletteOpen } from "./core/setup.js";
 import { registerBuiltins } from "./core/builtins.js";
+import { reportBridge } from "./core/bridgeStatus.js";
+import { getBridge } from "./ableton/bridge.js";
 import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
+import { objectRowLine } from "./core/objectRow.js";
 import { pickNodes } from "./core/pick.js";
+import { quoteIfNeeded } from "./core/tokenize.js";
+import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type Ui } from "./core/ui.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
+import { trackFor } from "./ableton/trackLookup.js";
 import { MODULES } from "./modules/index.js";
 
 const TRIGGER_PORT = 27184;
@@ -29,24 +35,47 @@ export function activate(activation: ActivationContext) {
   const dialogs = createDialogQueue();
   const ui: Ui = createDefaultUi(context, dialogs);
   const providers: { provider: Provider; priority: number }[] = [];
-  const resultHandlers = new Map<string, ResultHandler>();
+  // The items of the palette that is open (or was opened last): a picked object row is found here.
+  let paletteItems: PaletteItem[] = [];
   const commandRunListeners: Array<(invocation: string) => void> = [];
   const pickListeners: Array<(candidates: ObjectNode[], chosen: ObjectNode[] | null) => void> = [];
 
   const liveNodes = () => flattenObjectTree(buildObjectTree(context));
+
+  // Set when a pick list answered "fill" (Tab): the text for the next prompt.
+  let pendingFill: string | undefined;
+  const takeFill = (): string | undefined => {
+    const text = pendingFill;
+    pendingFill = undefined;
+    return text;
+  };
 
   /** The one pick list — used by the platform for ambiguous addresses and by modules. */
   async function pick(
     title: string,
     candidates: ObjectNode[],
     multi = false,
-    extra: { nodes?: ObjectNode[]; preview?: PickPreview } = {},
+    extra: { nodes?: ObjectNode[]; preview?: PickPreview; details?: string[]; fill?: boolean } = {},
   ): Promise<ObjectNode[] | null> {
     // A module's own pick has no Live Set at hand; unique labels need it.
     const nodes = extra.nodes ?? liveNodes();
-    const chosen = await pickNodes(ui, { title, candidates, multi, nodes, preview: extra.preview });
-    for (const listener of pickListeners) listener(candidates, chosen);
-    return chosen;
+    const answer = await pickNodes(ui, {
+      title,
+      candidates,
+      multi,
+      nodes,
+      preview: extra.preview,
+      details: extra.details,
+      fill: extra.fill,
+    });
+    if (answer && !Array.isArray(answer)) {
+      // Tab: the object goes into the prompt as ` <unique path>`; the pick counts as cancelled.
+      pendingFill = ` ${quoteIfNeeded(uniquePath(nodes, answer.fill))}`;
+      for (const listener of pickListeners) listener(candidates, null);
+      return null;
+    }
+    for (const listener of pickListeners) listener(candidates, answer);
+    return answer;
   }
   let isOpen = false;
 
@@ -55,17 +84,25 @@ export function activate(activation: ActivationContext) {
   }
 
   // ── core: the only commands baked in (see src/core/builtins.ts) ───────────
-  registerBuiltins(registry);
+  registerBuiltins(registry, { bridge: () => getBridge() });
 
   // ── default modules ──────────────────────────────────────────────────────
   const moduleApi: ModuleApi = {
-    context,
-    registry,
+    get bridge() {
+      return getBridge();
+    },
+    liveSet: { nodes: liveNodes },
+    tracks: {
+      transaction: (fn) => context.withinTransaction(fn),
+      // Only a track node has a track; a device or chain would give its CONTAINING track.
+      track: (node) => (node.kind === "track" ? trackFor(context, node) : null),
+    },
+    log: (line) => console.log(line),
+    dialog: (html, width, height, name = "module page") => ui.page(name, html, width, height),
     commands: { add: (command) => void registry.add(command) },
-    pick,
+    pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill }),
     onPick: (listener) => pickListeners.push(listener),
     registerProvider: (provider, priority = 0) => providers.push({ provider, priority }),
-    registerResultHandler: (action, handler) => resultHandlers.set(action, handler),
     onCommandRun: (listener) => commandRunListeners.push(listener),
     showFeedback,
   };
@@ -76,14 +113,15 @@ export function activate(activation: ActivationContext) {
   // ── HTTP trigger server ──────────────────────────────────────────────────
   // Karabiner (or any external tool) can POST/GET http://127.0.0.1:27184/open
   // to open the command palette without a context menu; GET /state reports
-  // open|closed; POST /reset is a temporary diagnostic for a hung dialog.
+  // open|closed; POST /reset and GET /bridge are temporary
+  // diagnostics (a hung dialog; a timed hello while a dialog is open).
   startTriggerServer(TRIGGER_PORT, () => {
     context.commands.executeCommand("cmdabl.open");
   }, () => isOpen || dialogs.describe() !== null, () => {
     const was = dialogs.reset();
     if (was) return `dialog queue reset (was: ${was.name})`;
     return isOpen ? "no dialog open; a command is still running" : "no dialog was open";
-  });
+  }, async () => (await reportBridge(getBridge())).line);
 
   // The Karabiner rule only fires while `cmdabl_open` is 0. If a previous host
   // was stopped with the palette open, the flag would stay at 1 and ":" would
@@ -92,43 +130,47 @@ export function activate(activation: ActivationContext) {
 
   // ── startup hint ─────────────────────────────────────────────────────────
   if (!isSetupDone()) {
-    console.log("cmdAbl: keyboard trigger not configured. Open the palette and run: cmdabl --setup");
+    console.log("cmdAbl: keyboard trigger not configured. Open the palette and run: cmdabl setup");
   }
 
   // ── open command mode ────────────────────────────────────────────────────
   // Act on what the prompt surface returned.
-  async function dispatch(result: PaletteResult): Promise<void> {
+  /** Runs what the palette returned; resolves with text to open the palette with again (Tab on a pick list), if any. */
+  async function dispatch(result: PaletteResult): Promise<string | undefined> {
+    pendingFill = undefined; // a fill left over from a pick outside a run must not end this command
+    let line: string;
     if (result.type === "command") {
-      // Older webview payloads carried {id, flags}; the raw line keeps quotes intact.
-      const line = result.line ?? [result.id, ...(result.flags ?? [])].join(" ");
-      const outcome = await runLine(line, {
-        registry,
-        liveNodes,
-        pick: ({ title, candidates, multi, nodes, preview }) => pick(title, candidates, multi, { nodes, preview }),
-      });
-      if (outcome.cancelled) return;
-      present(outcome.result);
-      // History gets successful invocations that carry arguments, in their
-      // resolved form ("mute /Vermona MIDI"), so a re-run is never ambiguous.
-      const invocation = outcome.line ?? line;
-      if (outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
-        for (const listener of commandRunListeners) listener(invocation);
+      // The raw line keeps quotes intact.
+      line = result.line ?? result.id;
+    } else {
+      // A Live-object row is the command `goto <unique path>`, run like a typed line.
+      const row = paletteItems.find((item) => item.id === result.id && item.type === result.type);
+      const mapped = objectRowLine({ id: result.id, kind: result.type, path: row?.path }, liveNodes());
+      if (!mapped) {
+        present(fail(ExitCode.NOT_FOUND, `that ${result.type} is no longer available`));
+        return undefined;
       }
-      return;
+      line = mapped;
     }
-    // Non-command items (Live objects) are routed by `action` — modules
-    // declare what an item should *do*, independent of its `type`.
-    const handler = result.action ? resultHandlers.get(result.action) : undefined;
-    if (!handler) {
-      present(fail(ExitCode.NOT_FOUND, `no handler for "${result.type}" action "${result.action}"`));
-      return;
+    const outcome = await runLine(line, {
+      registry,
+      liveNodes,
+      bridge: () => getBridge(),
+      takeFill,
+      // The platform's own lists: Tab may put a single-select row into the prompt.
+      pick: ({ title, candidates, multi, nodes, preview, details }) =>
+        pick(title, candidates, multi, { nodes, preview, details, fill: true }),
+    });
+    if (outcome.fill !== undefined) return outcome.fill;
+    if (outcome.cancelled) return;
+    present(outcome.result);
+    // History gets successful invocations that carry arguments, in their
+    // resolved form ("mute /Vermona MIDI"), so a re-run is never ambiguous.
+    const invocation = outcome.line ?? line;
+    if (outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
+      for (const listener of commandRunListeners) listener(invocation);
     }
-    console.log(`cmdAbl: run: item action ${result.action} (${result.type})`);
-    try {
-      await handler(result);
-    } catch (e: unknown) {
-      present(fail(ExitCode.FAILURE, e instanceof Error ? e.message : String(e)));
-    }
+    return undefined;
   }
 
   /** The single place results become user-visible (see src/core/present.ts). */
@@ -150,8 +192,14 @@ export function activate(activation: ActivationContext) {
       // Stable sort by priority (lower first); ties keep registration order.
       const ordered = [...providers].sort((a, b) => a.priority - b.priority);
       const items = (await Promise.all(ordered.map((p) => p.provider.getItems()))).flat();
-      const result = await ui.prompt({ items });
-      if (result) await dispatch(result);
+      paletteItems = items;
+      // Tab on a pick list puts an object into the prompt: reopen with it (same queue, same guard).
+      let initial: string | undefined;
+      for (;;) {
+        const result = await ui.prompt({ items, ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
+        initial = result ? await dispatch(result) : undefined;
+        if (initial === undefined) break;
+      }
     } catch (e: unknown) {
       console.error(e instanceof Error ? e.message : String(e));
     } finally {

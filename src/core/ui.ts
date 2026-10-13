@@ -1,6 +1,6 @@
 import type { ExtensionContext } from "@ableton-extensions/sdk";
-import type { PaletteItem, PaletteResult } from "../types.js";
-import { parseIndexes } from "./pickResult.js";
+import type { PaletteItem, PaletteResult } from "./types.js";
+import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize } from "./notifySize.js";
 import { pickHeight } from "./pickSize.js";
 import { inlineJson } from "./inlineJson.js";
@@ -22,6 +22,13 @@ import notifyTemplate from "../../ui/feedback.html";
 /** The command palette: type a line or pick an item. */
 export interface PromptRequest {
   items: PaletteItem[];
+  /**
+   * Open with this text in the input and the caret at `cursor` (0 = at the
+   * start): used when a pick list's Tab put an object into the prompt, e.g.
+   * ` "/Vermona MIDI/Drum Rack/Kick"` so the user types the command before it.
+   * Absent: an empty prompt.
+   */
+  initial?: { text: string; cursor: number };
 }
 
 /** The pick list: choose one (or, if `multi`, several) of the given rows. */
@@ -36,6 +43,13 @@ export interface SelectRequest {
    * Absent: show no line.
    */
   preview?: PickPreview;
+  /**
+   * Single-select only: Tab on a row answers `{ fill: index }` instead of
+   * confirming — the platform then puts the row's object into the prompt. The
+   * page offers it only when this is true and `multi` is false (multi-select
+   * keeps Tab = mark).
+   */
+  fill?: boolean;
   items: {
     /** The row's text (for a pick: the unique path, unquoted). */
     label: string;
@@ -59,9 +73,14 @@ export interface NotifyRequest {
 export interface Ui {
   /** Resolves with what the user entered or picked, or null if they dismissed it. */
   prompt(request: PromptRequest): Promise<PaletteResult | null>;
-  /** Resolves with the chosen indexes into `request.items`, or null if cancelled. */
-  select(request: SelectRequest): Promise<number[] | null>;
+  /**
+   * Resolves with the chosen indexes into `request.items`, `{ fill: index }`
+   * when the user pressed Tab on a list that allows it, or null if cancelled.
+   */
+  select(request: SelectRequest): Promise<number[] | { fill: number } | null>;
   notify(request: NotifyRequest): void;
+  /** A module's own page: resolves with the string it returns on close, or null if dismissed (an empty string counts as dismissed). */
+  page(name: string, html: string, width: number, height: number): Promise<string | null>;
 }
 
 const dataUrl = (html: string) => `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
@@ -81,7 +100,9 @@ export function createDefaultUi(
 
   return {
     async prompt(request) {
-      const html = promptTemplate.replace("/*ITEMS_PLACEHOLDER*/null", () => inlineJson(request.items));
+      const html = promptTemplate
+        .replace("/*ITEMS_PLACEHOLDER*/null", () => inlineJson(request.items))
+        .replace("/*INITIAL_PLACEHOLDER*/null", () => inlineJson(request.initial ?? null));
       const raw = await show("palette", html, 500, 260);
       if (!raw) return null;
       try {
@@ -96,13 +117,21 @@ export function createDefaultUi(
       const html = selectTemplate.replace("/*PICK_PLACEHOLDER*/null", () => inlineJson(request));
       const height = pickHeight(request.items.length, request.preview !== undefined);
       const raw = await show("pick", html, 560, height);
-      return parseIndexes(raw, request.items.length);
+      const answer = parseSelectAnswer(raw, request.items.length);
+      // A page that answers "fill" where it was not offered is treated as cancelled.
+      if (answer && !Array.isArray(answer) && !(request.fill && !request.multi)) return null;
+      return answer;
     },
 
     notify(request) {
       const html = notifyTemplate.replace("/*MESSAGE_PLACEHOLDER*/null", () => inlineJson(request.text));
       const { width, height } = notifySize(request.text);
       void show("message", html, width, height);
+    },
+
+    async page(name, html, width, height) {
+      // The SDK resolves an empty string on dismissal: both count as dismissed.
+      return (await show(name, html, width, height)) || null;
     },
   };
 }

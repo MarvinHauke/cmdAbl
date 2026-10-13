@@ -37,6 +37,7 @@ Peer Claude sessions that message each other (`SendMessage`), watchable in tmux:
 | `cmdabl-bridge`    | `.claude/agents/bridge.md`    | sonnet | Live access (`src/ableton/`, `remote-script/`)             |
 | `cmdabl-reviewer`  | `.claude/agents/reviewer.md`  | opus   | read-only review against the plans and SDK limits          |
 | `cmdabl-ui`        | `.claude/agents/ui.md`        | sonnet | dialogs and themes (`ui/`) — **on demand**                 |
+| `cmdabl-docs`      | `.claude/agents/docs.md`      | haiku  | docs site, README, images (`docs/`) — **on demand**        |
 
 Flow: architect → builder → reviewer (→ architect for contract decisions) → builder commits →
 short overview with a Live test list to the architect → the user tests in Live.
@@ -50,7 +51,8 @@ short overview with a Live test list to the architect → the user tests in Live
 - **Only the architect pushes or opens pull requests, and only when the user asks.**
 - `scripts/agents.sh` opens core, modules, bridge and reviewer in one tmux window `cmdabl-agents`
   and starts the architect in the current pane, resuming each by the session id in its agent file.
-  `scripts/agents.sh ui` adds the UI agent; `scripts/agents.sh core reviewer` or `… architect`
+  `scripts/agents.sh ui` adds the UI agent, `scripts/agents.sh docs` the documentation agent;
+  `scripts/agents.sh core reviewer` or `… architect`
   starts only those; `DRY_RUN=1` prints the commands.
 
 ## Workflow

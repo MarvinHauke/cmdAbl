@@ -1,6 +1,6 @@
 import { spawn as nodeSpawn, type ChildProcess } from "node:child_process";
 import { childEnv } from "./childEnv.js";
-import { ok, fail, ExitCode, type CommandResult } from "../types.js";
+import { ok, fail, ExitCode, type CommandResult } from "./types.js";
 
 /**
  * A plain string check, no `URL` global (the Extension Host's globals are not

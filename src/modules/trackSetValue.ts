@@ -1,4 +1,6 @@
-import type { TrackScope } from "../types.js";
+import type { TrackFacts } from "../ableton/bridgeOps.js";
+import { TEXT_STALE, type BridgeResult } from "../ableton/bridgeProtocol.js";
+import type { TrackScope } from "../core/types.js";
 
 /** What a track command writes: a fixed value, or "toggle" to flip each track's current one. */
 export type TrackSetValue = boolean | "toggle";
@@ -41,4 +43,24 @@ export function armRefusal(isGroup: boolean): string {
 /** True when a read-back shows the write did not take (the track refused it). */
 export function notChanged(wanted: boolean, actual: boolean): boolean {
   return actual !== wanted;
+}
+
+/** Why Live may refuse to arm a track — shared by the refusal and the verify message. */
+export const ARM_DISABLED_HINT = "its arm button is disabled (e.g. the input device is not available)";
+
+/**
+ * The refusal text for a track whose Live facts say it cannot be armed (a MIDI
+ * track whose input device is not available is greyed out but accepts the SDK write
+ * silently), or the bridge's own text when that track's entry says the Set
+ * changed. Undefined = no objection; also when no facts were available.
+ */
+export function factsRefusal(entry: BridgeResult<TrackFacts> | undefined, wantedOn = true): string | undefined {
+  if (!entry) return undefined;
+  // Only "the Set changed" is an objection; any other failed entry (a read that
+  // raised in the script) leaves the track to the SDK-only path.
+  if (!entry.ok) return entry.text === TEXT_STALE ? entry.text : undefined;
+  if (!wantedOn) return undefined; // switching off is never refused
+  if (entry.value.isFoldable) return armRefusal(true);
+  if (!entry.value.canBeArmed) return `Live does not allow arming it: ${ARM_DISABLED_HINT}`;
+  return undefined;
 }

@@ -2,7 +2,7 @@ import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 import { childEnv } from "../../core/childEnv.js";
 import { openUrl as coreOpenUrl } from "../../core/openUrl.js";
-import { ExitCode, fail, ok, type CommandResult } from "../../types.js";
+import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
 
 // ── Live's Extensions folder ─────────────────────────────────────────────────
 // Where Live scans for installed `.ablx` bundles — confirmed on macOS (the user

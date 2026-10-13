@@ -39,8 +39,8 @@ own page, without touching the core or any module.
 
 | Surface | In | Out |
 |---|---|---|
-| `prompt` — the palette | `{ items: PaletteItem[] }` (later also the command tree and keymap, see 0006) | a `PaletteResult`, or null when dismissed |
-| `select` — the pick list | `{ title, multi, items: [{ label, detail?, value? }], preview? }` (`preview`/`value`: see section 4) | indexes of the chosen items, or null when cancelled |
+| `prompt` — the palette | `{ items: PaletteItem[], initial? }` (later also the command tree and keymap, see 0006) | a `PaletteResult`, or null when dismissed |
+| `select` — the pick list | `{ title, multi, items: [{ label, detail?, value? }], preview?, fill? }` (`preview`/`value`/`fill`: see section 4) | indexes of the chosen items, `{ fill: index }`, or null when cancelled |
 | `notify` — a message | `{ text, code }` (`code` = the exit code it belongs to) | nothing |
 
 Everything is plain JSON. A page receives its request through a build-time placeholder and
@@ -100,6 +100,38 @@ between filter and selection would need quoting for names with spaces and collid
   `items[].label` is the unique path, so same-named siblings can be told apart.
 - The return value is unchanged. A module's own `api.pick` has no preview line yet.
 
+**`Tab` fills the palette (user, 2026-10-13; contract addition, in work).** In a single-select
+pick list, `Tab` on a row puts that object into the command prompt for a follow-up command
+instead of running; `Enter` runs as before. Multi-select lists keep `Tab` = mark.
+
+- `SelectRequest.fill?: boolean` — the page offers it only when true and `multi` is false. The
+  page then answers with one of three values: confirmed indexes (`[2, 0]`), cancelled (`''`),
+  or `{"fill": 3}` (an index into `items`). `Ui.select` resolves
+  `number[] | { fill: number } | null`.
+- `PromptRequest.initial?: { text: string; cursor: number }` — the palette opens with the text
+  in its input and the caret at `cursor`. The platform sends a leading space and the object's
+  unique path in canonical form, cursor 0, because the command comes first.
+- Flow: a fill ends the running command without calling or continuing its handler — nothing
+  is remembered, the log says `run: <line> -> filled` — and the palette opens again through
+  the dialog queue.
+- Allowed in every single-select list the platform opens for a `path` argument (also "did you
+  mean"); a module's own `api.pick` opts in with `{ fill: true }`, as `find` does.
+- Hint line: "Enter run · Tab put in prompt · Esc cancel".
+
+**State symbols (draft, wanted by the user 2026-10-12; not built).** When `mute`, `solo` or
+`arm` opens a pick list, each row shows a small symbol for the state the command is about
+(muted, soloed, armed), so a toggle is not applied blindly. No symbol for commands without
+such a state (`goto`, `find`).
+
+- Sources: track mute and solo from the SDK; track arm from the Remote Script (`track_facts`,
+  because the SDK reads `arm` wrongly for tracks Live refuses to arm; without the script the
+  SDK value); chain and pad mute/solo from the script (`chainSwitches`; no script → no symbol).
+- Opening the list waits for at most one request to the script, and only when arm or chains
+  are involved. The symbol shows the state when the list opened and does not update.
+- Contract changes, to be confirmed with the user before building: `SelectRequest.items[]`
+  gets an optional state field (on / off / unknown); a command node gets an optional way to
+  read that state for its candidates (0005).
+
 **Follow mode (draft, depends on the spike in 0006).** The active row is selected in Live while
 the pick list is open (a track or a device, through `selectNode`), for every pick list including
 multi-select.
@@ -113,7 +145,7 @@ multi-select.
 - Transport: the page sends `POST /pick/highlight` to the local server with a per-dialog token;
   the host debounces (~80 ms) and calls the bridge.
 - Open: `Esc` cannot restore the previous selection until the Remote Script can reply
-  (STATUS.md, "Next"). Phase 1 leaves the selection where it is, phase 2 restores it.
+  (STATUS.md, "Roadmap to 0.1.0", step 2). Phase 1 leaves the selection where it is, phase 2 restores it.
 - Open: whether `next`/`prev` are still needed once follow mode exists. Kept until the spike is
   decided — they need no open window and are what a keymap binds to a key.
 

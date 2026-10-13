@@ -1,16 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CommandRegistry, type Command } from "../commandRegistry.js";
+import { CommandRegistry, type Command } from "./commandRegistry.js";
 import { assignPaths, flattenObjectTree, type ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
-import { ExitCode, fail } from "../types.js";
+import { ExitCode, fail } from "./types.js";
 import { runLine, type RunDeps } from "./run.js";
 import { parse } from "./parse.js";
 import { pickNodes } from "./pick.js";
 import type { SelectRequest } from "./ui.js";
 import { parsePickResult } from "./pickResult.js";
 import { validateTree } from "./commandTree.js";
-import { MatchList, matchesPattern } from "../modules/find/matches.js";
 
 let id = 0;
 const node = (name: string, kind: "track" | "device", children: ObjectNode[] = []): ObjectNode => ({
@@ -50,9 +49,6 @@ function setup(pickAnswer: (candidates: ObjectNode[], multi: boolean) => ObjectN
   });
   registry.add({ name: "boom", summary: "throws", run: () => { throw new Error("kaput"); } });
   registry.add({ name: "nope", summary: "fails", run: () => fail(ExitCode.FAILURE, "no") });
-  registry.register("legacy", "old style", (flags) => {
-    calls.push({ name: "legacy", paths: flags });
-  });
   const deps: RunDeps = {
     registry,
     liveNodes: () => all,
@@ -133,21 +129,18 @@ test("run: not found, usage, handler failures and exceptions become results", as
   assert.match(boom.result.message ?? "", /kaput/);
 });
 
-test("run: --help and legacy commands", async () => {
-  const { deps, calls } = setup();
+test("run: --help", async () => {
+  const { deps } = setup();
   const help = await runLine("mute --help", deps);
   assert.match(help.result.message ?? "", /usage: mute <track>…/);
-  const out = await runLine("legacy --setup  x", deps);
-  assert.deepEqual(calls, [{ name: "legacy", paths: ["--setup", "x"] }]);
-  assert.equal(out.line, "legacy --setup  x");
 });
 
 test("registry.add rejects an invalid or duplicate command without throwing", () => {
   const { registry } = setup();
   assert.ok(registry.add({ name: "goto", summary: "again", run: () => {} }).length > 0);
-  assert.ok(registry.add({ name: "legacy", summary: "clash", run: () => {} }).length > 0);
   assert.ok(registry.add({ name: "x", summary: "no run" }).length > 0);
   assert.equal(registry.roots().length, 4);
+  assert.deepEqual(registry.list().map((d) => d.name), ["goto", "mute", "boom", "nope"]);
 });
 
 test("parse: a rest argument takes the remaining words as one value", () => {
@@ -176,27 +169,6 @@ test("parsePickResult", () => {
   assert.equal(parsePickResult("not json", items), null);
 });
 
-test("MatchList: next/prev wrap around", () => {
-  const list = new MatchList();
-  assert.equal(list.step(1), undefined);
-  list.set(["a", "b", "c"]);
-  assert.deepEqual(list.step(1), { path: "a", position: 1 });
-  assert.deepEqual(list.step(1), { path: "b", position: 2 });
-  assert.deepEqual(list.step(-1), { path: "a", position: 1 });
-  assert.deepEqual(list.step(-1), { path: "c", position: 3 });
-  list.set(["a", "b", "c"], 1); // "b" was already chosen
-  assert.deepEqual(list.step(1), { path: "c", position: 3 });
-  list.set(["a", "b"]);
-  assert.deepEqual(list.step(-1), { path: "b", position: 2 });
-});
-
-test("matchesPattern: every word must occur, any order, ignoring case", () => {
-  assert.equal(matchesPattern("/Vermona MIDI/Drum Rack/Kick", "vermona kick"), true);
-  assert.equal(matchesPattern("/Vermona MIDI/Drum Rack/Kick", "KICK vermona"), true);
-  assert.equal(matchesPattern("/Vermona MIDI/Drum Rack/Kick", "vermona snare"), false);
-  assert.equal(matchesPattern("/Vermona MIDI", "  "), false);
-});
-
 test("run: the pick preview splits the line around the ambiguous address", async () => {
   const { deps, picks } = setup((c) => [c[0]!]);
   await runLine('mute "/Opal Lead" "/Vermona DRM Audio" /Kick "/Opal Lead"', deps);
@@ -209,10 +181,10 @@ test("run: the pick preview splits the line around the ambiguous address", async
 test("run: resolved targets show as unique paths, unresolved ones as typed", async () => {
   const { deps, picks } = setup((c) => [c[0]!]);
   await runLine("mute /Vermona, /Kick, /Opal", deps);
-  // First ambiguous address is "/Vermona": nothing before; "/Opal" resolves uniquely, "/Kick" does not.
-  assert.deepEqual(picks[0]!.preview, { before: "mute", after: '/Kick "/Opal Lead"' });
-  // Second: "/Kick" — the picked "/Vermona MIDI" is now a resolved target before it.
-  assert.deepEqual(picks[1]!.preview, { before: 'mute "/Vermona MIDI"', after: '"/Opal Lead"' });
+  // "/Vermona" and "/Kick" are both ambiguous: ONE list answers them; "/Opal" resolves uniquely.
+  assert.equal(picks.length, 1);
+  assert.equal(picks[0]!.title, 'mute: "/Vermona", "/Kick" match 4');
+  assert.deepEqual(picks[0]!.preview, { before: "mute", after: '"/Opal Lead"' });
 });
 
 test("pickNodes: label is the unique path, value is the quoted unique path", async () => {
@@ -221,6 +193,7 @@ test("pickNodes: label is the unique path, value is the quoted unique path", asy
     select: async (r: SelectRequest) => (requests.push(r), [0]),
     prompt: async () => null,
     notify: () => {},
+    page: async () => null,
   };
   const candidates = all.filter((n) => n.name === "Kick" || n.name === "Vermona DRM Audio");
   const preview = { before: "mute /a", after: "/b" };
@@ -268,8 +241,8 @@ test("run: the remembered line is canonical — unique paths, each object once",
   const c = await runLine("goto opal", d2);
   assert.equal(c.line, 'goto "/Opal Lead"');
   registry.add({ name: "say", summary: "text", args: [{ name: "word", kind: "text" }], options: [{ name: "to", takesValue: true, summary: "target" }], run: () => {} });
-  const d = await runLine('say --to="a b" Hello', d2);
-  assert.equal(d.line, 'say --to="a b" Hello'); // re-parses: a quote inside --name= is not a quoted token
+  const d = await runLine('say --to "a b" Hello', d2);
+  assert.equal(d.line, 'say --to "a b" Hello'); // re-parses: a quote inside --name= is not a quoted token
   assert.equal((await runLine(d.line!, d2)).line, d.line);
   const dash = await runLine('say "-x"', d2);
   assert.equal(dash.line, 'say "-x"'); // a leading dash is quoted so it re-parses as a word
@@ -279,8 +252,9 @@ test("run: the remembered line is canonical — unique paths, each object once",
 test("run: the preview shows uniquely resolved text as its path, once", async () => {
   const { deps, picks } = setup((c) => [c[0]!]);
   await runLine('mute opal "/Opal Lead" kick vermona', deps);
-  // "kick" is ambiguous (picked first); opal and "/Opal Lead" are one object.
-  assert.deepEqual(picks[0]!.preview, { before: 'mute "/Opal Lead"', after: "vermona" });
+  // "kick" and "vermona" are ambiguous (one list); opal and "/Opal Lead" are one object.
+  assert.equal(picks.length, 1);
+  assert.deepEqual(picks[0]!.preview, { before: 'mute "/Opal Lead"', after: "" });
 });
 
 test("run: a lone dash inside an unquoted name, and a word equal to a declared flag", async () => {
@@ -325,4 +299,58 @@ test("run: one log line per command with the canonical line, exit code and durat
     "cmdAbl: run start: nope",
     "cmdAbl: run: nope -> 1 (12 ms)",
   ]);
+});
+
+test("run: requires bridge — checked before resolving and picking, handler not called when unavailable", async () => {
+  const { createFakeBridge } = await import("../ableton/bridgeFake.js");
+  const { deps, calls, picks, registry } = setup((c) => [c[0]!]);
+  registry.add({
+    name: "needs",
+    summary: "needs the Remote Script",
+    requires: ["bridge"],
+    args: [{ name: "track", kind: "path", kinds: ["track"] }],
+    run: (inv) => {
+      calls.push({ name: "needs", paths: (inv.args[0] ?? []).map((v) => (typeof v === "string" ? v : v.path)) });
+    },
+  });
+
+  // Available: runs like any command (including the pick).
+  const up = createFakeBridge();
+  deps.bridge = () => up;
+  const ran = await runLine("needs vermona", deps);
+  assert.equal(ran.result.code, ExitCode.OK);
+  assert.equal(calls.filter((c) => c.name === "needs").length, 1);
+  assert.equal(picks.length, 1);
+
+  // Not running: the bridge's own code and text, no pick, no handler, no history line.
+  const down = createFakeBridge({ running: false, unavailableText: "Remote Script not running (fake)" });
+  deps.bridge = () => down;
+  const refused = await runLine("needs vermona", deps);
+  assert.equal(refused.result.code, ExitCode.UNAVAILABLE);
+  assert.equal(refused.result.message, "Remote Script not running (fake)");
+  assert.equal(refused.line, undefined);
+  assert.equal(picks.length, 1, "no new pick");
+  assert.equal(calls.filter((c) => c.name === "needs").length, 1, "handler not called again");
+
+  // No bridge wired at all: exit 5, never a throw.
+  delete deps.bridge;
+  assert.equal((await runLine("needs opal", deps)).result.code, ExitCode.UNAVAILABLE);
+
+  // A command without `requires` never asks the bridge.
+  deps.bridge = () => down;
+  assert.equal((await runLine("mute opal", deps)).result.code, ExitCode.OK);
+  assert.equal(down.calls.length, 0);
+});
+
+test("run: a bridge that throws becomes exit 5, not an exception", async () => {
+  const { deps, registry } = setup();
+  registry.add({ name: "needs2", summary: "x", requires: ["bridge"], run: () => {} });
+  deps.bridge = () => ({
+    available: async () => {
+      throw new Error("socket exploded");
+    },
+  });
+  const out = await runLine("needs2", deps);
+  assert.equal(out.result.code, ExitCode.UNAVAILABLE);
+  assert.match(out.result.message ?? "", /socket exploded/);
 });

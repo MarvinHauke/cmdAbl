@@ -12,6 +12,8 @@ declared, so parsing, help and completion all derive from one structure.
 and a handler that receives raw `flags: string[]`. `ModuleApi` (`src/modules/types.ts`) exposes
 `registry`, `registerProvider`, `registerResultHandler`, `onCommandRun`, `showFeedback`.
 Modules therefore invent their own argument syntax. See 0004 for the current-state inventory.
+(That was the state when this plan was written; `registry` and `registerResultHandler` are
+removed since 2026-10-12, see "Phased rollout".)
 
 "Done": a module author can add a command or subcommand by declaring a node, and gets parsing,
 `--help`, validation errors, completion and history for free; a short guide
@@ -113,8 +115,9 @@ api.commands.group("pakabl", "install and manage community extensions", (g) => {
 });
 ```
 
-The old `registry.register(name, description, flags?, handler)` stays during migration as an
-adapter that wraps the handler in a leaf node with a single variadic `text` argument.
+The old `registry.register(name, description, flags?, handler)` adapter is gone since
+2026-10-12 (`a3ae115`): every command is a node added with `api.commands.add`, and an unknown
+first word always gets the parser's "unknown command" answer.
 
 ### 5. Execution path
 
@@ -140,6 +143,13 @@ success unless it helps; return `CommandResult` instead of calling `showFeedback
 - Whether `args` should support named groups (e.g. `<from> <to>`) beyond ordered positionals.
 
 ## Phased rollout
+
+**Update (2026-10-12):** `pakabl` and `cmdabl` are groups on the tree (`e04989d`, `f795ac1`;
+no aliases for the old flags), `requires` is built, the legacy `register()` path and
+`ModuleApi.registry` are removed (`a3ae115`), the `enum` argument kind exists (`dbcb401`) and
+palette object rows run as `goto` (`ee64867`, `1063875`). Left of this plan: ports on
+`ModuleApi`, the authoring guide. The older
+notes below describe the state before that.
 
 **Update (2026-10-11, later):** step 2 and the resolver are in. `CommandRegistry.add(node)`
 (validated, rejects instead of throwing) and `ModuleApi.commands.add`; every typed line goes
@@ -219,6 +229,92 @@ Taken from comparing a ChatGPT architecture proposal with this plan (full table 
   - An unquoted `-1` is an unknown option; a negative value needs quotes or `--`. Decide
     whether numbers get a special case when the first `number` argument exists, and say it in
     the authoring guide.
+
+## Toggle by default, `--set` to force (user, 2026-10-12)
+
+`mute`, `solo` and `arm` toggle each target; `-s, --set <0|1>` forces the state, where the value
+is the state the command is named after (1 = muted / soloed / armed), as in the LOM. The
+separate `unmute`, `unsolo`, `unarm` commands are removed without aliases. A remembered line
+keeps the option, so re-running it is deterministic. Pattern for later commands: one command
+per property, a toggle when it is boolean, `--set <value>` for an explicit value.
+
+## Exclusive arm and solo (user, 2026-10-12)
+
+`arm` and `solo` do not follow Live's "Exclusive" settings: a write through the API changes only
+the named tracks. Accepted as the behaviour — naming tracks is an explicit choice, like
+Cmd-clicking the buttons — and to be stated in the command reference.
+
+## `requires` as built (2026-10-11, `25b467a`)
+
+- The check runs in `runLine` right after parsing and `--help`, before paths are resolved and
+  before any pick list: `<cmd> --help` and usage errors work without the Remote Script, and
+  nobody is asked to pick for a command that cannot run.
+- Unavailable → the bridge's own code 5 and text (not installed / outdated / not running); the
+  handler is not called and nothing is remembered.
+- Deliberate: with the script missing, `goto <typo>` answers "not running" (5) rather than
+  "not found" (3) — the first thing to fix is the script.
+- `requires` is allowed on commands only, not on groups; an unknown requirement is a startup
+  problem.
+- Not built: marking unavailable commands when the palette opens. When it is, it uses the
+  cached bridge state only, so opening never waits for a timeout. `--help` does not name the
+  requirement yet.
+
+## Documentation fields on the node (2026-10-12, `845b971`)
+
+Three optional fields, confirmed by the user: `description` on a command or group (a sentence
+or two beyond `summary`), `examples: { line, note? }[]` on a command, and `summary` on an
+argument. They are the single source for `<cmd> --help` and for the generated command
+reference (`npm run docs:reference`, checked in CI). Every runnable command has at least one
+example, and every example line must parse — both are tests. Write them for a user of Live.
+
+## Forgiving target resolution (2026-10-12; `461c885`, `46f241a`, `8588a8d`)
+
+How the platform reads the text of a `path` argument (`src/core/resolveArgs.ts`):
+
+- A comma always separates targets; a word starting with `/` and a quoted word are targets of
+  their own. Remembered lines consist of those, so they resolve exactly as before.
+- The remaining bare words are tried as one pattern: an exact path first, else text matching
+  within the argument's `kinds`: every word occurs in the object's path **and at least one
+  word occurs in the object's own name** (the "own name" rule, user 2026-10-13, `60a1dc2`).
+  `mute e-piano` names the track E-Piano, not the devices and chains below it;
+  `mute vermona kick` names the Kick pad. A single text target follows the same rule.
+- `find` is a search and keeps the looser rule on purpose (user, 2026-10-13): it lists
+  everything whose path contains the words. Two rules, stated in the docs.
+- **Joined words win when they hit** (user, 2026-10-13, after trying the stricter rule in
+  Live; replaces "never choose between two readings"): one joined hit → resolved without a
+  question; several joined hits → one pick list with exactly those. The single words are not
+  offered as an alternative. Accepted consequence: with a group "Drums" holding a track "Kick",
+  `mute drums kick` means Kick; both are `mute drums, kick`.
+- No joined hit → each word is its own target, as before.
+- One pick list per command: all ambiguous texts of an argument share one multi-select list;
+  the row's detail names the text it matched. A single-target argument keeps a single-select
+  list and uses only the one-pattern rule.
+- Nothing matches → "did you mean": a pick list with the closest names (fuzzy, at most 8, no
+  suggestions for words under 3 characters). Never run unasked, even with one candidate; `Esc`
+  gives the original "nothing matches" (exit 3, nothing remembered). If one of several missing
+  texts has no plausible candidate, the command fails at once.
+- Authoring rule: declare `kinds` unless a command really means every kind — without them
+  most words resolve alone and multi-word input asks more often.
+
+## Optional use of the bridge (2026-10-12, `7e4d787`)
+
+A command that works without the Remote Script but gets better with it does not declare
+`requires`. It asks the bridge only when the cached state allows it (one `available()` when
+the state is unknown, nothing when it is "unavailable") and falls back to its SDK-only
+behaviour otherwise. `arm` is the first: it reads `track_facts` to refuse tracks Live cannot
+arm. The state check in `src/modules/armFacts.ts` becomes a bridge helper when a second
+command needs it.
+
+## Import boundaries (2026-10-11, enforced by `src/architecture.test.ts`)
+
+- A module does not import another module's folder, `src/extension`, `src/httpTrigger` or a
+  platform dialog page (`interface`, `pick`, `feedback`). It may import its own page
+  `ui/<module>-*.html`. Only `src/modules/index.ts`, the manifest, imports module folders.
+- `src/core/` does not import modules, `httpTrigger` or `extension`.
+- `src/ableton/` does not import modules, `core/ui` or `extension`.
+- Only `src/core/ui.ts` calls `showModalDialog`.
+- One known exception, listed in the test: `pakabl list` opens its own dialog until the `page`
+  surface exists.
 
 ## Verification
 
