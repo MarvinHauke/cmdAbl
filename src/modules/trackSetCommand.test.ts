@@ -255,3 +255,17 @@ test("--set accepts 0 and 1 in every spelling and rejects anything else with exi
   const bare = parse("mute /Kick", commands);
   assert.equal(bare.kind === "run" && bare.invocation.options.set, undefined);
 });
+
+test("mute, solo and arm declare pickState with their label; goto, find and lom declare none", async () => {
+  const { api, commands } = createFakeApi();
+  registerTrackSetCommand(api, "mute", "mute", "s", docs);
+  registerTrackSetCommand(api, "solo", "solo", "s", docs);
+  registerTrackSetCommand(api, "arm", "arm", "s", docs);
+  assert.deepEqual(commands.map((c) => c.pickState?.label), ["muted", "soloed", "armed"]);
+  // the declared reader is the state reader: tracks come from the SDK port
+  const fake = createFakeApi({ nodes: [node("A", "track", [0])], bridge: { running: false } });
+  fake.tracks.set("A", { mute: true, solo: false, arm: false });
+  registerTrackSetCommand(fake.api, "mute", "mute", "s", docs);
+  const states = await fake.commands[0]!.pickState!.read([node("A", "track", [0])], { path: ["mute"], options: {}, args: [] });
+  assert.deepEqual(states, [true]);
+});

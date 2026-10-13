@@ -2,6 +2,7 @@ import type { ModuleApi } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import { setChainSwitch } from "./chainSwitch.js";
+import { readSwitchStates } from "./trackSetState.js";
 import {
   armBase,
   armFactsLines,
@@ -61,6 +62,11 @@ export function registerTrackSetCommand(
     summary,
     description: docs.description,
     examples: docs.examples,
+    // The pick list shows which rows already are muted / soloed / armed.
+    pickState: {
+      label: STATE[prop],
+      read: (nodes) => readSwitchStates(api, prop, nodes),
+    },
     // `--set 1` / `--set 0` name the state the command is called after
     // (muted, soloed, armed — like the LOM's `mute = 1`); without it every
     // target is toggled.
