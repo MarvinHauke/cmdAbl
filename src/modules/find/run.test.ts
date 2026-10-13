@@ -169,3 +169,27 @@ test("find -L 2 -c kick: a kind flag combines with -L", async () => {
   assert.equal(code(await run("find", { level: "2", chains: true }, "kick")), ExitCode.OK);
   assert.deepEqual(fake.bridge.calls.map((c) => c.args.route), [[0, 0, 0]]);
 });
+
+test("find: the pick list asks for Tab-fill; a null pick (cancel or fill) selects nothing and keeps the list as the cancel left it", async () => {
+  const { fake, run } = setup();
+  const listeners: Array<(c: ObjectNode[], chosen: ObjectNode[] | null) => void> = [];
+  fake.api.onPick = (l) => void listeners.push(l);
+  // re-activate so the module's listener is registered on this onPick
+  fake.commands.length = 0;
+  activate(fake.api);
+  let options: unknown;
+  fake.api.pick = async (_title, candidates, _multi, opts) => {
+    options = opts;
+    for (const l of listeners) l(candidates, null);
+    return null;
+  };
+  const cmd = fake.commands.find((c) => c.name === "find")!;
+  const result = await cmd.run!({ path: ["find"], options: { unfold: true }, args: [["kick"]] } as never, undefined as never);
+  assert.equal((result as CommandResult | void)?.code ?? ExitCode.OK, ExitCode.OK);
+  assert.deepEqual(options, { fill: true });
+  assert.equal(fake.bridge.calls.length, 0);
+  // next steps through the list the cancelled pick left, without --unfold
+  const next = fake.commands.find((c) => c.name === "next")!;
+  assert.equal(((await next.run!({ path: ["next"], options: {}, args: [] } as never, undefined as never)) as CommandResult).code, ExitCode.OK);
+  assert.equal(fake.bridge.calls[0]!.args.showChains, undefined);
+});

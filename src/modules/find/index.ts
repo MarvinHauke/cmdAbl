@@ -100,9 +100,13 @@ export function activate(api: ModuleApi): void {
         unfold = wantsUnfold;
         return selectNodeResult(api.bridge, hits[0]!, { unfold });
       }
-      const chosen = await api.pick(`find:${what} — ${hits.length} matches`, hits);
+      // `fill`: Tab puts the chosen object's path into the palette instead of
+      // running; that resolves as a cancelled pick (null), which leaves the
+      // next/prev list exactly as a cancel does.
+      const chosen = await api.pick(`find:${what} — ${hits.length} matches`, hits, false, { fill: true });
+      if (!chosen?.[0]) return;
       unfold = wantsUnfold; // after the pick: its listener reset it
-      if (chosen?.[0]) return selectNodeResult(api.bridge, chosen[0], { unfold });
+      return selectNodeResult(api.bridge, chosen[0], { unfold });
     },
   });
 
