@@ -8,6 +8,7 @@ import * as armModule from "./arm/index.js";
 import * as findModule from "./find/index.js";
 import * as manModule from "./man/index.js";
 import * as lomModule from "./lom/index.js";
+import * as treeModule from "./tree/index.js";
 import * as pakablModule from "./pakabl/index.js";
 
 /**
@@ -25,5 +26,6 @@ export const MODULES: Module[] = [
   armModule,
   manModule,
   lomModule,
+  treeModule,
   pakablModule,
 ];

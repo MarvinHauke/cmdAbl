@@ -515,3 +515,45 @@ solo vermona kick
 ```
 
 words that all occur in one path; if each word also names something on its own, you are asked which you mean
+
+## `tree`
+
+list the tracks, devices and chains of the Live Set as a tree
+
+Lists the Live Set as an indented tree: tracks (regular, return, main), their devices, and the chains and drum pads of racks, each with its kind, and a last line counting what is listed. Without a path it starts at the whole Set; with a path it starts at that track, device or chain. -L sets how many levels below the start are shown (default 2). Only reads; chains and pads appear when the cmdAbl Remote Script is running. A listing of more than 200 lines is cut: pass a path or a smaller -L.
+
+**Usage:** `tree [--level <n>] [<path>]`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<path>` | path (track / device / chain) | no | Where the listing starts: a track, device or chain; without it, the whole Set (takes the rest of the line) |
+
+| Option | Description |
+| --- | --- |
+| `-L, --level <n>` | how many levels below the start are shown (default 2) (a whole number from 1 to 12) |
+
+**Examples**
+
+```
+tree
+```
+
+the whole Set, two levels: tracks and their devices
+
+```
+tree /Vermona MIDI
+```
+
+one track with its devices and chains
+
+```
+tree -L 3 vermona
+```
+
+three levels below the object matching "vermona"
+
+```
+tree --level 1
+```
+
+only the tracks
