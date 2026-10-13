@@ -15,8 +15,13 @@ commands.
 ## 1. Install the extension
 
 Download the latest `.ablx` file from the
-[Releases page](https://github.com/MarvinHauke/cmdAbl/releases/latest). Drop it onto the Extensions
-page in Live's settings. If an older cmdAbl is installed, remove it first and restart Live.
+[Releases page](https://github.com/MarvinHauke/cmdAbl/releases/latest). Then open Live's **Settings → Extensions**
+and either drag the `.ablx` file onto the box that says "Drag and drop to install", or click **Choose file** and pick
+it. cmdAbl then appears under "Installed Extensions". If an older cmdAbl is installed, remove it first and restart Live.
+
+![Live's Settings → Extensions page: the box for dropping an extension, with a Choose file button, and the list of installed extensions, which includes cmdabl](assets/images/extensions-install.png)
+
+*Settings → Extensions: drag the `.ablx` onto the box, or click Choose file.*
 
 ## 2. Run `cmdabl setup`
 
@@ -47,7 +52,7 @@ Shift+period. That types `:` on German (QWERTZ) keyboards.
 A copied script does not run until Live loads it. Do both steps:
 
 1. **Restart Live.**
-2. Open **Settings → Link, Tempo & MIDI → MIDI**. Under **Control Surface**, choose **cmdAbl**. Leave
+2. Open **Settings → Tempo & MIDI → MIDI**. Under **Control Surface**, choose **cmdAbl**. Leave
    Input and Output set to *None*.
 
 Live's log shows `cmdAbl bridge listening on 127.0.0.1:27185` once the link is active. The log is at
@@ -55,7 +60,9 @@ Live's log shows `cmdAbl bridge listening on 127.0.0.1:27185` once the link is a
 lines contain `RemoteScriptMessage: (cmdAbl)`. To check the link too, see
 [Check the Remote Script](#check-the-remote-script) below.
 
-<!-- image wanted: Live's Settings → Link, Tempo & MIDI → MIDI page with Control Surface set to cmdAbl (the rest of the page cropped out) -->
+![Live's Settings, Tempo & MIDI page, MIDI section: slot 1 has Control Surface set to cmdAbl and Input and Output set to None](assets/images/control-surface.png)
+
+*Settings → Tempo & MIDI → MIDI: Control Surface set to cmdAbl, Input and Output set to None.*
 
 ## 4. Open the palette
 
@@ -75,7 +82,9 @@ In the palette:
 | `↑` / `↓` | moves through the list |
 | `Esc` | closes the palette without running anything |
 
-<!-- image wanted: the open palette with `mute drums` typed in, the list of matches below it -->
+![The palette open with the text Sub typed: tracks, devices and chains whose names or paths contain Sub appear as rows, with their track or path in grey](assets/images/palette.png)
+
+*Type part of a name: tracks, devices and chains appear as rows. Enter selects the highlighted one.*
 
 ## 5. Try three commands
 
@@ -94,7 +103,9 @@ When a name matches more than one object, cmdAbl shows a **pick list** instead o
 filter, press `↑` and `↓` to move, `Enter` to choose and `Esc` to cancel. Commands that take several
 tracks, such as `mute`, let you mark more than one row with `Tab`.
 
-<!-- image wanted: the pick list with two matches for one name, the command line shown above the filter -->
+![The pick list for mute midi, with two matching tracks, 2-MIDI and 3-MIDI, and the command line above the filter](assets/images/pick-list.png)
+
+*A name that matches two tracks opens the pick list. The line above the filter shows the command that Enter will run.*
 
 ## Check the Remote Script
 

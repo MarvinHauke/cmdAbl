@@ -28,8 +28,8 @@ version of the manual, because the Extensions SDK does not tell an extension whi
 npm run package        # writes cmdabl-<version>.ablx into the project root (gitignored)
 ```
 
-Install by dropping the file onto the Extensions page in Live's settings. If an older cmdAbl is
-installed, remove it first and restart Live. Alternatively download the `.ablx` from the
+Install in Live's Settings → Extensions: drag the file onto the box, or click Choose file and pick it. If an older
+cmdAbl is installed, remove it first and restart Live. Alternatively download the `.ablx` from the
 GitHub Release or from a [CI](ci.md) run's artifact.
 
 During development you don't need the `.ablx`: `npm start` loads the project folder directly

@@ -12,12 +12,13 @@ It supports macOS only for now.
 ## Install
 
 1. **Install the extension.** Download the latest `.ablx` from the
-   [Releases page](https://github.com/MarvinHauke/cmdAbl/releases/latest) and drop it onto the Extensions
-   page in Live's settings. If an older cmdAbl is installed, remove it first and restart Live.
+   [Releases page](https://github.com/MarvinHauke/cmdAbl/releases/latest). In Live, open **Settings → Extensions**
+   and drag the file onto the box, or click **Choose file** and pick it. If an older cmdAbl is installed, remove
+   it first and restart Live.
 2. **Set up the `:` key.** The key needs [Karabiner-Elements](https://karabiner-elements.pqrs.org) and
    cmdAbl's rule. Open the palette (right-click a clip, track, clip slot or scene and choose **: cmdAbl**),
    type `cmdabl setup` and press Enter. Then enable the rule in Karabiner-Elements.
-3. **Turn on the Remote Script.** Restart Live. Then open **Settings → Link, Tempo & MIDI → MIDI**, and under
+3. **Turn on the Remote Script.** Restart Live. Then open **Settings → Tempo & MIDI → MIDI**, and under
    **Control Surface** choose **cmdAbl**. Leave Input and Output at *None*.
 
 The [Getting started](https://marvinhauke.github.io/cmdAbl/getting-started/) page explains each step, the

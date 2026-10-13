@@ -37,10 +37,12 @@ Run `cmdabl setup` from the palette. It copies the Remote Script into Live's Use
 Then turn it on in Live, once:
 
 1. **Restart Live**, so that Live loads the copied script.
-2. Open **Settings → Link, Tempo & MIDI → MIDI**. Under **Control Surface**, choose **cmdAbl**. Leave Input
+2. Open **Settings → Tempo & MIDI → MIDI**. Under **Control Surface**, choose **cmdAbl**. Leave Input
    and Output set to *None*.
 
-<!-- image wanted: Settings → Link, Tempo & MIDI → MIDI with Control Surface set to cmdAbl (the rest of the page cropped out) -->
+![Live's Settings, Tempo & MIDI page, MIDI section: slot 1 has Control Surface set to cmdAbl and Input and Output set to None](assets/images/control-surface.png)
+
+*Settings → Tempo & MIDI → MIDI: Control Surface set to cmdAbl, Input and Output set to None.*
 
 ## Update it
 
