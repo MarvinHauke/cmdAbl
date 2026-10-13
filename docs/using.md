@@ -14,10 +14,13 @@ scene. Type a command and press `Enter`. `Esc` closes it without running anythin
 
 The palette shows two kinds of rows:
 
-- **Commands**, such as `mute` or `help`. Enter runs what you typed, or the command you selected with `↑` and `↓`.
+- **Commands**, such as `mute` or `help`.
 - **Objects of the Set**: a track, a device, a rack chain or a Drum Rack pad. Picking one of these runs
-  `goto` on it, so it selects that object in Live. Typing the name of an object and pressing `Enter` does
-  the same. Selecting needs the [Remote Script](remote-script.md).
+  `goto` on it, so it selects that object in Live. Selecting needs the [Remote Script](remote-script.md).
+
+If the highlighted row is an object, Enter selects it. If it is a command you did not choose (with `↑` and `↓`,
+`Tab` or a click), and what you typed is not only the start of its name, Enter runs the line as you typed it. With
+an empty input, Enter runs the highlighted row.
 
 After a command runs, the palette closes. Nothing stays open except a message or a pick list.
 
@@ -25,17 +28,20 @@ After a command runs, the palette closes. Nothing stays open except a message or
 
 A command takes objects as text. cmdAbl reads that text as follows:
 
-- **Several words are one pattern.** `mute vermona kick` looks for an object whose path contains all the
-  words, in any order. If no object contains all of them, each word is its own target: `mute kick snare`
-  mutes the Kick and the Snare. If the whole pattern matches and each word also names other objects on its
-  own, cmdAbl asks, so `mute vermona kick` can open the pick list.
-- **A comma always separates targets.** `mute kick, snare` names two objects.
-- **A leading `/` makes an exact path.** `mute /Vermona/Kick` names exactly that object. A `/` word also
-  starts a new target, so `mute /Vermona MIDI /Kick` names two tracks. A name with spaces needs no quotes
-  for a single target: `goto /Opal Lead`. Quote a name that starts with a dash. The pick list shows the exact
-  path of each object, so you can copy it from there.
-- **`#2` tells apart siblings with the same name.** Two tracks called `Kick` appear as `/Drums/Kick` and
-  `/Drums/Kick#2`.
+- **A full path is a target of its own.** `/Vermona/Kick` is one target. `#2` picks the second of two
+  siblings with the same name: `/Drums/Kick#2`. A name with spaces needs no quotes for one target:
+  `goto /Opal Lead`. Quotes or a leading `/` make the text one target of its own, and that target can still be
+  ambiguous: `/Drums/Kick` with two siblings named Kick asks.
+- **Other words must match the path, and one must match the name.** For `mute`, `solo`, `arm`, `goto`, `lom` and
+  `tree`, every word you type must occur in the object's path, and at least one must occur in the object's own
+  name. `mute e-piano` names the track E-Piano, not the devices and chains below it. `mute vermona kick` names
+  the Kick pad on the track Vermona.
+- **Two readings ask once.** If the words typed together name an object, and each word also names something on its
+  own, cmdAbl asks once, with one pick list: the joined object first, then each word's. If no object matches the
+  words together, each word is its own target: `mute kick snare` mutes the Kick and the Snare.
+- **A comma always separates targets.** `mute vermona, kick` names the track Vermona and the Kick.
+- **`find` is a search.** It is looser on purpose: `find vermona` lists everything whose path contains the word,
+  the track and everything below it. `-t`, `-d` and `-c` narrow the list to tracks, devices or chains.
 
 When a name matches more than one object, cmdAbl asks. It never picks one for you.
 
@@ -92,6 +98,13 @@ changed. cmdAbl never folds the chains back. To fold them again, do it in Live.
 reference page for its kind. Use it when you write a script, or to check what cmdAbl sees. The
 [Live API mapping](reference/live-api.md) shows how cmdAbl's ports and Remote Script operations map to the
 Live Object Model.
+
+## See the Set as a tree
+
+`tree` lists the Set as an indented tree: tracks, their devices, and the chains and pads of racks. It shows two
+levels by default. `tree /Vermona MIDI` starts at one track, and `-L` sets how many levels to show, from 1 to 12.
+A long listing is cut with a hint; pass a path or a smaller `-L`. Chains and pads appear only while the Remote
+Script runs. The [command reference](reference/commands.md) has the full usage.
 
 ## Toggles, and what they do not do
 

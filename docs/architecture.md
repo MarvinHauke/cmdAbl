@@ -146,12 +146,13 @@ Take `mute vermona kick` as an example. Here is what happens, step by step.
 5. **Target resolution.** `src/core/resolveArgs.ts` reads the path words. The rule is forgiving but
    never silent:
    - A comma separates targets, and a word that starts with `/` is a whole path.
-   - The bare words are first tried as one pattern. An exact path match wins. Otherwise a match is
-     an object whose path contains every word. `vermona kick` matches the Kick pad of the Vermona
-     track.
-   - If the joined words match and each word also matches other objects, the platform asks. Here
-     `vermona` and `kick` each name other objects on their own, so you get one multi-select list:
-     the joined match first, then the matches of each word.
+   - A full path is a target of its own, and `#2` picks the second of two same-named siblings. Otherwise
+     the typed words must all occur in the object's path, and at least one of them in the object's
+     own name. So `mute e-piano` names the track E-Piano, and `mute vermona kick` names the Kick pad
+     on Vermona. `find` is the one command that only needs the words in the path.
+   - If the words typed together name an object, and each word also names something on its own, the
+     platform asks once, with one pick list: the joined object first. If no object matches the words
+     together, each word is its own target.
    - If nothing matches, the platform offers "did you mean": a pick list of the closest names. It
      never runs one of them without asking. `Esc` gives the original "nothing matches" answer.
 6. **Pick, if needed.** The pick list is a dialog. It returns the chosen indexes. The platform
