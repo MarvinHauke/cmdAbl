@@ -124,9 +124,15 @@ soloed or armed, so a toggle is not applied blindly. Commands without such a sta
 `find`, `lom`) show nothing.
 
 - Page: `SelectRequest.state?: { label }` names the state ("muted"); `items[].state?:
-  "on" | "off"` (absent = unknown, no symbol). A leading `●` / `○` before the label, and a
-  legend next to the filter spells it out ("● muted  ○ not muted") — readable without colour.
-  Page built in `e852014`.
+  "on" | "off"` (absent = unknown, no button). First built as `●`/`○` before the label with a
+  legend (`e852014`); replaced after the user's review (2026-10-18, `839920a`) by a small
+  button on the right of the row, drawn like Live's mixer: `muted` → speaker (Phosphor
+  "speaker-simple-none", MIT), lit when the object is **audible** (state "off") — inverted on
+  purpose, as Live's track activator; `soloed` → "S" and `armed` → record dot, lit when "on";
+  an unknown label → a plain square, lit when "on". No legend; the button's tooltip says
+  "muted"/"unmuted" etc. The page picks the icon from `state.label` — no contract change.
+- Left side of a row is selection only: a marked row has a light accent tint and a bold
+  label (readable without colour); the cursor row has the grey background and accent text.
 - Command node: `pickState?: { label, read(nodes, invocation) }` on a runnable command;
   `read` returns true / false / null per candidate (0005).
 - Platform: `read` is called only when a pick list is about to open (ambiguity and "did you

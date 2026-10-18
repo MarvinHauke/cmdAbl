@@ -280,12 +280,13 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    whose own name matches", which includes a rack named like its track — kept), `Tab` fill,
    the palette `Enter` cases, `--set` and its history form. He reported "all other tests seem
    to work" without going through them one by one.
-1m. State symbols and the larger pick list (`e852014`, `99e290a`, `2b62570`): `mute drum` (two
-   pads match), one of them muted → `●` on that row, `○` on the other, the legend "● muted
-   ○ not muted" next to the filter; the same for `solo`; `arm` with two matching tracks, one
-   armed; `goto`/`find` lists show no symbols; control surface disabled → track rows keep
-   their symbol, pad rows have none, and the list opens within about half a second; a list
-   with 30+ rows is taller (about 18 rows) and still fits the screen; long paths make it wider.
+1m. State buttons and the larger pick list (`e852014`, `99e290a`, `2b62570`, redesign `839920a`):
+   `mute drum` (two pads, one muted) → on the right the muted pad's speaker is dark, the other
+   lit (orange); hover says "muted"/"unmuted"; no legend, no dots on the left; `solo`/`arm`:
+   "S" / record dot lit on soloed/armed rows; `Tab` marks two rows → light tint + bold label,
+   distinct from the cursor row (grey + orange text); `goto`/`find` show no buttons; control
+   surface disabled → pad rows have no button and line up, the list opens within about half a
+   second; long labels clip before the button; a list with 30+ rows is taller (about 18 rows).
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
