@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, fill?: boolean, state?: { label }, items: [{ label, detail?, value?, state?: 'on'|'off' }] }. Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes, or '' when cancelled; with fill (single-select only) Tab answers {"fill": index} instead. -->
+<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, fill?: boolean, state?: { label }, items: [{ label, detail?, value?, state?: 'on'|'off' }] }. state.label picks the right-hand button (muted: speaker, lit when audible = 'off'; soloed: S; armed: record dot; other: neutral square), no state = no button. Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes, or '' when cancelled; with fill (single-select only) Tab answers {"fill": index} instead. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -45,16 +45,23 @@
     #list { flex: 1; overflow-y: auto; }
     .row { display: flex; align-items: baseline; gap: 10px; padding: 5px 12px; cursor: default; }
     .row.active { background: var(--bg-row); }
+    /* A marked row (multi-select) is a light accent tint across the row, no gutter. Cursor = row
+       background + accent text; marked = tint; both = tint + accent text. */
+    .row.marked, .row.marked.active { background: hsla(31, 100%, 67%, 0.13); }
+    /* Not hue alone: a marked row's label is bold (monospace, so the width does not change). */
+    .row.marked .label { font-weight: 700; }
     .row.active .label { color: var(--accent); }
     /* Zone indicator: filter active = caret + soft row; list active = strong row, no caret. */
     body.zone-list #filter { caret-color: transparent; }
     body.zone-list .row.active { background: var(--border); box-shadow: inset 2px 0 0 var(--accent); }
-    .mark { flex: none; width: 10px; color: var(--accent); }
-    /* State symbol (PICK.state): ● on, ○ off, blank when unknown. Never colour alone: the legend names it. */
-    .state { flex: none; width: 10px; text-align: center; color: var(--dim); }
-    .state.on { color: var(--text); }
-    #legend { flex: none; color: var(--dim); font-size: 10px; white-space: nowrap; user-select: none; }
-    #legend[hidden] { display: none; }
+    body.zone-list .row.marked.active { background: hsla(31, 100%, 67%, 0.2); }
+    /* State button (PICK.state), right of the row like Live's mixer buttons: a small square,
+       filled with the accent when lit, outlined and dim when not. */
+    .btn { flex: none; align-self: center; box-sizing: border-box; width: 18px; height: 18px; display: inline-flex;
+           align-items: center; justify-content: center; border: 1px solid var(--dim); border-radius: 2px;
+           color: var(--dim); font-size: 11px; font-weight: 700; line-height: 1; user-select: none; }
+    .btn.lit { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+    .btn svg { width: 12px; height: 12px; display: block; }
     /* One line per row: the label keeps its width up to the row, the detail gives way first. */
     .label { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .detail { flex: 1 1 0; min-width: 0; text-align: right; color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -75,7 +82,6 @@
   <div id="bar">
     <span id="prompt">?</span>
     <input id="filter" type="text" autocomplete="off" spellcheck="false" />
-    <span id="legend" hidden></span>
   </div>
   <div id="list"></div>
   <div id="hint"></div>
@@ -127,25 +133,16 @@
       visible.forEach((index, pos) => {
         const item = PICK.items[index];
         const row = document.createElement('div');
-        row.className = 'row' + (pos === active ? ' active' : '');
-        const mark = document.createElement('span');
-        mark.className = 'mark';
-        mark.textContent = marked.has(index) ? '●' : '';
+        row.className = 'row' + (pos === active ? ' active' : '') + (marked.has(index) ? ' marked' : '');
         // textContent, not innerHTML: labels are user data (track names).
-        let stateEl = null;
-        if (hasState) {
-          stateEl = document.createElement('span');
-          stateEl.className = 'state' + (item.state === 'on' ? ' on' : '');
-          stateEl.textContent = item.state === 'on' ? '●' : item.state === 'off' ? '○' : '';
-        }
         const label = document.createElement('span');
         label.className = 'label';
         label.textContent = item.label;
         const detail = document.createElement('span');
         detail.className = 'detail';
         detail.textContent = item.detail ?? '';
-        if (stateEl) row.append(mark, stateEl, label, detail);
-        else row.append(mark, label, detail);
+        row.append(label, detail);
+        if (hasState && (item.state === 'on' || item.state === 'off')) row.append(stateButton(item.state));
         row.addEventListener('mousedown', e => {
           e.preventDefault();
           if (PICK.multi) { toggle(index); active = pos; zone = 'list'; render(); }
@@ -175,14 +172,52 @@
       cmd.title = text;
     }
 
-    // Symbols only come with a legend that names them.
+    // The state button needs the label (it picks the icon and is the tooltip).
     const hasState = !!PICK.state && typeof PICK.state.label === 'string';
 
-    // Names the symbols once, readable without colour. Only when the request carries a state.
-    const legend = document.getElementById('legend');
-    if (hasState) {
-      legend.textContent = '● ' + PICK.state.label + '  ○ not ' + PICK.state.label;
-      legend.hidden = false;
+    // Icons are constant markup (never user data); swap an icon by replacing its string.
+    // The record dot is a plain circle. The speaker is "speaker-simple-none" from Phosphor Icons
+    // (https://github.com/phosphor-icons/core), used under this licence:
+    //
+    //   MIT License
+    //
+    //   Copyright (c) 2023 Phosphor Icons
+    //
+    //   Permission is hereby granted, free of charge, to any person obtaining a copy
+    //   of this software and associated documentation files (the "Software"), to deal
+    //   in the Software without restriction, including without limitation the rights
+    //   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    //   copies of the Software, and to permit persons to whom the Software is
+    //   furnished to do so, subject to the following conditions:
+    //
+    //   The above copyright notice and this permission notice shall be included in all
+    //   copies or substantial portions of the Software.
+    //
+    //   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    //   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    //   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    //   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    //   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    //   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    //   SOFTWARE.
+    const ICON_SPEAKER = '<svg viewBox="0 0 256 256" fill="currentColor"><path d="M163.51 24.81a8 8 0 0 0-8.42.88L85.25 80H40a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h45.25l69.84 54.31A8 8 0 0 0 168 224V32a8 8 0 0 0-4.49-7.19M152 207.64l-59.09-45.95A7.94 7.94 0 0 0 88 160H40V96h48a7.94 7.94 0 0 0 4.91-1.69L152 48.36Z"/></svg>';
+    const ICON_RECORD  = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>';
+
+    // lit = what Live lights: mute lights when audible (state 'off'), solo and arm when 'on'.
+    function stateButton(state) {
+      const name = PICK.state.label;
+      const btn = document.createElement('span');
+      btn.className = 'btn';
+      let lit = state === 'on';
+      if (name === 'muted') { btn.innerHTML = ICON_SPEAKER; lit = state === 'off'; }
+      else if (name === 'soloed') btn.textContent = 'S';
+      else if (name === 'armed') btn.innerHTML = ICON_RECORD;
+      if (lit) btn.classList.add('lit');
+      const off = ['muted', 'soloed', 'armed'].includes(name) ? 'un' + name : 'not ' + name;
+      btn.title = state === 'on' ? name : off;   // never colour alone: the tooltip names it
+      btn.setAttribute('role', 'img');
+      btn.setAttribute('aria-label', btn.title);
+      return btn;
     }
 
     function renderZone() {
