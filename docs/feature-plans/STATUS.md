@@ -230,6 +230,11 @@ Release:
 
 ### After 0.1.0 (order to be set then)
 
+- **0.2.0 (user, 2026-10-19): tags and aliases — plan 0008.** Tags in the Live Set via
+  `Track.set_data` (Remote Script), `#tag` targets, tag rows in the pick list; aliases as saved
+  command lines in cmdAbl's store. Spike first (cmdabl-bridge: `track_tags`, script 0.1.3).
+  0.1.0 released 2026-10-19 (`a312c24`); work continues on branch `feat/tags-aliases`.
+
 - `pakabl list --old-versions` (user, 2026-10-19): per extension a version choice from its
   GitHub releases; without the flag the newest release is offered. Needs the releases per
   extension (GitHub API via a child process, rate limits) or older versions in the index.
