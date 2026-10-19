@@ -24,6 +24,8 @@ export interface TokenSourceOptions {
   platform?: string;
   home?: string;
   read?: (file: string) => string;
+  /** One line per distinct failure (error code only, never the file's content). Default: the extension log. */
+  log?: (line: string) => void;
 }
 
 const SHAPE = /^[0-9a-f]{32}$/;
@@ -31,17 +33,35 @@ const SHAPE = /^[0-9a-f]{32}$/;
 export function createTokenSource(options: TokenSourceOptions = {}): TokenSource {
   const platform = options.platform ?? process.platform;
   const read = options.read ?? ((file: string) => fs.readFileSync(file, "utf8"));
+  const log = options.log ?? ((line: string) => console.log(line));
   let cached: string | null = null;
+  let lastReason = "";
+  /** Say why a read failed, once per reason: the error code (ENOENT, EACCES, …) or "wrong shape". */
+  const note = (reason: string): void => {
+    if (reason === lastReason) return;
+    lastReason = reason;
+    try {
+      log(`cmdAbl: bridge token: cannot read (${reason})`);
+    } catch {
+      // logging must never turn a refusal into a throw
+    }
+  };
   return {
     get() {
       if (platform !== "darwin") return fail(5, TEXT_NO_WRITES);
       if (cached) return { ok: true, value: cached };
       try {
         const value = read(tokenFilePath(options.home)).trim();
-        if (!SHAPE.test(value)) return fail(5, TEXT_NO_TOKEN);
+        if (!SHAPE.test(value)) {
+          note("wrong shape");
+          return fail(5, TEXT_NO_TOKEN);
+        }
+        lastReason = "";
         cached = value;
         return { ok: true, value };
-      } catch {
+      } catch (e) {
+        const code = (e as NodeJS.ErrnoException | null)?.code;
+        note(typeof code === "string" && /^E[A-Z0-9]+$/.test(code) ? code : "error");
         return fail(5, TEXT_NO_TOKEN);
       }
     },

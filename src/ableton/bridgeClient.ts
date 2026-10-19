@@ -7,6 +7,7 @@ import {
   TEXT_FORBIDDEN,
   TEXT_NOT_INSTALLED,
   TEXT_NO_TOKEN,
+  TEXT_NO_WRITES,
   TEXT_NOT_RUNNING,
   TEXT_NO_ANSWER,
   TEXT_OUTDATED,
@@ -182,6 +183,18 @@ export function createBridgeClient(options: BridgeClientOptions): Bridge {
     return { ok: true, value: { ...args, token: token.value } };
   }
 
+  /**
+   * A token that cannot be read is only worth reporting when the script is there: the cached
+   * hello can be stale (the control surface was switched off), and "Remote Script not running"
+   * is then the true answer. A fresh hello decides; on a platform without tokens nothing to check.
+   * With the script off this costs up to one hello timeout before the answer.
+   */
+  async function tokenRefusal(refusal: BridgeResult<never>): Promise<BridgeResult<never>> {
+    if (refusal.ok || refusal.text === TEXT_NO_WRITES) return refusal;
+    const alive = await ping();
+    return alive.ok ? refusal : (alive as BridgeResult<never>);
+  }
+
   async function request(
     op: string,
     args: Record<string, unknown> = {},
@@ -192,13 +205,13 @@ export function createBridgeClient(options: BridgeClientOptions): Bridge {
       if (!ready.ok) return ready;
       if (!ready.value.ops.includes(op)) return fail(5, TEXT_OUTDATED);
       const first = prepare(args, opts.token);
-      if (!first.ok) return first;
+      if (!first.ok) return tokenRefusal(first);
       let answer = await exchange(op, first.value);
       if (opts.token && answer !== "timeout" && answer !== "send_failed" && !answer.ok && answer.text === TEXT_FORBIDDEN) {
         // The script restarted (a new token per Live start): read the file again, once.
         options.token?.forget();
         const again = prepare(args, true);
-        if (!again.ok) return again;
+        if (!again.ok) return tokenRefusal(again);
         answer = await exchange(op, again.value);
       }
       if (answer === "send_failed") return fail(1, "could not send to the Remote Script; nothing changed");

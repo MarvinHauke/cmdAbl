@@ -654,6 +654,11 @@ first one, `chain_set`)
 - *What the user sees.* `forbidden` → exit 5 "the Remote Script refused the change (access token);
   restart Live or run `cmdabl setup`"; an unreadable file → exit 5 "cannot read the bridge access
   token; …"; not macOS → exit 5 "changing chains is available on macOS only".
+  An unreadable file is only reported when the script answers: a fresh `hello` decides first (the
+  cached one can be stale after the control surface was switched off), so a script that is off
+  says "Remote Script not running", at the cost of up to one hello timeout. Each distinct read
+  failure logs one line `cmdAbl: bridge token: cannot read (EACCES | ENOENT | … | wrong shape)` —
+  the error code only, never the path or content.
 - *Tests.* Script: writing op without / with a wrong / with the right token, no token at all, read
   ops and `select` without token, the token not in a reply or a handler's args, file mode `0600` /
   directory `0700`, no token off macOS or on a failed write, the file not under the script folder.
