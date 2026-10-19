@@ -32,6 +32,13 @@ jobs:
             exit 1
           fi
 
+      - name: Ableton SDK from the private vendor repo (license forbids public distribution)
+        uses: actions/checkout@v4
+        with:
+          repository: MarvinHauke/cmdabl-vendor
+          token: ${{ secrets.VENDOR_TOKEN }}
+          path: vendor
+          persist-credentials: false
       - run: npm ci
       - run: npm run package
 

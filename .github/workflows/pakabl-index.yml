@@ -23,6 +23,13 @@ jobs:
         with:
           node-version: 24
 
+      - name: Ableton SDK from the private vendor repo (license forbids public distribution)
+        uses: actions/checkout@v4
+        with:
+          repository: MarvinHauke/cmdabl-vendor
+          token: ${{ secrets.VENDOR_TOKEN }}
+          path: vendor
+          persist-credentials: false
       - run: npm ci
 
       - name: Crawl
