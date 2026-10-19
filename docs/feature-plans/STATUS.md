@@ -229,6 +229,10 @@ Release:
 
 ### After 0.1.0 (order to be set then)
 
+- Tell "not installed" from "not enabled" when the script does not answer in the installed
+  build (read the installed version through a child process, e.g. `cat`; deferred 2026-10-19 —
+  ddc2866 gives one honest text for both).
+
 - 0.2.0: the completion engine (0006) — ghost text, level-by-level paths; builds on the tree
   from step 2.
 - Keymap (0006): UI keys as named actions, a user `keymap.json`, keys bindable to command lines.
