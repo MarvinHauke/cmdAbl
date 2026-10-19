@@ -36,6 +36,11 @@ messages you may see, and what works without the Remote Script.
 
 ## Develop
 
+The Ableton Extensions SDK is licensed for building extensions, not for redistribution, so it is not
+in this repository. Get the SDK and CLI packages from Ableton's Extensions beta and put
+`ableton-extensions-sdk-<version>.tgz` and `ableton-extensions-cli-<version>.tgz` into `vendor/`
+(the versions `package.json` names). CI reads them from a private repository.
+
 ```sh
 npm install          # dependencies
 npm start            # type-check, build and run in Live's Extension Host (Developer Mode on)

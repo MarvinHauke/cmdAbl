@@ -6,7 +6,7 @@ publishes anything and never changes a version.
 **Runs on:** every pull request, every push to `features` or `main`, weekly (to catch
 dependency drift), and manually (Actions → CI → Run workflow).
 
-**Steps:** check that `package.json` and `manifest.json` have the same version → `npm ci` →
+**Steps:** check that `package.json` and `manifest.json` have the same version → check out the Ableton SDK packages into `vendor/` → `npm ci` →
 `npm test` (unit tests for the command platform) →
 `python3 -B -m unittest discover -s tests/remote-script` (the Remote Script's protocol tests;
 standard library only; the tests live outside `remote-script/` so they are not packaged; run the same
@@ -110,3 +110,13 @@ is needed for a false positive. Today there are no entries: the test fixtures th
    on your own. Rotation is what actually protects the account.
 
 Releasing is a separate workflow — see [Releasing cmdAbl](release-cmdabl.md).
+
+## The Ableton SDK in CI
+
+The SDK license allows building and distributing extensions, but not the SDK itself, so its
+`.tgz` packages are not in this repository. `ci.yml`, `package-release.yml` and `pakabl-index.yml`
+check out the private repository `MarvinHauke/cmdabl-vendor` into `vendor/` before `npm ci`, with
+the Actions secret `VENDOR_TOKEN` (a fine-grained token with read-only *Contents* access to that
+one repository). When Ableton ships a new SDK version: add its packages to `cmdabl-vendor`, then
+update the `file:./vendor/…` entries in `package.json`. Pull requests from forks do not get the
+secret, so their CI cannot build.
