@@ -161,7 +161,7 @@ export interface CommandNode<P = unknown, V = string> {
 }
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
-const RESERVED_OPTIONS = new Set(["help"]);
+const RESERVED_OPTIONS = new Set(["help", "pick"]);
 const RESERVED_SHORTS = new Set(["h"]);
 
 /**
@@ -326,6 +326,24 @@ export function checkNumber(text: string, spec: NonNullable<OptionDef["number"]>
   return value;
 }
 
+/**
+ * The platform's own option on every command with path arguments: lists every
+ * match of each target (single matches and tagged tracks included) and lets
+ * the user mark the ones to use. Added here, never declared by a module.
+ */
+export const PICK_OPTION: OptionDef = {
+  name: "pick",
+  takesValue: false,
+  summary: "show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run",
+};
+
+/** A node's declared options plus the platform's (`--pick` on runnable nodes with path arguments). */
+export function effectiveOptions(node: CommandNode<any, any>): OptionDef[] {
+  const own = node.options ?? [];
+  const takesPaths = !(node.children?.length) && (node.args ?? []).some((a) => a.kind === "path");
+  return takesPaths ? [...own, PICK_OPTION] : own;
+}
+
 /** `pakabl install <id> [--force]` — the one-line usage of a node. */
 export function usage(node: CommandNode<any, any>, path: string[]): string {
   const parts = [...path];
@@ -333,7 +351,7 @@ export function usage(node: CommandNode<any, any>, path: string[]): string {
     parts.push("<command>");
     return parts.join(" ");
   }
-  for (const opt of node.options ?? []) {
+  for (const opt of effectiveOptions(node)) {
     parts.push(opt.takesValue ? `[--${opt.name} <${valueLabel(opt)}>]` : `[--${opt.name}]`);
   }
   for (const arg of node.args ?? []) {
@@ -361,9 +379,9 @@ export function helpText(node: CommandNode<any, any>, path: string[]): string {
     lines.push("", "arguments:");
     for (const arg of described) lines.push(`  ${`<${arg.name}>`.padEnd(12)} ${arg.summary}`);
   }
-  if (node.options?.length) {
+  if (effectiveOptions(node).length) {
     lines.push("", "options:");
-    for (const opt of node.options) {
+    for (const opt of effectiveOptions(node)) {
       const flag = `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${opt.takesValue ? ` <${valueLabel(opt)}>` : ""}`;
       lines.push(`  ${flag.padEnd(22)} ${opt.summary}${opt.number ? ` (${numberRule(opt.number)})` : ""}`);
     }

@@ -124,11 +124,11 @@ test("script not running: any #… answers exit 5; bare words still work", async
   assert.equal((await runLine("mute #fx", none.deps)).result.code, ExitCode.UNAVAILABLE);
 });
 
-test("a bare word also lists the objects tagged with it; names come first", async () => {
+test("a bare word that is a tag AND matches names: one list, tagged rows first", async () => {
   const s = setup({ pickAnswer: (c) => c });
   await runLine("mute fx", s.deps); // names: FX Bus; tagged: SH-101 MIDI, Opal Lead, Kick
-  assert.deepEqual(s.picks[0]!.offered, ["/FX Bus", "/SH-101 MIDI", "/Opal Lead", "/Drums/Kick"]);
-  assert.deepEqual(s.calls, [["/FX Bus", "/SH-101 MIDI", "/Opal Lead", "/Drums/Kick"]]);
+  assert.deepEqual(s.picks[0]!.offered, ["/SH-101 MIDI", "/Opal Lead", "/Drums/Kick", "/FX Bus"]);
+  assert.deepEqual(s.calls, [["/SH-101 MIDI", "/Opal Lead", "/Drums/Kick", "/FX Bus"]]);
   // an exact address stays exact
   const exact = setup({ pickAnswer: (c) => c });
   await runLine("mute /Bass", exact.deps);
@@ -266,4 +266,116 @@ test("a destructive command never fans out: #fx with several hits asks", async (
   assert.deepEqual(s.picks[0]!.offered, ["/SH-101 MIDI", "/Opal Lead", "/Drums/Kick"]);
   assert.deepEqual(s.calls, [["/Opal Lead"]]);
   assert.equal(out.line, 'drop "/Opal Lead"');
+});
+
+test("a bare word that is exactly a tag and names no track acts like #word: all at once, no list", async () => {
+  const s = setup();
+  const out = await runLine("mute synth", s.deps); // tag synth on Bass and SH-101 MIDI; no track is named synth
+  assert.equal(out.result.code, 0);
+  assert.equal(s.picks.length, 0);
+  assert.deepEqual(s.calls, [["/Bass", "/SH-101 MIDI"]]);
+  assert.equal(out.line, "mute synth"); // history keeps the word as typed
+  const upper = setup();
+  await runLine("mute SYNTH", upper.deps);
+  assert.deepEqual(upper.calls, [["/Bass", "/SH-101 MIDI"]]);
+  assert.equal((await runLine("mute SYNTH /Opal Lead", upper.deps)).line, 'mute SYNTH "/Opal Lead"');
+});
+
+test("#fx, #drum: the union, each track once, no list", async () => {
+  const s = setup();
+  const out = await runLine("mute #fx, #drum", s.deps); // Kick has both tags
+  assert.equal(s.picks.length, 0);
+  assert.deepEqual(s.calls[0]!.sort(), ["/Drums", "/Drums/Kick", "/Opal Lead", "/SH-101 MIDI"]);
+  assert.equal(out.line, "mute #fx #drum");
+  const words = setup();
+  await runLine("mute synth, #drum", words.deps); // a tag word and a #tag mix
+  assert.deepEqual(words.calls[0]!.sort(), ["/Bass", "/Drums", "/Drums/Kick", "/SH-101 MIDI"]);
+  assert.equal(words.picks.length, 0);
+});
+
+test("a tag word keeps the exceptions of #…: single-target and destructive commands still ask", async () => {
+  const g = setup({ pickAnswer: (c) => [c[0]!] });
+  await runLine("goto synth", g.deps);
+  assert.deepEqual(g.picks[0]!.offered, ["/Bass", "/SH-101 MIDI"]);
+  const d = setup({ pickAnswer: (c) => [c[0]!] });
+  d.deps.registry.add({ name: "drop", summary: "d", destructive: true, args: [{ name: "t", kind: "path", kinds: ["track"], variadic: true }], run: () => {} });
+  await runLine("drop synth", d.deps);
+  assert.equal(d.picks.length, 1);
+});
+
+test("a partial or fuzzy match of a tag name is no tag target: names decide as before", async () => {
+  const s = setup({ pickAnswer: (c) => c });
+  await runLine("mute dru", s.deps); // substring of "drum"/"Drums": the name Drums matches (and its child), the tag is not exact
+  assert.deepEqual(s.picks.length === 1 ? s.picks[0]!.offered : s.calls[0], ["/Drums"]); // own-name rule: the group, not its children
+  const typo = setup();
+  assert.equal((await runLine("mute synht", typo.deps)).result.code, ExitCode.NOT_FOUND); // no list of tagged rows, suggestions only
+});
+
+test("cold cache: a bare word that names nothing refreshes the tags once before failing", async () => {
+  const s = setup();
+  const sets: ObjectNode[][] = [flattenObjectTree([track("Bass")]), all];
+  let reads = 0;
+  s.deps.liveNodes = () => sets[Math.min(reads, 1)]!;
+  s.deps.refreshTags = async () => (reads++, null);
+  await runLine("mute synth", s.deps);
+  assert.equal(reads, 1);
+  assert.deepEqual(s.calls, [["/Bass", "/SH-101 MIDI"]]);
+  const warm = setup();
+  let again = 0;
+  warm.deps.refreshTags = async () => (again++, null);
+  await runLine("mute bass", warm.deps); // matches a name: no refresh
+  assert.equal(again, 0);
+});
+
+test("--pick: every match of each target in one multi-select list, single matches and tag words included", async () => {
+  const s = setup({ pickAnswer: (c) => [c[0]!] });
+  const out = await runLine("mute synth --pick", s.deps); // tag word: Bass, SH-101 MIDI, both listed; only the marked row runs
+  assert.equal(s.picks.length, 1);
+  assert.deepEqual(s.picks[0]!.offered, ["/Bass", "/SH-101 MIDI"]);
+  assert.deepEqual(s.calls, [["/Bass"]]);
+  assert.equal(out.line, "mute --pick synth"); // as typed: a re-run opens the list again
+  const hashed = setup({ pickAnswer: (c) => c });
+  await runLine("mute #fx --pick", hashed.deps);
+  assert.deepEqual(hashed.picks[0]!.offered, ["/SH-101 MIDI", "/Opal Lead", "/Drums/Kick"]);
+  // a single exact match is listed too
+  const single = setup({ pickAnswer: (c) => c });
+  await runLine("mute /Bass --pick", single.deps);
+  assert.deepEqual(single.picks[0]!.offered, ["/Bass"]);
+  // Esc cancels quietly, nothing runs
+  const esc = setup({ pickAnswer: () => null });
+  const cancelled = await runLine("mute drum --pick", esc.deps);
+  assert.equal(cancelled.cancelled, true);
+  assert.deepEqual(esc.calls, []);
+});
+
+test("--pick is a platform option: in usage and help of path commands only, reserved for modules", async () => {
+  const { usage, helpText, validateTree } = await import("./commandTree.js");
+  const s = setup();
+  const mute = s.deps.registry.roots().find((n) => n.name === "mute")!;
+  assert.match(usage(mute, ["mute"]), /\[--pick\]/);
+  assert.match(helpText(mute, ["mute"]), /--pick\s+show every match/);
+  const text = { name: "t", summary: "s", args: [{ name: "x", kind: "text" as const }], run: () => {} };
+  assert.doesNotMatch(usage(text, ["t"]), /--pick/);
+  assert.match(validateTree([{ ...text, options: [{ name: "pick", takesValue: false, summary: "x" }] }]).join("\n"), /"--pick" is reserved/);
+});
+
+test("a bare word read as a tag rests on fresh tags: stale cache → refresh decides; failed refresh → names only", async () => {
+  // cache says "synth" is a tag; the fresh read says no track has it → not a tag, nothing matches
+  const stale = setup();
+  const fresh = flattenObjectTree([track("Bass")]);
+  stale.deps.refreshTags = async () => null;
+  let after = false;
+  stale.deps.liveNodes = () => (after ? fresh : all);
+  stale.deps.refreshTags = async () => ((after = true), null);
+  assert.equal((await runLine("mute synth", stale.deps)).result.code, ExitCode.NOT_FOUND);
+  assert.deepEqual(stale.calls, []);
+  // the refresh fails: the cached tags are not trusted, bare words use names only (and still work without the script)
+  const down = setup();
+  down.deps.refreshTags = async () => ({ code: ExitCode.UNAVAILABLE, message: "Remote Script not running" });
+  assert.equal((await runLine("mute synth", down.deps)).result.code, ExitCode.NOT_FOUND);
+  const named = await runLine("mute fx", down.deps); // only the track named FX Bus, no tagged rows, no list
+  assert.equal(named.result.code, 0);
+  assert.equal(down.picks.length, 0);
+  assert.deepEqual(down.calls, [["/FX Bus"]]);
+  assert.equal((await runLine("mute bass", down.deps)).result.code, 0); // still works
 });

@@ -404,7 +404,7 @@ test("description, examples and argument summaries: validated, shown by help, ca
   ];
   assert.deepEqual(validateTree(doc), []);
   const text = helpText(doc[0]!, ["mute"]);
-  assert.match(text, /^mute tracks\n\nToggles the mute state of every named track\.\n\nusage: mute <track>…/);
+  assert.match(text, /^mute tracks\n\nToggles the mute state of every named track\.\n\nusage: mute \[--pick\] <track>…/);
   assert.match(text, /arguments:\n  <track>\s+the tracks to mute/);
   assert.match(text, /examples:\n  mute \/Kick, \/Snare\n      mute both\n  mute vermona$/);
   const serialized = serializeTree(doc)[0]!;
@@ -435,7 +435,7 @@ test("option choices: the parser lists them on a bad value, usage shows <0|1>, t
     },
   ];
   assert.deepEqual(validateTree(tree2), []);
-  assert.equal(usage(tree2[0]!, ["mute"]), "mute [--set <0|1>] <track>…");
+  assert.equal(usage(tree2[0]!, ["mute"]), "mute [--set <0|1>] [--pick] <track>…");
   assert.match(helpText(tree2[0]!, ["mute"]), /-s, --set <0\|1>/);
   const good = parse("mute --set 0 /a", tree2);
   assert.equal(good.kind, "run");

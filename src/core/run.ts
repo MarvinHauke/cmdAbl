@@ -4,11 +4,11 @@ import { uniquePath } from "../ableton/resolvePath.js";
 import type { CommandRegistry } from "./commandRegistry.js";
 import { helpText, type CommandNode, type Invocation, type PickState } from "./commandTree.js";
 import { parse } from "./parse.js";
-import { applyPick, lookupTarget, normalizeTargets, resolveTargets, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
+import { applyPick, lookupTarget, normalizeTargets, resolveTargets, tagTargetOf, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { PickPreview, StateChange } from "./ui.js";
-import { nodesWithTag, parseTagTarget, type TagCount } from "./tags.js";
+import { isTagWord, nodesWithTag, parseTagTarget, type TagCount } from "./tags.js";
 
 // The one path every typed line takes: parse → resolve (asking the user to
 // pick when an address is ambiguous) → run → result. Everything it needs from
@@ -97,17 +97,23 @@ function canonicalLine(
   nodes: ObjectNode[],
   node?: CommandNode<any, any>,
   targets: Target[][] = [],
+  typed: Target[][] = [],
 ): string {
   const words: string[] = [];
   args.forEach((values, argIndex) => {
     const def = node?.args?.[argIndex];
+    // `--pick`: the line is remembered as typed, so a re-run opens the list again.
+    if (invocation.options.pick === true && def?.kind === "path") {
+      for (const t of typed[argIndex] ?? []) words.push(targetWord(t, nodes));
+      return;
+    }
     // `#fx` is remembered as typed (a re-run hits the tracks tagged then), not as the paths it hit.
     const covered = new Set<string>();
     if (def?.kind === "path" && def.rest !== true) {
       for (const t of targets[argIndex] ?? []) {
-        const tag = typeof t === "string" ? parseTagTarget(t) : null;
+        const tag = typeof t === "string" ? tagTargetOf(nodes, t, def.kinds) : null;
         if (tag && tag !== "list") {
-          words.push(`#${tag.name}`);
+          words.push(tag.typed);
           for (const n of nodesWithTag(nodes, tag.name, def.kinds)) covered.add(n.handleId);
         }
       }
@@ -264,6 +270,7 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   const needsLive = (node.args ?? []).some((def) => def.kind === "path");
   let nodes = needsLive ? deps.liveNodes() : [];
   let targets = normalizeTargets(node, invocation, nodes, quoted);
+  const typedTargets = targets.map((values) => [...values]);
 
   // Tags live in the Set and are read by the Remote Script: `#…` cannot be answered without it.
   const usesTags = targets.some(
@@ -278,6 +285,30 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
     }
     if (unavailable) return { result: unavailable };
     nodes = deps.liveNodes(); // the tree now carries the fresh tags
+  } else if (deps.refreshTags) {
+    // A bare word may act as a tag (`mute synth`): that must not rest on cached tags — the cache can
+    // be stale (another Set opened, a tag just written) or not loaded yet (cold start). So a bare
+    // word that the cache says is a tag, or that names nothing, reads the tags first. If the read
+    // fails the cached tags are not trusted: bare words then work on names only, as without a script.
+    const asTagWord = targets.some(
+      (values, i) =>
+        node.args?.[i]?.kind === "path" &&
+        values.some((t) => {
+          if (typeof t !== "string" || !isTagWord(t.trim())) return false;
+          const kinds = node.args?.[i]?.kinds;
+          return lookupTarget(nodes, t, kinds).length === 0 || nodesWithTag(nodes, t, kinds).length > 0;
+        }),
+    );
+    if (asTagWord) {
+      let failed = false;
+      try {
+        failed = (await deps.refreshTags()) !== null;
+      } catch {
+        failed = true;
+      }
+      // (Shallow copies: `children` still point at the originals, so resolution must not read tags through them.)
+      nodes = failed ? nodes.map((n) => ({ ...n, tags: undefined })) : deps.liveNodes();
+    }
   }
 
   // Resolve; every ambiguous address costs the user one pick.
@@ -345,6 +376,6 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
     // A failing handler keeps its failure (the fill is dropped): nothing fails silently.
     const filled = deps.takeFill?.();
     if (filled !== undefined && result.code === ExitCode.OK) return { result: ok(), cancelled: true, fill: filled };
-    return { result, line: canonicalLine(invocation, step.invocation.args, nodes, node, targets) };
+    return { result, line: canonicalLine(invocation, step.invocation.args, nodes, node, targets, typedTargets) };
   }
 }

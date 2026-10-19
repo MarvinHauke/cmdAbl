@@ -132,7 +132,7 @@ test("run: not found, usage, handler failures and exceptions become results", as
 test("run: --help", async () => {
   const { deps } = setup();
   const help = await runLine("mute --help", deps);
-  assert.match(help.result.message ?? "", /usage: mute <track>…/);
+  assert.match(help.result.message ?? "", /usage: mute \[--pick\] <track>…/);
 });
 
 test("registry.add rejects an invalid or duplicate command without throwing", () => {

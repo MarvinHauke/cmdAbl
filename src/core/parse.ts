@@ -1,5 +1,5 @@
 import { ExitCode, fail, type CommandResult } from "./types.js";
-import { checkNumber, numberRule, type CommandNode, type Invocation, usage } from "./commandTree.js";
+import { checkNumber, effectiveOptions, numberRule, type CommandNode, type Invocation, usage } from "./commandTree.js";
 import { tokenize, type Token } from "./tokenize.js";
 
 // Turns a typed line into a matched leaf plus a (not yet resolved) invocation.
@@ -77,7 +77,7 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
   const options: Record<string, string | true> = {};
   const positionals: string[] = [];
   const positionalQuoted: boolean[] = [];
-  const defs = node.options ?? [];
+  const defs = effectiveOptions(node);
   let optionsEnded = false;
 
   for (let k = 0; k < rest.length; k++) {

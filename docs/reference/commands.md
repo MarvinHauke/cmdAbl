@@ -12,7 +12,7 @@ toggle record arm on tracks
 
 Switches record arm on for each track that is not armed and off for each that is, one by one. With --set 1 every track ends up armed, with --set 0 not armed, whatever it was before; a track that is already in that state counts as done. Return, main and group tracks cannot be armed and are reported as failed (disarming them is a no-op). With the cmdAbl Remote Script running, tracks Live refuses to arm (for example a MIDI track whose input device is not available) are reported as failed too. Live's Exclusive Arm setting is not applied: naming several tracks arms all of them.
 
-**Usage:** `arm [--set <0|1>] <track>…`
+**Usage:** `arm [--set <0|1>] [--pick] <track>…`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
@@ -21,6 +21,7 @@ Switches record arm on for each track that is not armed and off for each that is
 | Option | Description |
 | --- | --- |
 | `-s, --set <0|1>` | make sure every target is armed (1) or not (0) instead of toggling |
+| `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
 **Examples**
 
@@ -162,7 +163,7 @@ select a track, device, chain or drum pad by path
 
 Selects the object in Live: a track becomes the selected track; a device, chain or pad is selected in its track's device chain. Needs the cmdAbl Remote Script. Picking an object in the palette runs this command for you. When your words match several objects you are asked to choose one.
 
-**Usage:** `goto [--unfold] <path>`
+**Usage:** `goto [--unfold] [--pick] <path>`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
@@ -171,6 +172,7 @@ Selects the object in Live: a track becomes the selected track; a device, chain 
 | Option | Description |
 | --- | --- |
 | `--unfold` | also show the track's chains in the Session mixer (never folds anything) |
+| `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
 - Needs the Remote Script (reports "not running" / "outdated" otherwise).
 
@@ -316,11 +318,15 @@ show the Live Object Model path of a track, device or chain
 
 Shows the object's cmdAbl path, its Live Object Model path (the address used by Max for Live's live.path and in Remote Scripts) and the link to the LOM reference page that describes its kind. Only reads; it does not need the cmdAbl Remote Script. When your words match several objects you are asked to choose one.
 
-**Usage:** `lom <target>`
+**Usage:** `lom [--pick] <target>`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
 | `<target>` | path (track / device / chain) | yes | Track, device, chain or pad; spaces need no quotes (takes the rest of the line) |
+
+| Option | Description |
+| --- | --- |
+| `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
 **Examples**
 
@@ -381,7 +387,7 @@ toggle mute on tracks, chains and drum pads
 
 Switches mute on for each target that is not muted and off for each that is, one by one. With --set 1 every target ends up muted, with --set 0 unmuted, whatever it was before; a target that is already in that state counts as done. Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the cmdAbl Remote Script and macOS. When the words match several objects you are asked to choose.
 
-**Usage:** `mute [--set <0|1>] <target>…`
+**Usage:** `mute [--set <0|1>] [--pick] <target>…`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
@@ -390,6 +396,7 @@ Switches mute on for each target that is not muted and off for each that is, one
 | Option | Description |
 | --- | --- |
 | `-s, --set <0|1>` | make sure every target is muted (1) or not (0) instead of toggling |
+| `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
 **Examples**
 
@@ -575,7 +582,7 @@ toggle solo on tracks, chains and drum pads
 
 Switches solo on for each target that is not soloed and off for each that is, one by one. With --set 1 every target ends up soloed, with --set 0 not soloed, whatever it was before; a target that is already in that state counts as done. Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the cmdAbl Remote Script and macOS. Live's Exclusive Solo setting is not applied: naming several targets solos all of them.
 
-**Usage:** `solo [--set <0|1>] <target>…`
+**Usage:** `solo [--set <0|1>] [--pick] <target>…`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
@@ -584,6 +591,7 @@ Switches solo on for each target that is not soloed and off for each that is, on
 | Option | Description |
 | --- | --- |
 | `-s, --set <0|1>` | make sure every target is soloed (1) or not (0) instead of toggling |
+| `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
 **Examples**
 
@@ -623,7 +631,7 @@ tag tracks, or list the tags of the Set
 
 Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx reaches every track tagged fx. Without arguments, lists every tag and the tracks that carry it. With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. With names, switches each tag on for a target that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, so the script has to run, and they are saved with the Set. Cmd+Z does not undo them: the result names the command that puts every change back. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or a tag such as #drum.
 
-**Usage:** `tag [--set <0|1>] [<target>] [<name>…]`
+**Usage:** `tag [--set <0|1>] [--pick] [<target>] [<name>…]`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
@@ -633,6 +641,7 @@ Tags say what a track is, so one command can act on a group: after tag /Lead fx 
 | Option | Description |
 | --- | --- |
 | `-s, --set <0|1>` | make sure every target has the tags (1) or lacks them (0) instead of toggling |
+| `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
 - Needs the Remote Script (reports "not running" / "outdated" otherwise).
 
