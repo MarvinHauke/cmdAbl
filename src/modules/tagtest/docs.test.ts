@@ -3,5 +3,5 @@ import { assertDocumented, declaredBy } from "../docs.testkit.js";
 import { activate } from "./index.js";
 
 test("tagtest: every command is documented and its examples parse", () => {
-  assertDocumented(declaredBy(activate), ["tagtest dirty", "tagtest get", "tagtest set"]);
+  assertDocumented(declaredBy(activate), ["tagtest dirty", "tagtest dirty-sdk", "tagtest get", "tagtest set"]);
 });

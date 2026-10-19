@@ -115,6 +115,27 @@ export function activate(api: ModuleApi): void {
           return r.ok ? ok(dirtyLine(r.value)) : fail(r.code, r.text);
         },
       },
+      {
+        name: "dirty-sdk",
+        summary: "re-set a track property through the SDK to see if Live marks the Set modified (spike, removed before 0.2.0)",
+        description:
+          SPIKE + "Writes the track's mute state back to its current value through the SDK, without the Remote " +
+          "Script, to find out whether an extension-side write makes Live consider the Set modified. The SDK " +
+          "track has no colour, so the mute state stands in for it.",
+        examples: [{ line: "tagtest dirty-sdk /Bass", note: "re-set mute on the track Bass, keeping its state" }],
+        args: [track],
+        run: (invocation): CommandResult => {
+          const node = invocation.args[0]![0] as ObjectNode;
+          try {
+            const handle = api.tracks.track(node);
+            if (!handle) return fail(ExitCode.NOT_FOUND, `tagtest: no track at ${node.path}`);
+            handle.mute = handle.mute;
+            return ok("sdk mute re-set: ok");
+          } catch (e) {
+            return fail(ExitCode.FAILURE, `tagtest: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        },
+      },
     ],
   });
 }

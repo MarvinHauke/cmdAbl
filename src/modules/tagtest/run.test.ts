@@ -68,3 +68,15 @@ test("dirty prints one line and takes only known candidates", async () => {
   assert.equal(fake.bridge.calls[0]!.token, true);
   assert.equal(parse("tagtest dirty nope /Bass", fake.commands).kind, "error");
 });
+
+test("dirty-sdk writes the track's own mute value back and keeps it", async () => {
+  const node = { ...bass, handleId: "H" } as unknown as ObjectNode;
+  const fake = createFakeApi({ nodes: [node] });
+  fake.tracks.set("H", { mute: true, solo: false, arm: false });
+  activate(fake.api);
+  const cmd = fake.commands[0]!.children!.find((c) => c.name === "dirty-sdk")!;
+  const run = () => cmd.run!({ path: ["tagtest", "dirty-sdk"], options: {}, args: [[node]] } as never, undefined as never) as Promise<{ code: number; message?: string }> | { code: number; message?: string };
+  const r = await run();
+  assert.equal(r.message, "sdk mute re-set: ok");
+  assert.equal(fake.tracks.get("H")!.mute, true);
+});

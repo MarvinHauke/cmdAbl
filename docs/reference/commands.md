@@ -625,7 +625,7 @@ Temporary spike for tags (plan 0008), removed before 0.2.0. Reads or writes the 
 
 **Usage:** `tagtest <command>`
 
-**Subcommands:** `get`, `set`, `dirty`
+**Subcommands:** `get`, `set`, `dirty`, `dirty-sdk`
 
 ### `tagtest get`
 
@@ -719,3 +719,23 @@ tagtest dirty toggle_color /Bass
 ```
 
 try the colour toggle on the track Bass
+
+### `tagtest dirty-sdk`
+
+re-set a track property through the SDK to see if Live marks the Set modified (spike, removed before 0.2.0)
+
+Temporary spike for tags (plan 0008), removed before 0.2.0. Writes the track's mute state back to its current value through the SDK, without the Remote Script, to find out whether an extension-side write makes Live consider the Set modified. The SDK track has no colour, so the mute state stands in for it.
+
+**Usage:** `tagtest dirty-sdk <track>`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<track>` | path (track) | yes | The track; spaces need no quotes (takes the rest of the line) |
+
+**Examples**
+
+```
+tagtest dirty-sdk /Bass
+```
+
+re-set mute on the track Bass, keeping its state
