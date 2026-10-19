@@ -298,6 +298,11 @@ How the platform reads the text of a `path` argument (`src/core/resolveArgs.ts`)
   `mute vermona kick` names the Kick pad. A single text target follows the same rule.
 - `find` is a search and keeps the looser rule on purpose (user, 2026-10-13): it lists
   everything whose path contains the words. Two rules, stated in the docs.
+- **One list also with misses (decided 2026-10-19, after `arm vermona sh` opened two lists):**
+  when some texts are ambiguous and others match nothing, their "did you mean" suggestions join
+  the same pick list, each row tagged with its word and suggestion rows marked as such. Safe
+  because a multi-select list has no preselection — only marked rows run. Rejected: widening
+  `arm` to chains just to share the list (it would offer rows it can never arm).
 - **Per-word tags kept (user, 2026-10-19):** when each word is its own target, the shared pick
   list tags every row with its word; the user likes it as a first step towards fuzzy finding
   (0006, "Target picture"). Matching joined words without spaces (`drum 2` → `Drum2` at once)
