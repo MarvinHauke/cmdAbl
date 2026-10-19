@@ -269,3 +269,14 @@ test("mute, solo and arm declare pickState with their label; goto, find and lom 
   const states = await fake.commands[0]!.pickState!.read([node("A", "track", [0])], { path: ["mute"], options: {}, args: [] });
   assert.deepEqual(states, [true]);
 });
+
+test("pickState.change previews toggle without --set, on for 1, off for 0, toggle for odd values", () => {
+  const { api, commands } = createFakeApi();
+  registerTrackSetCommand(api, "mute", "mute", "s", docs);
+  const change = commands[0]!.pickState!.change!;
+  const inv = (set?: string) => ({ path: ["mute"], options: (set === undefined ? {} : { set }) as Record<string, string | true>, args: [] });
+  assert.equal(change(inv()), "toggle");
+  assert.equal(change(inv("1")), "on");
+  assert.equal(change(inv("0")), "off");
+  assert.equal(change(inv("x")), "toggle");
+});

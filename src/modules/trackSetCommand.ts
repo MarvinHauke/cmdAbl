@@ -66,6 +66,11 @@ export function registerTrackSetCommand(
     pickState: {
       label: STATE[prop],
       read: (nodes) => readSwitchStates(api, prop, nodes),
+      // What the command would do to each row: set it, or toggle it.
+      change: (invocation) => {
+        const set = invocation.options.set;
+        return set === "1" ? "on" : set === "0" ? "off" : "toggle";
+      },
     },
     // `--set 1` / `--set 0` name the state the command is called after
     // (muted, soloed, armed — like the LOM's `mute = 1`); without it every
