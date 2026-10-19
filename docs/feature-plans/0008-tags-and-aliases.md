@@ -84,7 +84,10 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
    JSON list `["fx","drums"]` came back after save and reopen).
 2. Is the tag copied when a track is duplicated? — **yes** (the Cmd+D copy of Opal had `fx`;
    the copy and the original then held different values independently).
-3. Is `set_data` undoable, and does it mark the Set as modified? If it does not mark it, a tag
+3. Is `set_data` undoable? — **no** (user, 2026-10-19): Cmd+Z, repeated, never restored the
+   old value, also when the write ran inside an undo step (`--undo`). So `tag` must tell the user
+   what changed and how to reverse it (e.g. `tag --set 0 /Lead fx`); an own undo is an option.
+   Does it mark the Set as modified? If it does not mark it, a tag
    changed and closed without saving is lost — then cmdAbl must say "save the Set".
 4. Size and type limits (store one JSON string).
 
