@@ -235,7 +235,8 @@ Release:
   bundle (completion engine with ghost text and Telescope-style fuzzy finding, tags on chains
   and pads, pipes or refined aliases). Tags and aliases: plan 0008. Spike committed
   (`e061b47`, `0fbfe08`; script 0.1.3, temporary `tagtest`) on `feat/tags-aliases`, waiting for
-  its Live test; spike ops, `tagtest` and the 0.1.3 bump must not reach `main` as they are.
+  its Live test; spike ops (`track_tags*`, `mark_modified` `8b1d071`), `tagtest`, the
+  `cmdabl.dirty` key and the 0.1.3/0.1.4 bumps must not reach `main` as they are.
   0.1.0 released 2026-10-19 (`a312c24`).
 - From an outside review (ChatGPT, 2026-10-19), checked against the code: nothing is released on
   deactivate (trigger server, listeners) → fix in 0.1.x; `extension.ts` holds palette state
