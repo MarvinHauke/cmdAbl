@@ -36,12 +36,12 @@ export function activate(api: ModuleApi): void {
       );
       if (!yes) return ok("history kept");
       store.forget();
-      return ok(`history cleared (${n} ${plural(n)}); history restore brings them back`);
+      return ok(`history cleared (${n} ${plural(n)}); history restore brings ${n === 1 ? "it" : "them"} back`);
     },
     async forget(count): Promise<CommandResult> {
       if (store.size === 0) return ok("history is empty");
       const n = store.forget(count);
-      return ok(`forgot ${n} ${plural(n)}; history restore brings them back`);
+      return ok(`forgot ${n} ${plural(n)}; history restore brings ${n === 1 ? "it" : "them"} back`);
     },
     async restore(count): Promise<CommandResult> {
       if (store.removedSize === 0) return ok("nothing to restore");
