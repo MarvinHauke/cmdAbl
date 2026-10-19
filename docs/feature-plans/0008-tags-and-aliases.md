@@ -132,11 +132,26 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
 - **`#…` fans out** (gives every tagged object at once) for every path argument except `rest`
   arguments and destructive commands, where several hits ask; single-target commands such as
   `goto` ask. A fuzzy bare word still asks. `tag` does not declare `multiple: "all"`.
+- **Acting on a tag never asks** (user, after the 0.1.1 Live test): a bare word that is exactly a
+  tag name and matches no track name acts like `#word` (all tagged tracks at once); `#fx, #drums`
+  takes the union without a list. A list only on a real conflict: the word is a tag and also
+  matches track names (tagged rows first), or it only matches a tag partly. `goto` and
+  destructive commands still ask (they take one object / need care). `mute #` and `tag <target>`
+  keep their lists (choosing, assigning). History keeps the word as typed.
 - **History keeps `#fx`** as typed, so a re-run hits the tracks tagged now.
 - **`tag`'s target is one token** in 0.1.1 (`/Lead`, `"SH-101 MIDI"`, `#drum`, `#`); a comma list
   before tag words is not supported yet (`tag /Lead, /Bass fx` → exit 2).
 - **Script version 0.1.5** on this branch (0.1.3/0.1.4 were spike builds; setup compares versions
   for equality, so a fresh number avoids "current" for a spike script).
+
+## Later idea: tags in track names (user, 2026-10-20)
+
+`Lead [#fx, #drums]`: visible in Live, editable by hand, Cmd+Z works, Live marks the Set itself,
+and the SDK can read it without the Remote Script. Costs: long names in narrow headers, the
+suffix shows in exported stems and on control surfaces, every name match must ignore `[#…]`.
+Shape: a setting (needs the 0.1.2 store) `tags.inName = off | mirror` — `mirror` writes
+`set_data` and the suffix; a hand-edited suffix wins on read. Spike first: can the extension set
+a track name, and is that undoable.
 
 ## Phased rollout
 
