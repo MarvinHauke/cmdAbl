@@ -281,70 +281,43 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    whose own name matches", which includes a rack named like its track — kept), `Tab` fill,
    the palette `Enter` cases, `--set` and its history form. He reported "all other tests seem
    to work" without going through them one by one.
-1m. State buttons, preview and the larger pick list (`e852014`, `99e290a`, `2b62570`, redesign
-   `839920a`, preview `0462eba` `250fdd5` `4f43d7f`): `mute drum` (two pads, one muted) → on
-   the right the muted pad's speaker is dark, the other lit (orange); no legend, no dots; no
-   ring and the line `> mute` until a row is marked, `Enter` without a mark does nothing; `Tab` marks two pads →
-   only those show the result with a ring, bold label, no row tint; unmarking restores them;
-   `mute --set 1 drum` → a ring only on pads not yet muted; `Enter` applies exactly what was
-   shown; hover says "muted (on confirm)"; `solo`/`arm` alike ("S" / record dot), colours
-   like Live's mixer (`8eef9f3`: solo blue with white "S", arm red; the ring in the same colour and
-   visible on the laptop screen — if the blue ring is faint, 2px for solo); `goto drum`
-   shows no buttons, marks as tint + bold; control surface disabled → pad rows have no button
-   and line up, the list opens within about half a second; long labels clip before the button;
-   a list with 30+ rows is taller (about 18 rows).
+1m. State buttons, preview, Live colours and no preselection in `mute`/`solo`/`arm` — **seen by
+   the user on 2026-10-19**. The rest of 1m is in the checklist below.
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in
    the Edit menu, Cmd+Z, switch apps, `POST /reset`, press `:`, report whether a palette appears
    plus the log from the last `run start:` line on.
-3. History (`b09108c`, `972b67a`): `mute opal` with one match → history shows
-   `mute "/Opal Lead"`, the re-run asks nothing; add a second "opal" track, re-run → still the
-   first, no pick; `mute /Kick#1 kick`, pick Kick#1 → history `mute /Kick#1`; `goto vermona`,
-   pick a device → the entry re-runs to the same device.
-4. `mute /Opal Lead` (unquoted space) and `mute /a, /b` (comma form) still work.
-5. Dashes (`d7ba529`, `fa31212`): track `Kick - Sub`: `mute /Kick - Sub` works, history shows it
-   quoted; track `Bass -6dB`: `mute /Bass -6dB` → "unknown option" with the quoting hint,
-   `mute "/Bass -6dB"` works; `find "-d"` is remembered as `find "-d"`; `mute -- --help` prints
-   no help.
-6. Pick list rows (`900f89d`): two tracks named `Kick`, `mute kick` shows `/Kick#1`, `/Kick#2`;
-   a track named `a</script>b` does not break the pick list.
-7. Pick list page (`1b305f6`, `d8ca020`, `bd13a52`; `Space` marking and the `> mute …` line seen):
-   focus in the filter on open, typing works, size; `mute vermona`, type `vermona midi` → space
-   appears, list filters, nothing marked; `↓` → hint `Space mark`, first row stays active,
-   `Space` marks and moves on, `↑` from the filter only enters the list; in the list: stronger
-   highlight, no caret, a typed letter / `Backspace` / `←`/`→` returns to the filter, marks stay;
-   `Tab` marks in both zones, `Enter` runs on the marked tracks and the history entry equals
-   the line, `Esc` cancels without history, a mouse click marks; `goto`/`find` (single-select):
-   first `↓` moves to row two, `Space` types a space; a very long name stays on one clipped row;
-   a pick with two rows has no scrollbar; sizing of a long list.
-8. One dialog at a time (`6ad8884`; a trigger during a message opening nothing, and the log
-   lines, were seen): `mute` on a missing track, dismiss, trigger → opens; `goto vermona` →
-   pick → `Esc` → trigger → opens; `pakabl list` opens and its buttons work. If the palette
-   sticks: look in the `npm start` log for `dialog open: X` without `dialog closed`, or
-   `trigger ignored: a command is still running`.
-9. pakabl (`504a606`, `9dc9ec7`, `82beafd`, `4a479ce`, `931615b`; `Install` seen): `pakabl update`
-   → "index refreshed (16 extensions)", no note about ignored entries; `pakabl list` → Update,
-   Uninstall, Repo (opens the extension's GitHub page) work; `pakabl install ../x` and
-   `pakabl uninstall A.b` → "not a valid extension id", nothing on disk touched;
-   `pakabl uninstall some.thing` → "not installed"; install then uninstall a real extension;
-   `pakabl upgrade federico-pepe.snake@9.9.9` → version-mismatch failure.
-10. `cmdabl --setup` unchanged (the linked line was seen right); unknown command shows
-    `unknown command`; Karabiner `cmdabl_open` flag reset on startup (never reported).
-11. `man` (`fcb7296`, `69452e9`, `0db7d6b`, `ddd15cb`, `e885674`, `9edd84f`; `man ableton`,
-    `man cmdabl`, `cmdabl --help` seen; Ecosia opens and honours the path in `site:`):
-    `man Ableton` (capital) → the Live manual; `man ableton warp modes` → results from manual
-    version 12 only (untested narrowing), which language, is `/en/` the wanted one;
-    `man ableton it's a & b` → words arrive intact; `man cmdabl foo` → "cmdabl has no search";
-    a search entry in history re-runs; `man` → usage with topics; `man foo` →
-    `no manual for "foo"` and topics; `man ableton extra` → usage error; `help` lists `man`; a
-    successful `man ableton` is in history and re-runs; bare `cmdabl` shows the usage;
-    `cmdabl --foo` adds `unknown flag`.
-12. Messages and scrollbar (`1b6d254`, `b6b208a`, `5e6b339`, `ac885e2`, `158502d`, `63bba87`;
-    `cmdabl --help` on six rows and the slim dim scrollbar in `pakabl list` seen): `help` → every
-    line on one row, last line visible, no scrollbar; `Esc`/`Enter` close; `↓`/`PageDown` scroll
-    a long text, Close stays visible; slim dim scrollbar in the message page and pick list; no
-    white flash on open; palette dropdown, caret and selection still readable.
+Checklist of 2026-10-19 (replaces the old tests 3–12):
+
+**Pick list (rest of 1m)**
+1. `goto drum` → no state buttons; `Enter` takes the cursor row.
+2. Control surface off → `mute drum` opens within ~0.5 s, pad rows without button, lined up.
+3. A list with 30+ rows (`find -L 2`) is taller (~18 rows) and fits the screen.
+
+**Names and history**
+4. Track `Kick - Sub`: `mute /Kick - Sub` works; history shows it quoted.
+5. Track `Bass -6dB`: `mute /Bass -6dB` → "unknown option" with a quoting hint;
+   `mute "/Bass -6dB"` works.
+6. Two tracks named `Kick`: `mute kick` lists `/Kick#1`, `/Kick#2`.
+7. `mute lead` (one match) → history shows `mute "/Lead"`; re-run asks nothing.
+8. `goto drum`, pick a pad → the history entry re-runs to the same pad.
+
+**Dialogs**
+9. `mute nothere`, close the message, open the palette again → it opens.
+10. `goto drum` → `Esc` → palette opens again.
+11. `help` → every line on one row, no scrollbar; `Esc`/`Enter` close.
+
+**pakabl**
+12. `pakabl update` → "index refreshed (N extensions)".
+13. `pakabl list` → Update, Uninstall, Repo buttons work.
+14. `pakabl uninstall some.thing` → "not installed".
+
+**man and errors**
+15. `man ableton warp modes` → Live 12 manual results.
+16. `man foo` → "no manual for foo" with topics.
+17. `unmute x` → "unknown command".
+
 13. Not Live: the next pull request shows three checks (`build`, `gitleaks`, `docs-build`,
     `e23c043`); the next manual run of the pakabl index workflow proves the pinned
     `peter-evans/create-pull-request` (`a5e1adc`).
