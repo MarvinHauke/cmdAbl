@@ -327,9 +327,9 @@ pad mute read again; control surface off → the new "not running" text, back on
 without restarting Live — **all seen by the user on 2026-10-19**. Polish in work: the same
 failure reason once for several targets (core).
 
-Still open before the release test: the buttons of `pakabl list` (Update/Uninstall/Repo,
+Seen 2026-10-19: `mute --set 2` → usage error. Still open before the release test: the buttons of `pakabl list` (Update/Uninstall/Repo,
 `Esc`); rename a pad and use the old name → "did you mean"; control surface off and on, restart
-Live, `mute <pad>` still works (token); `mute --set 2 /a` → usage error; `lom` with the control
+Live, `mute <pad>` still works (token); `lom` with the control
 surface off.
 
 History commands — **seen by the user on 2026-10-19** (restore, forget, `clear -f`,
