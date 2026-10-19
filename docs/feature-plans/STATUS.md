@@ -139,6 +139,12 @@ Step 3 is complete. Live smoke test: 1j plus `help`, `cmdabl setup`, a history r
 
 ### 4. Small things that make it feel finished
 
+- History commands (user, 2026-10-19; in work): `history clear` (asks, restorable),
+  `history clear -f` (no question, not restorable), `history forget [-n N]`,
+  `history restore [-n N]`; new `ModuleApi.confirm(message, confirmLabel)` for the question
+  (shown as a two-row pick list, no `Ui` change). Owners: core (`confirm`), modules
+  (`src/modules/history/`), docs (`using.md`).
+
 - Import-boundary test is built (`921dd43`, `9ee97c3`; rules in 0005, "Import boundaries"). One
   listed exception is left: `pakabl list` opening its own dialog (goes away with the `page`
   surface below).
@@ -290,18 +296,9 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    plus the log from the last `run start:` line on.
 Checklist of 2026-10-19 (replaces the old tests 3–12):
 
-**Pick list (rest of 1m)**
-1. `goto drum` → no state buttons; `Enter` takes the cursor row.
-2. Control surface off → `mute drum` opens within ~0.5 s, pad rows without button, lined up.
-3. A list with 30+ rows (`find -L 2`) is taller (~18 rows) and fits the screen.
-
-**Names and history**
-4. Track `Kick - Sub`: `mute /Kick - Sub` works; history shows it quoted.
-5. Track `Bass -6dB`: `mute /Bass -6dB` → "unknown option" with a quoting hint;
-   `mute "/Bass -6dB"` works.
-6. Two tracks named `Kick`: `mute kick` lists `/Kick#1`, `/Kick#2`.
-7. `mute lead` (one match) → history shows `mute "/Lead"`; re-run asks nothing.
-8. `goto drum`, pick a pad → the history entry re-runs to the same pad.
+Tests 1–8 (pick list, names, history) — **seen by the user on 2026-10-19**; notes: without the
+script, pad mutes answer "Remote Script not running" (intended); `goto` makes no Live undo
+entry (selecting is not undoable in Live).
 
 **Dialogs**
 9. `mute nothere`, close the message, open the palette again → it opens.
@@ -354,6 +351,10 @@ Checklist of 2026-10-19 (replaces the old tests 3–12):
   dialog was open". Test 2 in "Open Live tests".
 
 ### Other
+
+- Live's undo list names each cmdAbl change after the property ("Change \"Speaker On\"" for a
+  mute). The SDK's `withinTransaction(fn)` takes no name and the LOM has no named undo steps, so
+  cmdAbl cannot label them. Candidate feature request to Ableton: a name for an undo step.
 
 - **`arm` on a MIDI track whose input device is missing** (arm button greyed out) shows no error.
   Measured in Live (2026-10-12, log lines of `ff32196`): the script reports `can_be_armed` true

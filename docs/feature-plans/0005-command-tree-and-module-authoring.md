@@ -278,6 +278,13 @@ the page can preview the result; a failure means absent. `read` is never called 
 path, is capped at 600 ms, and any failure means "no buttons". `mute`, `solo` and `arm` declare
 both (`250fdd5`: no `--set` → "toggle", `--set 1` → "on", `--set 0` → "off"). Details: 0007 §4.
 
+## `confirm` on `ModuleApi` (2026-10-19)
+
+`api.confirm(message, confirmLabel): Promise<boolean>` asks a yes/no question before a
+destructive command (first user: `history clear`). The platform shows it as a single-select
+pick list with two rows (`confirmLabel`, "Cancel") through `Ui.select` and the dialog queue;
+`Esc` or Cancel → false. A command offers `-f, --force` to skip it.
+
 ## Forgiving target resolution (2026-10-12; `461c885`, `46f241a`, `8588a8d`)
 
 How the platform reads the text of a `path` argument (`src/core/resolveArgs.ts`):
