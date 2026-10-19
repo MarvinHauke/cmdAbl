@@ -26,7 +26,7 @@ Without the Remote Script the palette still opens and most commands run:
 - `mute`, `solo` and `arm` work on tracks. `arm` cannot warn about tracks that Live refuses to arm.
 - `mute` and `solo` on rack chains and Drum Rack pads do not work.
 - `goto`, `find`, `next` and `prev` do not select anything. They answer that the Remote Script is not running.
-  In the installed extension this is the only answer: it cannot look into the User Library, so it cannot tell a
+  In the installed extension this is the expected answer: by the permission list it cannot look into the User Library, so it cannot tell a
   missing or outdated script from a stopped one. A development run (`npm start`) can also answer "not installed"
   or "outdated".
 - Picking a row that selects an object in the palette gives the same answer.

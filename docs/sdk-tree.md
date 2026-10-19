@@ -296,13 +296,13 @@ WarpMode           Beats=0 | Tones=1 | Texture=2 | Repitch=3 | Complex=4 | Compl
   the trees work in development and fail when installed. Test the installed `.ablx` as well (not measured for
   `npm start`).
 - **cmdAbl's own reads/writes outside the extension bundle** (each fails soft): the installed-script check reads the
-  User Library's `Remote Scripts/cmdAbl/protocol.py`, which lies outside the trees above, so it always ends in "unknown". Writing commands read the
+  User Library's `Remote Scripts/cmdAbl/protocol.py`, which lies outside the trees above, so by the permission list that check ends in "unknown". Writing commands read the
   bridge token file `~/Library/Application Support/Ableton/Extensions Data/marvinhauke.cmdabl/bridge-token` (folder
   0700, file 0600), which the Remote Script creates at every Live start (not the extension). The token sits inside
   an allowed tree, so the sandbox does not block it.
-- **File access outside the bundle (each fails soft; measured in the installed host):** host code reads files with
+- **File access outside the bundle (each fails soft; the token read is observed in the installed host, the User Library check follows from the permission list):** host code reads files with
   the Node file API in `src/ableton/installedScript.ts` (the installed Remote Script folder and its `protocol.py`;
-  only "not found" means "missing", so in the installed host the check always ends in "unknown", and the bridge
+  only "not found" means "missing", so by the permission list the check ends in "unknown" in the installed host, and the bridge
   reports "not running") and `src/ableton/bridgeToken.ts` (the token file; an unreadable or malformed file means
   exit 5, "cannot read the bridge access token (CODE)", where CODE is the error code or "wrong shape").
   `src/core/samePath.ts` calls `realpathSync` on two paths (any error means "not the same"; it never throws).

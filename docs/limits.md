@@ -14,7 +14,7 @@ maintainers already know about each one.
   into Live's Extensions folder. Ableton has announced a stricter sandbox for extensions. If it arrives, installing
   through pakabl may be blocked in a later version of Live, and pakabl as a whole may then stop working.
 - **The installed extension is sandboxed; a development run is not.** An installed `.ablx` may read only Live's
-  Extensions and Extensions Data folders and its temp folder. The installed version cannot read the User Library,
+  Extensions and Extensions Data folders and its temp folder. By the permission list, the installed version cannot read the User Library,
   so it cannot tell whether the Remote Script is missing or outdated, and says "not running" instead. A development
   run (`npm start`) is presumed not to be sandboxed, so a read outside those folders may work in development and
   fail only in the installed version. Test the installed `.ablx` before a release.
