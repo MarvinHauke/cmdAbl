@@ -58,19 +58,20 @@ export function pakablCommand(h: PakablHandlers): Command {
       },
       {
         name: "upgrade",
-        summary: "install the index's version of an extension (<id>@<version> checks the version)",
+        summary: "install a newer index version of an extension (<id>@<version> installs that one even if not newer)",
         description:
-          "Installs the version the curated list holds, replacing an installed one. Name the version you " +
-          "expect after an @ and the command stops when the list has another one. Restart Live to reload it.",
+          "Installs the version the curated list holds, but only when it is newer than the installed one; " +
+          "otherwise nothing changes. Name the version after an @ to install it anyway, also an older or the same " +
+          "one: the command stops when the list holds another version. Restart Live to reload it.",
         examples: [
-          { line: "pakabl upgrade federico-pepe.snake", note: "install the list's version" },
-          { line: "pakabl upgrade federico-pepe.snake@1.2.0", note: "only if the list holds version 1.2.0" },
+          { line: "pakabl upgrade federico-pepe.snake", note: "install the list's version if it is newer" },
+          { line: "pakabl upgrade federico-pepe.snake@1.2.0", note: "install the list's version 1.2.0, newer or not" },
         ],
         args: [
           {
             name: "ref",
             kind: "text",
-            summary: "Extension id, optionally followed by @ and the version you expect",
+            summary: "Extension id, optionally followed by @ and the version the list holds, to install it even if it is not newer",
           },
         ],
         run: (inv) => h.upgrade(firstArg(inv)),

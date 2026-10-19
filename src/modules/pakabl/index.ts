@@ -2,6 +2,7 @@ import * as path from "node:path";
 import type { ModuleApi } from "../types.js";
 import { EXTENSIONS_DIR, downloadFile, unzipInto, readJsonFile, openUrl, removeDir } from "./platform.js";
 import { buildListPage } from "./listPage.js";
+import { indexRelation } from "./version.js";
 import { pakablCommand } from "./command.js";
 import { extensionDir, filterValidEntries, isValidId, repoUrl } from "./guards.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
@@ -93,6 +94,9 @@ async function install(api: ModuleApi, id: string | undefined): Promise<CommandR
     if (installed.version === entry.version) {
       return ok(`pakabl: ${entry.name} v${installed.version} is already installed`);
     }
+    if (indexRelation(installed.version, entry.version) !== "newer") {
+      return ok(`pakabl: ${entry.name} v${installed.version} is installed; ${notNewerText(id, installed.version, entry.version)}`);
+    }
     return ok(
       `pakabl: ${entry.name} v${installed.version} is installed; index has v${entry.version} — ` +
         `run "pakabl upgrade ${id}" to switch`,
@@ -119,11 +123,19 @@ async function uninstall(api: ModuleApi, id: string | undefined): Promise<Comman
   return ok(`pakabl: uninstalled ${installed.name} v${installed.version} — restart Live to unload it`);
 }
 
+/** Why an upgrade without a version does nothing, and how to force the index version. */
+function notNewerText(id: string, installedVersion: string, indexVersion: string): string {
+  const known = indexRelation(installedVersion, indexVersion) !== "unknown";
+  return `index has v${indexVersion}, which is ${known ? "not newer" : "not known to be newer"} — run "pakabl upgrade ${id}@${indexVersion}" to install it anyway`;
+}
+
 interface ListEntry {
   id: string;
   name: string;
   version: string;
   installedVersion: string | null;
+  /** The page offers Update only when this is true: the index version is newer than the installed one. */
+  canUpdate: boolean;
   repoUrl: string | undefined;
 }
 
@@ -144,6 +156,7 @@ async function list(api: ModuleApi): Promise<CommandResult | void> {
       name: entry.name,
       version: entry.version,
       installedVersion: installed?.version ?? null,
+      canUpdate: installed !== undefined && indexRelation(installed.version, entry.version) === "newer",
       repoUrl: repoUrl(entry.url),
     };
   });
@@ -167,6 +180,11 @@ async function list(api: ModuleApi): Promise<CommandResult | void> {
   } else if (result.startsWith("update:")) {
     const id = result.slice("update:".length);
     const entry = index.find((e) => e.id === id);
+    const installed = entry ? installedManifest(entry.id) : undefined;
+    // The page only offers Update for a newer index version; check again here.
+    if (entry && installed && indexRelation(installed.version, entry.version) !== "newer") {
+      return ok(`pakabl: ${entry.name} v${installed.version} is installed; ${notNewerText(entry.id, installed.version, entry.version)}`);
+    }
     if (entry) outcome = await upgrade(api, `${entry.id}@${entry.version}`);
   } else if (result.startsWith("repo:")) {
     // The page only names an extension; the host derives the URL itself and
@@ -215,6 +233,13 @@ async function upgrade(api: ModuleApi, ref: string | undefined): Promise<Command
       `pakabl: index lists ${entry.name} v${entry.version}, not v${version} — ` +
         `run "pakabl update" or check the version string`,
     );
+  }
+
+  // Never a downgrade by accident: without a version, only a newer index
+  // version replaces the installed one; `<id>@<version>` pins on purpose.
+  const installed = installedManifest(id);
+  if (installed && version === undefined && indexRelation(installed.version, entry.version) !== "newer") {
+    return ok(`pakabl: ${entry.name} v${installed.version} is installed; ${notNewerText(id, installed.version, entry.version)}`);
   }
 
   const failed = downloadAndUnpack(entry);

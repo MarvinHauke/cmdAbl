@@ -511,15 +511,15 @@ fetch the list
 
 ### `pakabl upgrade`
 
-install the index's version of an extension (&lt;id>@&lt;version> checks the version)
+install a newer index version of an extension (&lt;id>@&lt;version> installs that one even if not newer)
 
-Installs the version the curated list holds, replacing an installed one. Name the version you expect after an @ and the command stops when the list has another one. Restart Live to reload it.
+Installs the version the curated list holds, but only when it is newer than the installed one; otherwise nothing changes. Name the version after an @ to install it anyway, also an older or the same one: the command stops when the list holds another version. Restart Live to reload it.
 
 **Usage:** `pakabl upgrade <ref>`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
-| `<ref>` | text | yes | Extension id, optionally followed by @ and the version you expect |
+| `<ref>` | text | yes | Extension id, optionally followed by @ and the version the list holds, to install it even if it is not newer |
 
 **Examples**
 
@@ -527,13 +527,13 @@ Installs the version the curated list holds, replacing an installed one. Name th
 pakabl upgrade federico-pepe.snake
 ```
 
-install the list's version
+install the list's version if it is newer
 
 ```
 pakabl upgrade federico-pepe.snake@1.2.0
 ```
 
-only if the list holds version 1.2.0
+install the list's version 1.2.0, newer or not
 
 ### `pakabl list`
 
