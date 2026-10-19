@@ -27,13 +27,14 @@ export function activate(api: ModuleApi): void {
       "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +
       "so the script has to run, and they are saved with the Set. Cmd+Z does not undo them: the result names " +
       "the command that puts every change back. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or " +
-      "a tag such as #drum.",
+      "a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).",
     examples: [
       { line: "tag", note: "all tags and their tracks" },
       { line: "tag /Lead", note: "pick the tags to switch on or off for the track Lead" },
       { line: "tag /Lead fx synth", note: "switch fx and synth on, or off where they are on" },
       { line: "tag --set 1 /Bass fx", note: "make sure Bass is tagged fx" },
       { line: "tag --set 0 #drum fx", note: "remove fx from every track tagged drum" },
+      { line: "tag --set 1 !#drums synth", note: "tag every track that is not a drums track as synth" },
     ],
     requires: ["bridge"],
     options: [
