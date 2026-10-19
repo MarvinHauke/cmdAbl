@@ -76,10 +76,10 @@ export interface ModuleApi {
   ): Promise<ObjectNode[] | null>;
   /**
    * Ask a yes/no question: a single-select list titled `message` with two
-   * rows, `confirmLabel` and "Cancel", through the platform's dialog queue.
+   * rows, "Cancel" first and `confirmLabel` second, through the platform's dialog queue.
    * Resolves true only when `confirmLabel` was chosen; Cancel, Esc or a failing
-   * dialog resolve false. The confirm row is preselected (Enter confirms), so use
-   * it for restorable actions. Never rejects.
+   * dialog resolve false. "Cancel" is the first row, so a reflex Enter never acts.
+   * Never rejects.
    */
   confirm(message: string, confirmLabel: string): Promise<boolean>;
   /** Notified whenever a pick list was shown, with what was offered and what was chosen. */

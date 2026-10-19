@@ -16,16 +16,16 @@ function uiAnswering(answer: number[] | { fill: number } | null | "throw") {
 }
 
 test("confirm: asks a single-select list with the message and two rows", async () => {
-  const { ui, requests } = uiAnswering([0]);
+  const { ui, requests } = uiAnswering([1]);
   assert.equal(await confirm(ui, "Delete all history?", "Delete"), true);
   assert.equal(requests[0]!.title, "Delete all history?");
   assert.equal(requests[0]!.multi, false);
-  assert.deepEqual(requests[0]!.items.map((i) => i.label), ["Delete", "Cancel"]);
+  assert.deepEqual(requests[0]!.items.map((i) => i.label), ["Cancel", "Delete"]);
   assert.equal(requests[0]!.fill, undefined);
 });
 
 test("confirm: Cancel, Esc, a fill answer and a failing dialog are all false", async () => {
-  for (const answer of [[1], null, { fill: 0 }, "throw", []] as const) {
+  for (const answer of [[0], null, { fill: 0 }, "throw", []] as const) {
     assert.equal(await confirm(uiAnswering(answer as never).ui, "Sure?", "Yes"), false);
   }
 });

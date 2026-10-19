@@ -48,7 +48,7 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `dialog` | sdk | the SDK's modal dialog (`context.ui`, a data: URL page) through the dialog queue | – |  |
 | `log` | platform | `console.log` in the Extension Host | – |  |
 | `pick` | platform | the platform's pick list | – |  |
-| `confirm` | platform | the platform's pick list (Confirm / Cancel rows) | – |  |
+| `confirm` | platform | the platform's pick list (Cancel / Confirm rows) | – |  |
 | `onPick` | platform | listener on the pick list | – |  |
 | `showFeedback` | platform | the platform's message dialog | – |  |
 | `registerProvider` | platform | palette item provider | – |  |
