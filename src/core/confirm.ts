@@ -2,6 +2,9 @@ import type { Ui } from "./ui.js";
 
 // A yes/no question for modules (`api.confirm`): a single-select pick list with
 // two rows, so it goes through the same dialog queue and page as every pick.
+// It goes straight through `ui.select`, so `onPick` listeners (history) are not
+// told: an answer is not a picked object. The cursor starts on the first row,
+// `confirmLabel`: Enter confirms.
 // Never throws; a failing or dismissed dialog counts as "no".
 
 export async function confirm(ui: Ui, message: string, confirmLabel: string): Promise<boolean> {
