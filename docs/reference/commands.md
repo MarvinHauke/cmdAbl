@@ -222,6 +222,94 @@ cmdabl --help
 
 usage of the cmdabl commands
 
+## `history`
+
+manage the list of recent commands
+
+cmdAbl remembers the commands you ran and offers them as rows in the empty palette. These subcommands clear the list, drop the newest entries or bring removed ones back. The list and the removed entries live in memory and are gone when cmdAbl restarts.
+
+**Usage:** `history <command>`
+
+**Subcommands:** `clear`, `forget`, `restore`
+
+### `history clear`
+
+remove all entries (asks first)
+
+Removes every entry from the history after a question. Removed entries can be brought back with history restore until cmdAbl restarts. With --force there is no question and nothing can be restored.
+
+**Usage:** `history clear [--force]`
+
+| Option | Description |
+| --- | --- |
+| `-f, --force` | do not ask, and drop the removed entries too |
+
+**Examples**
+
+```
+history clear
+```
+
+ask, then move all entries aside
+
+```
+history clear --force
+```
+
+wipe the history for good, without asking
+
+### `history forget`
+
+remove the newest entries
+
+Removes the newest entry, or the newest N with -n, without asking. Useful after a mistyped command. history restore brings them back until cmdAbl restarts.
+
+**Usage:** `history forget [--count <n>]`
+
+| Option | Description |
+| --- | --- |
+| `-n, --count <n>` | how many of the newest entries to remove (default 1) (a whole number from 1 to 20) |
+
+**Examples**
+
+```
+history forget
+```
+
+drop the last command
+
+```
+history forget -n 3
+```
+
+drop the last three commands
+
+### `history restore`
+
+bring removed entries back
+
+Puts entries removed by history clear or history forget back, most recently removed first. Without -n it restores everything the last clear or forget removed. Entries keep their original order; one that is already in the history again is not added twice.
+
+**Usage:** `history restore [--count <n>]`
+
+| Option | Description |
+| --- | --- |
+| `-n, --count <n>` | how many removed entries to bring back (default: all of the last clear or forget) (a whole number from 1 to 20) |
+
+**Examples**
+
+```
+history restore
+```
+
+undo the last clear or forget
+
+```
+history restore -n 2
+```
+
+bring back the two most recently removed entries
+
 ## `lom`
 
 show the Live Object Model path of a track, device or chain
