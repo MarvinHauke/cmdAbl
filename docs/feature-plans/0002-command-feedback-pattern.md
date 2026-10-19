@@ -129,7 +129,7 @@ applies a single policy:
 | code 0, no `message` | Silent — matches shell convention; most commands produce no output on success |
 | code 0 with `message` | Lightweight confirmation via the channel chosen in §4 |
 | code ≠ 0 | Clearly-marked failure via the channel in §4 — visually distinct from a confirmation (the user must be able to tell "it worked, here's a note" from "it didn't work" at a glance) |
-| `details` present | The module's short `message` (`"arm: 1 of 2 done"`) followed by the per-target list, rendered by the presenter only: successes first (`✓ path`), then failures (`× path`) with the reason on its own indented line(s); a parenthesis in the reason starts a new indented line; no hard wrap, the page wraps (decided 2026-10-12 after the Live test; modules never format the list themselves) |
+| `details` present | The module's short `message` (`"arm: 1 of 2 done"`) followed by the per-target list, rendered by the presenter only: successes first (`✓ path`), then failures (`× path`) with the reason on its own indented line(s); a parenthesis in the reason starts a new indented line; no hard wrap, the page wraps (decided 2026-10-12 after the Live test; modules never format the list themselves). Failures with the same reason are listed together and the reason is printed once below them; groups follow their first failure; failures without a reason are never grouped (2026-10-19, `b54c516`) |
 
 `registry.run()`'s result flows into `presentResult` the same way a freshly-resolved
 track/device failure would — one path for "command produced a result" regardless of which
