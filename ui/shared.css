@@ -7,6 +7,12 @@
   --dim:      hsl(0, 0%, 38%);
   --accent:   hsl(31, 100%, 67%);
   --border:   hsl(0, 0%, 8%);
+
+  /* Live's own button colours, for the state buttons in the pick list. Values of Live 12's default
+     theme ("Default Dark Neutral Medium.ask"); the SDK cannot read the current theme. */
+  --live-chosen-default:   #ffad56;  /* ChosenDefault: track activator (mute) */
+  --live-chosen-prelisten: #3c6ab6;  /* ChosenPreListen: solo */
+  --live-chosen-record:    #ff5559;  /* ChosenRecord: arm */
 }
 
 html, body {

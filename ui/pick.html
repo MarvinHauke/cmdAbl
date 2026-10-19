@@ -60,10 +60,14 @@
     .btn { flex: none; align-self: center; box-sizing: border-box; width: 18px; height: 18px; display: inline-flex;
            align-items: center; justify-content: center; border: 1px solid var(--dim); border-radius: 2px;
            color: var(--dim); font-size: 11px; font-weight: 700; line-height: 1; user-select: none; }
-    .btn.lit { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+    .btn { --btn: var(--accent); --btn-ink: var(--bg); }
+    .btn.mute { --btn: var(--live-chosen-default); }
+    .btn.solo { --btn: var(--live-chosen-prelisten); --btn-ink: #fff; }   /* white reads better on the blue */
+    .btn.arm  { --btn: var(--live-chosen-record); }
+    .btn.lit { background: var(--btn); border-color: var(--btn); color: var(--btn-ink); }
     .btn svg { width: 12px; height: 12px; display: block; }
     /* Pending: the list shows the state confirming would set (differs from Live now): a dashed ring. */
-    .btn.pending { outline: 1px dashed var(--accent); outline-offset: 2px; }
+    .btn.pending { outline: 1px dashed var(--btn); outline-offset: 2px; }
     /* With state.change the button shows what is marked: no row tint (bold label stays). */
     body.change .row.marked { background: transparent; }
     body.change .row.marked.active { background: var(--bg-row); }
@@ -235,9 +239,9 @@
       const btn = document.createElement('span');
       btn.className = 'btn';
       let lit = state === 'on';
-      if (name === 'muted') { btn.innerHTML = ICON_SPEAKER; lit = state === 'off'; }
-      else if (name === 'soloed') btn.textContent = 'S';
-      else if (name === 'armed') btn.innerHTML = ICON_RECORD;
+      if (name === 'muted') { btn.classList.add('mute'); btn.innerHTML = ICON_SPEAKER; lit = state === 'off'; }
+      else if (name === 'soloed') { btn.classList.add('solo'); btn.textContent = 'S'; }
+      else if (name === 'armed') { btn.classList.add('arm'); btn.innerHTML = ICON_RECORD; }
       if (lit) btn.classList.add('lit');
       const off = ['muted', 'soloed', 'armed'].includes(name) ? 'un' + name : 'not ' + name;
       btn.title = (state === 'on' ? name : off) + (pending ? ' (on confirm)' : '');
