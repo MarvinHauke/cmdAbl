@@ -2,7 +2,7 @@ import * as path from "node:path";
 import type { ModuleApi } from "../types.js";
 import { EXTENSIONS_DIR, downloadFile, unzipInto, readJsonFile, openUrl, removeDir } from "./platform.js";
 import { buildListPage } from "./listPage.js";
-import { indexRelation } from "./version.js";
+import { indexRelation, installedRelation, type IndexRelation } from "./version.js";
 import { pakablCommand } from "./command.js";
 import { extensionDir, filterValidEntries, isValidId, repoUrl } from "./guards.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
@@ -136,6 +136,8 @@ interface ListEntry {
   installedVersion: string | null;
   /** The page offers Update only when this is true: the index version is newer than the installed one. */
   canUpdate: boolean;
+  /** The installed version seen from the index's: "newer" = the installed one is newer. Absent when not installed. */
+  relation?: IndexRelation;
   repoUrl: string | undefined;
 }
 
@@ -156,6 +158,7 @@ async function list(api: ModuleApi): Promise<CommandResult | void> {
       name: entry.name,
       version: entry.version,
       installedVersion: installed?.version ?? null,
+      relation: installed ? installedRelation(installed.version, entry.version) : undefined,
       canUpdate: installed !== undefined && indexRelation(installed.version, entry.version) === "newer",
       repoUrl: repoUrl(entry.url),
     };

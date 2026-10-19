@@ -33,3 +33,11 @@ test("the index relation names what an update would be", () => {
   assert.equal(indexRelation("nightly", "0.1.0"), "unknown");
   assert.equal(indexRelation("nightly", "nightly"), "same");
 });
+
+test("the installed relation is seen from the installed version", async () => {
+  const { installedRelation } = await import("./version.js");
+  assert.equal(installedRelation("0.1.0", "0.0.1"), "newer"); // installed is newer than the index
+  assert.equal(installedRelation("0.0.1", "0.1.0"), "older");
+  assert.equal(installedRelation("0.1.0", "0.1.0"), "same");
+  assert.equal(installedRelation("nightly", "0.1.0"), "unknown");
+});

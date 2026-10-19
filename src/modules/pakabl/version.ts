@@ -51,3 +51,10 @@ export function indexRelation(installed: string, index: string): IndexRelation {
   const c = compareVersions(index, installed);
   return c === null ? "unknown" : c > 0 ? "newer" : c < 0 ? "older" : "same";
 }
+
+/** How the installed version relates to the index's: "newer" means the installed one is newer. */
+export function installedRelation(installed: string, index: string): IndexRelation {
+  if (installed === index) return "same";
+  const c = compareVersions(installed, index);
+  return c === null ? "unknown" : c > 0 ? "newer" : c < 0 ? "older" : "same";
+}
