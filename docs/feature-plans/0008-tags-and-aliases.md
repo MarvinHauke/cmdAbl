@@ -87,7 +87,10 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
 3. Is `set_data` undoable? — **no** (user, 2026-10-19): Cmd+Z, repeated, never restored the
    old value, also when the write ran inside an undo step (`--undo`). So `tag` must tell the user
    what changed and how to reverse it (e.g. `tag --set 0 /Lead fx`); an own undo is an option.
-   Does it mark the Set as modified? If it does not mark it, a tag
+   Does it mark the Set as modified? — **no** (user, 2026-10-19): after a tag change Live quit
+   without asking to save. A tag change alone is lost unless the user saves. Options for the
+   design: say "save the Set" in every tag result; or mark the Set dirty with a harmless,
+   reverted change (adds undo noise); or keep a copy in cmdAbl's store. To decide before 0.1.1. If it does not mark it, a tag
    changed and closed without saving is lost — then cmdAbl must say "save the Set".
 4. Size and type limits (store one JSON string).
 
