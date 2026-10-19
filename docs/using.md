@@ -88,8 +88,14 @@ ring marks each button that would change. Live does not change until you press `
 **One list per command.** If several of your names are ambiguous, you get one list for all of them, with the
 matches of the whole pattern first. Answer it once.
 
-**"Did you mean".** When nothing matches, the list shows the closest names instead. Nothing runs from that
-list unless you choose a row. `Esc` gives the plain "nothing matches" answer.
+**"Did you mean" in a mixed list.** If some of your names match several objects and one word is mistyped, its
+suggestions join that list. Each suggestion row is tagged with its word and a question mark, for example `"bsas"?`. Only the marked
+rows run, as in any multi-select list. `Esc` ends the command with the plain "nothing matches" answer. A word that
+nothing fits at all fails at once, without a list.
+
+**"Did you mean" alone.** When no name matches, the list shows the closest names instead. Nothing runs from that
+list unless you choose a row. `Esc` gives the plain "nothing matches" answer. For `mute`, `solo` and `arm` this list
+takes marks like any other multi-select list. For `goto`, `find` and `lom` it takes one row.
 
 ## Pads, chains and folding
 
