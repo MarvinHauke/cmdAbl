@@ -315,7 +315,8 @@ entry (selecting is not undoable in Live).
 16. `man foo` → "no manual for foo" with topics.
 17. `unmute x` → "unknown command".
 
-14. History commands: `mute bass`, `solo lead`, then `history clear` → question with Cancel
+14. History commands — **seen by the user on 2026-10-19** (restore, forget, `clear -f`,
+    "nothing to restore"; the question of plain `clear` not in the screenshots): `mute bass`, `solo lead`, then `history clear` → question with Cancel
     first; Cancel → "history kept"; Clear → no history rows; `history restore` → both back in
     order; `history forget` drops the newest, `history restore -n 1` brings it back;
     `history clear -f` asks nothing, then `history restore` → "nothing to restore"; no
