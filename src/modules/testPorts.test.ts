@@ -31,3 +31,11 @@ test("fake api: pick answers from pickAnswer and notifies onPick listeners", asy
   assert.deepEqual(seen, [["/Kick"]]);
   assert.equal(await createFakeApi().api.pick("t", [node]), null);
 });
+
+test("fake api: confirm answers from confirmAnswer (default false) and records the message", async () => {
+  const no = createFakeApi({});
+  assert.equal(await no.api.confirm("Sure?", "Yes"), false);
+  const yes = createFakeApi({ confirmAnswer: true });
+  assert.equal(await yes.api.confirm("Sure?", "Yes"), true);
+  assert.deepEqual(yes.confirms, ["Sure?"]);
+});

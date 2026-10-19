@@ -11,6 +11,7 @@ import { getBridge } from "./ableton/bridge.js";
 import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
 import { objectRowLine } from "./core/objectRow.js";
+import { confirm } from "./core/confirm.js";
 import { pickNodes } from "./core/pick.js";
 import { quoteIfNeeded } from "./core/tokenize.js";
 import { uniquePath } from "./ableton/resolvePath.js";
@@ -108,6 +109,7 @@ export function activate(activation: ActivationContext) {
     dialog: (html, width, height, name = "module page") => ui.page(name, html, width, height),
     commands: { add: (command) => void registry.add(command) },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill }),
+    confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
     onPick: (listener) => pickListeners.push(listener),
     registerProvider: (provider, priority = 0) => providers.push({ provider, priority }),
     onCommandRun: (listener) => commandRunListeners.push(listener),

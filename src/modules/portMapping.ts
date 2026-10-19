@@ -80,6 +80,7 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "dialog", via: "sdk", call: "the SDK's modal dialog (`context.ui`, a data: URL page) through the dialog queue", lom: [] },
   { port: "log", via: "platform", call: "`console.log` in the Extension Host", lom: [] },
   { port: "pick", via: "platform", call: "the platform's pick list", lom: [] },
+  { port: "confirm", via: "platform", call: "the platform's pick list (Confirm / Cancel rows)", lom: [] },
   { port: "onPick", via: "platform", call: "listener on the pick list", lom: [] },
   { port: "showFeedback", via: "platform", call: "the platform's message dialog", lom: [] },
   { port: "registerProvider", via: "platform", call: "palette item provider", lom: [] },

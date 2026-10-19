@@ -15,6 +15,8 @@ export interface FakeApiOptions {
   dialogAnswer?: string | null;
   /** What `api.pick` answers (default: cancelled). Registered `onPick` listeners are notified like the platform does. */
   pickAnswer?: (candidates: ObjectNode[], multi: boolean) => ObjectNode[] | null;
+  /** What `api.confirm` answers (default: false, i.e. cancelled). */
+  confirmAnswer?: boolean;
 }
 
 export interface FakeApi {
@@ -25,6 +27,8 @@ export interface FakeApi {
   providers: Provider[];
   logs: string[];
   feedback: string[];
+  /** The messages `api.confirm` was asked. */
+  confirms: string[];
   dialogs: Array<{ html: string; width: number; height: number }>;
   /** Track state by handle id; writes land here. */
   tracks: Map<string, TrackHandle>;
@@ -43,6 +47,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     providers: [],
     logs: [],
     feedback: [],
+    confirms: [],
     dialogs: [],
     tracks: new Map(),
     transactions: 0,
@@ -75,6 +80,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       const chosen = options.pickAnswer?.(candidates, multi) ?? null;
       for (const listener of pickListeners) listener(candidates, chosen);
       return chosen;
+    },
+    confirm: async (message) => {
+      fake.confirms.push(message);
+      return options.confirmAnswer ?? false;
     },
     onPick: (listener) => void pickListeners.push(listener),
     registerProvider: (provider) => void fake.providers.push(provider),

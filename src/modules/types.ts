@@ -74,6 +74,13 @@ export interface ModuleApi {
     multi?: boolean,
     options?: { fill?: boolean },
   ): Promise<ObjectNode[] | null>;
+  /**
+   * Ask a yes/no question: a single-select list titled `message` with two
+   * rows, `confirmLabel` and "Cancel", through the platform's dialog queue.
+   * Resolves true only when `confirmLabel` was chosen; Cancel, Esc or a failing
+   * dialog resolve false. Never rejects.
+   */
+  confirm(message: string, confirmLabel: string): Promise<boolean>;
   /** Notified whenever a pick list was shown, with what was offered and what was chosen. */
   onPick(listener: (candidates: ObjectNode[], chosen: ObjectNode[] | null) => void): void;
   /**
