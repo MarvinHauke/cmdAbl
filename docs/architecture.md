@@ -215,7 +215,7 @@ both. It uses the Live Object Model (LOM), which only runs inside Live's Python.
   token. The operations are listed in the [Remote Script reference](reference/remote-script.md),
   which is generated from the code.
 - **Access token.** An operation that changes something needs a token. The script creates a random
-  token each time Live starts and writes it to a file in the user's Application Support folder. The
+  token each time Live starts and writes it to a file in the extension's data folder under Application Support. The
   extension reads that file and sends the token with each writing request. A wrong or missing token
   is refused before any handler runs. The token protects against other local processes and stray
   datagrams. It does not protect against the user's own programs, which can change the Set anyway.
@@ -235,10 +235,11 @@ an `id` gets exactly one reply. An unreadable datagram is logged and dropped.
   that the calling extension registered itself. cmdAbl cannot run another extension's command.
 - **Only built-in Live devices can be inserted.** `insertDevice()` takes Live's own devices. A
   third-party plug-in cannot be loaded through the SDK at runtime.
-- **Some reads and writes are outside the extension's bundle.** The installed-script check reads the
-  Remote Script in the User Library, and the writing operations read the token file. A stricter
-  operating-system sandbox could block them. Each such read fails soft: the command reports it, and
-  nothing else breaks.
+- **Some reads and writes are outside the extension's bundle.** The installed extension runs in a sandbox
+  that allows reads only in Live's Extensions and Extensions Data folders and the extension's temp folder. The
+  installed-script check reads the Remote Script in the User Library, which lies outside those folders. The
+  writing operations read the token file, which is inside them. Each such read fails soft: the command reports
+  it, and nothing else breaks. The SDK reference in the repository (`docs/sdk-tree.md`, section 7) has the measured details.
 - **Some web globals are missing.** When measured in Live 12.4.15b6, `URL`, `URLSearchParams`,
   `structuredClone`, `TextEncoder` and `crypto` were not present in the Extension Host. Import them
   from `node:url`, `node:util` or `node:crypto` instead. The full list is in

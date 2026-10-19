@@ -12,9 +12,12 @@ maintainers already know about each one.
   built against the Extensions SDK 1.0.0-beta.1.
 - **pakabl installs may be blocked by a stricter sandbox.** pakabl installs Ableton Live extensions by writing
   into Live's Extensions folder. Ableton has announced a stricter sandbox for extensions. If it arrives, installing
-  through pakabl may be blocked in a later version of Live, and pakabl as a whole may then stop working. The same
-  sandbox could also stop two reads that cmdAbl makes outside its bundle: the installed-script check, which reads
-  the Remote Script in the User Library, and the bridge token file. Each of those reads fails softly.
+  through pakabl may be blocked in a later version of Live, and pakabl as a whole may then stop working.
+- **The installed extension is sandboxed; a development run is not.** An installed `.ablx` may read only Live's
+  Extensions and Extensions Data folders and its temp folder. The installed version cannot read the User Library,
+  so it cannot tell whether the Remote Script is missing or outdated, and says "not running" instead. A development
+  run (`npm start`) is presumed not to be sandboxed, so a read outside those folders may work in development and
+  fail only in the installed version. Test the installed `.ablx` before a release.
 - **Only one dialog is shown at a time.** The SDK does not handle a second dialog while one is open. cmdAbl
   therefore queues dialogs: the next one appears after the previous one closes.
 - **Dialogs cannot be resized.** A dialog's size is fixed when it opens, and the SDK has no call to change it.

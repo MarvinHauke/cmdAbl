@@ -288,16 +288,27 @@ WarpMode           Beats=0 | Tones=1 | Texture=2 | Repitch=3 | Complex=4 | Compl
 
 ## 7. Non-obvious constraints
 
-- **cmdAbl's own reads/writes outside the extension bundle** (may stop working under a stricter
-  OS sandbox; every one fails soft): the installed-script check reads the User Library's
-  `Remote Scripts/cmdAbl/protocol.py`; writing commands read the bridge token file
-  `~/Library/Application Support/cmdAbl/bridge-token`, which the Remote Script creates at every
-  Live start (not the extension).
-- **File access outside the bundle (pending check; each fails soft):** host code reads files with the Node file API
-  in `src/ableton/installedScript.ts` (the installed Remote Script folder and its `protocol.py`; any error other than
-  "not found" means "unknown") and `src/ableton/bridgeToken.ts` (the token file; unreadable or malformed means exit 5,
-  "cannot read the bridge access token"). `src/core/samePath.ts` calls `realpathSync` on two paths (any error means
-  "not the same"; it never throws). Some file work is done by shelling out through `node:child_process`, so it uses
+- **The installed extension runs sandboxed (measured 2026-10-19, Live 12.4.15b6, cmdAbl 97b4e27).** The Extension
+  Host uses Node's permission model. It may read only `~/Library/Application Support/Ableton/Extensions`,
+  `~/Library/Application Support/Ableton/Extensions Data` and `$TMPDIR/Ableton Extensions`. It may write only the
+  Extensions Data folder and that temp folder. Child processes are allowed. A path outside those trees fails with
+  `ERR_ACCESS_DENIED`, also for `stat` and `realpath`. `npm start` is presumed to run unsandboxed, so reads outside
+  the trees work in development and fail when installed. Test the installed `.ablx` as well (not measured for
+  `npm start`).
+- **cmdAbl's own reads/writes outside the extension bundle** (each fails soft): the installed-script check reads the
+  User Library's `Remote Scripts/cmdAbl/protocol.py`, which lies outside the trees above, so it always ends in "unknown". Writing commands read the
+  bridge token file `~/Library/Application Support/Ableton/Extensions Data/marvinhauke.cmdabl/bridge-token` (folder
+  0700, file 0600), which the Remote Script creates at every Live start (not the extension). The token sits inside
+  an allowed tree, so the sandbox does not block it.
+- **File access outside the bundle (each fails soft; measured in the installed host):** host code reads files with
+  the Node file API in `src/ableton/installedScript.ts` (the installed Remote Script folder and its `protocol.py`;
+  only "not found" means "missing", so in the installed host the check always ends in "unknown", and the bridge
+  reports "not running") and `src/ableton/bridgeToken.ts` (the token file; an unreadable or malformed file means
+  exit 5, "cannot read the bridge access token (CODE)", where CODE is the error code or "wrong shape").
+  `src/core/samePath.ts` calls `realpathSync` on two paths (any error means "not the same"; it never throws).
+  When the installed sandbox denies that read, it compares the two paths in a child process with `test A -ef B`
+  (2 s timeout), which relies on child processes being allowed. Under a stricter sandbox that fallback could fail
+  too: `cmdabl setup` would then copy the Remote Script instead of detecting the link. Some file work is done by shelling out through `node:child_process`, so it uses
   no file API: `src/modules/pakabl/platform.ts` reads and writes Live's Extensions folder with `curl`, `unzip`,
   `rm -rf` and `cat` (the index cache, installed manifests, installs and removals), and `src/core/setup.ts` writes
   outside the bundle with `ln -sf` (the Karabiner rule) and `cp -R` (the Remote Script into the User Library).
