@@ -31,6 +31,15 @@ the user on 2026-10-11 (macOS-only; the completion engine, 0006, comes after).
 
 ### 1. Reliable (blocks everything else)
 
+- **Installed build sandbox (found 2026-10-19, release blocker, in work):** the installed `.ablx`
+  runs in a sandboxed Extension Host (Node `--permission`; reads only Ableton's `Extensions`,
+  `Extensions Data` and its temp folder; writes only `Extensions Data` and temp; child
+  processes allowed). The bridge token in `~/Library/Application Support/cmdAbl/` was
+  unreadable → pad/chain mute/solo failed installed. Decided by the user: the script (0.1.2)
+  writes the token to `Extensions Data/marvinhauke.cmdabl/bridge-token` (cmdabl-bridge).
+  Also affected installed: reading the installed script's version, `samePath`. Live tests from
+  now on also with the installed `.ablx`, not only `npm start`.
+
 1. Finish the Live test of the merged work: see "Open Live tests".
 2. Dialog hang (see "Known issues"): 0.1.0 does not ship with "only a restart helps". Either the
    cause is found and fixed, or the palette recovers by itself (a watchdog in
