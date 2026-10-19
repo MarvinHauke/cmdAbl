@@ -4,10 +4,14 @@
 `traceback` needs, whenever this folder is on `sys.path`.)
 
 Created when the script starts, a new one per Live start, written to
-`~/Library/Application Support/cmdAbl/bridge-token` (directory 0700, file
-0600) — outside the repository in every setup, never inside the script's own
-folder (a development install links that folder into the repo). The value is
-never logged and never put in a reply. Other platforms: no token, writing
+`~/Library/Application Support/Ableton/Extensions Data/marvinhauke.cmdabl/bridge-token`
+(directory 0700, file 0600): the one tree outside its bundle that the installed,
+sandboxed Extension Host may read (the host runs with Node's permission model;
+the old place, `~/Library/Application Support/cmdAbl/`, was refused). The
+directory name is the extension's id (author.name from manifest.json). Outside
+the repository in every setup, never inside the script's own folder (a
+development install links that folder into the repo). The value is never logged
+and never put in a reply. Other platforms: no token, writing
 operations are refused with `forbidden` (0.1.0 is macOS-only).
 """
 
@@ -16,9 +20,32 @@ import secrets
 import sys
 
 
+# The extension's id: lower-case author + "." + name from manifest.json (a test checks it).
+EXTENSION_ID = "marvinhauke.cmdabl"
+
+
 def token_path(home=None):
     home = home or os.path.expanduser("~")
+    return os.path.join(home, "Library", "Application Support", "Ableton", "Extensions Data", EXTENSION_ID, "bridge-token")
+
+
+def legacy_token_path(home=None):
+    """Where 0.1.0 and 0.1.1 wrote the token (unreadable for the installed host)."""
+    home = home or os.path.expanduser("~")
     return os.path.join(home, "Library", "Application Support", "cmdAbl", "bridge-token")
+
+
+def _remove_legacy(home):
+    # Best effort: a stale token in a place nobody reads any more is just clutter.
+    path = legacy_token_path(home)
+    try:
+        os.unlink(path)
+    except OSError:
+        return
+    try:
+        os.rmdir(os.path.dirname(path))
+    except OSError:
+        pass
 
 
 def create_token(home=None, platform=None):
@@ -43,6 +70,7 @@ def create_token(home=None, platform=None):
             os.close(fd)
         os.chmod(tmp, 0o600)
         os.replace(tmp, path)
+        _remove_legacy(home)
         return token
     except Exception:
         return None

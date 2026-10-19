@@ -7,7 +7,7 @@ import { ExitCode } from "../core/types.js";
 
 export const PROTOCOL_VERSION = 1;
 /** The Remote Script version this extension was built with (VERSION in protocol.py). */
-export const SCRIPT_VERSION = "0.1.1";
+export const SCRIPT_VERSION = "0.1.2";
 export const BRIDGE_PORT = 27185;
 export const BRIDGE_HOST = "127.0.0.1";
 /** ≥ 300 ms by 0004 (the script drains ~10 Hz); 500 ms is an assumption until measured. */
@@ -32,6 +32,12 @@ export const TEXT_NOT_INSTALLED = "Remote Script not installed; run `cmdabl setu
 export const TEXT_FORBIDDEN =
   "the Remote Script refused the change (access token); restart Live (after `cmdabl setup` if the script was updated)";
 export const TEXT_NO_TOKEN = "cannot read the bridge access token; restart Live (after `cmdabl setup` if the script was updated)";
+/**
+ * The same with the reason: an installed extension's console output goes nowhere the user can
+ * see, so the error code (ERR_ACCESS_DENIED, ENOENT, "wrong shape") travels in the text.
+ */
+export const textNoToken = (reason: string): string =>
+  `cannot read the bridge access token (${reason}); restart Live (after \`cmdabl setup\` if the script was updated)`;
 export const TEXT_NO_WRITES = "changing chains is available on macOS only (no access token on this platform)";
 export const TEXT_NO_ANSWER = "the Remote Script did not answer; check Live";
 

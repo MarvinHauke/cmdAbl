@@ -136,12 +136,32 @@ class Token(unittest.TestCase):
             token = token_mod.create_token(home, "darwin")
             self.assertEqual(len(token), 32)
             path = token_mod.token_path(home)
-            self.assertTrue(path.startswith(os.path.join(home, "Library", "Application Support", "cmdAbl")))
+            self.assertEqual(
+                path,
+                os.path.join(home, "Library", "Application Support", "Ableton", "Extensions Data", "marvinhauke.cmdabl", "bridge-token"),
+            )
             self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
             self.assertEqual(stat.S_IMODE(os.stat(os.path.dirname(path)).st_mode), 0o700)
             self.assertEqual(open(path).read(), token)
             self.assertNotEqual(token_mod.create_token(home, "darwin"), token)  # new per start
             self.assertEqual(os.listdir(os.path.dirname(path)), ["bridge-token"])  # no temp file left behind
+
+    def test_extension_id_follows_manifest_json(self):
+        with open(os.path.join(os.path.dirname(__file__), "..", "..", "manifest.json")) as f:
+            manifest = json.load(f)
+        self.assertEqual(token_mod.EXTENSION_ID, ("%s.%s" % (manifest["author"], manifest["name"])).lower())
+
+    def test_the_old_token_file_is_removed_best_effort(self):
+        with tempfile.TemporaryDirectory() as home:
+            old = token_mod.legacy_token_path(home)
+            os.makedirs(os.path.dirname(old))
+            with open(old, "w") as f:
+                f.write("a" * 32)
+            token_mod.create_token(home, "darwin")
+            self.assertFalse(os.path.exists(old))
+            self.assertFalse(os.path.exists(os.path.dirname(old)))  # the emptied folder goes too
+        with tempfile.TemporaryDirectory() as home:
+            self.assertTrue(token_mod.create_token(home, "darwin"))  # nothing to remove: no error
 
     def test_no_token_off_macos_or_when_the_write_fails(self):
         with tempfile.TemporaryDirectory() as home:

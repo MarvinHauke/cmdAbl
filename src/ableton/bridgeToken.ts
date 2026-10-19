@@ -1,16 +1,21 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { TEXT_NO_TOKEN, TEXT_NO_WRITES, fail, type BridgeResult } from "./bridgeProtocol.js";
+import { TEXT_NO_WRITES, fail, textNoToken, type BridgeResult } from "./bridgeProtocol.js";
 
 // The access token for writing operations (0001 §9). The Remote Script creates
 // it at start and writes it to a file only the user can read, outside the
-// repository in every setup. This module only *reads* it, lazily, and keeps it
+// repository in every setup, inside the extension's own data folder: the installed
+// Extension Host runs sandboxed and may read only the Extensions / Extensions Data
+// trees (and its temp folder). This module only *reads* it, lazily, and keeps it
 // in memory. The value is never logged, never put in an error text and never
 // written anywhere.
 
+/** The extension's id: lower-case author + "." + name from manifest.json (a test checks it). */
+export const EXTENSION_ID = "marvinhauke.cmdabl";
+
 export function tokenFilePath(home: string = os.homedir()): string {
-  return path.join(home, "Library", "Application Support", "cmdAbl", "bridge-token");
+  return path.join(home, "Library", "Application Support", "Ableton", "Extensions Data", EXTENSION_ID, "bridge-token");
 }
 
 export interface TokenSource {
@@ -54,15 +59,16 @@ export function createTokenSource(options: TokenSourceOptions = {}): TokenSource
         const value = read(tokenFilePath(options.home)).trim();
         if (!SHAPE.test(value)) {
           note("wrong shape");
-          return fail(5, TEXT_NO_TOKEN);
+          return fail(5, textNoToken("wrong shape"));
         }
         lastReason = "";
         cached = value;
         return { ok: true, value };
       } catch (e) {
         const code = (e as NodeJS.ErrnoException | null)?.code;
-        note(typeof code === "string" && /^E[A-Z0-9]+$/.test(code) ? code : "error");
-        return fail(5, TEXT_NO_TOKEN);
+        const reason = typeof code === "string" && /^[A-Z][A-Z0-9_]*$/.test(code) ? code : "error";
+        note(reason);
+        return fail(5, textNoToken(reason));
       }
     },
     forget() {

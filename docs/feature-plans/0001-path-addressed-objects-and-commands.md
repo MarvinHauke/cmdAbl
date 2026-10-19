@@ -626,8 +626,23 @@ first one, `chain_set`)
   change a Live Set in other ways, so the token protects against another local user and against
   stray or hostile datagrams — not against the user's own processes.
 - *Creation.* The script creates a random token (`secrets.token_hex(16)`) when it starts and
-  writes it to `~/Library/Application Support/cmdAbl/bridge-token` (directory `0700`, file `0600`,
-  written through a temp file and renamed). New per Live start. **Not** in the script's folder (a
+  writes it to `~/Library/Application Support/Ableton/Extensions Data/marvinhauke.cmdabl/bridge-token`
+  (directory `0700`, file `0600`, written through a temp file and renamed; script 0.1.2). New per
+  Live start. The place matters: the **installed** Extension Host runs sandboxed with Node's
+  permission model (`--permission --allow-fs-read=…/Ableton/Extensions --allow-fs-read=…/Ableton/Extensions Data
+  --allow-fs-read=<TMPDIR>/Ableton Extensions --allow-fs-write=…/Extensions Data --allow-fs-write=<TMPDIR>/Ableton Extensions
+  --allow-child-process`, read from the running host's arguments, 2026-10-19), so the first location,
+  `~/Library/Application Support/cmdAbl/`, was refused (`ERR_ACCESS_DENIED`) for every installed user
+  while `npm start` (unsandboxed host) could read it. `Extensions Data/<extension id>/` is readable
+  and writable for the host and writable for the script (it runs unsandboxed inside Live); the id is
+  the lower-case author + "." + name of `manifest.json` (tested on both sides). The script removes
+  the old file (0.1.0/0.1.1) best effort. Trade-off: every installed extension can read the
+  `Extensions Data` tree, so another extension could read the token; it can already change the whole
+  Set through the SDK, so it gains nothing. Any process of the same user can read a `0600` file
+  (also at the old place); the token guards against web pages and other users' processes, not
+  against the user's own apps. Unknown until the Live test: whether Live empties
+  `Extensions Data/<id>/` when the extension is reinstalled or updated mid-session (then the token
+  is gone until the next Live start and the user sees `(ENOENT)`; the text already says restart Live). **Not** in the script's folder (a
   development install links that folder into the repository) and never in the repo; never logged;
   never in a reply. On another platform the script creates no token and refuses writing ops with
   `forbidden` and a clear text (0.1.0 is macOS-only).
@@ -644,8 +659,8 @@ first one, `chain_set`)
   cannot forget the gate. Two Live instances: the second writes a new token file, the first
   instance's script keeps its own and its writes stay `forbidden` until it restarts (out of
   scope). The script creates a folder and a file in the user's Library at every start and the
-  extension reads outside its bundle (the announced stricter sandbox may forbid it: then only
-  writing commands answer exit 5) — listed in `docs/sdk-tree.md` §7.
+  extension reads it outside its bundle — allowed only in the `Extensions Data` tree (see
+  *Creation*); listed in `docs/sdk-tree.md` §7.
 - *Undo.* `chain_set` wraps all its targets in one `song.begin_undo_step()` /
   `end_undo_step()` pair (guarded), so one command is one undo step — if chain mute/solo are
   undoable at all (unverified; Live test: Edit → Undo after `mute` on two pads). More than 20
@@ -653,7 +668,8 @@ first one, `chain_set`)
   half-applied; its entry then carries the error.
 - *What the user sees.* `forbidden` → exit 5 "the Remote Script refused the change (access token);
   restart Live or run `cmdabl setup`"; an unreadable file → exit 5 "cannot read the bridge access
-  token; …"; not macOS → exit 5 "changing chains is available on macOS only".
+  token (CODE); …" (the error code, e.g. `ERR_ACCESS_DENIED`, `ENOENT` or "wrong shape", is in the
+  text because an installed extension's console output goes nowhere the user can see); not macOS → exit 5 "changing chains is available on macOS only".
   An unreadable file is only reported when the script answers: a fresh `hello` decides first (the
   cached one can be stale after the control surface was switched off), so a script that is off
   says "Remote Script not running", at the cost of up to one hello timeout. Each distinct read

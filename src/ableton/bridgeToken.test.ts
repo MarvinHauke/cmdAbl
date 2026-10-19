@@ -1,14 +1,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createBridgeClient, type Transport } from "./bridgeClient.js";
-import { createTokenSource, tokenFilePath } from "./bridgeToken.js";
-import { TEXT_FORBIDDEN, TEXT_NOT_RUNNING, TEXT_NO_TOKEN, TEXT_NO_WRITES } from "./bridgeProtocol.js";
+import { createTokenSource, EXTENSION_ID, tokenFilePath } from "./bridgeToken.js";
+import { TEXT_FORBIDDEN, TEXT_NOT_RUNNING, TEXT_NO_TOKEN, TEXT_NO_WRITES, textNoToken } from "./bridgeProtocol.js";
+import { readFileSync } from "node:fs";
 
 const T1 = "a".repeat(32);
 const T2 = "b".repeat(32);
 
-test("the token file lives under Application Support, outside any repository", () => {
-  assert.equal(tokenFilePath("/Users/x"), "/Users/x/Library/Application Support/cmdAbl/bridge-token");
+test("the token file lives in the extension's own data folder, which the installed host may read", () => {
+  assert.equal(
+    tokenFilePath("/Users/x"),
+    "/Users/x/Library/Application Support/Ableton/Extensions Data/marvinhauke.cmdabl/bridge-token",
+  );
+  // the folder name is the extension id: lower-case author + "." + name from manifest.json
+  const manifest = JSON.parse(readFileSync(new URL("../../manifest.json", import.meta.url), "utf8")) as { author: string; name: string };
+  assert.equal(EXTENSION_ID, `${manifest.author}.${manifest.name}`.toLowerCase());
 });
 
 test("token source: reads lazily, trims, caches, forgets; unreadable and malformed are exit code 5", () => {
@@ -24,9 +31,9 @@ test("token source: reads lazily, trims, caches, forgets; unreadable and malform
   assert.deepEqual(src.get(), { ok: true, value: T2 });
 
   const missing = createTokenSource({ platform: "darwin", read: () => { throw new Error("EACCES /secret/path"); } });
-  assert.deepEqual(missing.get(), { ok: false, code: 5, text: TEXT_NO_TOKEN });
+  assert.deepEqual(missing.get(), { ok: false, code: 5, text: textNoToken("error") });
   const odd = createTokenSource({ platform: "darwin", read: () => "not a token" });
-  assert.deepEqual(odd.get(), { ok: false, code: 5, text: TEXT_NO_TOKEN });
+  assert.deepEqual(odd.get(), { ok: false, code: 5, text: textNoToken("wrong shape") });
   const other = createTokenSource({ platform: "win32", read: () => T1 });
   assert.deepEqual(other.get(), { ok: false, code: 5, text: TEXT_NO_WRITES });
 });
@@ -83,7 +90,7 @@ test("still forbidden after the re-read → exit code 5 with the access token te
 test("an unreadable token file or no token source sends nothing and answers exit code 5", async () => {
   const unreadable = createTokenSource({ platform: "darwin", read: () => { throw new Error("EPERM"); } });
   const a = client(() => T1, unreadable);
-  assert.deepEqual(await a.bridge.request("chain_set", {}, { changes: true, token: true }), { ok: false, code: 5, text: TEXT_NO_TOKEN });
+  assert.deepEqual(await a.bridge.request("chain_set", {}, { changes: true, token: true }), { ok: false, code: 5, text: textNoToken("error") });
   assert.equal(a.sentArgs.length, 0);
   const b = client(() => T1, undefined);
   assert.deepEqual(await b.bridge.request("chain_set", {}, { changes: true, token: true }), { ok: false, code: 5, text: TEXT_NO_TOKEN });
@@ -114,8 +121,8 @@ test("an unreadable token while the control surface is off answers 'not running'
   assert.equal((await bridge.request("chain_set", {}, { changes: true, token: true })).ok, true);
   // up, but the file is still unreadable: now the token text is the true one
   src.forget();
-  file = new Error("EPERM");
-  assert.deepEqual(await bridge.request("chain_set", {}, { changes: true, token: true }), { ok: false, code: 5, text: TEXT_NO_TOKEN });
+  file = Object.assign(new Error("denied"), { code: "ERR_ACCESS_DENIED" });
+  assert.deepEqual(await bridge.request("chain_set", {}, { changes: true, token: true }), { ok: false, code: 5, text: textNoToken("ERR_ACCESS_DENIED") });
 });
 
 test("the token source logs the reason once per change: the error code or 'wrong shape', never content", () => {
@@ -150,4 +157,14 @@ test("the token source logs the reason once per change: the error code or 'wrong
     "cmdAbl: bridge token: cannot read (EACCES)",
   ]);
   assert.ok(lines.every((l) => !l.includes(secret) && !l.includes("/Users")));
+});
+
+test("the user-visible text carries the reason, including Node permission-model codes", () => {
+  const denied = createTokenSource({ platform: "darwin", log: () => {}, read: () => { throw Object.assign(new Error("x"), { code: "ERR_ACCESS_DENIED" }); } });
+  const r = denied.get();
+  assert.equal(r.ok, false);
+  if (!r.ok) {
+    assert.match(r.text, /\(ERR_ACCESS_DENIED\)/);
+    assert.ok(r.text.startsWith("cannot read the bridge access token"));
+  }
 });
