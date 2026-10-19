@@ -106,6 +106,11 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
    **Decision:** every tag write marks the Set with `toggle_color` on the same track, inside the
    same script op; the `tag` result names the reverse command, since Cmd+Z cannot undo the tag.
 4. Size and type limits (store one JSON string).
+5. `!#x` (built `bd2e3df`): a track whose tags are unknown (skipped by `tags_all`, or its name
+   check failed) counts as untagged, so `!#x` errs wide — later: the cache marks unreadable
+   tracks and `!#` leaves them out. "Every regular track" includes a group and its children, so
+   `mute !#drums` mutes both — to decide after the Live test whether children of a hit group
+   are left out.
 
 ## 0.1.1 build split (architect, 2026-10-20)
 
