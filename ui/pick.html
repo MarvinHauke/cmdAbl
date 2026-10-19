@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, fill?: boolean, state?: { label, change?: 'toggle'|'on'|'off' }, items: [{ label, detail?, value?, state?: 'on'|'off' }] }. state.label picks the right-hand button (muted: speaker, lit when audible = 'off'; soloed: S; armed: record dot; other: neutral square), no state = no button. With state.change the buttons of the rows confirming would act on (marked rows; else the cursor row) show the resulting state with a pending ring, and marks lose their tint (bold label stays). Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes, or '' when cancelled; with fill (single-select only) Tab answers {"fill": index} instead. -->
+<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, fill?: boolean, state?: { label, change?: 'toggle'|'on'|'off' }, items: [{ label, detail?, value?, state?: 'on'|'off' }] }. state.label picks the right-hand button (muted: speaker, lit when audible = 'off'; soloed: S; armed: record dot; other: neutral square), no state = no button. With state.change the buttons of the acted-on rows (multi-select: the marked rows only, none: no ring; single-select: the cursor row) show the resulting state with a pending ring, and marks lose their tint (bold label stays). Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes, or '' when cancelled (a multi-select answers only marked rows; Enter with none marked answers nothing and stays open); with fill (single-select only) Tab answers {"fill": index} instead. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -110,6 +110,7 @@
     let debug = false;    // toggled with Ctrl+Shift+D: show the last key events in the hint
     let lastKey = '';     // debug only: the last keydown ...
     let lastInput = '';   // ... and the last beforeinput, shown together
+    let notice = '';          // one-off hint text (Enter with nothing marked), cleared by the next key
     let spaceHandled = false;   // keydown already marked for this Space; skip the backstop
 
     const marked = new Set();   // indexes into PICK.items
@@ -166,10 +167,12 @@
     }
 
     // The line Enter will run: before, the chosen values (ascending index order, as
-    // returned), after. Nothing marked: the active row.
+    // returned), after. Multi-select: the marked rows only (none marked: no target); single-select: the cursor row.
     function renderPreview() {
       if (!PICK.preview) return;
-      const chosen = marked.size
+      // Multi-select: the targets are exactly the marked rows (none marked = no target).
+      // Single-select: the cursor row.
+      const chosen = PICK.multi
         ? [...marked].sort((a, b) => a - b)
         : (visible.length ? [visible[active]] : []);
       const parts = [
@@ -220,7 +223,7 @@
     document.body.classList.toggle('change', !!change);
     function rowsActedOn() {
       if (!change) return new Set();
-      if (PICK.multi && marked.size) return marked;
+      if (PICK.multi) return marked;
       return new Set(visible.length ? [visible[active]] : []);
     }
     function resultState(state) {
@@ -249,6 +252,10 @@
       const text = !PICK.multi
         ? (canFill ? 'Enter run · Tab put in prompt · Esc cancel · type to filter'
                    : 'Enter choose · Esc cancel · type to filter')
+        : notice ? notice
+        : !marked.size
+          ? (zone === 'list' ? 'mark with Space/Tab · Esc cancel · type to filter'
+                             : 'mark with Tab · ↓ list · Esc cancel · type to filter')
         : zone === 'list'
           ? 'Space mark · Tab mark · Enter confirm · Esc cancel · type to filter'
           : 'Tab mark · ↓ list · Enter confirm · Esc cancel · type to filter';
@@ -258,6 +265,7 @@
     }
 
     function toggle(index) {
+      notice = '';
       if (marked.has(index)) marked.delete(index); else marked.add(index);
     }
 
@@ -310,6 +318,7 @@
         return;
       }
       spaceHandled = false;
+      if (e.key !== 'Enter') notice = '';
       if (debug) {
         lastKey = 'keydown key=' + JSON.stringify(e.key) + ' code=' + e.code + ' zone=' + zone + ' multi=' + !!PICK.multi;
         lastInput = '';
@@ -342,8 +351,11 @@
         move(1);
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (marked.size) send([...marked].sort((a, b) => a - b));
-        else if (visible.length) send([visible[active]]);
+        if (PICK.multi) {
+          // Multi-select: only marked rows are targets; Enter with none runs nothing.
+          if (marked.size) send([...marked].sort((a, b) => a - b));
+          else { notice = 'Nothing marked: mark rows with Tab/Space first'; renderZone(); }
+        } else if (visible.length) send([visible[active]]);
       } else if (zone === 'list' && !e.ctrlKey && !e.metaKey && !e.altKey
                  && (e.key.length === 1 || ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key))) {
         // A typed character (not Space, handled above) or a caret/edit key goes back to the filter.
