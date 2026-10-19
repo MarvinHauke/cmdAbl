@@ -120,3 +120,7 @@ the Actions secret `VENDOR_TOKEN` (a fine-grained token with read-only *Contents
 one repository). When Ableton ships a new SDK version: add its packages to `cmdabl-vendor`, then
 update the `file:./vendor/…` entries in `package.json`. Pull requests from forks do not get the
 secret, so their CI cannot build.
+
+The token expires after 90 days (created 2026-10-19, so around 2027-01-17). When it does, every
+build fails at the vendor checkout: create a new token with the same scope and replace the
+`VENDOR_TOKEN` secret.
