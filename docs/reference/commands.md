@@ -381,11 +381,11 @@ toggle mute on tracks, chains and drum pads
 
 Switches mute on for each target that is not muted and off for each that is, one by one. With --set 1 every target ends up muted, with --set 0 unmuted, whatever it was before; a target that is already in that state counts as done. Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the cmdAbl Remote Script and macOS. When the words match several objects you are asked to choose.
 
-**Usage:** `mute [--set <0|1>] <track>…`
+**Usage:** `mute [--set <0|1>] <target>…`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
-| `<track>…` | path (track / chain) | yes | Tracks, rack chains or Drum Rack pads; separate several with commas |
+| `<target>…` | path (track / chain) | yes | Tracks, rack chains or Drum Rack pads; separate several with commas |
 
 | Option | Description |
 | --- | --- |
@@ -575,11 +575,11 @@ toggle solo on tracks, chains and drum pads
 
 Switches solo on for each target that is not soloed and off for each that is, one by one. With --set 1 every target ends up soloed, with --set 0 not soloed, whatever it was before; a target that is already in that state counts as done. Works on tracks, rack chains and Drum Rack pads. Tracks work on their own; chains and pads need the cmdAbl Remote Script and macOS. Live's Exclusive Solo setting is not applied: naming several targets solos all of them.
 
-**Usage:** `solo [--set <0|1>] <track>…`
+**Usage:** `solo [--set <0|1>] <target>…`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
-| `<track>…` | path (track / chain) | yes | Tracks, rack chains or Drum Rack pads; separate several with commas |
+| `<target>…` | path (track / chain) | yes | Tracks, rack chains or Drum Rack pads; separate several with commas |
 
 | Option | Description |
 | --- | --- |

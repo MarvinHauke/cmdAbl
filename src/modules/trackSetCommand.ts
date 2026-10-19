@@ -88,7 +88,7 @@ export function registerTrackSetCommand(
     // Remote Script); arm is for tracks only.
     args: [
       {
-        name: "track",
+        name: prop === "arm" ? "track" : "target",
         kind: "path",
         kinds: prop === "arm" ? ["track"] : ["track", "chain"],
         variadic: true,
