@@ -1,6 +1,6 @@
 import type { ModuleApi } from "../types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
-import { trackTags, trackTagsSet, type TrackTagsWrite } from "../../ableton/bridgeOps.js";
+import { markModified, trackTags, trackTagsSet, type DirtyCandidate, type MarkModifiedResult, type TrackTagsWrite } from "../../ableton/bridgeOps.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
 
 const SPIKE = "Temporary spike for tags (plan 0008), removed before 0.2.0. ";
@@ -12,6 +12,15 @@ export function tagsLines(s: { name: string; present: boolean; type?: string; le
   if (s.length !== undefined) lines.push(`length: ${s.length}`);
   if ("value" in s) lines.push(`value: ${JSON.stringify(s.value)}`);
   return lines;
+}
+
+const CANDIDATES: DirtyCandidate[] = ["same_name", "toggle_name", "toggle_color", "empty_undo", "song_data"];
+
+const yesNo = (x: boolean | null): string => (x === null ? "?" : x ? "yes" : "no");
+
+/** The one line `tagtest dirty` answers with. */
+export function dirtyLine(r: MarkModifiedResult): string {
+  return `${r.candidate}: ${r.touched}; undo step: before ${yesNo(r.canUndoBefore)} after ${yesNo(r.canUndoAfter)}`;
 }
 
 /**
@@ -85,6 +94,25 @@ export function activate(api: ModuleApi): void {
           if (!r.ok) return fail(r.code, r.text);
           const w = r.value;
           return ok([`track: ${w.name}`, `stored: ${w.stored}`, `type: ${w.type}`, `length: ${w.length}`, `same: ${w.same}`].join("\n"));
+        },
+      },
+      {
+        name: "dirty",
+        summary: "try a way to make Live consider the Set modified (spike for tags, removed before 0.2.0)",
+        description:
+          SPIKE + "Tries one way to mark the Set as changed through the Remote Script and says whether Live gained " +
+          "an undo step. The candidate comes first because a track path takes the rest of the line.",
+        examples: [{ line: "tagtest dirty toggle_color /Bass", note: "try the colour toggle on the track Bass" }],
+        requires: ["bridge"],
+        args: [
+          { name: "candidate", kind: "enum", choices: CANDIDATES, summary: "Which way to try: same_name, toggle_name, toggle_color, empty_undo or song_data" },
+          track,
+        ],
+        run: async (invocation): Promise<CommandResult> => {
+          const candidate = invocation.args[0]![0] as DirtyCandidate;
+          const node = invocation.args[1]![0] as ObjectNode;
+          const r = await markModified(api.bridge, node, candidate);
+          return r.ok ? ok(dirtyLine(r.value)) : fail(r.code, r.text);
         },
       },
     ],

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { ExitCode } from "../../core/types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { fail } from "../../ableton/bridgeProtocol.js";
+import { parse } from "../../core/parse.js";
 import { createFakeApi } from "../testPorts.js";
 import { activate, tagsLines } from "./index.js";
 
@@ -47,4 +48,23 @@ test("set needs something to store; bridge failures keep their code", async () =
   const r = await run("set", { clear: true });
   assert.equal(r.code, 1);
   assert.equal(r.message, "stale");
+});
+
+test("dirty prints one line and takes only known candidates", async () => {
+  const fake = createFakeApi({
+    bridge: {
+      ops: {
+        mark_modified: (a) => ({
+          ok: true,
+          value: { name: "Bass", candidate: a.candidate, touched: "track name", can_undo_before: false, can_undo_after: null },
+        }),
+      },
+    },
+  });
+  activate(fake.api);
+  const dirty = fake.commands[0]!.children!.find((c) => c.name === "dirty")!;
+  const r = (await dirty.run!({ path: ["tagtest", "dirty"], options: {}, args: [["toggle_name"], [bass]] } as never, undefined as never)) as { code: number; message?: string };
+  assert.equal(r.message, "toggle_name: track name; undo step: before no after ?");
+  assert.equal(fake.bridge.calls[0]!.token, true);
+  assert.equal(parse("tagtest dirty nope /Bass", fake.commands).kind, "error");
 });

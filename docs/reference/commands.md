@@ -625,7 +625,7 @@ Temporary spike for tags (plan 0008), removed before 0.2.0. Reads or writes the 
 
 **Usage:** `tagtest <command>`
 
-**Subcommands:** `get`, `set`
+**Subcommands:** `get`, `set`, `dirty`
 
 ### `tagtest get`
 
@@ -696,3 +696,26 @@ tagtest set /Bass --clear
 ```
 
 store nothing
+
+### `tagtest dirty`
+
+try a way to make Live consider the Set modified (spike for tags, removed before 0.2.0)
+
+Temporary spike for tags (plan 0008), removed before 0.2.0. Tries one way to mark the Set as changed through the Remote Script and says whether Live gained an undo step. The candidate comes first because a track path takes the rest of the line.
+
+**Usage:** `tagtest dirty <same_name|toggle_name|toggle_color|empty_undo|song_data> <track>`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<candidate>` | one of `same_name`, `toggle_name`, `toggle_color`, `empty_undo`, `song_data` | yes | Which way to try: same_name, toggle_name, toggle_color, empty_undo or song_data |
+| `<track>` | path (track) | yes | The track; spaces need no quotes (takes the rest of the line) |
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+tagtest dirty toggle_color /Bass
+```
+
+try the colour toggle on the track Bass
