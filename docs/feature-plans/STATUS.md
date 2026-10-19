@@ -282,8 +282,8 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    to work" without going through them one by one.
 1m. State buttons, preview and the larger pick list (`e852014`, `99e290a`, `2b62570`, redesign
    `839920a`, preview `0462eba` `250fdd5` `4f43d7f`): `mute drum` (two pads, one muted) → on
-   the right the muted pad's speaker is dark, the other lit (orange); no legend, no dots; the
-   cursor row shows the flipped state with a dashed ring, `↓` moves it; `Tab` marks two pads →
+   the right the muted pad's speaker is dark, the other lit (orange); no legend, no dots; no
+   ring and the line `> mute` until a row is marked, `Enter` without a mark does nothing; `Tab` marks two pads →
    only those show the result with a ring, bold label, no row tint; unmarking restores them;
    `mute --set 1 drum` → a ring only on pads not yet muted; `Enter` applies exactly what was
    shown; hover says "muted (on confirm)"; `solo`/`arm` alike ("S" / record dot); `goto drum`

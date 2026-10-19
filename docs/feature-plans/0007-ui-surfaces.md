@@ -90,8 +90,9 @@ the *filter* (initial) or the *list* is active:
 **Command line in the pick list (built: data in `900f89d`, page in `1b305f6`; untested in
 Live).** Above the filter the
 page shows a read-only line with the command `Enter` will run, e.g.
-`> mute /Vermona MIDI "/Vermona DRM Audio"`. It grows with every mark; with nothing marked it
-shows the active row. It is what history will store. Read-only on purpose: sharing one field
+`> mute /Vermona MIDI "/Vermona DRM Audio"`. It grows with every mark; with nothing marked a
+multi-select list shows the command without a target (user, 2026-10-19: no preselection), a
+single-select list the active row. It is what history will store. Read-only on purpose: sharing one field
 between filter and selection would need quoting for names with spaces and collides with `Space`.
 
 - `SelectRequest.preview?: { before, after }` — the command text around the ambiguous address;
@@ -136,7 +137,8 @@ soloed or armed, so a toggle is not applied blindly. Commands without such a sta
 - **Preview (user, 2026-10-19; `0462eba` core, `250fdd5` modules, `4f43d7f` page).** `SelectRequest.state.change?:
   "toggle" | "on" | "off"` says what confirming does to a row's state; the node declares it
   through `pickState`, `mute`/`solo`/`arm` set "toggle" without `--set`, else "on"/"off".
-  The rows confirming would act on — the marked ones, else the cursor row — show the
+  The rows confirming would act on — the marked ones in a multi-select list (nothing marked: none; `Enter` then runs nothing
+  and the hint asks for a mark), the cursor row in a single-select list — show the
   **resulting** state at once, with a dashed accent ring while it differs from Live ("pending,
   not applied"); tooltip "muted (on confirm)". With `change` present, marks lose the row tint
   (the button shows them) and keep the bold label; a marked row whose result equals its
@@ -172,6 +174,9 @@ multi-select.
   decided — they need no open window and are what a keymap binds to a key.
 
 ## Open questions
+
+- A setting "Enter takes the cursor row" in multi-select lists, to save the `Tab` when one
+  target is wanted (user, 2026-10-19; settings phase, not before 0.1.0).
 
 - File-based replacement reads outside the bundle — the same caveat as pakabl if the announced
   stricter OS sandbox arrives; levels 1 and 3 can stay inside the bundle.
