@@ -232,7 +232,9 @@ Release:
 
 - **0.2.0 (user, 2026-10-19): tags and aliases — plan 0008.** Tags in the Live Set via
   `Track.set_data` (Remote Script), `#tag` targets, tag rows in the pick list; aliases as saved
-  command lines in cmdAbl's store. Spike first (cmdabl-bridge: `track_tags`, script 0.1.3).
+  command lines in cmdAbl's store. Spike first (cmdabl-bridge: `track_tags`/`track_tags_set`, script 0.1.3, `e061b47`;
+  temporary `tagtest` command by cmdabl-modules). The spike ops, `tagtest` and the 0.1.3 bump
+  must not reach `main` as they are: replaced or removed in the same release as the real op.
   0.1.0 released 2026-10-19 (`a312c24`); work continues on branch `feat/tags-aliases`.
 
 - `pakabl list --old-versions` (user, 2026-10-19): per extension a version choice from its
