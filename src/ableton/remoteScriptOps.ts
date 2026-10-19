@@ -176,4 +176,31 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
     ],
     sdkAlternative: "none yet (the SDK's Chain has no mute or solo)",
   },
+  {
+    name: "track_tags",
+    summary: "SPIKE (plan 0008, temporary): reads what is stored under the key \"cmdabl.tags\" on a track (type, length, small values).",
+    params: "{ scope, route, expectName? }",
+    changesLive: false,
+    via: "script",
+    usesRoute: true,
+    lom: [
+      lom("Track", "track", "get_data", "call", "function(key, default)", "Python API only: not in the Cycling '74 reference; Song and Track have it, Chain/DrumPad/Device do not (Live 12.3.6 stubs)", false),
+    ],
+    sdkAlternative: "none",
+  },
+  {
+    name: "track_tags_set",
+    summary: "SPIKE (plan 0008, temporary): stores a value under \"cmdabl.tags\" on a track and reads it back (to test save, duplicate, undo, size).",
+    params: "{ scope, route, expectName, value? | fill? | clear?, as?, undo?, token }",
+    changesLive: true,
+    via: "script",
+    usesRoute: true,
+    lom: [
+      lom("Track", "track", "set_data", "call", "function(key, value)", "Python API only: \"The data is persistent and will be restored when loading the Live Set\"; behaviour on duplicate, undo and size unverified", false),
+      lom("Track", "track", "get_data", "call", "function(key, default)", "read back after the write", false),
+      lom("Song", "song", "begin_undo_step", "call", "function()", "only when the request asks for an undo step; not in the reference's Song page", false),
+      lom("Song", "song", "end_undo_step", "call", "function()", "see begin_undo_step", false),
+    ],
+    sdkAlternative: "none",
+  },
 ];

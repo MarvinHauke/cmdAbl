@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chains, chunkTargets, select, trackFacts, REQUEST_BYTES_BUDGET, TRACK_FACTS_PER_REQUEST } from "./bridgeOps.js";
+import { chains, chunkTargets, select, trackTags, trackTagsSet, trackFacts, REQUEST_BYTES_BUDGET, TRACK_FACTS_PER_REQUEST } from "./bridgeOps.js";
 import { createFakeBridge } from "./bridgeFake.js";
 import { fail } from "./bridgeProtocol.js";
 
@@ -214,4 +214,32 @@ test("a 0.1.0 script's old field names are 'outdated' (exit 5), not null or no n
     assert.equal(first.ok, false);
     if (!first.ok) assert.equal(first.code, 5);
   }
+});
+
+test("trackTags (spike) maps present and absent states and rejects odd replies", async () => {
+  const none = createFakeBridge({ ops: { track_tags: () => ({ ok: true, value: { name: "Bass", present: false } }) } });
+  assert.deepEqual(await trackTags(none, node), { ok: true, value: { name: "Bass", present: false } });
+  assert.deepEqual(none.calls, [{ op: "track_tags", args: { scope: "regular", route: [2, 1], expectName: "EQ Eight" }, changes: false }]);
+  const some = createFakeBridge({ ops: { track_tags: () => ({ ok: true, value: { name: "Bass", present: true, type: "str", length: 3, value: "a,b" } }) } });
+  assert.deepEqual(await trackTags(some, node), { ok: true, value: { name: "Bass", present: true, type: "str", length: 3, value: "a,b" } });
+  const odd = createFakeBridge({ ops: { track_tags: () => ({ ok: true, value: { name: "Bass" } }) } });
+  assert.equal((await trackTags(odd, node)).ok, false);
+});
+
+test("trackTagsSet (spike) is a writing request with the token and sends only what is asked", async () => {
+  const bridge = createFakeBridge({ ops: { track_tags_set: () => ({ ok: true, value: { name: "Bass", stored: true, type: "str", length: 4, same: true } }) } });
+  const r = await trackTagsSet(bridge, node, { value: "abcd", as: "list", undo: true });
+  assert.deepEqual(r, { ok: true, value: { name: "Bass", stored: true, type: "str", length: 4, same: true } });
+  assert.deepEqual(bridge.calls, [{
+    op: "track_tags_set",
+    args: { scope: "regular", route: [2, 1], expectName: "EQ Eight", value: "abcd", as: "list", undo: true },
+    changes: true,
+    token: true,
+  }]);
+  await trackTagsSet(bridge, node, { fill: 10000 });
+  assert.deepEqual(bridge.calls[1]!.args, { scope: "regular", route: [2, 1], expectName: "EQ Eight", fill: 10000 });
+  const odd = createFakeBridge({ ops: { track_tags_set: () => ({ ok: true, value: { name: "Bass" } }) } });
+  assert.equal((await trackTagsSet(odd, node, { clear: true })).ok, false);
+  const refused = createFakeBridge({ ops: { track_tags_set: () => fail(5, "x") } });
+  assert.deepEqual(await trackTagsSet(refused, node, { value: 1 }), { ok: false, code: 5, text: "x" });
 });

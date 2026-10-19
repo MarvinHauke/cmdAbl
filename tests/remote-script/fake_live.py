@@ -108,6 +108,16 @@ class FakeTrack(object):
         self._arm = arm
         self.can_show_chains = any(hasattr(d, "chains") for d in self.devices)
         self.is_showing_chains = False
+        self.data = {}
+        self.set_data_raises = False
+
+    def get_data(self, key, default):
+        return self.data.get(key, default)
+
+    def set_data(self, key, value):
+        if self.set_data_raises:
+            raise RuntimeError("set_data refused")
+        self.data[key] = value
 
     @property
     def is_grouped(self):

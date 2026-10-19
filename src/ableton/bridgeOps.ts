@@ -338,3 +338,74 @@ function parseSwitches(entry: unknown): BridgeResult<ChainSwitches> {
   }
   return { ok: true, value: { name: e.name, mute: e.mute, solo: e.solo } };
 }
+
+// ---- SPIKE (plan 0008, temporary): Track.get_data / set_data --------------------------------------
+// Finds out what Live does with data stored on a track (saved? copied on duplicate? undo? size?).
+// Removed or replaced by the real tag operation once 0008 is decided.
+
+/** What is stored under the tag key of one track, as Live reports it. */
+export interface TrackTagsState {
+  name: string;
+  present: boolean;
+  /** Python type name of the stored value ("str", "list", …); absent when nothing is stored. */
+  type?: string;
+  /** len() of the stored value; -1 when it has none. */
+  length?: number;
+  /** The value, when small enough for one reply. */
+  value?: unknown;
+}
+
+export async function trackTags(bridge: Bridge, node: Pick<ObjectNode, "scope" | "route" | "name">): Promise<BridgeResult<TrackTagsState>> {
+  const reply = await bridge.request("track_tags", { scope: node.scope, route: node.route, expectName: node.name });
+  if (!reply.ok) return reply;
+  const v = reply.value;
+  if (typeof v.name !== "string" || typeof v.present !== "boolean") return fail(1, "bad reply from the Remote Script: track_tags");
+  const state: TrackTagsState = { name: v.name, present: v.present };
+  if (typeof v.type === "string") state.type = v.type;
+  if (typeof v.length === "number") state.length = v.length;
+  if ("value" in v) state.value = v.value;
+  return { ok: true, value: state };
+}
+
+export interface TrackTagsWrite {
+  /** Any JSON value, stored as given. */
+  value?: unknown;
+  /** Store a string of this many "x" instead (size test). */
+  fill?: number;
+  /** Wrap the stored value: "string" (as is, default), "list" ([v]) or "dict" ({v}). */
+  as?: "string" | "list" | "dict";
+  /** Store None instead of a value (there is no delete). */
+  clear?: boolean;
+  /** Wrap the write in an undo step (default false: see whether set_data makes one itself). */
+  undo?: boolean;
+}
+
+export interface TrackTagsWritten {
+  name: string;
+  stored: boolean;
+  type: string;
+  length: number;
+  /** The value read back equals the one written. */
+  same: boolean;
+}
+
+/** Writing operation: carries the access token and the node's current name. Never throws. */
+export async function trackTagsSet(
+  bridge: Bridge,
+  node: Pick<ObjectNode, "scope" | "route" | "name">,
+  write: TrackTagsWrite,
+): Promise<BridgeResult<TrackTagsWritten>> {
+  const args: Record<string, unknown> = { scope: node.scope, route: node.route, expectName: node.name };
+  if (write.value !== undefined) args.value = write.value;
+  if (write.fill !== undefined) args.fill = write.fill;
+  if (write.as !== undefined) args.as = write.as;
+  if (write.clear === true) args.clear = true;
+  if (write.undo === true) args.undo = true;
+  const reply = await bridge.request("track_tags_set", args, { changes: true, token: true });
+  if (!reply.ok) return reply;
+  const v = reply.value;
+  if (typeof v.name !== "string" || typeof v.stored !== "boolean" || typeof v.type !== "string" || typeof v.length !== "number" || typeof v.same !== "boolean") {
+    return fail(1, "bad reply from the Remote Script: track_tags_set");
+  }
+  return { ok: true, value: { name: v.name, stored: v.stored, type: v.type, length: v.length, same: v.same } };
+}
