@@ -123,6 +123,20 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
 - Deferred to a later 0.1.x: the "new: <text>" pick-list row (a `Ui` contract change); in 0.1.1
   a new tag is created by typing it (`tag /Lead newtag`).
 
+### Decisions during 0.1.1 (2026-10-20)
+
+- **ModuleApi (user approved, additive):** `api.pickTags(...)` (the tag pick list with state
+  buttons, same list core uses for bare `#`) and `api.tags` (`refresh`, `of(node)`, `write(node,
+  tags)`) wired to the bridge's tag cache; modules never import `src/ableton/tagCache`
+  (architecture rule 5 extended).
+- **`#…` fans out** for every path argument that can take several objects, whatever its
+  `multiple` setting; a fuzzy bare word still asks. `tag` does not declare `multiple: "all"`.
+- **History keeps `#fx`** as typed, so a re-run hits the tracks tagged now.
+- **`tag`'s target is one token** in 0.1.1 (`/Lead`, `"SH-101 MIDI"`, `#drum`, `#`); a comma list
+  before tag words is not supported yet (`tag /Lead, /Bass fx` → exit 2).
+- **Script version 0.1.5** on this branch (0.1.3/0.1.4 were spike builds; setup compares versions
+  for equality, so a fresh number avoids "current" for a spike script).
+
 ## Phased rollout
 
 1. Spike: script ops `track_tags`/`track_tags_set`, temporary `tagtest`, Live test of the open
