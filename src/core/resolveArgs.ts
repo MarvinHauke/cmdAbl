@@ -4,6 +4,7 @@ import { resolveStructural } from "../ableton/resolvePath.js";
 import type { NodeKind } from "../ableton/objectTree.js";
 import { matchesNode, suggest } from "./match.js";
 import type { CommandNode, Invocation } from "./commandTree.js";
+import { isTagWord, nodesWithTag, parseTagTarget, tagCounts, type TagCount } from "./tags.js";
 
 // "Resolve before the handler": turns the raw strings of `path` arguments into
 // the Live objects they name, so no command ever has to deal with ambiguity.
@@ -53,8 +54,17 @@ export interface PickRequest {
   suggestion?: { onCancel: CommandResult };
 }
 
+/** A bare `#`: the user picks tags; the chosen ones replace the `#` as `#name` targets. */
+export interface TagPickRequest {
+  argIndex: number;
+  valueIndex: number;
+  multi: boolean;
+  tags: TagCount[];
+}
+
 export type ResolveStep =
   | { kind: "resolved"; invocation: Invocation<ArgValue> }
+  | { kind: "tags"; request: TagPickRequest }
   | { kind: "pick"; request: PickRequest }
   | { kind: "error"; result: CommandResult };
 
@@ -77,7 +87,12 @@ export function lookupTarget(nodes: ObjectNode[], text: string, kinds?: NodeKind
   const structural = resolveStructural(nodes, text, kinds);
   if (structural.length > 0) return structural;
   if (!text.trim()) return [];
-  return nodes.filter((n) => (!kinds || kinds.includes(n.kind)) && matchesNode(n, text));
+  const named = nodes.filter((n) => (!kinds || kinds.includes(n.kind)) && matchesNode(n, text));
+  // A bare word that is also a tag name adds the objects tagged with it to the same list.
+  const word = text.trim();
+  if (!isTagWord(word)) return named;
+  const tagged = nodesWithTag(nodes, word, kinds).filter((n) => !named.includes(n));
+  return tagged.length ? [...named, ...tagged] : named;
 }
 
 /**
@@ -147,7 +162,8 @@ export function normalizeTargets(
       }
     }
 
-    const own = (k: number) => isQuoted(k) || values[k]!.startsWith("/");
+    // A tag target (`#fx`, `#`) is its own target like a `/` word.
+    const own = (k: number) => isQuoted(k) || values[k]!.startsWith("/") || parseTagTarget(values[k]!) !== null;
     const targets: Target[] = [];
     let k = 0;
     while (k < values.length) {
@@ -209,6 +225,20 @@ export function resolveTargets(
     for (const [valueIndex, target] of values.entries()) {
       if (typeof target !== "string") {
         resolved.push(target);
+        continue;
+      }
+      const tag = parseTagTarget(target);
+      if (tag === "list") {
+        const tags = tagCounts(nodes, def.kinds);
+        if (tags.length === 0) return { kind: "error", result: fail(ExitCode.NOT_FOUND, `${command}: no tags in the Set`) };
+        return { kind: "tags", request: { argIndex, valueIndex, multi: def.variadic === true || def.multiple === "all", tags } };
+      }
+      if (tag) {
+        // `#fx`: every object with the tag, at once; a single-target argument still asks.
+        const tagged = nodesWithTag(nodes, tag.name, def.kinds);
+        if (tagged.length === 0) return { kind: "error", result: fail(ExitCode.NOT_FOUND, `${command}: no track tagged #${tag.name}`) };
+        if (tagged.length === 1 || def.variadic || def.multiple === "all") resolved.push(...tagged);
+        else ambiguous.push({ valueIndex, query: target, candidates: tagged });
         continue;
       }
       const found = lookupTarget(nodes, target, def.kinds);

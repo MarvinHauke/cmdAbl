@@ -1,6 +1,7 @@
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
 import { quoteIfNeeded } from "./tokenize.js";
+import { tagSuffix, type TagCount } from "./tags.js";
 import type { PickPreview, StateChange, Ui } from "./ui.js";
 
 // The pick list: shown by the platform whenever an address matches several
@@ -36,7 +37,7 @@ export async function pickNodes(ui: Ui, options: PickOptions): Promise<ObjectNod
       const state = options.state?.values[i];
       return {
         label,
-        detail: options.details?.[i] ?? n.kind,
+        detail: `${options.details?.[i] ?? n.kind}${tagSuffix(n)}`,
         value: quoteIfNeeded(label),
         ...(state === true ? { state: "on" as const } : state === false ? { state: "off" as const } : {}),
       };
@@ -48,5 +49,30 @@ export async function pickNodes(ui: Ui, options: PickOptions): Promise<ObjectNod
     return node ? { fill: node } : null;
   }
   const chosen = indexes.map((i) => options.candidates[i]).filter((n): n is ObjectNode => n !== undefined);
+  return chosen.length ? chosen : null;
+}
+
+export interface PickTagsOptions {
+  title: string;
+  tags: TagCount[];
+  multi: boolean;
+  /** The command text around the `#` being picked for. */
+  preview?: PickPreview;
+}
+
+/** The pick list of the Set's tags (a bare `#`): the chosen names, or null when cancelled. */
+export async function pickTagNames(ui: Ui, options: PickTagsOptions): Promise<string[] | null> {
+  const indexes = await ui.select({
+    title: options.title,
+    multi: options.multi,
+    ...(options.preview ? { preview: options.preview } : {}),
+    items: options.tags.map((t) => ({
+      label: `#${t.name}`,
+      detail: `${t.count} ${t.count === 1 ? "track" : "tracks"}`,
+      value: `#${t.name}`,
+    })),
+  });
+  if (!indexes || !Array.isArray(indexes)) return null;
+  const chosen = indexes.map((i) => options.tags[i]?.name).filter((n): n is string => n !== undefined);
   return chosen.length ? chosen : null;
 }

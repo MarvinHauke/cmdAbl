@@ -8,11 +8,12 @@ import { isSetupDone, setKarabinerPaletteOpen } from "./core/setup.js";
 import { registerBuiltins } from "./core/builtins.js";
 import { reportBridge } from "./core/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
+import { getTagCache } from "./ableton/tagCache.js";
 import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
 import { objectRowLine } from "./core/objectRow.js";
 import { confirm } from "./core/confirm.js";
-import { pickNodes } from "./core/pick.js";
+import { pickNodes, pickTagNames } from "./core/pick.js";
 import { quoteIfNeeded } from "./core/tokenize.js";
 import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
@@ -169,6 +170,11 @@ export function activate(activation: ActivationContext) {
       // The platform's own lists: Tab may put a single-select row into the prompt.
       pick: ({ title, candidates, multi, nodes, preview, details, state }) =>
         pick(title, candidates, multi, { nodes, preview, details, state, fill: true }),
+      refreshTags: async () => {
+        const read = await getTagCache().refreshNow(getBridge());
+        return read.ok ? null : fail(read.code, read.text);
+      },
+      pickTags: (request) => pickTagNames(ui, request),
     });
     if (outcome.fill !== undefined) return outcome.fill;
     if (outcome.cancelled) return;

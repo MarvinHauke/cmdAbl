@@ -8,6 +8,7 @@ import { applyPick, lookupTarget, normalizeTargets, resolveTargets, type ArgValu
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { PickPreview, StateChange } from "./ui.js";
+import { parseTagTarget, type TagCount } from "./tags.js";
 
 // The one path every typed line takes: parse → resolve (asking the user to
 // pick when an address is ambiguous) → run → result. Everything it needs from
@@ -46,6 +47,14 @@ export interface RunDeps {
     /** The command's `pickState`, read for the candidates: shown as symbols (see SelectRequest.state). */
     state?: { label: string; values: Array<boolean | null>; change?: StateChange };
   }) => Promise<ObjectNode[] | null>;
+  /**
+   * Before a `#…` target is resolved: read the tags from the script now (awaited,
+   * so "no such tag" is told apart from "script not running"). A failing result
+   * (exit 5, the script's text) ends the run. Absent: the bridge check alone.
+   */
+  refreshTags?: () => Promise<CommandResult | null>;
+  /** Ask the user to choose among the Set's tags (a bare `#` target); null = cancelled. Absent: `#` answers exit 5. */
+  pickTags?: (request: { title: string; tags: TagCount[]; multi: boolean; preview: PickPreview }) => Promise<string[] | null>;
 }
 
 export interface RunOutcome {
@@ -98,7 +107,7 @@ function previewFor(
   node: CommandNode<any, any>,
   invocation: Invocation<string>,
   targets: Target[][],
-  request: PickRequest,
+  request: { argIndex: number; valueIndex: number; texts: Array<{ valueIndex: number }> },
   nodes: ObjectNode[],
 ): PickPreview {
   const before = headWords(invocation);
@@ -228,13 +237,47 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   }
 
   const needsLive = (node.args ?? []).some((def) => def.kind === "path");
-  const nodes = needsLive ? deps.liveNodes() : [];
+  let nodes = needsLive ? deps.liveNodes() : [];
   let targets = normalizeTargets(node, invocation, nodes, quoted);
+
+  // Tags live in the Set and are read by the Remote Script: `#…` cannot be answered without it.
+  const usesTags = targets.some(
+    (values, i) => node.args?.[i]?.kind === "path" && values.some((t) => typeof t === "string" && parseTagTarget(t) !== null),
+  );
+  if (usesTags) {
+    let unavailable: CommandResult | null;
+    try {
+      unavailable = deps.refreshTags ? await deps.refreshTags() : await bridgeUnavailable(deps);
+    } catch (e: unknown) {
+      unavailable = fail(ExitCode.UNAVAILABLE, `tags unavailable: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    if (unavailable) return { result: unavailable };
+    nodes = deps.liveNodes(); // the tree now carries the fresh tags
+  }
 
   // Resolve; every ambiguous address costs the user one pick.
   for (;;) {
     const step = resolveTargets(node, invocation, targets, nodes);
     if (step.kind === "error") return { result: step.result };
+    if (step.kind === "tags") {
+      const { request } = step;
+      if (!deps.pickTags) return { result: fail(ExitCode.UNAVAILABLE, "the tag list is not available in this build") };
+      const command = invocation.path.join(" ");
+      const names = await deps.pickTags({
+        title: `${command}: which tags?`,
+        tags: request.tags,
+        multi: request.multi,
+        preview: previewFor(node, invocation, targets, { ...request, texts: [{ valueIndex: request.valueIndex }] }, nodes),
+      });
+      if (!names || names.length === 0) return { result: ok(), cancelled: true };
+      // The `#` becomes the chosen `#name` targets, resolved on the next round.
+      targets = targets.map((values, i) =>
+        i === request.argIndex
+          ? values.flatMap((v, k) => (k === request.valueIndex ? names.slice(0, request.multi ? undefined : 1).map((n) => `#${n}`) : [v]))
+          : values,
+      );
+      continue;
+    }
     if (step.kind === "pick") {
       const { request } = step;
       const quotedTexts = request.texts.map((t) => `"${t.query}"`).join(", ");
