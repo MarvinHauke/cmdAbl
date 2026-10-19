@@ -139,7 +139,7 @@ Step 3 is complete. Live smoke test: 1j plus `help`, `cmdabl setup`, a history r
 
 ### 4. Small things that make it feel finished
 
-- History commands (user, 2026-10-19; in work): `history clear` (asks, restorable),
+- History commands (user, 2026-10-19; built `f113c9a`, `f6c6b37`, `a186f99`; Live test 14): `history clear` (asks, restorable),
   `history clear -f` (no question, not restorable), `history forget [-n N]`,
   `history restore [-n N]`; new `ModuleApi.confirm(message, confirmLabel)` for the question
   (shown as a two-row pick list, no `Ui` change). Owners: core (`confirm`), modules
@@ -315,6 +315,11 @@ entry (selecting is not undoable in Live).
 16. `man foo` → "no manual for foo" with topics.
 17. `unmute x` → "unknown command".
 
+14. History commands: `mute bass`, `solo lead`, then `history clear` → question with Cancel
+    first; Cancel → "history kept"; Clear → no history rows; `history restore` → both back in
+    order; `history forget` drops the newest, `history restore -n 1` brings it back;
+    `history clear -f` asks nothing, then `history restore` → "nothing to restore"; no
+    `history …` line ever appears as a history row.
 13. Not Live: the next pull request shows three checks (`build`, `gitleaks`, `docs-build`,
     `e23c043`); the next manual run of the pakabl index workflow proves the pinned
     `peter-evans/create-pull-request` (`a5e1adc`).
