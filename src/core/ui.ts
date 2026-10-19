@@ -39,7 +39,8 @@ export interface SelectRequest {
    * The command text around the address being resolved, so the page can show
    * the line Enter will run: `before`, the `value`s of the marked rows, `after`,
    * joined with one space (empty parts skipped). Values go in the order of the
-   * returned indexes; with nothing marked the active row's value is shown.
+   * returned indexes. Single-select: the active row's value is shown. Multi-select has
+   * no preselection: with nothing marked the line has no target and Enter runs nothing.
    * Absent: show no line.
    */
   preview?: PickPreview;
