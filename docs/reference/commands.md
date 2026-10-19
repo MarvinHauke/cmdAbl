@@ -616,3 +616,83 @@ solo 808 bass
 ```
 
 words typed together name one object when they fit it (here the Bass Drum pad of the 808 Core Kit); if several fit you are asked, if none fits together each word is its own target
+
+## `tagtest`
+
+spike for tags: read and write data stored on a track
+
+Temporary spike for tags (plan 0008), removed before 0.2.0. Reads or writes the data Live keeps on a track through the Remote Script, to find out what Live saves, copies and undoes.
+
+**Usage:** `tagtest <command>`
+
+**Subcommands:** `get`, `set`
+
+### `tagtest get`
+
+show what is stored on a track (spike for tags, removed before 0.2.0)
+
+Temporary spike for tags (plan 0008), removed before 0.2.0. Shows the type, length and value of the data stored on the track, if any.
+
+**Usage:** `tagtest get <track>`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<track>` | path (track) | yes | The track; spaces need no quotes (takes the rest of the line) |
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+tagtest get /Bass
+```
+
+what is stored on the track Bass
+
+### `tagtest set`
+
+store data on a track (spike for tags, removed before 0.2.0)
+
+Temporary spike for tags (plan 0008), removed before 0.2.0. Stores the given text on the track, wrapped as a list or a dictionary with --as, or a long string with --fill, or clears it. The reply says what Live kept and whether it reads back the same.
+
+**Usage:** `tagtest set [--value <value>] [--as <string|list|dict>] [--fill <n>] [--clear] [--undo] <track>`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<track>` | path (track) | yes | The track; spaces need no quotes (takes the rest of the line) |
+
+| Option | Description |
+| --- | --- |
+| `--value <value>` | the text to store |
+| `--as <string|list|dict>` | store the text as it is, in a list or in a dictionary |
+| `--fill <n>` | store a string of this many characters instead (a whole number from 0 to 1000000) |
+| `--clear` | store nothing (there is no delete) |
+| `--undo` | make the write one undo step |
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+tagtest set /Bass --value kick,low
+```
+
+store the text on the track Bass
+
+```
+tagtest set /Bass --value kick --as list --undo
+```
+
+store it as a list, as one undo step
+
+```
+tagtest set /Bass --fill 10000
+```
+
+store a string of 10000 characters
+
+```
+tagtest set /Bass --clear
+```
+
+store nothing
