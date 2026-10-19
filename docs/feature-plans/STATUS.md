@@ -287,7 +287,9 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    ring and the line `> mute` until a row is marked, `Enter` without a mark does nothing; `Tab` marks two pads →
    only those show the result with a ring, bold label, no row tint; unmarking restores them;
    `mute --set 1 drum` → a ring only on pads not yet muted; `Enter` applies exactly what was
-   shown; hover says "muted (on confirm)"; `solo`/`arm` alike ("S" / record dot); `goto drum`
+   shown; hover says "muted (on confirm)"; `solo`/`arm` alike ("S" / record dot), colours
+   like Live's mixer (`8eef9f3`: solo blue with white "S", arm red; the ring in the same colour and
+   visible on the laptop screen — if the blue ring is faint, 2px for solo); `goto drum`
    shows no buttons, marks as tint + bold; control surface disabled → pad rows have no button
    and line up, the list opens within about half a second; long labels clip before the button;
    a list with 30+ rows is taller (about 18 rows).
