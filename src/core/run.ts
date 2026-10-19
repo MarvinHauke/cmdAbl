@@ -239,8 +239,12 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
       const { request } = step;
       const quotedTexts = request.texts.map((t) => `"${t.query}"`).join(", ");
       const command = invocation.path.join(" ");
+      const real = request.texts.filter((t) => !t.suggested).map((t) => `"${t.query}"`).join(", ");
+      const lost = request.texts.filter((t) => t.suggested).map((t) => `"${t.query}"`).join(", ");
       const title = request.suggestion
-        ? `${command}: nothing matches ${quotedTexts} — did you mean`
+        ? real
+          ? `${command}: ${real} ${request.texts.filter((t) => !t.suggested).length > 1 ? "match" : "matches"} — nothing matches ${lost}: did you mean`
+          : `${command}: nothing matches ${quotedTexts} — did you mean`
         : `${command}: ${request.texts.length > 1 ? `${quotedTexts} match` : `"${request.query}" matches`} ${request.candidates.length}`;
       const state = await readPickState(node, request.candidates, invocation, deps.stateCapMs ?? 600);
       const chosen = await deps.pick({

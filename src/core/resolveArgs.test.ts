@@ -281,3 +281,36 @@ test("own name: multi-word own names and a name shared by two devices", async ()
   await runLine("sel reverb", t.deps);
   assert.deepEqual(t.picks[0]!.offered, ["/E-Piano/DefaultTracks/Reverb", "/Opal Lead/Reverb"]);
 });
+
+test("ambiguous + missing: one list holds the real matches and the suggestions, each row tagged with its word", async () => {
+  const s = setup((c) => c, allC);
+  const out = await runLine("mute kick, snaer", s.deps); // "kick" hits two tracks; "snaer" matches nothing (typo of Snare)
+  assert.equal(s.picks.length, 1);
+  assert.equal(s.picks[0]!.title, 'mute: "kick" matches — nothing matches "snaer": did you mean');
+  const offered = s.picks[0]!.offered;
+  assert.ok(offered.includes("/Drums/Kick") && offered.includes("/Snare Drums/Kick 2") && offered.includes("/Drums/Snare"));
+  assert.equal(s.picks[0]!.details![offered.indexOf("/Drums/Kick")], '"kick"');
+  assert.equal(s.picks[0]!.details![offered.indexOf("/Drums/Snare")], '"snaer"?');
+  assert.equal(out.result.code, 0); // all rows marked → they ran, no second list
+  assert.deepEqual(s.calls[0]!.sort(), [...offered].sort());
+});
+
+test("ambiguous + missing: marking only some rows runs those; Esc ends with the not-found failure", async () => {
+  const marked = setup((c) => c.filter((n) => n.path === "/Drums/Snare"), allC);
+  const out = await runLine("mute kick, snaer", marked.deps);
+  assert.equal(marked.picks.length, 1);
+  assert.deepEqual(marked.calls, [["/Drums/Snare"]]);
+  assert.equal(out.result.code, 0);
+  const esc = setup(() => null, allC);
+  const failed = await runLine("mute kick, snaer", esc.deps);
+  assert.equal(failed.result.code, ExitCode.NOT_FOUND);
+  assert.equal(failed.result.message, 'mute: nothing matches "snaer"');
+  assert.deepEqual(esc.calls, []);
+});
+
+test("ambiguous + a text nothing fits: fails at once, no list", async () => {
+  const s = setup((c) => c, allC);
+  const out = await runLine("mute kick, zzzzzz", s.deps);
+  assert.equal(out.result.code, ExitCode.NOT_FOUND);
+  assert.equal(s.picks.length, 0);
+});

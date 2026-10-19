@@ -21,6 +21,8 @@ export interface PickText {
   valueIndex: number;
   query: string;
   candidates: ObjectNode[];
+  /** The text matched nothing: `candidates` are "did you mean" suggestions (only in a list that also holds real matches, or an all-suggestion list). */
+  suggested?: true;
 }
 
 export interface PickRequest {
@@ -42,9 +44,11 @@ export interface PickRequest {
    */
   details?: string[];
   /**
-   * Set when the texts matched NOTHING and the candidates are "did you
-   * mean" suggestions (fuzzy hits, never executed unasked). Cancelling the
-   * list ends the run with `onCancel`: today's "nothing matches" failure.
+   * Set when a text matched NOTHING and its candidates are "did you mean"
+   * suggestions (fuzzy hits, never executed unasked) — in a list of their own,
+   * or sharing the one list with the other texts' real matches (then the
+   * suggested texts carry `suggested`). Cancelling the list ends the run with
+   * `onCancel`: today's "nothing matches" failure.
    */
   suggestion?: { onCancel: CommandResult };
 }
@@ -218,29 +222,37 @@ export function resolveTargets(
       }
     }
     // One list for every ambiguous text of the argument, not one after another.
-    if (ambiguous.length > 0) return { kind: "pick", request: pickRequest(argIndex, def.variadic === true, ambiguous) };
+    if (ambiguous.length > 0) {
+      // Texts of this argument that match nothing join the same list as "did you
+      // mean" rows (only what the user marks runs); one nothing fits ends the run.
+      const lost = missingAt.filter((m) => m.argIndex === argIndex);
+      if (lost.length === 0) return { kind: "pick", request: pickRequest(argIndex, def.variadic === true, ambiguous) };
+      const suggested = suggestionsFor(lost, nodes);
+      if (suggested.some((m) => m.candidates.length === 0)) return { kind: "error", result: missingFailure(command, missing) };
+      const texts: PickText[] = [
+        ...ambiguous,
+        ...suggested.map((m) => ({ valueIndex: m.valueIndex, query: m.text, candidates: m.candidates, suggested: true as const })),
+      ].sort((a, b) => a.valueIndex - b.valueIndex);
+      return {
+        kind: "pick",
+        request: { ...pickRequest(argIndex, def.variadic === true, texts), suggestion: { onCancel: missingFailure(command, missing) } },
+      };
+    }
     // The same object named twice (e.g. picked and typed) is still one target.
     args.push(resolved.filter((n, i) => resolved.findIndex((m) => m.handleId === n.handleId) === i));
   }
 
   if (missing.length) {
-    const message =
-      missing.length === 1
-        ? `${command}: nothing matches "${missing[0]!.path}"`
-        : `${command}: ${missing.length} targets not found`;
-    const failure = fail(ExitCode.NOT_FOUND, message, missing.length > 1 ? missing : undefined);
+    const failure = missingFailure(command, missing);
     // Never a silent guess: plausible fuzzy hits are offered in a list, and only
     // what the user marks runs. A text nothing fits makes the command fail
     // whatever the user marks, so that is decided first — no list, no wasted
     // question. Otherwise the first argument with missing texts is asked about.
-    const suggested = missingAt.map((m) => {
-      const pool = m.def.kinds ? nodes.filter((n) => m.def.kinds!.includes(n.kind)) : nodes;
-      return { ...m, candidates: suggest(pool, m.text, ["path"], undefined, "name") };
-    });
+    const suggested = suggestionsFor(missingAt, nodes);
     if (suggested.every((m) => m.candidates.length > 0)) {
       const argIndex = suggested[0]!.argIndex;
       const mine = suggested.filter((m) => m.argIndex === argIndex);
-      const texts = mine.map((m) => ({ valueIndex: m.valueIndex, query: m.text, candidates: m.candidates }));
+      const texts = mine.map((m) => ({ valueIndex: m.valueIndex, query: m.text, candidates: m.candidates, suggested: true as const }));
       return {
         kind: "pick",
         request: { ...pickRequest(argIndex, mine[0]!.def.variadic === true, texts), suggestion: { onCancel: failure } },
@@ -249,6 +261,23 @@ export function resolveTargets(
     return { kind: "error", result: failure };
   }
   return { kind: "resolved", invocation: { ...invocation, args } };
+}
+
+/** Today's "nothing matches" failure for the texts that were not found. */
+function missingFailure(command: string, missing: TargetOutcome[]): CommandResult {
+  const message =
+    missing.length === 1
+      ? `${command}: nothing matches "${missing[0]!.path}"`
+      : `${command}: ${missing.length} targets not found`;
+  return fail(ExitCode.NOT_FOUND, message, missing.length > 1 ? missing : undefined);
+}
+
+/** "Did you mean" candidates for each text that matched nothing, within the argument's kinds. */
+function suggestionsFor<M extends { def: AnyDef; text: string }>(lost: M[], nodes: ObjectNode[]): Array<M & { candidates: ObjectNode[] }> {
+  return lost.map((m) => {
+    const pool = m.def.kinds ? nodes.filter((n) => m.def.kinds!.includes(n.kind)) : nodes;
+    return { ...m, candidates: suggest(pool, m.text, ["path"], undefined, "name") };
+  });
 }
 
 /**
@@ -263,9 +292,11 @@ function pickRequest(
 ): PickRequest {
   const candidates: ObjectNode[] = [];
   const labels: string[][] = [];
+  // Real matches and suggestions in one list: a suggestion row is tagged `"word"?`.
+  const mixed = texts.some((t) => t.suggested) && texts.some((t) => !t.suggested);
   for (const entry of texts) {
     entry.candidates.forEach((candidate) => {
-      const names = [entry.query];
+      const names = [entry.suggested && mixed ? `"${entry.query}"?` : `"${entry.query}"`];
       const at = candidates.findIndex((c) => c.handleId === candidate.handleId);
       if (at < 0) {
         candidates.push(candidate);
@@ -283,8 +314,8 @@ function pickRequest(
     query: first.query,
     candidates,
     multi,
-    texts: texts.map(({ valueIndex, query, candidates: own }) => ({ valueIndex, query, candidates: own })),
-    ...(describe ? { details: labels.map((names) => names.map((n) => `"${n}"`).join(", ")) } : {}),
+    texts: texts.map(({ valueIndex, query, candidates: own, suggested }) => ({ valueIndex, query, candidates: own, ...(suggested ? { suggested } : {}) })),
+    ...(describe ? { details: labels.map((names) => names.join(", ")) } : {}),
   };
 }
 
