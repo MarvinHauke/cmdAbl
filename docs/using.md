@@ -69,13 +69,21 @@ suggestions.
 - **Filter.** Type to narrow the rows. `Space` types a space.
 - **Move.** `↑` and `↓` move through the rows. In a list where you can mark several rows, the first arrow
   only enters the list, so `↓` and then `Space` marks the first row.
-- **Mark.** `Tab` marks a row, and so does `Space` once you are in the list. Marking several rows runs the
-  command on all of them.
-- **Choose.** `Enter` runs the command with the marked rows. With nothing marked, the row under the cursor.
+- **Mark.** In a list where you can mark rows, such as the list of `mute`, `solo` or `arm`, `Tab` marks a row, and so
+  does `Space` once you are in the list. Only the marked rows are targets. The row under the cursor is not a
+  target until you mark it.
+- **Choose.** In a list where you can mark rows, `Enter` runs the command on the marked rows. With nothing marked,
+  `Enter` runs nothing and the list stays open, and the hint asks you to mark a row. In a list where you pick one
+  row, such as `goto` or "did you mean", `Enter` takes the row under the cursor.
 - **Cancel.** `Esc` closes the list. Nothing runs and nothing is remembered.
 
 The line above the filter shows the command that `Enter` will run, with the exact paths of the objects. You
 can read it before you confirm.
+
+**State buttons.** The lists of `mute`, `solo` and `arm` show a button at the right of each row, as Live's mixer does:
+a speaker for mute, lit when the track is audible; an `S` for solo; a record dot for arm. When a row's state
+cannot be read, it has no button. Once you mark rows, their buttons show the state that `Enter` would set. A dashed
+ring marks each button that would change. Live does not change until you press `Enter`.
 
 **One list per command.** If several of your names are ambiguous, you get one list for all of them, with the
 matches of the whole pattern first. Answer it once.
