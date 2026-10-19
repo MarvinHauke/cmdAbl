@@ -133,6 +133,15 @@ soloed or armed, so a toggle is not applied blindly. Commands without such a sta
   "muted"/"unmuted" etc. The page picks the icon from `state.label` — no contract change.
 - Left side of a row is selection only: a marked row has a light accent tint and a bold
   label (readable without colour); the cursor row has the grey background and accent text.
+- **Preview (user, 2026-10-19; `0462eba` core, `4f43d7f` page).** `SelectRequest.state.change?:
+  "toggle" | "on" | "off"` says what confirming does to a row's state; the node declares it
+  through `pickState`, `mute`/`solo`/`arm` set "toggle" without `--set`, else "on"/"off".
+  The rows confirming would act on — the marked ones, else the cursor row — show the
+  **resulting** state at once, with a dashed accent ring while it differs from Live ("pending,
+  not applied"); tooltip "muted (on confirm)". With `change` present, marks lose the row tint
+  (the button shows them) and keep the bold label; a marked row whose result equals its
+  current state shows only the bold label — accepted, no extra left bar (the user wanted no
+  left gutter). Without `change` the page behaves as before.
 - Command node: `pickState?: { label, read(nodes, invocation) }` on a runnable command;
   `read` returns true / false / null per candidate (0005).
 - Platform: `read` is called only when a pick list is about to open (ambiguity and "did you
