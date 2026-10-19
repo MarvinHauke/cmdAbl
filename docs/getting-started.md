@@ -96,8 +96,8 @@ Start with these three. Type each one in the palette and press `Enter`.
 **`goto <track>`** selects a track in Live. A full path such as `goto /Lead` selects one track. Partial names work
 too, and `goto` needs the Remote Script.
 
-**`mute <track>`** toggles the mute of a track. Type `mute /Bass` once to mute it, and again to unmute
-it. To set the state without toggling, use `mute --set 1 /Bass` or `mute --set 0 /Bass`. `mute` works on tracks without the Remote Script.
+**`mute <target>`** toggles the mute of a track. It also takes rack chains and Drum Rack pads, which need the
+Remote Script and macOS. Type `mute /Bass` once to mute it, and again to unmute it. To set the state without toggling, use `mute --set 1 /Bass` or `mute --set 0 /Bass`. `mute` works on tracks without the Remote Script.
 
 When a name matches more than one object, cmdAbl shows a **pick list** instead of guessing. Type to
 filter, press `↑` and `↓` to move, `Enter` to choose and `Esc` to cancel. Commands that take several
@@ -137,7 +137,9 @@ input device is unavailable.
 
 pakabl installs Ableton Live extensions (`.ablx` files) from cmdAbl's curated list of community repositories.
 Run `pakabl update` once to fetch the list. Then `pakabl list` shows the extensions, with buttons to install,
-update or remove each one. Restart Live after a change.
+update or remove each one. Update appears only when the list holds a newer version than the installed one. If the
+installed version is newer than the list's, the row says so, and cmdAbl never downgrades it. To install the list's
+version anyway, even when it is older, use `pakabl upgrade <id>@<version>` with exactly the version the list shows. Restart Live after a change.
 
 ![The pakabl extension index window: a scrollable list of extensions, each with its name, version and id, and an Install and a Repo button for each, with a Close button at the bottom](assets/images/pakabl-list.png)
 
