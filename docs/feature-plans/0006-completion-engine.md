@@ -104,6 +104,27 @@ to one of:
   extends that zone with more single-key actions (`j`/`k`, `n` → `next`). `Space` is the default
   key for `mark`, `Tab` a second one.
 
+## Target picture: Telescope-style fuzzy finding (user, 2026-10-19)
+
+After `mute drum 2` opened one pick list whose rows are tagged with the word that found them
+("drum", "2"), the user said this is how matching should work later, and showed Telescope's
+"Find Files" (Neovim) as the model:
+
+- The query matches as a **subsequence** across the whole path (`this` finds
+  `remote-script/…/chains.py` via t…h…i…s), not only as whole words.
+- The **matched characters are highlighted** in every row.
+- A `/` in the query anchors a path part (`src/this` keeps only paths under `src`) — this is
+  where it meets the hierarchical completion above.
+- Rows are **ranked by score**, best next to the prompt; a counter shows `matches / total`.
+
+Today's precursor: the per-word tags of 0005 "Forgiving target resolution". Open:
+- Fuzzy for **targets** too (`mute <text>`), or only for the palette and pick-list filter?
+  Exact paths and "a bare word equal to a top-level track name is that track" stay exact.
+- One ranked list mixing rows hit by all words and rows hit by one word, all-words first.
+- How it fits the level-by-level completion with ghost text (Tab descends a level).
+- Highlighting needs match positions per row — a contract addition to `SelectRequest` items;
+  ask before building.
+
 ## Open questions
 
 - Prototype ghost text on a plain `<input>` overlay vs. a `contenteditable`; settle by trying.

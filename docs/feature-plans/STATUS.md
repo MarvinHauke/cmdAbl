@@ -229,6 +229,9 @@ Release:
 
 ### After 0.1.0 (order to be set then)
 
+- Fuzzy finding after the user's target picture (Telescope "Find Files": subsequence match,
+  highlighted characters, `/` anchors a path part, ranked rows with a counter) — 0006.
+
 - Tell "not installed" from "not enabled" when the script does not answer in the installed
   build (read the installed version through a child process, e.g. `cat`; deferred 2026-10-19 —
   ddc2866 gives one honest text for both).
@@ -318,6 +321,10 @@ Tests 9–17 — **seen by the user on 2026-10-19** (dialogs, `help`, `pakabl up
 cmdabl", `unmute x` → unknown command), plus `find kick`, `lom /Kick`, `arm` on a group
 refused. `goto kick` runs the track `/Kick` at once (a bare word equal to a top-level track name
 is that track, 0005) — the expectation "asks to pick" was wrong.
+
+Installed `.ablx` with script 0.1.2 (`97b4e27`, `ddc2866`, `6f8ea68`): pad states and
+pad mute read again — **seen by the user on 2026-10-19**. Open there: control surface off →
+the new "not running" text; back on → works without restarting Live.
 
 Still open before the release test: the buttons of `pakabl list` (Update/Uninstall/Repo,
 `Esc`); rename a pad and use the old name → "did you mean"; control surface off and on, restart

@@ -298,6 +298,10 @@ How the platform reads the text of a `path` argument (`src/core/resolveArgs.ts`)
   `mute vermona kick` names the Kick pad. A single text target follows the same rule.
 - `find` is a search and keeps the looser rule on purpose (user, 2026-10-13): it lists
   everything whose path contains the words. Two rules, stated in the docs.
+- **Per-word tags kept (user, 2026-10-19):** when each word is its own target, the shared pick
+  list tags every row with its word; the user likes it as a first step towards fuzzy finding
+  (0006, "Target picture"). Matching joined words without spaces (`drum 2` → `Drum2` at once)
+  was proposed and rejected, because it would skip this list.
 - **Joined words win when they hit** (user, 2026-10-13, after trying the stricter rule in
   Live; replaces "never choose between two readings"): one joined hit → resolved without a
   question; several joined hits → one pick list with exactly those. The single words are not
