@@ -143,6 +143,11 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
   `mute #fx --pick`): no preselection, the user marks. Only the chosen tracks run; history
   stores the typed line including `--pick`, so a re-run opens the list again. Rest arguments and
   destructive commands get a single-select list. Built in `85ad442`.
+- **`!#drums`** (user, 2026-10-20) = every track the argument accepts without the tag `drums`,
+  untagged ones included, at once (same exceptions as `#…`); never the main track, return tracks
+  only by path. Works in every command (`tag --set 1 !#drums synth`, `mute !#drums, /Lead`) and
+  with `--pick`; none → exit 3; script down → exit 5; history keeps it as typed. Intersections
+  (`#fx&!#drums`) only if wanted later; a comma stays a union.
 - **History keeps `#fx`** as typed, so a re-run hits the tracks tagged now.
 - **`tag`'s target is one token** in 0.1.1 (`/Lead`, `"SH-101 MIDI"`, `#drum`, `#`); a comma list
   before tag words is not supported yet (`tag /Lead, /Bass fx` → exit 2).
