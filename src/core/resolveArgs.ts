@@ -1,6 +1,8 @@
-import { ExitCode, fail, type CommandResult, type TargetOutcome } from "../types.js";
+import { ExitCode, fail, type CommandResult, type TargetOutcome } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
-import { resolvePath, resolveStructural } from "../ableton/resolvePath.js";
+import { resolveStructural } from "../ableton/resolvePath.js";
+import type { NodeKind } from "../ableton/objectTree.js";
+import { matchesNode, suggest } from "./match.js";
 import type { CommandNode, Invocation } from "./commandTree.js";
 
 // "Resolve before the handler": turns the raw strings of `path` arguments into
@@ -14,14 +16,41 @@ export type ArgValue = string | ObjectNode;
 /** A target is still text until it has been resolved (or picked by the user). */
 export type Target = string | ObjectNode;
 
+/** One typed text the pick list answers. */
+export interface PickText {
+  valueIndex: number;
+  query: string;
+  candidates: ObjectNode[];
+  /** The text matched nothing: `candidates` are "did you mean" suggestions (only in a list that also holds real matches, or an all-suggestion list). */
+  suggested?: true;
+}
+
 export interface PickRequest {
   argIndex: number;
+  /** Position of the first ambiguous text (the chosen objects take its place). */
   valueIndex: number;
-  /** The text that matched more than one object. */
+  /** The first ambiguous text. */
   query: string;
+  /** Every candidate of every ambiguous text, each object once. */
   candidates: ObjectNode[];
   /** Whether several candidates may be chosen (the argument takes several targets). */
   multi: boolean;
+  /** ALL ambiguous texts of the argument — one list answers them together. */
+  texts: PickText[];
+  /**
+   * Parallel to `candidates` when the list answers several texts: which
+   * typed text(s) each row matched. Absent: the row detail
+   * stays the object's kind.
+   */
+  details?: string[];
+  /**
+   * Set when a text matched NOTHING and its candidates are "did you mean"
+   * suggestions (fuzzy hits, never executed unasked) — in a list of their own,
+   * or sharing the one list with the other texts' real matches (then the
+   * suggested texts carry `suggested`). Cancelling the list ends the run with
+   * `onCancel`: today's "nothing matches" failure.
+   */
+  suggestion?: { onCancel: CommandResult };
 }
 
 export type ResolveStep =
@@ -30,22 +59,129 @@ export type ResolveStep =
   | { kind: "error"; result: CommandResult };
 
 type AnyNode = CommandNode<any, any>;
+type AnyDef = NonNullable<AnyNode["args"]>[number];
+
+/**
+ * The objects a typed target names. Two steps, the first that finds anything
+ * wins:
+ *   1. the structural rules of `resolveStructural`: the text IS the object's
+ *      path (same segments, then ignoring case; `#n` picks a sibling);
+ *   2. text matching under the "own name" rule (`matchesNode`): every word
+ *      occurs in the path and at least one occurs in the object's own name —
+ *      a word that only names a parent never pulls in what sits below it.
+ * Both are restricted to `kinds`. The strict `resolvePath` of src/ableton is not
+ * used for text: its "anywhere in the path" substring rule is what this
+ * replaces (the own-name filter lives here, where every text path goes through).
+ */
+export function lookupTarget(nodes: ObjectNode[], text: string, kinds?: NodeKind[]): ObjectNode[] {
+  const structural = resolveStructural(nodes, text, kinds);
+  if (structural.length > 0) return structural;
+  if (!text.trim()) return [];
+  return nodes.filter((n) => (!kinds || kinds.includes(n.kind)) && matchesNode(n, text));
+}
 
 /**
  * Split what the parser collected into individual targets. For an argument
- * that takes several paths this keeps two conveniences working:
- *   - names with spaces typed without quotes: `mute /Opal Lead` is one target
- *     if the joined text names an existing path;
- *   - the older comma form: `mute /Opal Lead, /Kick`.
+ * that takes several paths:
+ *   - a comma always separates targets: `mute /Bass, /Lead`;
+ *   - a word starting with `/`, or a quoted word, starts its own target (the
+ *     remembered lines are made of those). Bare words after a `/` word that
+ *     together name an existing path stay with it: `mute /Lead Guitar`;
+ *   - the other bare words are tried together first (an exact path, else
+ *     text matching under the own-name rule): if they hit, that IS the
+ *     reading — ONE target (`mute 808 snare`: one hit resolves, several
+ *     ask once with exactly those hits; no single-word hits, no parents).
+ *     Only when they hit nothing is each word its own target, so
+ *     `mute kick snare` names two tracks.
+ *
+ * Known and accepted consequence: with a group "Drums" holding a track
+ * "Kick", `mute drums kick` means the track Kick; for both write
+ * `mute drums, kick` (a comma always separates).
+ *
+ * A single-target argument (`goto` takes `rest`) arrives as one text and
+ * follows the one-pattern rule in `lookupTarget`.
+ *
+ * `quoted` is parallel to the invocation's args (absent: nothing was quoted).
  */
-export function normalizeTargets(node: AnyNode, invocation: Invocation<string>, nodes: ObjectNode[]): Target[][] {
+export function normalizeTargets(
+  node: AnyNode,
+  invocation: Invocation<string>,
+  nodes: ObjectNode[],
+  quoted: boolean[][] = [],
+): Target[][] {
   return (node.args ?? []).map((def, i) => {
     const values = invocation.args[i] ?? [];
     if (def.kind !== "path" || !def.variadic || values.length === 0) return values;
+    const isQuoted = (k: number) => quoted[i]?.[k] === true;
+    // Without commas a quoted word is its own target; with commas only commas separate (a quoted
+    // name never splits at a comma inside it, and never forms a path by accident).
+    const anyQuoted = values.some((_, k) => isQuoted(k));
     const joined = values.join(" ");
-    if (joined.includes(",")) return joined.split(",").map((part) => part.trim()).filter(Boolean);
-    if (values.length > 1 && resolveStructural(nodes, joined, def.kinds).length > 0) return [joined];
-    return values;
+    if (!anyQuoted) {
+      if (joined.includes(",")) return joined.split(",").map((part) => part.trim()).filter(Boolean);
+      if (values.length > 1 && resolveStructural(nodes, joined, def.kinds).length > 0) return [joined];
+    } else {
+      // Commas outside quotes still separate: split the unquoted words, keep quoted ones whole.
+      const hasBareComma = values.some((v, k) => !isQuoted(k) && v.includes(","));
+      if (hasBareComma) {
+        const parts: string[] = [];
+        let current: string[] = [];
+        const flush = () => {
+          const text = current.join(" ").trim();
+          if (text) parts.push(text);
+          current = [];
+        };
+        values.forEach((v, k) => {
+          if (isQuoted(k)) {
+            current.push(v);
+            return;
+          }
+          const pieces = v.split(",");
+          pieces.forEach((piece, n) => {
+            if (n > 0) flush();
+            if (piece.trim()) current.push(piece.trim());
+          });
+        });
+        flush();
+        return parts;
+      }
+    }
+
+    const own = (k: number) => isQuoted(k) || values[k]!.startsWith("/");
+    const targets: Target[] = [];
+    let k = 0;
+    while (k < values.length) {
+      if (isQuoted(k)) {
+        targets.push(values[k++]!);
+      } else if (own(k)) {
+        // A `/` word may continue with bare words that complete an existing path.
+        let end = k + 1;
+        while (end < values.length && !own(end)) end++;
+        let take = 1;
+        for (let upTo = end; upTo > k + 1; upTo--) {
+          if (resolveStructural(nodes, values.slice(k, upTo).join(" "), def.kinds).length > 0) {
+            take = upTo - k;
+            break;
+          }
+        }
+        targets.push(values.slice(k, k + take).join(" "));
+        k += take;
+      } else {
+        let end = k;
+        while (end < values.length && !own(end)) end++;
+        const run = values.slice(k, end);
+        const text = run.join(" ");
+        if (run.length > 1 && resolveStructural(nodes, text, def.kinds).length > 0) {
+          targets.push(text);
+        } else if (run.length > 1 && lookupTarget(nodes, text, def.kinds).length > 0) {
+          targets.push(text); // the joined words hit: that is the reading
+        } else {
+          targets.push(...run);
+        }
+        k = end;
+      }
+    }
+    return targets;
   });
 }
 
@@ -58,52 +194,141 @@ export function resolveTargets(
   const command = invocation.path.join(" ");
   const args: ArgValue[][] = [];
   const missing: TargetOutcome[] = [];
+  // Where each missing text sits, for the "did you mean" list (step: nothing is ambiguous any more).
+  const missingAt: Array<{ argIndex: number; def: AnyDef; valueIndex: number; text: string }> = [];
 
   for (const [argIndex, def] of (node.args ?? []).entries()) {
     const values = targets[argIndex] ?? [];
     if (def.kind !== "path") {
-      args.push(values);
+      args.push(values as ArgValue[]);
       continue;
     }
 
     const resolved: ObjectNode[] = [];
+    const ambiguous: PickText[] = [];
     for (const [valueIndex, target] of values.entries()) {
       if (typeof target !== "string") {
         resolved.push(target);
         continue;
       }
-      const matches = resolvePath(nodes, target, def.kinds);
-      if (matches.length === 0) {
+      const found = lookupTarget(nodes, target, def.kinds);
+      if (found.length === 0) {
         missing.push({ path: target, ok: false, code: ExitCode.NOT_FOUND, message: "nothing matches" });
-      } else if (matches.length === 1 || def.multiple === "all") {
-        resolved.push(...matches);
+        missingAt.push({ argIndex, def, valueIndex, text: target });
+      } else if (found.length === 1 || def.multiple === "all") {
+        resolved.push(...found);
       } else {
-        return {
-          kind: "pick",
-          request: { argIndex, valueIndex, query: target, candidates: matches, multi: def.variadic === true },
-        };
+        ambiguous.push({ valueIndex, query: target, candidates: found });
       }
+    }
+    // One list for every ambiguous text of the argument, not one after another.
+    if (ambiguous.length > 0) {
+      // Texts of this argument that match nothing join the same list as "did you
+      // mean" rows (only what the user marks runs); one nothing fits ends the run.
+      const lost = missingAt.filter((m) => m.argIndex === argIndex);
+      if (lost.length === 0) return { kind: "pick", request: pickRequest(argIndex, def.variadic === true, ambiguous) };
+      const suggested = suggestionsFor(lost, nodes);
+      if (suggested.some((m) => m.candidates.length === 0)) return { kind: "error", result: missingFailure(command, missing) };
+      const texts: PickText[] = [
+        ...ambiguous,
+        ...suggested.map((m) => ({ valueIndex: m.valueIndex, query: m.text, candidates: m.candidates, suggested: true as const })),
+      ].sort((a, b) => a.valueIndex - b.valueIndex);
+      return {
+        kind: "pick",
+        request: { ...pickRequest(argIndex, def.variadic === true, texts), suggestion: { onCancel: missingFailure(command, missing) } },
+      };
     }
     // The same object named twice (e.g. picked and typed) is still one target.
     args.push(resolved.filter((n, i) => resolved.findIndex((m) => m.handleId === n.handleId) === i));
   }
 
   if (missing.length) {
-    const message =
-      missing.length === 1
-        ? `${command}: nothing matches "${missing[0]!.path}"`
-        : `${command}: ${missing.length} targets not found`;
-    return { kind: "error", result: fail(ExitCode.NOT_FOUND, message, missing.length > 1 ? missing : undefined) };
+    const failure = missingFailure(command, missing);
+    // Never a silent guess: plausible fuzzy hits are offered in a list, and only
+    // what the user marks runs. A text nothing fits makes the command fail
+    // whatever the user marks, so that is decided first — no list, no wasted
+    // question. Otherwise the first argument with missing texts is asked about.
+    const suggested = suggestionsFor(missingAt, nodes);
+    if (suggested.every((m) => m.candidates.length > 0)) {
+      const argIndex = suggested[0]!.argIndex;
+      const mine = suggested.filter((m) => m.argIndex === argIndex);
+      const texts = mine.map((m) => ({ valueIndex: m.valueIndex, query: m.text, candidates: m.candidates, suggested: true as const }));
+      return {
+        kind: "pick",
+        request: { ...pickRequest(argIndex, mine[0]!.def.variadic === true, texts), suggestion: { onCancel: failure } },
+      };
+    }
+    return { kind: "error", result: failure };
   }
   return { kind: "resolved", invocation: { ...invocation, args } };
 }
 
-/** Put the user's choice in place of the ambiguous text. */
+/** Today's "nothing matches" failure for the texts that were not found. */
+function missingFailure(command: string, missing: TargetOutcome[]): CommandResult {
+  const message =
+    missing.length === 1
+      ? `${command}: nothing matches "${missing[0]!.path}"`
+      : `${command}: ${missing.length} targets not found`;
+  return fail(ExitCode.NOT_FOUND, message, missing.length > 1 ? missing : undefined);
+}
+
+/** "Did you mean" candidates for each text that matched nothing, within the argument's kinds. */
+function suggestionsFor<M extends { def: AnyDef; text: string }>(lost: M[], nodes: ObjectNode[]): Array<M & { candidates: ObjectNode[] }> {
+  return lost.map((m) => {
+    const pool = m.def.kinds ? nodes.filter((n) => m.def.kinds!.includes(n.kind)) : nodes;
+    return { ...m, candidates: suggest(pool, m.text, ["path"], undefined, "name") };
+  });
+}
+
+/**
+ * The one list for the ambiguous texts of an argument: the union of their
+ * candidates (each object once, in text order). The row detail names the typed
+ * text(s) a row matched when the list answers several texts or two readings.
+ */
+function pickRequest(
+  argIndex: number,
+  multi: boolean,
+  texts: PickText[],
+): PickRequest {
+  const candidates: ObjectNode[] = [];
+  const labels: string[][] = [];
+  // Real matches and suggestions in one list: a suggestion row is tagged `"word"?`.
+  const mixed = texts.some((t) => t.suggested) && texts.some((t) => !t.suggested);
+  for (const entry of texts) {
+    entry.candidates.forEach((candidate) => {
+      const names = [entry.suggested && mixed ? `"${entry.query}"?` : `"${entry.query}"`];
+      const at = candidates.findIndex((c) => c.handleId === candidate.handleId);
+      if (at < 0) {
+        candidates.push(candidate);
+        labels.push([...names]);
+      } else {
+        for (const name of names) if (!labels[at]!.includes(name)) labels[at]!.push(name);
+      }
+    });
+  }
+  const first = texts[0]!;
+  const describe = texts.length > 1;
+  return {
+    argIndex,
+    valueIndex: first.valueIndex,
+    query: first.query,
+    candidates,
+    multi,
+    texts: texts.map(({ valueIndex, query, candidates: own, suggested }) => ({ valueIndex, query, candidates: own, ...(suggested ? { suggested } : {}) })),
+    ...(describe ? { details: labels.map((names) => names.join(", ")) } : {}),
+  };
+}
+
+/** Put the user's choice in place of ALL the ambiguous texts the list answered. */
 export function applyPick(targets: Target[][], request: PickRequest, chosen: ObjectNode[]): Target[][] {
+  const replaced = new Set(request.texts.map((t) => t.valueIndex));
   return targets.map((values, i) => {
     if (i !== request.argIndex) return values;
-    const next = [...values];
-    next.splice(request.valueIndex, 1, ...chosen);
+    const next: Target[] = [];
+    values.forEach((value, k) => {
+      if (k === request.valueIndex) next.push(...chosen);
+      if (!replaced.has(k)) next.push(value);
+    });
     return next;
   });
 }

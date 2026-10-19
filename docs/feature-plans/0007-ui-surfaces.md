@@ -39,8 +39,8 @@ own page, without touching the core or any module.
 
 | Surface | In | Out |
 |---|---|---|
-| `prompt` — the palette | `{ items: PaletteItem[] }` (later also the command tree and keymap, see 0006) | a `PaletteResult`, or null when dismissed |
-| `select` — the pick list | `{ title, multi, items: [{ label, detail?, value? }], preview? }` (`preview`/`value`: see section 4) | indexes of the chosen items, or null when cancelled |
+| `prompt` — the palette | `{ items: PaletteItem[], initial? }` (later also the command tree and keymap, see 0006) | a `PaletteResult`, or null when dismissed |
+| `select` — the pick list | `{ title, multi, items: [{ label, detail?, value?, state? }], preview?, fill?, state? }` (`preview`/`value`/`fill`/`state`: see section 4) | indexes of the chosen items, `{ fill: index }`, or null when cancelled |
 | `notify` — a message | `{ text, code }` (`code` = the exit code it belongs to) | nothing |
 
 Everything is plain JSON. A page receives its request through a build-time placeholder and
@@ -90,8 +90,9 @@ the *filter* (initial) or the *list* is active:
 **Command line in the pick list (built: data in `900f89d`, page in `1b305f6`; untested in
 Live).** Above the filter the
 page shows a read-only line with the command `Enter` will run, e.g.
-`> mute /Vermona MIDI "/Vermona DRM Audio"`. It grows with every mark; with nothing marked it
-shows the active row. It is what history will store. Read-only on purpose: sharing one field
+`> mute /Vermona MIDI "/Vermona DRM Audio"`. It grows with every mark; with nothing marked a
+multi-select list shows the command without a target (user, 2026-10-19: no preselection), a
+single-select list the active row. It is what history will store. Read-only on purpose: sharing one field
 between filter and selection would need quoting for names with spaces and collides with `Space`.
 
 - `SelectRequest.preview?: { before, after }` — the command text around the ambiguous address;
@@ -99,6 +100,66 @@ between filter and selection would need quoting for names with spaces and collid
 - `items[].value?` — the text a row contributes (its unique path, quoted where needed);
   `items[].label` is the unique path, so same-named siblings can be told apart.
 - The return value is unchanged. A module's own `api.pick` has no preview line yet.
+
+**`Tab` fills the palette (user, 2026-10-13; contract addition, in work).** In a single-select
+pick list, `Tab` on a row puts that object into the command prompt for a follow-up command
+instead of running; `Enter` runs as before. Multi-select lists keep `Tab` = mark.
+
+- `SelectRequest.fill?: boolean` — the page offers it only when true and `multi` is false. The
+  page then answers with one of three values: confirmed indexes (`[2, 0]`), cancelled (`''`),
+  or `{"fill": 3}` (an index into `items`). `Ui.select` resolves
+  `number[] | { fill: number } | null`.
+- `PromptRequest.initial?: { text: string; cursor: number }` — the palette opens with the text
+  in its input and the caret at `cursor`. The platform sends a leading space and the object's
+  unique path in canonical form, cursor 0, because the command comes first.
+- Flow: a fill ends the running command without calling or continuing its handler — nothing
+  is remembered, the log says `run: <line> -> filled` — and the palette opens again through
+  the dialog queue.
+- Allowed in every single-select list the platform opens for a `path` argument (also "did you
+  mean"); a module's own `api.pick` opts in with `{ fill: true }`, as `find` does.
+- Hint line: "Enter run · Tab put in prompt · Esc cancel".
+
+**State symbols (wanted by the user 2026-10-12; contract accepted 2026-10-13, in work).** When
+`mute`, `solo` or `arm` opens a pick list, each row shows whether that object is already muted,
+soloed or armed, so a toggle is not applied blindly. Commands without such a state (`goto`,
+`find`, `lom`) show nothing.
+
+- Page: `SelectRequest.state?: { label }` names the state ("muted"); `items[].state?:
+  "on" | "off"` (absent = unknown, no button). First built as `●`/`○` before the label with a
+  legend (`e852014`); replaced after the user's review (2026-10-18, `839920a`) by a small
+  button on the right of the row, drawn like Live's mixer: `muted` → speaker (Phosphor
+  "speaker-simple-none", MIT), lit when the object is **audible** (state "off") — inverted on
+  purpose, as Live's track activator; `soloed` → "S" and `armed` → record dot, lit when "on";
+  an unknown label → a plain square, lit when "on". No legend; the button's tooltip says
+  "muted"/"unmuted" etc. The page picks the icon from `state.label` — no contract change.
+- Colours (user, 2026-10-19): Live's theme tokens, values from Live 12's default theme
+  ("Default Dark Neutral Medium.ask") — mute `ChosenDefault` `#ffad56`, solo
+  `ChosenPreListen` `#3c6ab6`, arm `ChosenRecord` `#ff5559` — as CSS variables
+  `--live-chosen-*` in `ui/shared.css`, for the lit fill and the pending ring. The SDK cannot
+  read Live's current theme; following it is a candidate feature request.
+- Left side of a row is selection only: a marked row has a light accent tint and a bold
+  label (readable without colour); the cursor row has the grey background and accent text.
+- **Preview (user, 2026-10-19; `0462eba` core, `250fdd5` modules, `4f43d7f` page).** `SelectRequest.state.change?:
+  "toggle" | "on" | "off"` says what confirming does to a row's state; the node declares it
+  through `pickState`, `mute`/`solo`/`arm` set "toggle" without `--set`, else "on"/"off".
+  The rows confirming would act on — the marked ones in a multi-select list (nothing marked: none; `Enter` then runs nothing
+  and the hint asks for a mark), the cursor row in a single-select list — show the
+  **resulting** state at once, with a dashed accent ring while it differs from Live ("pending,
+  not applied"); tooltip "muted (on confirm)". With `change` present, marks lose the row tint
+  (the button shows them) and keep the bold label; a marked row whose result equals its
+  current state shows only the bold label — accepted, no extra left bar (the user wanted no
+  left gutter). Without `change` the page behaves as before.
+  Known limit: `arm` with "on" previews "armed" also on rows Live refuses (return, main,
+  group tracks).
+- Command node: `pickState?: { label, read(nodes, invocation) }` on a runnable command;
+  `read` returns true / false / null per candidate (0005).
+- Platform: `read` is called only when a pick list is about to open (ambiguity and "did you
+  mean" alike), capped at 600 ms; a failure, a timeout or a wrong-length answer means no
+  symbols — never an error.
+- Sources: track mute and solo from the SDK; track arm from the Remote Script (`track_facts`)
+  when it answers, else the SDK value; chain and pad mute/solo from the script
+  (`chainSwitches`); no script → no symbol for chains.
+- The symbol shows the state when the list opened and does not update.
 
 **Follow mode (draft, depends on the spike in 0006).** The active row is selected in Live while
 the pick list is open (a track or a device, through `selectNode`), for every pick list including
@@ -113,11 +174,14 @@ multi-select.
 - Transport: the page sends `POST /pick/highlight` to the local server with a per-dialog token;
   the host debounces (~80 ms) and calls the bridge.
 - Open: `Esc` cannot restore the previous selection until the Remote Script can reply
-  (STATUS.md, "Next"). Phase 1 leaves the selection where it is, phase 2 restores it.
+  (STATUS.md, "Roadmap to 0.1.0", step 2). Phase 1 leaves the selection where it is, phase 2 restores it.
 - Open: whether `next`/`prev` are still needed once follow mode exists. Kept until the spike is
   decided — they need no open window and are what a keymap binds to a key.
 
 ## Open questions
+
+- A setting "Enter takes the cursor row" in multi-select lists, to save the `Tab` when one
+  target is wanted (user, 2026-10-19; settings phase, not before 0.1.0).
 
 - File-based replacement reads outside the bundle — the same caveat as pakabl if the announced
   stricter OS sandbox arrives; levels 1 and 3 can stay inside the bundle.

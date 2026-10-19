@@ -14,7 +14,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +33,15 @@ jobs:
 
       - run: npm ci
       - run: npm test
+
+      # The command and Remote Script reference pages are generated from the code:
+      # a committed page that differs (or a command without an example) fails here.
+      - name: Reference pages are up to date
+        run: npm run docs:reference -- --check
+
+      # -B: no __pycache__ files left behind in the working tree.
+      - name: Remote Script tests (Python, standard library only)
+        run: python3 -B -m unittest discover -s tests/remote-script
       - run: npm run package
 
       - uses: actions/upload-artifact@v4

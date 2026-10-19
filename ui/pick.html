@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, items: [{ label, detail?, value? }] }. Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes, or '' when cancelled. -->
+<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, fill?: boolean, state?: { label, change?: 'toggle'|'on'|'off' }, items: [{ label, detail?, value?, state?: 'on'|'off' }] }. state.label picks the right-hand button (muted: speaker, lit when audible = 'off'; soloed: S; armed: record dot; other: neutral square), no state = no button. With state.change the buttons of the acted-on rows (multi-select: the marked rows only, none: no ring; single-select: the cursor row) show the resulting state with a pending ring, and marks lose their tint (bold label stays). Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes, or '' when cancelled (a multi-select answers only marked rows; Enter with none marked answers nothing and stays open); with fill (single-select only) Tab answers {"fill": index} instead. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -45,13 +45,36 @@
     #list { flex: 1; overflow-y: auto; }
     .row { display: flex; align-items: baseline; gap: 10px; padding: 5px 12px; cursor: default; }
     .row.active { background: var(--bg-row); }
+    /* A marked row (multi-select) is a light accent tint across the row, no gutter. Cursor = row
+       background + accent text; marked = tint; both = tint + accent text. */
+    .row.marked, .row.marked.active { background: hsla(31, 100%, 67%, 0.13); }
+    /* Not hue alone: a marked row's label is bold (monospace, so the width does not change). */
+    .row.marked .label { font-weight: 700; }
     .row.active .label { color: var(--accent); }
     /* Zone indicator: filter active = caret + soft row; list active = strong row, no caret. */
     body.zone-list #filter { caret-color: transparent; }
     body.zone-list .row.active { background: var(--border); box-shadow: inset 2px 0 0 var(--accent); }
-    .mark { width: 10px; color: var(--accent); }
-    .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .detail { color: var(--dim); font-size: 11px; }
+    body.zone-list .row.marked.active { background: hsla(31, 100%, 67%, 0.2); }
+    /* State button (PICK.state), right of the row like Live's mixer buttons: a small square,
+       filled with the accent when lit, outlined and dim when not. */
+    .btn { flex: none; align-self: center; box-sizing: border-box; width: 18px; height: 18px; display: inline-flex;
+           align-items: center; justify-content: center; border: 1px solid var(--dim); border-radius: 2px;
+           color: var(--dim); font-size: 11px; font-weight: 700; line-height: 1; user-select: none; }
+    .btn { --btn: var(--accent); --btn-ink: var(--bg); }
+    .btn.mute { --btn: var(--live-chosen-default); }
+    .btn.solo { --btn: var(--live-chosen-prelisten); --btn-ink: #fff; }   /* white reads better on the blue */
+    .btn.arm  { --btn: var(--live-chosen-record); }
+    .btn.lit { background: var(--btn); border-color: var(--btn); color: var(--btn-ink); }
+    .btn svg { width: 12px; height: 12px; display: block; }
+    /* Pending: the list shows the state confirming would set (differs from Live now): a dashed ring. */
+    .btn.pending { outline: 1px dashed var(--btn); outline-offset: 2px; }
+    /* With state.change the button shows what is marked: no row tint (bold label stays). */
+    body.change .row.marked { background: transparent; }
+    body.change .row.marked.active { background: var(--bg-row); }
+    body.change.zone-list .row.marked.active { background: var(--border); }
+    /* One line per row: the label keeps its width up to the row, the detail gives way first. */
+    .label { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .detail { flex: 1 1 0; min-width: 0; text-align: right; color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     #hint {
       padding: 5px 12px;
@@ -73,8 +96,11 @@
   <div id="list"></div>
   <div id="hint"></div>
 
+  <!-- Shared matcher, inlined as a `CmdMatch` global at build time. -->
+  <script>/*MATCH_PLACEHOLDER*/</script>
+
   <script>
-    // Injected by the extension: { title, multi, preview?, items: [{ label, detail?, value? }] }
+    // Injected by the extension: { title, multi, preview?, fill?, state?: { label }, items: [{ label, detail?, value?, state?: 'on' | 'off' }] }
     const PICK = /*PICK_PLACEHOLDER*/null;
 
     const filter = document.getElementById('filter');
@@ -88,34 +114,38 @@
     let debug = false;    // toggled with Ctrl+Shift+D: show the last key events in the hint
     let lastKey = '';     // debug only: the last keydown ...
     let lastInput = '';   // ... and the last beforeinput, shown together
+    let notice = '';          // one-off hint text (Enter with nothing marked), cleared by the next key
     let spaceHandled = false;   // keydown already marked for this Space; skip the backstop
 
     const marked = new Set();   // indexes into PICK.items
     let visible  = [];          // indexes into PICK.items, after filtering
     let active   = 0;           // position within `visible`
 
-    function send(indexes) {
-      const payload = indexes && indexes.length ? JSON.stringify(indexes) : '';
+    // Every typed word must occur in the label (any order); better fuzzy hits first.
+    const allIndexes = PICK.items.map((_, i) => i);
+    const filterIndexes = CmdMatch.filterer(allIndexes, i => PICK.items[i].label);
+
+    // `fill` (single-select only): Tab puts the active row into the prompt instead of running it.
+    const canFill = !!PICK.fill && !PICK.multi;
+
+    function send(indexes, fillIndex) {
+      const payload = fillIndex !== undefined ? JSON.stringify({ fill: fillIndex })
+        : indexes && indexes.length ? JSON.stringify(indexes) : '';
       const msg = { method: 'close_and_send', params: [payload] };
       if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(msg);
       else if (window.chrome?.webview) window.chrome.webview.postMessage(msg);
     }
 
     function render() {
-      const needle = filter.value.trim().toLowerCase();
-      visible = PICK.items
-        .map((_, i) => i)
-        .filter(i => !needle || PICK.items[i].label.toLowerCase().includes(needle));
+      visible = filterIndexes(filter.value);
       active = Math.min(active, Math.max(visible.length - 1, 0));
 
+      const actedOn = rowsActedOn();
       list.innerHTML = '';
       visible.forEach((index, pos) => {
         const item = PICK.items[index];
         const row = document.createElement('div');
-        row.className = 'row' + (pos === active ? ' active' : '');
-        const mark = document.createElement('span');
-        mark.className = 'mark';
-        mark.textContent = marked.has(index) ? '●' : '';
+        row.className = 'row' + (pos === active ? ' active' : '') + (marked.has(index) ? ' marked' : '');
         // textContent, not innerHTML: labels are user data (track names).
         const label = document.createElement('span');
         label.className = 'label';
@@ -123,7 +153,11 @@
         const detail = document.createElement('span');
         detail.className = 'detail';
         detail.textContent = item.detail ?? '';
-        row.append(mark, label, detail);
+        row.append(label, detail);
+        if (hasState && (item.state === 'on' || item.state === 'off')) {
+          const result = actedOn.has(index) ? resultState(item.state) : item.state;
+          row.append(stateButton(result, result !== item.state));
+        }
         row.addEventListener('mousedown', e => {
           e.preventDefault();
           if (PICK.multi) { toggle(index); active = pos; zone = 'list'; render(); }
@@ -137,10 +171,12 @@
     }
 
     // The line Enter will run: before, the chosen values (ascending index order, as
-    // returned), after. Nothing marked: the active row.
+    // returned), after. Multi-select: the marked rows only (none marked: no target); single-select: the cursor row.
     function renderPreview() {
       if (!PICK.preview) return;
-      const chosen = marked.size
+      // Multi-select: the targets are exactly the marked rows (none marked = no target).
+      // Single-select: the cursor row.
+      const chosen = PICK.multi
         ? [...marked].sort((a, b) => a - b)
         : (visible.length ? [visible[active]] : []);
       const parts = [
@@ -153,10 +189,77 @@
       cmd.title = text;
     }
 
+    // The state button needs the label (it picks the icon and is the tooltip).
+    const hasState = !!PICK.state && typeof PICK.state.label === 'string';
+
+    // Icons are constant markup (never user data); swap an icon by replacing its string.
+    // The record dot is a plain circle. The speaker is "speaker-simple-none" from Phosphor Icons
+    // (https://github.com/phosphor-icons/core), used under this licence:
+    //
+    //   MIT License
+    //
+    //   Copyright (c) 2023 Phosphor Icons
+    //
+    //   Permission is hereby granted, free of charge, to any person obtaining a copy
+    //   of this software and associated documentation files (the "Software"), to deal
+    //   in the Software without restriction, including without limitation the rights
+    //   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    //   copies of the Software, and to permit persons to whom the Software is
+    //   furnished to do so, subject to the following conditions:
+    //
+    //   The above copyright notice and this permission notice shall be included in all
+    //   copies or substantial portions of the Software.
+    //
+    //   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    //   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    //   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    //   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    //   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    //   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    //   SOFTWARE.
+    const ICON_SPEAKER = '<svg viewBox="0 0 256 256" fill="currentColor"><path d="M163.51 24.81a8 8 0 0 0-8.42.88L85.25 80H40a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h45.25l69.84 54.31A8 8 0 0 0 168 224V32a8 8 0 0 0-4.49-7.19M152 207.64l-59.09-45.95A7.94 7.94 0 0 0 88 160H40V96h48a7.94 7.94 0 0 0 4.91-1.69L152 48.36Z"/></svg>';
+    const ICON_RECORD  = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>';
+
+    // lit = what Live lights: mute lights when audible (state 'off'), solo and arm when 'on'.
+    // With state.change: the rows confirming acts on (marked; else the cursor row; single-select:
+    // the cursor row) show the resulting state at once.
+    const change = hasState && ['toggle', 'on', 'off'].includes(PICK.state.change) ? PICK.state.change : null;
+    document.body.classList.toggle('change', !!change);
+    function rowsActedOn() {
+      if (!change) return new Set();
+      if (PICK.multi) return marked;
+      return new Set(visible.length ? [visible[active]] : []);
+    }
+    function resultState(state) {
+      return change === 'toggle' ? (state === 'on' ? 'off' : 'on') : change;
+    }
+
+    function stateButton(state, pending) {
+      const name = PICK.state.label;
+      const btn = document.createElement('span');
+      btn.className = 'btn';
+      let lit = state === 'on';
+      if (name === 'muted') { btn.classList.add('mute'); btn.innerHTML = ICON_SPEAKER; lit = state === 'off'; }
+      else if (name === 'soloed') { btn.classList.add('solo'); btn.textContent = 'S'; }
+      else if (name === 'armed') { btn.classList.add('arm'); btn.innerHTML = ICON_RECORD; }
+      if (lit) btn.classList.add('lit');
+      const off = ['muted', 'soloed', 'armed'].includes(name) ? 'un' + name : 'not ' + name;
+      btn.title = (state === 'on' ? name : off) + (pending ? ' (on confirm)' : '');
+      if (pending) btn.classList.add('pending');   // never colour alone: the tooltip names it
+      btn.setAttribute('role', 'img');
+      btn.setAttribute('aria-label', btn.title);
+      return btn;
+    }
+
     function renderZone() {
       document.body.classList.toggle('zone-list', zone === 'list');
       const text = !PICK.multi
-        ? 'Enter choose · Esc cancel · type to filter'
+        ? (canFill ? 'Enter run · Tab put in prompt · Esc cancel · type to filter'
+                   : 'Enter choose · Esc cancel · type to filter')
+        : notice ? notice
+        : !marked.size
+          ? (zone === 'list' ? 'mark with Space/Tab · Esc cancel · type to filter'
+                             : 'mark with Tab · ↓ list · Esc cancel · type to filter')
         : zone === 'list'
           ? 'Space mark · Tab mark · Enter confirm · Esc cancel · type to filter'
           : 'Tab mark · ↓ list · Enter confirm · Esc cancel · type to filter';
@@ -166,6 +269,7 @@
     }
 
     function toggle(index) {
+      notice = '';
       if (marked.has(index)) marked.delete(index); else marked.add(index);
     }
 
@@ -218,6 +322,7 @@
         return;
       }
       spaceHandled = false;
+      if (e.key !== 'Enter') notice = '';
       if (debug) {
         lastKey = 'keydown key=' + JSON.stringify(e.key) + ' code=' + e.code + ' zone=' + zone + ' multi=' + !!PICK.multi;
         lastInput = '';
@@ -243,13 +348,18 @@
         markActive();
       } else if (e.key === 'Tab') {
         e.preventDefault();
-        if (!PICK.multi || !visible.length) return;
+        if (!visible.length) return;
+        if (canFill) { send(null, visible[active]); return; }
+        if (!PICK.multi) return;
         toggle(visible[active]);
         move(1);
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (marked.size) send([...marked].sort((a, b) => a - b));
-        else if (visible.length) send([visible[active]]);
+        if (PICK.multi) {
+          // Multi-select: only marked rows are targets; Enter with none runs nothing.
+          if (marked.size) send([...marked].sort((a, b) => a - b));
+          else { notice = 'Nothing marked: mark rows with Tab/Space first'; renderZone(); }
+        } else if (visible.length) send([visible[active]]);
       } else if (zone === 'list' && !e.ctrlKey && !e.metaKey && !e.altKey
                  && (e.key.length === 1 || ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key))) {
         // A typed character (not Space, handled above) or a caret/edit key goes back to the filter.

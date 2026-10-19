@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { isHttpsUrl } from "../../core/openUrl.js";
-import { LIVE_MANUAL_VERSION, SEARCH_ENGINE, TOPICS, abletonSearchUrl, encodeQuery, findTopic, topicList, topicNames } from "./topics.js";
+import { LIVE_MANUAL_VERSION, SEARCH_ENGINE, TOPICS, abletonSearchUrl, encodeQuery, findTopic, topicNames } from "./topics.js";
 
 test("both manuals are https and known by name", () => {
   assert.deepEqual(topicNames(), ["ableton", "cmdabl"]);
@@ -20,10 +20,6 @@ test("unknown topics and inherited object keys are not found", () => {
   assert.equal(findTopic(""), undefined);
   assert.equal(findTopic("constructor"), undefined);
   assert.equal(findTopic("__proto__"), undefined);
-});
-
-test("topicList is comma separated", () => {
-  assert.equal(topicList(), "ableton, cmdabl");
 });
 
 const SCOPE = `site:ableton.com/en/live-manual/${LIVE_MANUAL_VERSION}`;

@@ -7,7 +7,10 @@ publishes anything and never changes a version.
 dependency drift), and manually (Actions → CI → Run workflow).
 
 **Steps:** check that `package.json` and `manifest.json` have the same version → `npm ci` →
-`npm test` (unit tests for the command platform) → `npm run package` → upload the built `.ablx` as the artifact `cmdabl-ablx`.
+`npm test` (unit tests for the command platform) →
+`python3 -B -m unittest discover -s tests/remote-script` (the Remote Script's protocol tests;
+standard library only; the tests live outside `remote-script/` so they are not packaged; run the same
+command locally) → `npm run package` → upload the built `.ablx` as the artifact `cmdabl-ablx`.
 
 ## Getting a built `.ablx` from CI
 
@@ -20,6 +23,7 @@ Open a green run in the Actions tab → **Artifacts** → `cmdabl-ablx`.
 | Green | Type-check, bundle and packaging all worked |
 | Red at "Check … versions match" | `package.json` and `manifest.json` differ — bump both to the same value |
 | Red at `npm test` | A unit test failed — see the test name in the log |
+| Red at "Remote Script tests" | A Python test of `remote-script/` failed — see the test name in the log |
 | Red at `npm run package` | A real build/type error — see the log |
 | `action_required` | GitHub holds runs triggered by bot-created PRs (e.g. the pakabl index PR) until someone clicks **Approve and run**. Optional for PRs that only change generated JSON. |
 
@@ -31,6 +35,14 @@ the docs workflow's job is named `docs-build` for that reason. A required check 
 from a workflow that runs on every pull request: `docs.yml` has a `paths` filter, so its job must
 never be made required (on a pull request that touches no docs it would not run and the check would
 wait forever).
+
+## Reference pages
+
+`docs/reference/commands.md` and `docs/reference/remote-script.md` are generated from the code (the
+command tree and `src/ableton/remoteScriptOps.ts`). The `build` job runs `npm run docs:reference --
+--check`: it fails when a committed page differs from what the code produces, when a runnable command
+has no example, or when an example does not parse. Fix it by running `npm run docs:reference` and
+committing the result.
 
 ## Pinned actions
 

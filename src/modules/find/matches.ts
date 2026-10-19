@@ -24,13 +24,3 @@ export class MatchList {
     return { path: this.paths[this.index]!, position: this.index + 1 };
   }
 }
-
-/**
- * grep-like match, ignoring case: every word of the pattern has to occur in the
- * path, in any order — so "vermona kick" finds "/Vermona MIDI/Drum Rack/Kick".
- */
-export function matchesPattern(path: string, pattern: string): boolean {
-  const haystack = path.toLowerCase();
-  const words = pattern.toLowerCase().split(/\s+/).filter(Boolean);
-  return words.length > 0 && words.every((word) => haystack.includes(word));
-}

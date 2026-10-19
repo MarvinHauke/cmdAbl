@@ -4,7 +4,7 @@ import { tokenize, quoteIfNeeded } from "./tokenize.js";
 import { validateTree, usage, helpText, serializeTree, type CommandNode } from "./commandTree.js";
 import { parse } from "./parse.js";
 import { presentResult } from "./present.js";
-import { ExitCode, ok, fail } from "../types.js";
+import { ExitCode, ok, fail } from "./types.js";
 
 const values = (input: string) => {
   const r = tokenize(input);
@@ -62,7 +62,7 @@ const tree: CommandNode[] = [
           { name: "force", short: "f", summary: "reinstall" },
           { name: "ref", takesValue: true, summary: "version" },
         ],
-        args: [{ name: "id", kind: "enum" }],
+        args: [{ name: "id", kind: "enum", complete: "pakabl-ids" }],
         run: noop,
       },
       { name: "list", aliases: ["ls"], summary: "list extensions", run: noop },
@@ -203,6 +203,64 @@ test("parse: help", () => {
 
 // ── presenter ───────────────────────────────────────────────────────────────
 
+test("presentResult: successes first, reasons indented, a parenthesis starts a line", () => {
+  const shown: string[] = [];
+  presentResult(fail(ExitCode.FAILURE, "arm: 2 of 4 done", [
+    { path: "/Sub 37 Midi", ok: false, message: "Live did not arm it: its arm button is disabled (e.g. the input device is not available)" },
+    { path: "/Sub37 Audio", ok: true },
+    { path: "/Group", ok: false, message: "group tracks cannot be armed" },
+    { path: "/Bass", ok: true },
+    { path: "/Odd", ok: false },
+  ]), (t) => shown.push(t));
+  assert.deepEqual(shown, [
+    [
+      "cmdAbl: arm: 2 of 4 done",
+      "  ✓ /Sub37 Audio",
+      "  ✓ /Bass",
+      "  × /Sub 37 Midi",
+      "      Live did not arm it: its arm button is disabled",
+      "      (e.g. the input device is not available)",
+      "  × /Group",
+      "      group tracks cannot be armed",
+      "  × /Odd",
+    ].join("\n"),
+  ]);
+});
+
+test("presentResult: failures with the same reason list their targets and print the reason once", () => {
+  const shown: string[] = [];
+  const why = "Remote Script not running (install it with cmdabl setup, then restart Live)";
+  presentResult(fail(ExitCode.UNAVAILABLE, "mute: 1 of 4 done", [
+    { path: "/2-808 Core Kit/Snare Drum", ok: false, message: why },
+    { path: "/Bass", ok: true },
+    { path: "/Lead", ok: false, message: "not found" },
+    { path: "/Kick", ok: false, message: why },
+    { path: "/Odd", ok: false },
+    { path: "/Odd2", ok: false },
+  ]), (t) => shown.push(t));
+  assert.deepEqual(shown, [
+    [
+      "cmdAbl: mute: 1 of 4 done",
+      "  ✓ /Bass",
+      "  × /2-808 Core Kit/Snare Drum",
+      "  × /Kick",
+      "      Remote Script not running",
+      "      (install it with cmdabl setup, then restart Live)",
+      "  × /Lead",
+      "      not found",
+      "  × /Odd",
+      "  × /Odd2",
+    ].join("\n"),
+  ]);
+});
+
+test("presentResult: an all-success result lists no targets; a message without details is unchanged", () => {
+  const shown: string[] = [];
+  presentResult(ok("muted 2", [{ path: "/a", ok: true }, { path: "/b", ok: true }]), (t) => shown.push(t));
+  presentResult(fail(ExitCode.NOT_FOUND, "nothing matches"), (t) => shown.push(t));
+  assert.deepEqual(shown, ["muted 2", "cmdAbl: nothing matches"]);
+});
+
 test("presentResult: silent success, messages, failures with details", () => {
   const shown: string[] = [];
   const show = (t: string) => shown.push(t);
@@ -212,14 +270,209 @@ test("presentResult: silent success, messages, failures with details", () => {
     { path: "/a", ok: true },
     { path: "/b", ok: false, message: "not found" },
   ]), show);
-  assert.deepEqual(shown, ["done", "cmdAbl: muted 1/2\n  ✓ /a\n  ✗ /b — not found"]);
+  assert.deepEqual(shown, ["done", "cmdAbl: muted 1/2\n  ✓ /a\n  × /b\n      not found"]);
 });
 
-test("cmdablUsage: lists every registered flag and points to man and help", async () => {
-  const { cmdablUsage } = await import("./builtins.js");
-  const text = cmdablUsage();
-  assert.match(text, /--setup/);
-  assert.match(text, /--help/);
-  assert.match(text, /man cmdabl/);
-  assert.match(text, /all commands: help/);
+async function builtins(deps: Parameters<typeof import("./builtins.js").registerBuiltins>[1] = {}) {
+  const { registerBuiltins } = await import("./builtins.js");
+  const { CommandRegistry } = await import("./commandRegistry.js");
+  const { runLine } = await import("./run.js");
+  const registry = new CommandRegistry();
+  registerBuiltins(registry, deps);
+  const run = (line: string) => runLine(line, { registry, liveNodes: () => [], pick: async () => null, log: () => {} });
+  return { registry, run };
+}
+
+test("cmdabl: a group on the tree — usage generated, unknown subcommand is a usage error naming the valid ones", async () => {
+  const { run } = await builtins();
+  for (const line of ["cmdabl", "cmdabl --help"]) {
+    const out = await run(line);
+    assert.equal(out.result.code, ExitCode.OK, line);
+    assert.match(out.result.message ?? "", /usage: cmdabl <command>/);
+    assert.match(out.result.message ?? "", /setup/);
+    assert.match(out.result.message ?? "", /bridge/);
+  }
+  const bad = await run("cmdabl nope");
+  assert.equal(bad.result.code, ExitCode.USAGE);
+  assert.match(bad.result.message ?? "", /unknown subcommand "nope"/);
+  assert.match(bad.result.message ?? "", /valid: setup, bridge/);
+  // the old flags are gone
+  assert.equal((await run("cmdabl --setup")).result.code, ExitCode.USAGE);
+  assert.equal((await run("cmdabl --bridge")).result.code, ExitCode.USAGE);
+});
+
+test("help stays a command and lists cmdabl", async () => {
+  const { run } = await builtins();
+  const out = await run("help");
+  assert.equal(out.result.code, ExitCode.OK);
+  assert.match(out.result.message ?? "", /cmdabl\s+configure cmdAbl/);
+});
+
+test("cmdabl bridge: reports the bridge's answer", async () => {
+  const { SCRIPT_VERSION } = await import("../ableton/bridgeProtocol.js");
+  const good = await (await builtins({
+    bridge: () => ({ ping: async () => ({ ok: true, value: { script: SCRIPT_VERSION, v: 1, ops: ["hello"] } }) }),
+  })).run("cmdabl bridge");
+  assert.equal(good.result.code, ExitCode.OK);
+  assert.match(good.result.message ?? "", /^Remote Script \S+ is running \(protocol v1; \d+ ms; operations: hello\)$/);
+  const down = await (await builtins({
+    bridge: () => ({ ping: async () => ({ ok: false, code: 5, text: "Remote Script not running" }) }),
+  })).run("cmdabl bridge");
+  assert.equal(down.result.code, ExitCode.UNAVAILABLE);
+  assert.equal(down.result.message, "Remote Script not running");
+  assert.equal((await (await builtins()).run("cmdabl bridge")).result.code, ExitCode.UNAVAILABLE);
+});
+
+test("cmdabl setup: the installer's text, then what to do about the Remote Script", async () => {
+  const { run } = await builtins({
+    setup: () => "OK: installed",
+    installed: () => ({ status: "current", version: "0.1.0" }),
+    shippedVersion: "0.1.0",
+    bridge: () => ({ ping: async () => ({ ok: true, value: { script: "0.0.9", v: 1, ops: [] } }) }),
+  });
+  const out = await run("cmdabl setup");
+  assert.equal(out.result.code, ExitCode.OK);
+  assert.equal(
+    out.result.message,
+    "OK: installed\n\nRemote Script 0.1.0 is installed, but Live still runs 0.0.9. Restart Live to load Remote Script 0.1.0.\n" +
+      "https://marvinhauke.github.io/cmdAbl/getting-started/#3-turn-on-the-remote-script-in-live",
+  );
+});
+
+test("setup docs links hang off one base URL", async () => {
+  const { DOCS_BASE_URL, KEYBOARD_DOCS_URL, REMOTE_SCRIPT_DOCS_URL } = await import("./setup.js");
+  assert.ok(KEYBOARD_DOCS_URL.startsWith(DOCS_BASE_URL) && REMOTE_SCRIPT_DOCS_URL.startsWith(DOCS_BASE_URL));
+  assert.equal(KEYBOARD_DOCS_URL, "https://marvinhauke.github.io/cmdAbl/getting-started/#2-run-cmdabl-setup");
+});
+
+test("validateTree: requires must be a known companion on a runnable node", () => {
+  const leaf = (extra: object): CommandNode<void, string> => ({ name: "x", summary: "s", run: () => {}, ...extra });
+  assert.deepEqual(validateTree([leaf({ requires: ["bridge"] })]), []);
+  assert.match(validateTree([leaf({ requires: ["nope"] })]).join("\n"), /unknown requirement "nope"/);
+  const group: CommandNode<void, string> = { name: "g", summary: "s", requires: ["bridge"], children: [leaf({})] };
+  assert.match(validateTree([group]).join("\n"), /requires belongs on the runnable node/);
+});
+
+// ── enum arguments ──────────────────────────────────────────────────────────
+
+const manTree: CommandNode<void, string>[] = [
+  { name: "man", summary: "manual", args: [{ name: "topic", kind: "enum", choices: ["ableton", "cmdabl"] }], run: () => {} },
+];
+
+test("enum: declared values pass (case-insensitive, declared spelling), others are a usage error naming the choices", () => {
+  const good = parse("man CmdAbl", manTree);
+  assert.equal(good.kind, "run");
+  if (good.kind === "run") assert.deepEqual(good.invocation.args, [["cmdabl"]]);
+  const bad = parse("man nope", manTree);
+  assert.equal(bad.kind, "error");
+  if (bad.kind === "error") {
+    assert.equal(bad.result.code, ExitCode.USAGE);
+    assert.match(bad.result.message ?? "", /invalid value "nope" for <topic>: choose one of ableton, cmdabl/);
+  }
+});
+
+test("enum: usage and help show <a|b>; the serialized tree carries the choices; validation", () => {
+  assert.equal(usage(manTree[0]!, ["man"]), "man <ableton|cmdabl>");
+  assert.match(helpText(manTree[0]!, ["man"]), /usage: man <ableton\|cmdabl>/);
+  const serialized = serializeTree(manTree);
+  assert.deepEqual(serialized[0]!.args![0]!.choices, ["ableton", "cmdabl"]);
+  assert.deepEqual(validateTree(manTree), []);
+  const broken = (arg: object): CommandNode<void, string>[] => [{ name: "x", summary: "s", args: [{ name: "a", ...arg } as never], run: () => {} }];
+  assert.match(validateTree(broken({ kind: "enum" })).join("\n"), /needs choices/);
+  assert.deepEqual(validateTree(broken({ kind: "enum", complete: "pakabl-ids" })), []); // dynamic set: no parser check
+  const dynamic = parse("x anything", broken({ kind: "enum", complete: "ids" }));
+  assert.equal(dynamic.kind, "run");
+  assert.match(validateTree(broken({ kind: "enum", choices: ["a", "a"] })).join("\n"), /duplicate choices/);
+  assert.match(validateTree(broken({ kind: "enum", choices: ["Ab", "ab"] })).join("\n"), /duplicate choices/);
+  assert.match(validateTree(broken({ kind: "enum", choices: ["-x"] })).join("\n"), /starts with a dash/);
+  assert.match(validateTree(broken({ kind: "enum", choices: ["a"], rest: true })).join("\n"), /cannot take the rest/);
+  assert.match(validateTree(broken({ kind: "text", choices: ["a"] })).join("\n"), /choices only applies to enum/);
+});
+
+// ── documentation fields ────────────────────────────────────────────────────
+
+test("description, examples and argument summaries: validated, shown by help, carried by the tree", () => {
+  const doc: CommandNode<void, string>[] = [
+    {
+      name: "mute",
+      summary: "mute tracks",
+      description: "Toggles the mute state of every named track.",
+      args: [{ name: "track", kind: "path", variadic: true, summary: "the tracks to mute" }],
+      examples: [{ line: "mute /Kick, /Snare", note: "mute both" }, { line: "mute vermona" }],
+      run: () => {},
+    },
+  ];
+  assert.deepEqual(validateTree(doc), []);
+  const text = helpText(doc[0]!, ["mute"]);
+  assert.match(text, /^mute tracks\n\nToggles the mute state of every named track\.\n\nusage: mute <track>…/);
+  assert.match(text, /arguments:\n  <track>\s+the tracks to mute/);
+  assert.match(text, /examples:\n  mute \/Kick, \/Snare\n      mute both\n  mute vermona$/);
+  const serialized = serializeTree(doc)[0]!;
+  assert.equal(serialized.description, "Toggles the mute state of every named track.");
+  assert.deepEqual(serialized.examples, doc[0]!.examples);
+  assert.equal(serialized.args![0]!.summary, "the tracks to mute");
+
+  const bad = (extra: object): string =>
+    validateTree([{ name: "x", summary: "s", run: () => {}, ...extra } as CommandNode<void, string>]).join("\n");
+  assert.match(bad({ description: " " }), /description must be a non-empty string/);
+  assert.match(bad({ examples: [{ line: "" }] }), /an example needs a line/);
+  assert.match(bad({ examples: [{ line: "x", note: "" }] }), /note of example/);
+  assert.match(bad({ args: [{ name: "a", kind: "text", summary: "" }] }), /summary of argument "a"/);
+  assert.match(
+    validateTree([{ name: "g", summary: "s", examples: [{ line: "g x" }], children: [{ name: "c", summary: "s", run: () => {} }] }]).join("\n"),
+    /examples belong on a runnable command/,
+  );
+});
+
+test("option choices: the parser lists them on a bad value, usage shows <0|1>, the line is remembered with the option", () => {
+  const tree2: CommandNode<void, string>[] = [
+    {
+      name: "mute",
+      summary: "mute",
+      options: [{ name: "set", short: "s", takesValue: true, choices: ["0", "1"], summary: "set the state" }],
+      args: [{ name: "track", kind: "path", variadic: true }],
+      run: () => {},
+    },
+  ];
+  assert.deepEqual(validateTree(tree2), []);
+  assert.equal(usage(tree2[0]!, ["mute"]), "mute [--set <0|1>] <track>…");
+  assert.match(helpText(tree2[0]!, ["mute"]), /-s, --set <0\|1>/);
+  const good = parse("mute --set 0 /a", tree2);
+  assert.equal(good.kind, "run");
+  if (good.kind === "run") assert.deepEqual(good.invocation.options, { set: "0" });
+  const short = parse("mute -s 1 /a", tree2);
+  if (short.kind === "run") assert.deepEqual(short.invocation.options, { set: "1" });
+  const bad = parse("mute --set 2 /a", tree2);
+  assert.equal(bad.kind, "error");
+  if (bad.kind === "error") {
+    assert.equal(bad.result.code, ExitCode.USAGE);
+    assert.match(bad.result.message ?? "", /invalid value "2" for option "--set": choose one of 0, 1/);
+  }
+  const broken = (opt: object): string =>
+    validateTree([{ name: "x", summary: "s", options: [{ name: "o", summary: "s", ...opt }], run: () => {} } as CommandNode<void, string>]).join("\n");
+  assert.match(broken({ choices: ["a"] }), /has choices but takes no value/);
+  assert.match(broken({ takesValue: true, choices: ["a", "A"] }), /duplicate choices/);
+  assert.match(broken({ takesValue: true, choices: ["-a"] }), /starts with a dash/);
+  assert.match(broken({ takesValue: true, choices: [] }), /empty choices list/);
+});
+
+test("numeric option: whole numbers within a range, usage shows <n>, handler gets the text", () => {
+  const tree3: CommandNode<void, string>[] = [
+    { name: "tree", summary: "t", options: [{ name: "level", short: "L", takesValue: true, number: { min: 1, max: 12, integer: true }, summary: "depth" }], run: () => {} },
+  ];
+  assert.deepEqual(validateTree(tree3), []);
+  assert.equal(usage(tree3[0]!, ["tree"]), "tree [--level <n>]");
+  const ok = parse("tree -L 3", tree3);
+  assert.equal(ok.kind, "run");
+  if (ok.kind === "run") assert.deepEqual(ok.invocation.options, { level: "3" });
+  for (const bad of ["0", "13", "2.5", "abc", "-1", "1e3", ""]) {
+    const r = parse(`tree --level=${bad === "" ? '""' : bad}`, tree3);
+    assert.equal(r.kind, "error", bad);
+    if (r.kind === "error") assert.match(r.result.message ?? "", /for option "--level": a whole number from 1 to 12/);
+  }
+  const broken = (opt: object): string =>
+    validateTree([{ name: "x", summary: "s", options: [{ name: "o", summary: "s", ...opt }], run: () => {} } as CommandNode<void, string>]).join("\n");
+  assert.match(broken({ number: {} }), /numeric but takes no value/);
+  assert.match(broken({ takesValue: true, number: { min: 5, max: 1 } }), /min above max/);
+  assert.match(broken({ takesValue: true, number: {}, choices: ["1"] }), /both choices and number/);
 });

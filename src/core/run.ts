@@ -1,12 +1,13 @@
-import { ExitCode, fail, ok, type CommandResult } from "../types.js";
+import { ExitCode, fail, ok, type CommandResult } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
-import { resolvePath, uniquePath } from "../ableton/resolvePath.js";
-import type { CommandRegistry } from "../commandRegistry.js";
-import { helpText, type CommandNode, type Invocation } from "./commandTree.js";
+import { uniquePath } from "../ableton/resolvePath.js";
+import type { CommandRegistry } from "./commandRegistry.js";
+import { helpText, type CommandNode, type Invocation, type PickState } from "./commandTree.js";
 import { parse } from "./parse.js";
-import { applyPick, normalizeTargets, resolveTargets, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
+import { applyPick, lookupTarget, normalizeTargets, resolveTargets, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
-import type { PickPreview } from "./ui.js";
+import type { Bridge } from "../ableton/bridgeClient.js";
+import type { PickPreview, StateChange } from "./ui.js";
 
 // The one path every typed line takes: parse → resolve (asking the user to
 // pick when an address is ambiguous) → run → result. Everything it needs from
@@ -14,6 +15,18 @@ import type { PickPreview } from "./ui.js";
 
 export interface RunDeps {
   registry: CommandRegistry;
+  /**
+   * The Remote Script bridge, for commands that declare `requires: ["bridge"]`.
+   * Only `available()` is used (it never throws). Absent: such commands answer exit 5.
+   */
+  bridge?: () => Pick<Bridge, "available">;
+  /**
+   * A pick answered "fill" (Tab): the platform put the object's text here and
+   * resolved the pick as cancelled. Returns it once (and forgets it). Absent: no fill.
+   */
+  takeFill?: () => string | undefined;
+  /** Longest wait for a command's `pickState.read` (default 600 ms: a bridge request times out at 500); beyond it the list opens without symbols. */
+  stateCapMs?: number;
   /** Log sink and clock; default console.log and Date.now. */
   log?: (line: string) => void;
   now?: () => number;
@@ -28,6 +41,10 @@ export interface RunDeps {
     nodes: ObjectNode[];
     /** The command text around the ambiguous address (see SelectRequest.preview). */
     preview: PickPreview;
+    /** Parallel to `candidates`: which typed text each row matched (several texts); absent = the kind. */
+    details?: string[];
+    /** The command's `pickState`, read for the candidates: shown as symbols (see SelectRequest.state). */
+    state?: { label: string; values: Array<boolean | null>; change?: StateChange };
   }) => Promise<ObjectNode[] | null>;
 }
 
@@ -37,20 +54,27 @@ export interface RunOutcome {
   line?: string;
   /** The user backed out of a pick: nothing ran and nothing should be shown. */
   cancelled?: boolean;
+  /** Tab on a pick list: nothing ran; reopen the palette with this text in the prompt. */
+  fill?: string;
 }
 
 /** The command and its options, before any target. */
 function headWords(invocation: Invocation<string>): string[] {
   const words = [...invocation.path];
   for (const [name, value] of Object.entries(invocation.options)) {
-    words.push(value === true ? `--${name}` : `--${name}=${quoteIfNeeded(value)}`);
+    // `--name value`, the form the docs use; `=` only where a space would be wrong
+    // (an empty value, or one starting with a dash that would read as an option).
+    if (value === true) words.push(`--${name}`);
+    else if (value === "" || value.startsWith("-")) words.push(`--${name}=${quoteIfNeeded(value)}`);
+    else words.push(`--${name}`, quoteIfNeeded(value));
   }
   return words;
 }
 
 /** A target as it appears in a command line: resolved ones by unique path, others as typed. */
 function targetWord(value: Target, nodes: ObjectNode[]): string {
-  return quoteIfNeeded(typeof value === "string" ? value : uniquePath(nodes, value));
+  if (typeof value === "string") return quoteIfNeeded(value);
+  return quoteIfNeeded(uniquePath(nodes, value));
 }
 
 /**
@@ -83,11 +107,12 @@ function previewFor(
     const def = node.args?.[argIndex];
     const seen = new Set<string>(); // per argument, like resolveTargets
     values.forEach((value, valueIndex) => {
-      if (argIndex === request.argIndex && valueIndex === request.valueIndex) return;
+      // The texts this list answers are replaced by what the user marks.
+      if (argIndex === request.argIndex && request.texts.some((t) => t.valueIndex === valueIndex)) return;
       // Path text that resolves without a pick (one match, or `multiple: "all"`) shows as its objects.
       let expanded: Target[] = [value];
       if (typeof value === "string" && def?.kind === "path") {
-        const matches = resolvePath(nodes, value, def.kinds);
+        const matches = lookupTarget(nodes, value, def.kinds);
         if (matches.length === 1 || (matches.length > 1 && def.multiple === "all")) expanded = matches;
       }
       const isBefore = argIndex < request.argIndex || (argIndex === request.argIndex && valueIndex < request.valueIndex);
@@ -119,20 +144,70 @@ export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome>
     outcome = await runLineInner(input, deps);
     return outcome;
   } finally {
-    const code = outcome ? (outcome.cancelled ? "cancelled" : String(outcome.result.code)) : "threw";
+    const code = outcome ? (outcome.fill !== undefined ? "filled" : outcome.cancelled ? "cancelled" : String(outcome.result.code)) : "threw";
     log(`cmdAbl: run: ${outcome?.line ?? input.trim()} -> ${code} (${now() - started} ms)`);
+  }
+}
+
+/**
+ * The state symbols for a pick list of `node`, or undefined: the command's
+ * `pickState.read` under a time cap. Never throws; a failure, a wrong-length
+ * answer or a timeout means "no symbols".
+ */
+async function readPickState(
+  node: CommandNode<any, any>,
+  candidates: ObjectNode[],
+  invocation: Invocation<string>,
+  capMs: number,
+): Promise<{ label: string; values: Array<boolean | null>; change?: StateChange } | undefined> {
+  const spec = node.pickState;
+  if (!spec) return undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const values = await Promise.race([
+      spec.read(candidates, invocation),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), capMs);
+      }),
+    ]);
+    if (!Array.isArray(values) || values.length !== candidates.length) return undefined;
+    return {
+      label: spec.label,
+      values: values.map((v) => (v === true || v === false ? v : null)),
+      ...readChange(spec, invocation),
+    };
+  } catch {
+    return undefined;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+/** The preview of what confirming does, or nothing: a throwing or odd `change` is "no preview". */
+function readChange(spec: PickState, invocation: Invocation<string>): { change?: StateChange } {
+  try {
+    const change = spec.change?.(invocation);
+    return change === "toggle" || change === "on" || change === "off" ? { change } : {};
+  } catch {
+    return {};
+  }
+}
+
+/** A failing result when the Remote Script bridge cannot be used, else null. */
+async function bridgeUnavailable(deps: RunDeps): Promise<CommandResult | null> {
+  if (!deps.bridge) return fail(ExitCode.UNAVAILABLE, "the Remote Script bridge is not available in this build");
+  try {
+    const ready = await deps.bridge().available();
+    return ready.ok ? null : fail(ready.code, ready.text);
+  } catch (e: unknown) {
+    // The bridge promises never to throw; nothing may throw at a user action.
+    return fail(ExitCode.UNAVAILABLE, `bridge check failed: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
 
 async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   const line = input.trim();
   const { registry } = deps;
-
-  // Commands still registered the old way parse their own raw tokens.
-  const first = tokenize(line).tokens[0]?.value ?? "";
-  if (registry.isLegacy(first)) {
-    return { result: await registry.run(first, line.split(/\s+/).slice(1)), line };
-  }
 
   const parsed = parse<void>(line, registry.roots());
   if (parsed.kind === "error") return { result: parsed.result };
@@ -142,10 +217,19 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
     return { result: ok(lines.join("\n")) };
   }
 
-  const { node, invocation } = parsed;
+  const { node, invocation, quoted } = parsed;
+
+  // Companions first: no point asking the user to pick for a command that cannot run.
+  // A visible choice: with the script missing, a typo in the address answers
+  // "not running" (5) rather than "not found" (3) — "cannot run at all" comes first.
+  if (node.requires?.includes("bridge")) {
+    const unavailable = await bridgeUnavailable(deps);
+    if (unavailable) return { result: unavailable };
+  }
+
   const needsLive = (node.args ?? []).some((def) => def.kind === "path");
   const nodes = needsLive ? deps.liveNodes() : [];
-  let targets = normalizeTargets(node, invocation, nodes);
+  let targets = normalizeTargets(node, invocation, nodes, quoted);
 
   // Resolve; every ambiguous address costs the user one pick.
   for (;;) {
@@ -153,14 +237,32 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
     if (step.kind === "error") return { result: step.result };
     if (step.kind === "pick") {
       const { request } = step;
+      const quotedTexts = request.texts.map((t) => `"${t.query}"`).join(", ");
+      const command = invocation.path.join(" ");
+      const real = request.texts.filter((t) => !t.suggested).map((t) => `"${t.query}"`).join(", ");
+      const lost = request.texts.filter((t) => t.suggested).map((t) => `"${t.query}"`).join(", ");
+      const title = request.suggestion
+        ? real
+          ? `${command}: ${real} ${request.texts.filter((t) => !t.suggested).length > 1 ? "match" : "matches"} — nothing matches ${lost}: did you mean`
+          : `${command}: nothing matches ${quotedTexts} — did you mean`
+        : `${command}: ${request.texts.length > 1 ? `${quotedTexts} match` : `"${request.query}" matches`} ${request.candidates.length}`;
+      const state = await readPickState(node, request.candidates, invocation, deps.stateCapMs ?? 600);
       const chosen = await deps.pick({
-        title: `${invocation.path.join(" ")}: "${request.query}" matches ${request.candidates.length}`,
+        title,
+        ...(state ? { state } : {}),
+        ...(request.details ? { details: request.details } : {}),
         candidates: request.candidates,
         multi: request.multi,
         nodes,
         preview: previewFor(node, invocation, targets, request, nodes),
       });
-      if (!chosen || chosen.length === 0) return { result: ok(), cancelled: true };
+      const filled = deps.takeFill?.();
+      if (filled !== undefined) return { result: ok(), cancelled: true, fill: filled };
+      if (!chosen || chosen.length === 0) {
+        // Esc on a suggestion list: nothing was found, as before (exit 3, nothing remembered).
+        if (request.suggestion) return { result: request.suggestion.onCancel };
+        return { result: ok(), cancelled: true };
+      }
       targets = applyPick(targets, request, request.multi ? chosen : chosen.slice(0, 1));
       continue;
     }
@@ -171,6 +273,10 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
     } catch (e: unknown) {
       result = fail(ExitCode.FAILURE, `${invocation.path.join(" ")}: ${e instanceof Error ? e.message : String(e)}`);
     }
+    // A pick the handler opened itself (`api.pick`) may have been answered "fill".
+    // A failing handler keeps its failure (the fill is dropped): nothing fails silently.
+    const filled = deps.takeFill?.();
+    if (filled !== undefined && result.code === ExitCode.OK) return { result: ok(), cancelled: true, fill: filled };
     return { result, line: canonicalLine(invocation, step.invocation.args, nodes) };
   }
 }

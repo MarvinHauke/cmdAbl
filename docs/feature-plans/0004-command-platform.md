@@ -18,11 +18,15 @@ Related but separate: [0001](0001-path-addressed-objects-and-commands.md) provid
 arguments* and the `rm`/`select` commands, which are built on top of this platform;
 [0003](0003-pakabl-extension-system.md) is a consumer (its subcommands migrate).
 
+**0.1.0 scope (user, 2026-10-11):** the rest of 0005 and the Remote Script replies of 0001
+Phase 4 are part of 0.1.0; 0006 comes after it. The ordered roadmap is in
+[`STATUS.md`](STATUS.md), "Roadmap to 0.1.0".
+
 | Child | Status | Needed for |
 |---|---|---|
 | [0002](0002-command-feedback-pattern.md) Phase A | Shipped (B/C open) | Handler return type (`CommandResult`) — must exist before 0005 fixes the handler contract |
 | [0005](0005-command-tree-and-module-authoring.md) | In Progress (parser, tree registration, resolver, pick list; `goto`/`mute`/`solo`/`arm`/`find` migrated) | Everything below: the tree is what completion walks |
-| [0006](0006-completion-engine.md) | Draft | Replaces the flat fuzzy palette |
+| [0006](0006-completion-engine.md) | Draft — after 0.1.0 | Replaces the flat fuzzy palette |
 | [0007](0007-ui-surfaces.md) | In Progress (contract shipped) | Lets the UI be themed or replaced without touching core or modules |
 
 ## Context

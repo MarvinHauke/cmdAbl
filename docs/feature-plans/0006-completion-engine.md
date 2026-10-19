@@ -95,12 +95,35 @@ to one of:
   1. May the dialog page `fetch` `http://127.0.0.1:27184` — from a `data:` page (origin `null`,
      so the server must send CORS headers), or only when the page itself is served from there?
   2. Does the Remote Script (`update_display`, ~10 Hz) process bridge messages while a modal is open?
+     **Yes** (measured in Live, 2026-10-11): a `hello` round trip takes 14 ms with no dialog
+     and 24 ms with the palette open.
   3. Does Live repaint the selection behind the modal?
   4. On the side: does `window.resizeTo` do anything in the webview? (Expected: no.)
 - **Two zones in the pick list (precursor, no spike needed):** the list zone of `ui/pick.html`
   (0007) is where single keys already act instead of typing (`Space` = `mark`). Navigation mode
   extends that zone with more single-key actions (`j`/`k`, `n` → `next`). `Space` is the default
   key for `mark`, `Tab` a second one.
+
+## Target picture: Telescope-style fuzzy finding (user, 2026-10-19)
+
+After `mute drum 2` opened one pick list whose rows are tagged with the word that found them
+("drum", "2"), the user said this is how matching should work later, and showed Telescope's
+"Find Files" (Neovim) as the model:
+
+- The query matches as a **subsequence** across the whole path (`this` finds
+  `remote-script/…/chains.py` via t…h…i…s), not only as whole words.
+- The **matched characters are highlighted** in every row.
+- A `/` in the query anchors a path part (`src/this` keeps only paths under `src`) — this is
+  where it meets the hierarchical completion above.
+- Rows are **ranked by score**, best next to the prompt; a counter shows `matches / total`.
+
+Today's precursor: the per-word tags of 0005 "Forgiving target resolution". Open:
+- Fuzzy for **targets** too (`mute <text>`), or only for the palette and pick-list filter?
+  Exact paths and "a bare word equal to a top-level track name is that track" stay exact.
+- One ranked list mixing rows hit by all words and rows hit by one word, all-words first.
+- How it fits the level-by-level completion with ghost text (Tab descends a level).
+- Highlighting needs match positions per row — a contract addition to `SelectRequest` items;
+  ask before building.
 
 ## Open questions
 

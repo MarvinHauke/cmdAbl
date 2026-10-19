@@ -2,8 +2,10 @@ import * as path from "node:path";
 import type { ModuleApi } from "../types.js";
 import { EXTENSIONS_DIR, downloadFile, unzipInto, readJsonFile, openUrl, removeDir } from "./platform.js";
 import { buildListPage } from "./listPage.js";
+import { indexRelation, installedRelation, type IndexRelation } from "./version.js";
+import { pakablCommand } from "./command.js";
 import { extensionDir, filterValidEntries, isValidId, repoUrl } from "./guards.js";
-import { ExitCode, fail, ok, type CommandResult } from "../../types.js";
+import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
 import pakablListTemplate from "../../../ui/pakabl-list.html";
 
 // `context.environment.storageDirectory` is `string | undefined` in the SDK
@@ -90,19 +92,20 @@ async function install(api: ModuleApi, id: string | undefined): Promise<CommandR
   const installed = installedManifest(id);
   if (installed) {
     if (installed.version === entry.version) {
-      api.showFeedback(`pakabl: ${entry.name} v${installed.version} is already installed`);
-    } else {
-      api.showFeedback(
-        `pakabl: ${entry.name} v${installed.version} is installed; index has v${entry.version} — ` +
-          `run "pakabl upgrade ${id}@${entry.version}" to switch`,
-      );
+      return ok(`pakabl: ${entry.name} v${installed.version} is already installed`);
     }
-    return;
+    if (indexRelation(installed.version, entry.version) !== "newer") {
+      return ok(`pakabl: ${entry.name} v${installed.version} is installed; ${notNewerText(id, installed.version, entry.version)}`);
+    }
+    return ok(
+      `pakabl: ${entry.name} v${installed.version} is installed; index has v${entry.version} — ` +
+        `run "pakabl upgrade ${id}" to switch`,
+    );
   }
 
   const failed = downloadAndUnpack(entry);
   if (failed) return failed;
-  api.showFeedback(`pakabl: installed ${entry.name} v${entry.version} — restart Live to load it`);
+  return ok(`pakabl: installed ${entry.name} v${entry.version} — restart Live to load it`);
 }
 
 async function uninstall(api: ModuleApi, id: string | undefined): Promise<CommandResult | void> {
@@ -117,7 +120,13 @@ async function uninstall(api: ModuleApi, id: string | undefined): Promise<Comman
   const result = removeDir(dir);
   if (!result.ok) return fail(ExitCode.FAILURE, `pakabl: failed to uninstall ${installed.name}\n${result.output}`);
 
-  api.showFeedback(`pakabl: uninstalled ${installed.name} v${installed.version} — restart Live to unload it`);
+  return ok(`pakabl: uninstalled ${installed.name} v${installed.version} — restart Live to unload it`);
+}
+
+/** Why an upgrade without a version does nothing, and how to force the index version. */
+function notNewerText(id: string, installedVersion: string, indexVersion: string): string {
+  const known = indexRelation(installedVersion, indexVersion) !== "unknown";
+  return `index has v${indexVersion}, which is ${known ? "not newer" : "not known to be newer"} — run "pakabl upgrade ${id}@${indexVersion}" to install it anyway`;
 }
 
 interface ListEntry {
@@ -125,6 +134,10 @@ interface ListEntry {
   name: string;
   version: string;
   installedVersion: string | null;
+  /** The page offers Update only when this is true: the index version is newer than the installed one. */
+  canUpdate: boolean;
+  /** The installed version seen from the index's: "newer" = the installed one is newer. Absent when not installed. */
+  relation?: IndexRelation;
   repoUrl: string | undefined;
 }
 
@@ -145,6 +158,8 @@ async function list(api: ModuleApi): Promise<CommandResult | void> {
       name: entry.name,
       version: entry.version,
       installedVersion: installed?.version ?? null,
+      relation: installed ? installedRelation(installed.version, entry.version) : undefined,
+      canUpdate: installed !== undefined && indexRelation(installed.version, entry.version) === "newer",
       repoUrl: repoUrl(entry.url),
     };
   });
@@ -156,7 +171,7 @@ async function list(api: ModuleApi): Promise<CommandResult | void> {
     return fail(ExitCode.FAILURE, `pakabl: cannot build the list page — ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  const result = await api.context.ui.showModalDialog(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`, 560, 480);
+  const result = await api.dialog(html, 560, 480, "pakabl list");
   const note = droppedText(loaded.dropped);
   if (!result) return note ? ok(`pakabl: ${note}`) : undefined;
 
@@ -168,6 +183,11 @@ async function list(api: ModuleApi): Promise<CommandResult | void> {
   } else if (result.startsWith("update:")) {
     const id = result.slice("update:".length);
     const entry = index.find((e) => e.id === id);
+    const installed = entry ? installedManifest(entry.id) : undefined;
+    // The page only offers Update for a newer index version; check again here.
+    if (entry && installed && indexRelation(installed.version, entry.version) !== "newer") {
+      return ok(`pakabl: ${entry.name} v${installed.version} is installed; ${notNewerText(entry.id, installed.version, entry.version)}`);
+    }
     if (entry) outcome = await upgrade(api, `${entry.id}@${entry.version}`);
   } else if (result.startsWith("repo:")) {
     // The page only names an extension; the host derives the URL itself and
@@ -191,17 +211,17 @@ async function update(api: ModuleApi): Promise<CommandResult | void> {
   if (!loaded) return fail(ExitCode.FAILURE, "pakabl: refreshed file is not a valid index");
 
   const n = loaded.entries.length;
-  api.showFeedback(`pakabl: index refreshed (${n} extension${n === 1 ? "" : "s"})${loaded.dropped > 0 ? ` (${droppedText(loaded.dropped)})` : ""}`);
+  return ok(`pakabl: index refreshed (${n} extension${n === 1 ? "" : "s"})${loaded.dropped > 0 ? ` (${droppedText(loaded.dropped)})` : ""}`);
 }
 
-async function upgrade(api: ModuleApi, idAtVersion: string | undefined): Promise<CommandResult | void> {
-  if (!idAtVersion || !idAtVersion.includes("@")) {
-    return fail(ExitCode.USAGE, "pakabl: usage: pakabl upgrade <id>@<version>");
-  }
+async function upgrade(api: ModuleApi, ref: string | undefined): Promise<CommandResult | void> {
+  if (!ref) return fail(ExitCode.USAGE, "pakabl: usage: pakabl upgrade <id>[@<version>]");
 
-  const at = idAtVersion.indexOf("@");
-  const id = idAtVersion.slice(0, at);
-  const version = idAtVersion.slice(at + 1);
+  // `<id>@<version>` states which version is expected (a guard against a stale
+  // index); a bare `<id>` takes whatever the index lists.
+  const at = ref.indexOf("@");
+  const id = at === -1 ? ref : ref.slice(0, at);
+  const version = at === -1 ? undefined : ref.slice(at + 1);
   if (!isValidId(id)) return badIdResult(id);
 
   const loaded = loadIndex();
@@ -210,7 +230,7 @@ async function upgrade(api: ModuleApi, idAtVersion: string | undefined): Promise
   const entry = loaded.entries.find((e) => e.id === id);
   if (!entry) return fail(ExitCode.NOT_FOUND, `pakabl: "${id}" is not in the curated list`);
 
-  if (entry.version !== version) {
+  if (version !== undefined && entry.version !== version) {
     return fail(
       ExitCode.FAILURE,
       `pakabl: index lists ${entry.name} v${entry.version}, not v${version} — ` +
@@ -218,26 +238,26 @@ async function upgrade(api: ModuleApi, idAtVersion: string | undefined): Promise
     );
   }
 
+  // Never a downgrade by accident: without a version, only a newer index
+  // version replaces the installed one; `<id>@<version>` pins on purpose.
+  const installed = installedManifest(id);
+  if (installed && version === undefined && indexRelation(installed.version, entry.version) !== "newer") {
+    return ok(`pakabl: ${entry.name} v${installed.version} is installed; ${notNewerText(id, installed.version, entry.version)}`);
+  }
+
   const failed = downloadAndUnpack(entry);
   if (failed) return failed;
-  api.showFeedback(`pakabl: upgraded ${entry.name} to v${version} — restart Live to reload it`);
+  return ok(`pakabl: upgraded ${entry.name} to v${entry.version} — restart Live to reload it`);
 }
 
-/** `pakabl install <id>` / `uninstall <id>` / `update` / `upgrade <id>@<version>` / `list` —
- *  download confirmed `.ablx` extensions from a curated index and (un)pack them into Live's
- *  Extensions folder (the same place the user already drops hand-installed extensions). */
 export function activate(api: ModuleApi): void {
-  api.registry.register("pakabl", "install and manage cmdAbl extensions", async (flags) => {
-    const [sub, arg] = flags;
-    if (sub === "install") return install(api, arg);
-    if (sub === "uninstall") return uninstall(api, arg);
-    if (sub === "update") return update(api);
-    if (sub === "upgrade") return upgrade(api, arg);
-    if (sub === "list") return list(api);
-    return fail(
-      ExitCode.USAGE,
-      "pakabl: usage\n  pakabl install <id>\n  pakabl uninstall <id>\n  pakabl update\n" +
-        "  pakabl upgrade <id>@<version>\n  pakabl list",
-    );
-  });
+  api.commands.add(
+    pakablCommand({
+      install: (id) => install(api, id),
+      uninstall: (id) => uninstall(api, id),
+      update: () => update(api),
+      upgrade: (ref) => upgrade(api, ref),
+      list: () => list(api),
+    }),
+  );
 }

@@ -12,7 +12,8 @@ yourself.
 - Turn the user's wishes into small, clear tasks and send them to the builder that owns the area:
   **cmdabl-core** (platform), **cmdabl-modules** (commands), **cmdabl-bridge** (Remote Script and
   Live access), **cmdabl-ui** (dialogs; on demand — ask the user to start it with
-  `scripts/agents.sh ui` when UI work comes up). Every task names the files it may touch.
+  `scripts/agents.sh ui` when UI work comes up), **cmdabl-docs** (docs site, README, images; on
+  demand — `scripts/agents.sh docs`; give it one brief per page with the facts). Every task names the files it may touch.
 - Own `docs/feature-plans/`: keep plans, their status lines, the index and the hierarchy in sync
   with what was actually built. Decide small contract questions yourself and write them down; ask
   the user before anything that changes a contract other code depends on (the command node format,
