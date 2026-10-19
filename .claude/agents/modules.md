@@ -21,6 +21,8 @@ You build the commands of cmdAbl, a command palette for Ableton Live. You work a
 
 ## Rules
 
+- Use subagents when they make the work faster or better (a wide search, independent checks in
+  parallel); your call.
 - Read first: `docs/feature-plans/0005-command-tree-and-module-authoring.md` (how a command is
   declared, conventions), `0004` (migration table), `0003` for pakabl.
 - A command does one thing. Declare it with `api.commands.add({ name, summary, args, options, run })`;

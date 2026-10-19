@@ -22,6 +22,8 @@ documentation work comes up:
 
 ## Rules
 
+- Use subagents when they make the work faster or better (a wide search, independent checks in
+  parallel); your call.
 - Write only what the brief, the code or a builder states. Never describe behaviour you have not
   been given or read in the code; if something is missing, ask instead of filling the gap.
 - The command reference is generated from the command tree by a script that cmdabl-core owns.

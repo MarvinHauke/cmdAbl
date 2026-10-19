@@ -230,12 +230,18 @@ Release:
 
 ### After 0.1.0 (order to be set then)
 
-- **0.2.0 (user, 2026-10-19): tags and aliases — plan 0008.** Tags in the Live Set via
-  `Track.set_data` (Remote Script), `#tag` targets, tag rows in the pick list; aliases as saved
-  command lines in cmdAbl's store. Spike first (cmdabl-bridge: `track_tags`/`track_tags_set`, script 0.1.3, `e061b47`;
-  temporary `tagtest` command by cmdabl-modules). The spike ops, `tagtest` and the 0.1.3 bump
-  must not reach `main` as they are: replaced or removed in the same release as the real op.
-  0.1.0 released 2026-10-19 (`a312c24`); work continues on branch `feat/tags-aliases`.
+- **Versions (user, 2026-10-19, conservative):** 0.1.1 tags on tracks · 0.1.2 the store +
+  aliases, history survives restarts · 0.1.3 small items · more 0.1.x as needed · 0.2.0 a refined
+  bundle (completion engine with ghost text and Telescope-style fuzzy finding, tags on chains
+  and pads, pipes or refined aliases). Tags and aliases: plan 0008. Spike committed
+  (`e061b47`, `0fbfe08`; script 0.1.3, temporary `tagtest`) on `feat/tags-aliases`, waiting for
+  its Live test; spike ops, `tagtest` and the 0.1.3 bump must not reach `main` as they are.
+  0.1.0 released 2026-10-19 (`a312c24`).
+- From an outside review (ChatGPT, 2026-10-19), checked against the code: nothing is released on
+  deactivate (trigger server, listeners) → fix in 0.1.x; `extension.ts` holds palette state
+  next to the wiring → split later; a short note on what modules may rely on in `ModuleApi`.
+  Done from it: the SDK packages left the public repo (license; private `cmdabl-vendor`, PR #11)
+  and the unused Vite was removed.
 
 - `pakabl list --old-versions` (user, 2026-10-19): per extension a version choice from its
   GitHub releases; without the flag the newest release is offered. Needs the releases per
@@ -248,8 +254,6 @@ Release:
   build (read the installed version through a child process, e.g. `cat`; deferred 2026-10-19 —
   ddc2866 gives one honest text for both).
 
-- 0.2.0: the completion engine (0006) — ghost text, level-by-level paths; builds on the tree
-  from step 2.
 - Keymap (0006): UI keys as named actions, a user `keymap.json`, keys bindable to command lines.
 - Dialog-channel spike (the four checks in 0006), then follow mode for the pick list (0007 §4)
   and navigation mode. Open: do `next`/`prev` stay once follow mode exists? Kept until the spike.
