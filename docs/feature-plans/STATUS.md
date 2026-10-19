@@ -323,8 +323,9 @@ refused. `goto kick` runs the track `/Kick` at once (a bare word equal to a top-
 is that track, 0005) — the expectation "asks to pick" was wrong.
 
 Installed `.ablx` with script 0.1.2 (`97b4e27`, `ddc2866`, `6f8ea68`): pad states and
-pad mute read again — **seen by the user on 2026-10-19**. Open there: control surface off →
-the new "not running" text; back on → works without restarting Live.
+pad mute read again; control surface off → the new "not running" text, back on → works
+without restarting Live — **all seen by the user on 2026-10-19**. Polish in work: the same
+failure reason once for several targets (core).
 
 Still open before the release test: the buttons of `pakabl list` (Update/Uninstall/Repo,
 `Esc`); rename a pad and use the old name → "did you mean"; control surface off and on, restart
