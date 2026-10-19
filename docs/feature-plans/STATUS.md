@@ -233,16 +233,19 @@ Release:
 - **Versions (user, 2026-10-19, conservative):** 0.1.1 tags on tracks · 0.1.2 the store +
   aliases, history survives restarts · 0.1.3 small items · more 0.1.x as needed · 0.2.0 a refined
   bundle (completion engine with ghost text and Telescope-style fuzzy finding, tags on chains
-  and pads, pipes or refined aliases). Tags and aliases: plan 0008. Spike committed
-  (`e061b47`, `0fbfe08`; script 0.1.3, temporary `tagtest`) on `feat/tags-aliases`, waiting for
-  its Live test; spike ops (`track_tags*`, `mark_modified` `8b1d071`), `tagtest`, the
-  `cmdabl.dirty` key and the 0.1.3/0.1.4 bumps must not reach `main` as they are.
+  and pads, pipes or refined aliases). Tags and aliases: plan 0008. 0.1.1 tags on tracks built on `feat/tags-aliases`
+  (script 0.1.5 `c91a2c4`, core `2166db5`/`85ad442`, `tag` `9a77e00`; spike removed), waiting for
+  its Live test; then acting on tags without a list and `--pick` (`85ad442`).
   0.1.0 released 2026-10-19 (`a312c24`).
 - From an outside review (ChatGPT, 2026-10-19), checked against the code: nothing is released on
   deactivate (trigger server, listeners) → fix in 0.1.x; `extension.ts` holds palette state
   next to the wiring → split later; a short note on what modules may rely on in `ModuleApi`.
   Done from it: the SDK packages left the public repo (license; private `cmdabl-vendor`, PR #11)
   and the unused Vite was removed.
+
+- Ideas from ClyphX (2026-10-20): plan 0009 — `;` action lists with aliases (0.1.2); `.`,
+  index, range and `all` targets, `vol`/`pan`/`send` (0.1.x); snapshots (0.2.x); triggers from
+  clip, locator and pad names (spike after 0.2.0).
 
 - `pakabl list --old-versions` (user, 2026-10-19): per extension a version choice from its
   GitHub releases; without the flag the newest release is offered. Needs the releases per
