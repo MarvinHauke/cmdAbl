@@ -31,7 +31,9 @@ export function activate(api: ModuleApi): void {
         return ok(`history cleared (${n} ${plural(n)}, nothing to restore)`);
       }
       const yes = await api.confirm(
-        `Clear all ${n} history ${plural(n)}? They can be restored with history restore until cmdAbl restarts.`,
+        n === 1
+          ? "Clear the history entry? It can be restored with history restore until cmdAbl restarts."
+          : `Clear all ${n} history entries? They can be restored with history restore until cmdAbl restarts.`,
         "Clear",
       );
       if (!yes) return ok("history kept");

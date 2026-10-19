@@ -34,12 +34,13 @@ test("clear asks, moves everything aside on yes and keeps it on no", async () =>
   assert.equal(kept.code, ExitCode.OK);
   assert.match(kept.message ?? "", /kept/);
   assert.deepEqual(no.titles(), ["mute /Lead"]);
-  assert.match(no.fake.confirms[0]!, /^Clear all 1 history entry\?/);
+  assert.match(no.fake.confirms[0]!, /^Clear the history entry\? It can be restored/);
 
   const yes = setup(true);
   yes.ran("mute /Lead");
   yes.ran("solo /Bass");
   assert.equal((await yes.run("clear")).code, ExitCode.OK);
+  assert.match(yes.fake.confirms[0]!, /^Clear all 2 history entries\? They can be restored/);
   assert.deepEqual(yes.titles(), []);
   assert.match((await yes.run("restore")).message ?? "", /restored 2 entries/);
   assert.deepEqual(yes.titles(), ["solo /Bass", "mute /Lead"]);
