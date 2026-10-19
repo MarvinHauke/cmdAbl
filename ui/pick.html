@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, fill?: boolean, state?: { label }, items: [{ label, detail?, value?, state?: 'on'|'off' }] }. state.label picks the right-hand button (muted: speaker, lit when audible = 'off'; soloed: S; armed: record dot; other: neutral square), no state = no button. Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes, or '' when cancelled; with fill (single-select only) Tab answers {"fill": index} instead. -->
+<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, fill?: boolean, state?: { label, change?: 'toggle'|'on'|'off' }, items: [{ label, detail?, value?, state?: 'on'|'off' }] }. state.label picks the right-hand button (muted: speaker, lit when audible = 'off'; soloed: S; armed: record dot; other: neutral square), no state = no button. With state.change the buttons of the rows confirming would act on (marked rows; else the cursor row) show the resulting state with a pending ring, and marks lose their tint (bold label stays). Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes, or '' when cancelled; with fill (single-select only) Tab answers {"fill": index} instead. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -62,6 +62,12 @@
            color: var(--dim); font-size: 11px; font-weight: 700; line-height: 1; user-select: none; }
     .btn.lit { background: var(--accent); border-color: var(--accent); color: var(--bg); }
     .btn svg { width: 12px; height: 12px; display: block; }
+    /* Pending: the list shows the state confirming would set (differs from Live now): a dashed ring. */
+    .btn.pending { outline: 1px dashed var(--accent); outline-offset: 2px; }
+    /* With state.change the button shows what is marked: no row tint (bold label stays). */
+    body.change .row.marked { background: transparent; }
+    body.change .row.marked.active { background: var(--bg-row); }
+    body.change.zone-list .row.marked.active { background: var(--border); }
     /* One line per row: the label keeps its width up to the row, the detail gives way first. */
     .label { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .detail { flex: 1 1 0; min-width: 0; text-align: right; color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -129,6 +135,7 @@
       visible = filterIndexes(filter.value);
       active = Math.min(active, Math.max(visible.length - 1, 0));
 
+      const actedOn = rowsActedOn();
       list.innerHTML = '';
       visible.forEach((index, pos) => {
         const item = PICK.items[index];
@@ -142,7 +149,10 @@
         detail.className = 'detail';
         detail.textContent = item.detail ?? '';
         row.append(label, detail);
-        if (hasState && (item.state === 'on' || item.state === 'off')) row.append(stateButton(item.state));
+        if (hasState && (item.state === 'on' || item.state === 'off')) {
+          const result = actedOn.has(index) ? resultState(item.state) : item.state;
+          row.append(stateButton(result, result !== item.state));
+        }
         row.addEventListener('mousedown', e => {
           e.preventDefault();
           if (PICK.multi) { toggle(index); active = pos; zone = 'list'; render(); }
@@ -204,7 +214,20 @@
     const ICON_RECORD  = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>';
 
     // lit = what Live lights: mute lights when audible (state 'off'), solo and arm when 'on'.
-    function stateButton(state) {
+    // With state.change: the rows confirming acts on (marked; else the cursor row; single-select:
+    // the cursor row) show the resulting state at once.
+    const change = hasState && ['toggle', 'on', 'off'].includes(PICK.state.change) ? PICK.state.change : null;
+    document.body.classList.toggle('change', !!change);
+    function rowsActedOn() {
+      if (!change) return new Set();
+      if (PICK.multi && marked.size) return marked;
+      return new Set(visible.length ? [visible[active]] : []);
+    }
+    function resultState(state) {
+      return change === 'toggle' ? (state === 'on' ? 'off' : 'on') : change;
+    }
+
+    function stateButton(state, pending) {
       const name = PICK.state.label;
       const btn = document.createElement('span');
       btn.className = 'btn';
@@ -214,7 +237,8 @@
       else if (name === 'armed') btn.innerHTML = ICON_RECORD;
       if (lit) btn.classList.add('lit');
       const off = ['muted', 'soloed', 'armed'].includes(name) ? 'un' + name : 'not ' + name;
-      btn.title = state === 'on' ? name : off;   // never colour alone: the tooltip names it
+      btn.title = (state === 'on' ? name : off) + (pending ? ' (on confirm)' : '');
+      if (pending) btn.classList.add('pending');   // never colour alone: the tooltip names it
       btn.setAttribute('role', 'img');
       btn.setAttribute('aria-label', btn.title);
       return btn;
