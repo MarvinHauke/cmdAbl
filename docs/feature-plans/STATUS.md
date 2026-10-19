@@ -111,7 +111,8 @@ Changing these after a release breaks what users have learned and what is stored
    control surface, or nothing), `cmdabl bridge`, `pakabl install|uninstall|update|upgrade|list`.
    No aliases (user, 2026-10-12): `cmdabl --setup` and `--bridge` are usage errors now, old
    history entries with them fail. `pakabl upgrade <id>` without a version installs the
-   index's version. The legacy `registry.register` path and `ModuleApi.registry` are removed
+   index's version only when it is newer (`8b03bca`, 2026-10-19: never an accidental downgrade;
+   `<id>@x.y.z` still pins any index version). The legacy `registry.register` path and `ModuleApi.registry` are removed
    (`a3ae115`). Seen in Live (1g). Dead ends left until 0006: `FlagDef`/`PaletteItem.flags`, the
    flags fallback in `extension.ts`, the flag phase in `ui/interface.html`.
 2. `enum` argument kind — built (`dbcb401`; `man <ableton|cmdabl>` in `32e04f9`): choices are
@@ -228,6 +229,10 @@ Release:
   do not carry this; add it by hand to the release.
 
 ### After 0.1.0 (order to be set then)
+
+- `pakabl list --old-versions` (user, 2026-10-19): per extension a version choice from its
+  GitHub releases; without the flag the newest release is offered. Needs the releases per
+  extension (GitHub API via a child process, rate limits) or older versions in the index.
 
 - Fuzzy finding after the user's target picture (Telescope "Find Files": subsequence match,
   highlighted characters, `/` anchors a path part, ranked rows with a counter) — 0006.
