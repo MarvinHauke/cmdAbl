@@ -138,6 +138,10 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
   matches track names (tagged rows first), or it only matches a tag partly. `goto` and
   destructive commands still ask (they take one object / need care). `mute #` and `tag <target>`
   keep their lists (choosing, assigning). History keeps the word as typed.
+- **`--pick`** (user, 2026-10-20): a platform option on every command with path arguments that
+  forces the pick list over all matches of each target, tags included (`mute drums --pick`,
+  `mute #fx --pick`): no preselection, the user marks. Only the chosen tracks run; history
+  stores the line without `--pick`'s list result (the typed line).
 - **History keeps `#fx`** as typed, so a re-run hits the tracks tagged now.
 - **`tag`'s target is one token** in 0.1.1 (`/Lead`, `"SH-101 MIDI"`, `#drum`, `#`); a comma list
   before tag words is not supported yet (`tag /Lead, /Bass fx` → exit 2).
