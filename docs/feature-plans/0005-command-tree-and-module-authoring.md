@@ -301,7 +301,9 @@ How the platform reads the text of a `path` argument (`src/core/resolveArgs.ts`)
 - **One list also with misses (decided 2026-10-19, after `arm vermona sh` opened two lists):**
   when some texts are ambiguous and others match nothing, their "did you mean" suggestions join
   the same pick list, each row tagged with its word and suggestion rows marked as such. Safe
-  because a multi-select list has no preselection — only marked rows run. Rejected: widening
+  because a multi-select list has no preselection — only marked rows run. Built `21aa5d7`: suggestion rows
+  are tagged `"word"?`; `Esc` → "nothing matches" (exit 3); a missing word nothing fits fails
+  at once, before any list. Rejected: widening
   `arm` to chains just to share the list (it would offer rows it can never arm).
 - **Per-word tags kept (user, 2026-10-19):** when each word is its own target, the shared pick
   list tags every row with its word; the user likes it as a first step towards fuzzy finding
