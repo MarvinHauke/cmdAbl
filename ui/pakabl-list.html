@@ -41,7 +41,8 @@
     }
     .entry-meta .version { color: var(--accent); }
 
-    .entry-actions { margin-top: 8px; display: flex; gap: 6px; }
+    .entry-actions { margin-top: 8px; display: flex; gap: 6px; align-items: center; }
+    .entry-actions .note { color: var(--dim); font-size: 11px; margin-left: 4px; }
 
     .btn-install { border-color: var(--accent); color: var(--accent); }
     .btn-install:hover { background: var(--accent); color: var(--bg); border-color: var(--accent); }
@@ -74,7 +75,8 @@
 
   <script>
     // Injected at runtime before the dialog opens. ListEntry[]:
-    //   { id, name, version, installedVersion: string|null, repoUrl: string|undefined }
+    //   { id, name, version, installedVersion: string|null, canUpdate: boolean, repoUrl: string|undefined }
+    // canUpdate is true only when the index version is newer than the installed one.
     const ENTRIES = /*ENTRIES_PLACEHOLDER*/null;
 
     function send(value) {
@@ -87,7 +89,7 @@
       const list = document.getElementById('list');
 
       for (const entry of ENTRIES) {
-        const { id, name, version, installedVersion, repoUrl } = entry;
+        const { id, name, version, installedVersion, canUpdate, repoUrl } = entry;
 
         const div = document.createElement('div');
         div.className = 'entry';
@@ -112,17 +114,18 @@
           btn.textContent = 'Install';
           btn.onclick = () => send('install:' + id);
           actionsEl.append(btn);
-        } else if (installedVersion === version) {
-          const btn = document.createElement('button');
-          btn.className = 'btn-uninstall';
-          btn.textContent = 'Uninstall';
-          btn.onclick = () => send('uninstall:' + id);
-          actionsEl.append(btn);
-        } else {
+        } else if (canUpdate) {
           const btn = document.createElement('button');
           btn.className = 'btn-update';
           btn.textContent = 'Update  v' + installedVersion + ' → v' + version;
           btn.onclick = () => send('update:' + id);
+          actionsEl.append(btn);
+        } else {
+          // Installed and nothing newer in the index: no Update button.
+          const btn = document.createElement('button');
+          btn.className = 'btn-uninstall';
+          btn.textContent = 'Uninstall';
+          btn.onclick = () => send('uninstall:' + id);
           actionsEl.append(btn);
         }
 
@@ -131,6 +134,13 @@
           btn.textContent = 'Repo';
           btn.onclick = () => send('repo:' + id);
           actionsEl.append(btn);
+        }
+
+        if (installedVersion && !canUpdate && installedVersion !== version) {
+          const note = document.createElement('span');
+          note.className = 'note';
+          note.textContent = 'installed v' + installedVersion + ' · newer than index (v' + version + ')';
+          actionsEl.append(note);
         }
 
         div.append(nameEl, metaEl, actionsEl);
