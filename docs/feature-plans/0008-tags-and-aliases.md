@@ -4,8 +4,8 @@
 **Depends on:** [0005](0005-command-tree-and-module-authoring.md) (target resolution, pick list),
 [0001](0001-path-addressed-objects-and-commands.md) (Remote Script protocol).
 
-**Status:** Draft — direction and grammar decided by the user on 2026-10-19; the storage spike
-(`e061b47`, `0fbfe08`, temporary `tagtest`) waits for its Live test. Tags on tracks ship as
+**Status:** 0.1.1 in progress (2026-10-20) — spike done (saved, duplicated, not undoable,
+marked modified via `toggle_color`); the spike ops and `tagtest` are being replaced. Tags on tracks ship as
 0.1.1, the store and aliases as 0.1.2; tags on chains and pads come with 0.2.0.
 
 ## Context
@@ -101,9 +101,27 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
    | `empty_undo` (empty undo step) | no | no effect |
    | `song_data` (`Song.set_data`) | no | no effect |
 
-   Only `toggle_color` creates an undo step. Still to confirm: Live asks to save on close, and
-   Cmd+Z undoes only the invisible colour step.
+   Only `toggle_color` creates an undo step. Confirmed (user, 2026-10-20): Live then asks to save
+   on close, and one Cmd+Z undoes only the invisible "Custom Action", the colour stays.
+   **Decision:** every tag write marks the Set with `toggle_color` on the same track, inside the
+   same script op; the `tag` result names the reverse command, since Cmd+Z cannot undo the tag.
 4. Size and type limits (store one JSON string).
+
+## 0.1.1 build split (architect, 2026-10-20)
+
+- **cmdabl-bridge** — script ops `tags_all` (every track's `route`, `name`, `tags`) and
+  `tags_set` (`route`, `expectName`, `tags`: writes `cmdabl.tags`, then `toggle_color` on that
+  track; returns the stored tags). Regular and return tracks (main if the API allows). Removes
+  `track_tags`, `track_tags_set`, `mark_modified`; script version 0.1.3 (main has 0.1.2). TS:
+  `ObjectNode.tags?: string[]` on tracks, filled from a background `tags_all` cache like chain
+  names and refreshed after a write; `bridgeOps` read/write helpers that never throw.
+- **cmdabl-core** — resolver: `#fx` = every node whose `tags` contain `fx` (no pick list; none →
+  exit 3); bare `#` = multi-select pick list of the Set's tags with counts; a bare word also adds
+  tagged nodes to its pick list. Script not running → `#…` answers exit 5. Pick rows show `#tags`.
+- **cmdabl-modules** — `tag` command per the grammar above; removes `tagtest`. Names normalised
+  (lowercase, `[a-z0-9_-]`, invalid → exit 2). Result lists what changed and the reverse command.
+- Deferred to a later 0.1.x: the "new: <text>" pick-list row (a `Ui` contract change); in 0.1.1
+  a new tag is created by typing it (`tag /Lead newtag`).
 
 ## Phased rollout
 
