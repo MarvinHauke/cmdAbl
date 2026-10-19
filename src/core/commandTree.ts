@@ -35,6 +35,8 @@ export interface ArgDef {
    * match is passed on. Different from `variadic`, which is about tokens.
    */
   multiple?: "one" | "all";
+  // Note: a `#tag` target (plan 0008) fans out to every tagged object for EVERY path argument
+  // except `rest` ones and those of `destructive` commands, whatever `multiple` says.
   /**
    * `enum` arguments: the allowed values, fixed at declaration time (a
    * dynamic set is an `enum` with a `complete` source and no `choices`: the

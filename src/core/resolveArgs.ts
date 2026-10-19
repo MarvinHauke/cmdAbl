@@ -231,13 +231,15 @@ export function resolveTargets(
       if (tag === "list") {
         const tags = tagCounts(nodes, def.kinds);
         if (tags.length === 0) return { kind: "error", result: fail(ExitCode.NOT_FOUND, `${command}: no tags in the Set`) };
-        return { kind: "tags", request: { argIndex, valueIndex, multi: def.variadic === true || def.multiple === "all", tags } };
+        return { kind: "tags", request: { argIndex, valueIndex, multi: def.rest !== true && !node.destructive, tags } };
       }
       if (tag) {
-        // `#fx`: every object with the tag, at once; a single-target argument still asks.
+        // `#fx`: every object with the tag, at once, for every argument that can take several
+        // objects (whatever `multiple` says); a single-target argument (`rest`) still asks, and so does
+        // a destructive command (one address never acts on several objects there, as for `multiple`).
         const tagged = nodesWithTag(nodes, tag.name, def.kinds);
         if (tagged.length === 0) return { kind: "error", result: fail(ExitCode.NOT_FOUND, `${command}: no track tagged #${tag.name}`) };
-        if (tagged.length === 1 || def.variadic || def.multiple === "all") resolved.push(...tagged);
+        if (tagged.length === 1 || (def.rest !== true && !node.destructive)) resolved.push(...tagged);
         else ambiguous.push({ valueIndex, query: target, candidates: tagged });
         continue;
       }

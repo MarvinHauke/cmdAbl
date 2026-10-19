@@ -111,6 +111,12 @@ export function activate(activation: ActivationContext) {
     commands: { add: (command) => void registry.add(command) },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
+    pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, multi: true, ...options }),
+    tags: {
+      refresh: () => getTagCache().refreshNow(getBridge()),
+      of: (node) => getTagCache().get(node.scope, node.route, node.name) ?? [],
+      write: (node, tags) => getTagCache().write(getBridge(), node, tags),
+    },
     onPick: (listener) => pickListeners.push(listener),
     registerProvider: (provider, priority = 0) => providers.push({ provider, priority }),
     onCommandRun: (listener) => commandRunListeners.push(listener),

@@ -39,3 +39,17 @@ test("fake api: confirm answers from confirmAnswer (default false) and records t
   assert.equal(await yes.api.confirm("Sure?", "Yes"), true);
   assert.deepEqual(yes.confirms, ["Sure?"]);
 });
+
+test("fake api: tags and pickTags", async () => {
+  const fake = createFakeApi({ nodes: [node], tags: { [node.handleId]: ["fx"] }, pickTagsAnswer: (rows) => [rows[0]!.name] });
+  assert.deepEqual(fake.api.tags.of(node), ["fx"]);
+  const written = await fake.api.tags.write(node, ["fx", "synth"]);
+  assert.equal(written.ok, true);
+  assert.deepEqual(fake.api.tags.of(node), ["fx", "synth"]);
+  await fake.api.tags.write(node, []);
+  assert.deepEqual(fake.api.tags.of(node), []);
+  assert.equal((await fake.api.tags.refresh()).ok, true);
+  assert.deepEqual(await fake.api.pickTags("tag /Bass", [{ name: "fx", on: true }]), ["fx"]);
+  assert.deepEqual(fake.tagLists, [{ title: "tag /Bass", rows: [{ name: "fx", on: true }] }]);
+  assert.equal(await createFakeApi().api.pickTags("t", []), null);
+});

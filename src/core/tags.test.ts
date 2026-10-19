@@ -206,3 +206,64 @@ test("an argument with multiple: \"all\" takes every #tag hit without a list, al
   assert.deepEqual(s.calls, [["/SH-101 MIDI", "/Opal Lead", "/Drums/Kick"]]);
   assert.equal(s.picks.length, 0);
 });
+
+test("fan-out: #tag takes every hit for any argument but a single-target (rest) one", async () => {
+  const s = setup();
+  s.deps.registry.add({
+    name: "plain",
+    summary: "p",
+    args: [{ name: "target", kind: "path", kinds: ["track"] }], // neither variadic nor multiple
+    run: (inv) => void s.calls.push(((inv.args[0] ?? []) as ObjectNode[]).map((n) => n.path)),
+  });
+  await runLine("plain #fx", s.deps);
+  assert.deepEqual(s.calls, [["/SH-101 MIDI", "/Opal Lead", "/Drums/Kick"]]);
+  assert.equal(s.picks.length, 0);
+  // goto takes `rest`: it still asks
+  const g = setup({ pickAnswer: (c) => [c[0]!] });
+  await runLine("goto #fx", g.deps);
+  assert.equal(g.picks.length, 1);
+});
+
+test("history keeps #fx as typed; other targets by unique path; a picked single target by path", async () => {
+  const s = setup();
+  let out = await runLine("mute #fx /Bass", s.deps);
+  assert.equal(out.line, "mute #fx /Bass");
+  out = await runLine("mute #fx, /Drums/Snare", s.deps);
+  assert.equal(out.line, "mute #fx /Drums/Snare");
+  const chosen = setup({ tagAnswer: ["drum"] });
+  out = await runLine("mute #", chosen.deps); // the picked tag becomes the typed #drum
+  assert.equal(out.line, "mute #drum");
+  const g = setup({ pickAnswer: (c) => [c[0]!] });
+  out = await runLine("goto #fx", g.deps);
+  assert.equal(out.line, 'goto "/SH-101 MIDI"');
+});
+
+test("pickTagNames: rows with state buttons and a change preview", async () => {
+  const requests: SelectRequest[] = [];
+  const ui = { select: async (r: SelectRequest) => (requests.push(r), [1]) } as unknown as Ui;
+  const names = await pickTagNames(ui, {
+    title: "tag /Bass",
+    multi: true,
+    change: "toggle",
+    tags: [{ name: "fx", on: false }, { name: "synth", on: true }],
+  });
+  assert.deepEqual(names, ["synth"]);
+  assert.deepEqual(requests[0]!.state, { label: "tagged", change: "toggle" });
+  assert.deepEqual(requests[0]!.items.map((i) => [i.label, i.state, i.detail]), [["#fx", "off", undefined], ["#synth", "on", undefined]]);
+});
+
+test("a destructive command never fans out: #fx with several hits asks", async () => {
+  const s = setup({ pickAnswer: (c) => [c[1]!] });
+  s.deps.registry.add({
+    name: "drop",
+    summary: "d",
+    destructive: true,
+    args: [{ name: "target", kind: "path", kinds: ["track"], variadic: true }],
+    run: (inv) => void s.calls.push(((inv.args[0] ?? []) as ObjectNode[]).map((n) => n.path)),
+  });
+  const out = await runLine("drop #fx", s.deps);
+  assert.equal(s.picks.length, 1);
+  assert.deepEqual(s.picks[0]!.offered, ["/SH-101 MIDI", "/Opal Lead", "/Drums/Kick"]);
+  assert.deepEqual(s.calls, [["/Opal Lead"]]);
+  assert.equal(out.line, 'drop "/Opal Lead"');
+});

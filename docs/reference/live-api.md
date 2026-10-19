@@ -49,6 +49,10 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `log` | platform | `console.log` in the Extension Host | – |  |
 | `pick` | platform | the platform's pick list | – |  |
 | `confirm` | platform | the platform's pick list (Cancel / Confirm rows) | – |  |
+| `pickTags` | platform | the platform's pick list of tags (state buttons) | – |  |
+| `tags.refresh` | script | operation `tags_all` (fills the tag cache) | [`Track.get_data`](https://docs.cycling74.com/apiref/lom/track/) | Tags are stored per track under the key `cmdabl.tags` and saved with the Set. |
+| `tags.of` | platform | the tag cache (filled by `tags_all`) | – |  |
+| `tags.write` | script | operation `tags_set` (stores the list, then marks the Set as modified) | [`Track.set_data`](https://docs.cycling74.com/apiref/lom/track/) | Not undoable in Live; the script changes and restores the track colour so Live asks to save. |
 | `onPick` | platform | listener on the pick list | – |  |
 | `showFeedback` | platform | the platform's message dialog | – |  |
 | `registerProvider` | platform | palette item provider | – |  |

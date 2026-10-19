@@ -8,7 +8,7 @@ import { applyPick, lookupTarget, normalizeTargets, resolveTargets, type ArgValu
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { PickPreview, StateChange } from "./ui.js";
-import { parseTagTarget, type TagCount } from "./tags.js";
+import { nodesWithTag, parseTagTarget, type TagCount } from "./tags.js";
 
 // The one path every typed line takes: parse → resolve (asking the user to
 // pick when an address is ambiguous) → run → result. Everything it needs from
@@ -91,8 +91,33 @@ function targetWord(value: Target, nodes: ObjectNode[]): string {
  * (the handler's own resolved arguments, in order); text arguments and options
  * as typed. A re-run never asks again and keeps its meaning when the Set grows.
  */
-function canonicalLine(invocation: Invocation<string>, args: ArgValue[][], nodes: ObjectNode[]): string {
-  return [...headWords(invocation), ...args.flat().map((v) => targetWord(v, nodes))].join(" ");
+function canonicalLine(
+  invocation: Invocation<string>,
+  args: ArgValue[][],
+  nodes: ObjectNode[],
+  node?: CommandNode<any, any>,
+  targets: Target[][] = [],
+): string {
+  const words: string[] = [];
+  args.forEach((values, argIndex) => {
+    const def = node?.args?.[argIndex];
+    // `#fx` is remembered as typed (a re-run hits the tracks tagged then), not as the paths it hit.
+    const covered = new Set<string>();
+    if (def?.kind === "path" && def.rest !== true) {
+      for (const t of targets[argIndex] ?? []) {
+        const tag = typeof t === "string" ? parseTagTarget(t) : null;
+        if (tag && tag !== "list") {
+          words.push(`#${tag.name}`);
+          for (const n of nodesWithTag(nodes, tag.name, def.kinds)) covered.add(n.handleId);
+        }
+      }
+    }
+    for (const v of values) {
+      if (typeof v !== "string" && covered.has(v.handleId)) continue;
+      words.push(targetWord(v, nodes));
+    }
+  });
+  return [...headWords(invocation), ...words].join(" ");
 }
 
 /**
@@ -320,6 +345,6 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
     // A failing handler keeps its failure (the fill is dropped): nothing fails silently.
     const filled = deps.takeFill?.();
     if (filled !== undefined && result.code === ExitCode.OK) return { result: ok(), cancelled: true, fill: filled };
-    return { result, line: canonicalLine(invocation, step.invocation.args, nodes) };
+    return { result, line: canonicalLine(invocation, step.invocation.args, nodes, node, targets) };
   }
 }
