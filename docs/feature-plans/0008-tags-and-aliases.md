@@ -90,8 +90,19 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
    Does it mark the Set as modified? — **no** (user, 2026-10-19): after a tag change Live quit
    without asking to save. A tag change alone is lost unless the user saves. Options for the
    design: say "save the Set" in every tag result; or mark the Set dirty with a harmless,
-   reverted change (adds undo noise); or keep a copy in cmdAbl's store. To decide before 0.1.1. If it does not mark it, a tag
-   changed and closed without saving is lost — then cmdAbl must say "save the Set".
+   reverted change (adds undo noise); or keep a copy in cmdAbl's store. The user chose to mark
+   the Set. Candidates tested (user, 2026-10-20, script 0.1.4, `tagtest dirty`):
+
+   | Candidate | Undo step | Result |
+   |---|---|---|
+   | `same_name` (name set to its own value) | no | no effect |
+   | `toggle_name` (append/trim a space) | no | Live trims the space, no change |
+   | `toggle_color` (`color_index` changed and restored) | **yes** ("Custom Action") | works |
+   | `empty_undo` (empty undo step) | no | no effect |
+   | `song_data` (`Song.set_data`) | no | no effect |
+
+   Only `toggle_color` creates an undo step. Still to confirm: Live asks to save on close, and
+   Cmd+Z undoes only the invisible colour step.
 4. Size and type limits (store one JSON string).
 
 ## Phased rollout
