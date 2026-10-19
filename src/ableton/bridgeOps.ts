@@ -339,102 +339,87 @@ function parseSwitches(entry: unknown): BridgeResult<ChainSwitches> {
   return { ok: true, value: { name: e.name, mute: e.mute, solo: e.solo } };
 }
 
-// ---- SPIKE (plan 0008, temporary): Track.get_data / set_data --------------------------------------
-// Finds out what Live does with data stored on a track (saved? copied on duplicate? undo? size?).
-// Removed or replaced by the real tag operation once 0008 is decided.
+// ---- Tags on tracks (plan 0008) ---------------------------------------------------------------
+// Stored by the Remote Script with Track.set_data (saved with the Set). Reads cover the whole Set in
+// one go (the tree needs them for every track); a write changes one track.
 
-/** What is stored under the tag key of one track, as Live reports it. */
-export interface TrackTagsState {
+/** A track that carries tags, as the script reports it. Untagged tracks are not listed. */
+export interface TagEntry {
+  scope: ObjectNode["scope"];
+  /** Route of the track: [index in its collection]. */
+  route: number[];
+  /** The track's name when the tags were read: tags belong to a track only while the name still matches. */
   name: string;
-  present: boolean;
-  /** Python type name of the stored value ("str", "list", …); absent when nothing is stored. */
-  type?: string;
-  /** len() of the stored value; -1 when it has none. */
-  length?: number;
-  /** The value, when small enough for one reply. */
-  value?: unknown;
+  tags: string[];
 }
 
-export async function trackTags(bridge: Bridge, node: Pick<ObjectNode, "scope" | "route" | "name">): Promise<BridgeResult<TrackTagsState>> {
-  const reply = await bridge.request("track_tags", { scope: node.scope, route: node.route, expectName: node.name });
-  if (!reply.ok) return reply;
-  const v = reply.value;
-  if (typeof v.name !== "string" || typeof v.present !== "boolean") return fail(1, "bad reply from the Remote Script: track_tags");
-  const state: TrackTagsState = { name: v.name, present: v.present };
-  if (typeof v.type === "string") state.type = v.type;
-  if (typeof v.length === "number") state.length = v.length;
-  if ("value" in v) state.value = v.value;
-  return { ok: true, value: state };
-}
-
-export interface TrackTagsWrite {
-  /** Any JSON value, stored as given. */
-  value?: unknown;
-  /** Store a string of this many "x" instead (size test). */
-  fill?: number;
-  /** Wrap the stored value: "string" (as is, default), "list" ([v]) or "dict" ({v}). */
-  as?: "string" | "list" | "dict";
-  /** Store None instead of a value (there is no delete). */
-  clear?: boolean;
-  /** Wrap the write in an undo step (default false: see whether set_data makes one itself). */
-  undo?: boolean;
-}
-
-export interface TrackTagsWritten {
-  name: string;
-  stored: boolean;
-  type: string;
-  length: number;
-  /** The value read back equals the one written. */
-  same: boolean;
-}
-
-/** Writing operation: carries the access token and the node's current name. Never throws. */
-export async function trackTagsSet(
-  bridge: Bridge,
-  node: Pick<ObjectNode, "scope" | "route" | "name">,
-  write: TrackTagsWrite,
-): Promise<BridgeResult<TrackTagsWritten>> {
-  const args: Record<string, unknown> = { scope: node.scope, route: node.route, expectName: node.name };
-  if (write.value !== undefined) args.value = write.value;
-  if (write.fill !== undefined) args.fill = write.fill;
-  if (write.as !== undefined) args.as = write.as;
-  if (write.clear === true) args.clear = true;
-  if (write.undo === true) args.undo = true;
-  const reply = await bridge.request("track_tags_set", args, { changes: true, token: true });
-  if (!reply.ok) return reply;
-  const v = reply.value;
-  if (typeof v.name !== "string" || typeof v.stored !== "boolean" || typeof v.type !== "string" || typeof v.length !== "number" || typeof v.same !== "boolean") {
-    return fail(1, "bad reply from the Remote Script: track_tags_set");
+function parseTagEntry(e: unknown): TagEntry | null {
+  const o = e as Record<string, unknown> | null;
+  if (typeof o !== "object" || o === null) return null;
+  const route = o.route;
+  if (
+    (o.scope !== "regular" && o.scope !== "return" && o.scope !== "master") ||
+    !Array.isArray(route) || route.length !== 1 || typeof route[0] !== "number" ||
+    typeof o.name !== "string" ||
+    !Array.isArray(o.tags) || !o.tags.every((t) => typeof t === "string")
+  ) {
+    return null;
   }
-  return { ok: true, value: { name: v.name, stored: v.stored, type: v.type, length: v.length, same: v.same } };
+  return { scope: o.scope, route: [route[0]], name: o.name, tags: o.tags as string[] };
 }
 
-export type DirtyCandidate = "same_name" | "toggle_name" | "toggle_color" | "empty_undo" | "song_data";
+/**
+ * The tags of every tagged track (regular, return, main), in the script's order. The script pages its
+ * reply under the 4 KB cap; this asks again until it is complete. A script without the op answers
+ * exit code 5 (outdated); a script that is not running, 5 as well. Never throws.
+ */
+export async function readTags(bridge: Bridge): Promise<BridgeResult<TagEntry[]>> {
+  const entries: TagEntry[] = [];
+  let offset = 0;
+  for (let round = 0; round < 64; round++) {
+    const reply = await bridge.request("tags_all", offset === 0 ? {} : { offset });
+    if (!reply.ok) return reply;
+    const list = reply.value.tracks;
+    if (!Array.isArray(list)) return fail(1, "bad reply from the Remote Script: tags_all without tracks");
+    for (const raw of list) {
+      const entry = parseTagEntry(raw);
+      if (!entry) return fail(1, "bad reply from the Remote Script: tags_all entry");
+      entries.push(entry);
+    }
+    const next = reply.value.next;
+    if (next === undefined) return { ok: true, value: entries };
+    if (typeof next !== "number" || next <= offset) return fail(1, "bad reply from the Remote Script: tags_all paging");
+    offset = next;
+  }
+  return fail(1, "bad reply from the Remote Script: tags_all did not finish");
+}
 
-/** What `mark_modified` did and whether Live gained an undo step (`Song.can_undo`; null = unreadable). */
-export interface MarkModifiedResult {
+/** What a tag write reports back. */
+export interface TagsWritten {
+  /** The track's name in Live right now. */
   name: string;
-  candidate: DirtyCandidate;
-  touched: string;
-  canUndoBefore: boolean | null;
-  canUndoAfter: boolean | null;
+  /** The tags as Live stored them (read back). */
+  tags: string[];
+  /** False when the colour toggle that makes Live ask to save did not work: the tags are stored regardless. */
+  marked: boolean;
 }
 
-/** SPIKE (plan 0008): try one way to make Live consider the Set modified. Writing operation (token). */
-export async function markModified(
+/**
+ * Replace the tags of one track (an empty list removes them). A writing operation: it carries the
+ * access token and the track's current name; a track whose name changed answers exit code 1
+ * ("the Live Set changed; run the command again"). Tags are stored as given: normalising them is the
+ * caller's job. Never throws; a script that is not running answers exit code 5.
+ */
+export async function writeTags(
   bridge: Bridge,
-  node: Pick<ObjectNode, "scope" | "route" | "name">,
-  candidate: DirtyCandidate,
-): Promise<BridgeResult<MarkModifiedResult>> {
-  const reply = await bridge.request("mark_modified", { scope: node.scope, route: node.route, expectName: node.name, candidate }, { changes: true, token: true });
+  track: Pick<ObjectNode, "scope" | "route" | "name">,
+  tags: string[],
+): Promise<BridgeResult<TagsWritten>> {
+  const reply = await bridge.request("tags_set", { scope: track.scope, route: track.route, expectName: track.name, tags }, { changes: true, token: true });
   if (!reply.ok) return reply;
   const v = reply.value;
-  const flag = (x: unknown): boolean | null | undefined => (typeof x === "boolean" || x === null ? x : undefined);
-  const before = flag(v.can_undo_before);
-  const after = flag(v.can_undo_after);
-  if (typeof v.name !== "string" || v.candidate !== candidate || typeof v.touched !== "string" || before === undefined || after === undefined) {
-    return fail(1, "bad reply from the Remote Script: mark_modified");
+  if (typeof v.name !== "string" || !Array.isArray(v.tags) || !v.tags.every((t) => typeof t === "string") || typeof v.marked !== "boolean") {
+    return fail(1, "bad reply from the Remote Script: tags_set");
   }
-  return { ok: true, value: { name: v.name, candidate, touched: v.touched, canUndoBefore: before, canUndoAfter: after } };
+  return { ok: true, value: { name: v.name, tags: v.tags as string[], marked: v.marked } };
 }

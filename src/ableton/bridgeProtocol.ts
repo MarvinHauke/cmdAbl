@@ -7,7 +7,7 @@ import { ExitCode } from "../core/types.js";
 
 export const PROTOCOL_VERSION = 1;
 /** The Remote Script version this extension was built with (VERSION in protocol.py). */
-export const SCRIPT_VERSION = "0.1.4";
+export const SCRIPT_VERSION = "0.1.5";
 export const BRIDGE_PORT = 27185;
 export const BRIDGE_HOST = "127.0.0.1";
 /** ≥ 300 ms by 0004 (the script drains ~10 Hz); 500 ms is an assumption until measured. */

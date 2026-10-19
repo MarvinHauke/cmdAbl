@@ -179,7 +179,7 @@ class Token(unittest.TestCase):
 class Ops(unittest.TestCase):
     def test_hello_lists_chain_set_and_it_is_a_writing_op(self):
         self.assertIn("chain_set", OPS)
-        self.assertEqual(set(WRITES), {"chain_set", "mark_modified", "track_tags_set"})
+        self.assertEqual(set(WRITES), {"chain_set", "tags_set"})
 
 
 if __name__ == "__main__":
