@@ -132,6 +132,11 @@ soloed or armed, so a toggle is not applied blindly. Commands without such a sta
   purpose, as Live's track activator; `soloed` → "S" and `armed` → record dot, lit when "on";
   an unknown label → a plain square, lit when "on". No legend; the button's tooltip says
   "muted"/"unmuted" etc. The page picks the icon from `state.label` — no contract change.
+- Colours (user, 2026-10-19): Live's theme tokens, values from Live 12's default theme
+  ("Default Dark Neutral Medium.ask") — mute `ChosenDefault` `#ffad56`, solo
+  `ChosenPreListen` `#3c6ab6`, arm `ChosenRecord` `#ff5559` — as CSS variables
+  `--live-chosen-*` in `ui/shared.css`, for the lit fill and the pending ring. The SDK cannot
+  read Live's current theme; following it is a candidate feature request.
 - Left side of a row is selection only: a marked row has a light accent tint and a bold
   label (readable without colour); the cursor row has the grey background and accent text.
 - **Preview (user, 2026-10-19; `0462eba` core, `250fdd5` modules, `4f43d7f` page).** `SelectRequest.state.change?:
