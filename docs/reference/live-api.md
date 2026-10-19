@@ -43,7 +43,6 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `tracks.transaction` | sdk | `context.withinTransaction(fn)` | – | One undo step for everything written inside. Comparable to the Python API's begin_undo_step / end_undo_step, which the script's chain_set uses; not in the LOM reference. How the SDK builds it is not documented. |
 | `tracks.track` | sdk | `application.song.tracks[i]` / `returnTracks[i]` / `[mainTrack]` by the node's scope and route | [`Song.tracks`](https://docs.cycling74.com/apiref/lom/song/), [`Song.return_tracks`](https://docs.cycling74.com/apiref/lom/song/), [`Song.master_track`](https://docs.cycling74.com/apiref/lom/song/) | Position-based: after a Set change the index may hold another track. |
 | `tracks.track().mute` | sdk | `track.mute` | [`Track.mute`](https://docs.cycling74.com/apiref/lom/track/) |  |
-| `tracks.track().color` | sdk | `track.color` | [`Track.color`](https://docs.cycling74.com/apiref/lom/track/) | Temporary, for the tagtest spike (plan 0008). |
 | `tracks.track().solo` | sdk | `track.solo` | [`Track.solo`](https://docs.cycling74.com/apiref/lom/track/) |  |
 | `tracks.track().arm` | sdk | `track.arm` | [`Track.arm`](https://docs.cycling74.com/apiref/lom/track/) | Live refuses some tracks silently; `can_be_armed` and the verification come from the script (operation `track_facts`). |
 | `dialog` | sdk | the SDK's modal dialog (`context.ui`, a data: URL page) through the dialog queue | – |  |
