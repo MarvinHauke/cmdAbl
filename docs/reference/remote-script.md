@@ -7,7 +7,7 @@ The companion Remote Script (Python, runs inside Live) does what the Extensions 
 selection, reads facts only the Live Object Model knows and mutes or solos rack chains. cmdAbl talks to it over a local socket with
 request/reply messages. `cmdabl setup` installs it, `cmdabl bridge` shows its status.
 
-Script version **0.1.3**, protocol **v1**.
+Script version **0.1.4**, protocol **v1**.
 
 | Operation | What it does | Parameters | Changes the Live Set |
 | --- | --- | --- | --- |
@@ -18,3 +18,4 @@ Script version **0.1.3**, protocol **v1**.
 | `chain_set` | Mutes or solos chains, checked by name and read back afterwards (up to 20 chains per request; one undo step). | `{ targets: [{ scope, route, expectName, mute?, solo? }], token }` | yes (needs the access token) |
 | `track_tags` | SPIKE (plan 0008, temporary): reads what is stored under the key "cmdabl.tags" on a track (type, length, small values). | `{ scope, route, expectName? }` | no |
 | `track_tags_set` | SPIKE (plan 0008, temporary): stores a value under "cmdabl.tags" on a track and reads it back (to test save, duplicate, undo, size). | `{ scope, route, expectName, value? \| fill? \| clear?, as?, undo?, token }` | yes (needs the access token) |
+| `mark_modified` | SPIKE (plan 0008, temporary): tries one harmless write that might make Live consider the Set modified, and reports whether an undo step appeared. | `{ scope, route, expectName, candidate: same_name \| toggle_name \| toggle_color \| empty_undo \| song_data, token }` | yes (needs the access token) |

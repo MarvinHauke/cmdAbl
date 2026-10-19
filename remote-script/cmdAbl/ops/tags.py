@@ -121,3 +121,95 @@ def track_tags_set(song, args):
     result = {"name": track.name, "stored": back != _MISSING, "same": back == value}
     result.update(_describe(back) if back != _MISSING else {"type": "missing", "length": -1})
     return result
+
+
+# ---- mark_modified: which harmless write makes Live consider the Set modified? ------------------
+# Live's Python API has no "mark modified"; set_data does not mark the Set (Live-verified). Each
+# candidate is tried by the user; the reply says whether an undo step appeared (Song.can_undo).
+# `toggle_*` change a value and put it back inside one begin/end_undo_step pair.
+
+CANDIDATES = ("same_name", "toggle_name", "toggle_color", "empty_undo", "song_data")
+DIRTY_KEY = "cmdabl.dirty"
+
+
+def _can_undo(song):
+    try:
+        return bool(song.can_undo)
+    except Exception:
+        return None
+
+
+def _in_undo_step(song, work):
+    begin = getattr(song, "begin_undo_step", None)
+    end = getattr(song, "end_undo_step", None)
+    opened = False
+    if callable(begin) and callable(end):
+        try:
+            begin()
+            opened = True
+        except Exception:
+            opened = False
+    try:
+        work()
+    finally:
+        if opened:
+            try:
+                end()
+            except Exception:
+                pass
+    return opened
+
+
+def mark_modified(song, args):
+    track = _track(song, args, True)
+    candidate = args.get("candidate")
+    if candidate not in CANDIDATES:
+        raise OpError("bad_request", "candidate must be one of %s" % ", ".join(CANDIDATES))
+    before = _can_undo(song)
+    name = track.name
+    touched = ""
+    try:
+        if candidate == "same_name":
+            track.name = name
+            touched = "name set to its own value"
+        elif candidate == "toggle_name":
+            seen = []
+
+            def work():
+                track.name = name + " "
+                seen.append(track.name)  # Live may trim the space: then nothing changed
+                track.name = name
+            _in_undo_step(song, work)
+            touched = "name changed and restored" if seen and seen[0] != name else "name unchanged by Live (trailing space trimmed)"
+        elif candidate == "toggle_color":
+            index = track.color_index
+            other = index + 1 if index < 69 else index - 1
+
+            def work():
+                track.color_index = other
+                track.color_index = index
+            try:
+                _in_undo_step(song, work)
+            finally:
+                if track.color_index != index:
+                    track.color_index = index
+            touched = "color_index changed and restored"
+        elif candidate == "empty_undo":
+            _in_undo_step(song, lambda: None)
+            touched = "empty undo step"
+        else:
+            current = song.get_data(DIRTY_KEY, 0)
+            song.set_data(DIRTY_KEY, (current if isinstance(current, int) else 0) + 1)
+            touched = "Song.set_data %s" % DIRTY_KEY
+    except OpError:
+        raise
+    except Exception as e:
+        raise OpError("unsupported", "%s failed: %s: %s" % (candidate, type(e).__name__, e))
+    finally:
+        try:
+            if track.name != name:  # never leave a changed name behind
+                track.name = name
+        except Exception:
+            pass
+    return {"name": track.name, "candidate": candidate, "touched": touched,
+            "can_undo_before": before, "can_undo_after": _can_undo(song)}

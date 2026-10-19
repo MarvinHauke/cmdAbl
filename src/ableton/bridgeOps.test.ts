@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chains, chunkTargets, select, trackTags, trackTagsSet, trackFacts, REQUEST_BYTES_BUDGET, TRACK_FACTS_PER_REQUEST } from "./bridgeOps.js";
+import { chains, chunkTargets, select, markModified, trackTags, trackTagsSet, trackFacts, REQUEST_BYTES_BUDGET, TRACK_FACTS_PER_REQUEST } from "./bridgeOps.js";
 import { createFakeBridge } from "./bridgeFake.js";
 import { fail } from "./bridgeProtocol.js";
 
@@ -242,4 +242,14 @@ test("trackTagsSet (spike) is a writing request with the token and sends only wh
   assert.equal((await trackTagsSet(odd, node, { clear: true })).ok, false);
   const refused = createFakeBridge({ ops: { track_tags_set: () => fail(5, "x") } });
   assert.deepEqual(await trackTagsSet(refused, node, { value: 1 }), { ok: false, code: 5, text: "x" });
+});
+
+test("markModified (spike) is a writing request and maps the can_undo flags", async () => {
+  const ok = createFakeBridge({ ops: { mark_modified: () => ({ ok: true, value: { name: "Bass", candidate: "toggle_name", touched: "t", can_undo_before: false, can_undo_after: true } }) } });
+  assert.deepEqual(await markModified(ok, node, "toggle_name"), { ok: true, value: { name: "Bass", candidate: "toggle_name", touched: "t", canUndoBefore: false, canUndoAfter: true } });
+  assert.deepEqual(ok.calls, [{ op: "mark_modified", args: { scope: "regular", route: [2, 1], expectName: "EQ Eight", candidate: "toggle_name" }, changes: true, token: true }]);
+  const odd = createFakeBridge({ ops: { mark_modified: () => ({ ok: true, value: { name: "Bass", candidate: "empty_undo", touched: "t", can_undo_before: "no", can_undo_after: null } }) } });
+  assert.equal((await markModified(odd, node, "empty_undo")).ok, false);
+  const unreadable = createFakeBridge({ ops: { mark_modified: () => ({ ok: true, value: { name: "Bass", candidate: "empty_undo", touched: "t", can_undo_before: null, can_undo_after: null } }) } });
+  assert.equal((await markModified(unreadable, node, "empty_undo")).ok, true);
 });

@@ -10,17 +10,18 @@ runs) and requires `expectName`.
 
 from .chains import chain_set, chains
 from .select import select
-from .tags import track_tags, track_tags_set  # SPIKE (plan 0008): temporary
+from .tags import mark_modified, track_tags, track_tags_set  # SPIKE (plan 0008): temporary
 from .tracks import track_facts
 
 OPS = {
     "chain_set": chain_set,
     "chains": chains,
     "select": select,
+    "mark_modified": mark_modified,
     "track_facts": track_facts,
     "track_tags": track_tags,
     "track_tags_set": track_tags_set,
 }
 
 # Ops that change something: refused without the access token (protocol.handle_request).
-WRITES = frozenset(["chain_set", "track_tags_set"])
+WRITES = frozenset(["chain_set", "mark_modified", "track_tags_set"])

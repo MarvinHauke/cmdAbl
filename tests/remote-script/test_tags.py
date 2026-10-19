@@ -4,7 +4,7 @@ import unittest
 from fake_live import FakeSong, FakeTrack
 from cmdAbl import protocol
 from cmdAbl.ops import OPS, WRITES
-from cmdAbl.ops.tags import KEY, MAX_VALUE_BYTES
+from cmdAbl.ops.tags import CANDIDATES, DIRTY_KEY, KEY, MAX_VALUE_BYTES
 
 TOKEN = "t" * 32
 
@@ -94,6 +94,71 @@ class TrackTags(unittest.TestCase):
         self.assertEqual(r["error"]["code"], "forbidden")
         self.assertEqual(s.tracks[0].data, {})
         self.assertTrue(ask(s, "track_tags", {"route": [0]}, with_token=False)["ok"])
+
+
+class MarkModified(unittest.TestCase):
+    def run_candidate(self, s, candidate, **extra):
+        return ask(s, "mark_modified", dict({"route": [0], "expectName": "Bass", "candidate": candidate}, **extra))
+
+    def test_every_candidate_leaves_the_track_as_it_was(self):
+        for c in CANDIDATES:
+            s = song()
+            r = self.run_candidate(s, c)
+            self.assertTrue(r["ok"], (c, r))
+            t = s.tracks[0]
+            self.assertEqual((t.name, t.color_index), ("Bass", 5), c)
+            self.assertEqual(r["result"]["candidate"], c)
+            self.assertEqual(r["result"]["can_undo_before"], False)
+
+    def test_toggles_run_inside_one_undo_step_the_others_do_not_write(self):
+        s = song()
+        s.undo_steps = []
+        self.run_candidate(s, "toggle_name")
+        self.assertEqual(s.undo_steps, ["begin", "end"])
+        s.undo_steps = []
+        self.run_candidate(s, "same_name")
+        self.assertEqual(s.undo_steps, [])
+        self.run_candidate(s, "song_data")
+        self.run_candidate(s, "song_data")
+        self.assertEqual(s.data[DIRTY_KEY], 2)
+
+    def test_toggle_name_says_when_live_trims_the_space(self):
+        s = song()
+        self.assertEqual(self.run_candidate(s, "toggle_name")["result"]["touched"], "name changed and restored")
+
+        class Trimming(type(s.tracks[0])):
+            @property
+            def name(self):
+                return self.__dict__.get("_n", "").rstrip()
+
+            @name.setter
+            def name(self, v):
+                self.__dict__["_n"] = v
+
+        t = Trimming("Bass")
+        s2 = FakeSong(tracks=[t])
+        r = ask(s2, "mark_modified", {"route": [0], "expectName": "Bass", "candidate": "toggle_name"})["result"]
+        self.assertIn("unchanged by Live", r["touched"])
+
+    def test_can_undo_after_is_read(self):
+        s = song()
+        s.can_undo = True
+        self.assertEqual(self.run_candidate(s, "empty_undo")["result"]["can_undo_after"], True)
+
+    def test_bad_requests_token_and_nothing_left_changed(self):
+        s = song()
+        t = s.tracks[0]
+        r = self.run_candidate(s, "song_data")
+        self.assertTrue(r["ok"])
+        for args, code in (
+            ({"candidate": "nope"}, "bad_request"),
+            ({"candidate": "same_name", "expectName": "Old"}, "stale"),
+        ):
+            a = dict({"route": [0], "expectName": "Bass"}, **args)
+            self.assertEqual(ask(s, "mark_modified", a)["error"]["code"], code)
+        self.assertEqual(ask(s, "mark_modified", {"route": [0], "candidate": "same_name"}, with_token=True)["error"]["code"], "bad_request")  # no expectName
+        self.assertEqual(ask(s, "mark_modified", {"route": [0], "expectName": "Bass", "candidate": "same_name"}, with_token=False)["error"]["code"], "forbidden")
+        self.assertEqual(t.color_index, 5)
 
 
 if __name__ == "__main__":

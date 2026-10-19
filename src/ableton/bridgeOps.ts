@@ -409,3 +409,32 @@ export async function trackTagsSet(
   }
   return { ok: true, value: { name: v.name, stored: v.stored, type: v.type, length: v.length, same: v.same } };
 }
+
+export type DirtyCandidate = "same_name" | "toggle_name" | "toggle_color" | "empty_undo" | "song_data";
+
+/** What `mark_modified` did and whether Live gained an undo step (`Song.can_undo`; null = unreadable). */
+export interface MarkModifiedResult {
+  name: string;
+  candidate: DirtyCandidate;
+  touched: string;
+  canUndoBefore: boolean | null;
+  canUndoAfter: boolean | null;
+}
+
+/** SPIKE (plan 0008): try one way to make Live consider the Set modified. Writing operation (token). */
+export async function markModified(
+  bridge: Bridge,
+  node: Pick<ObjectNode, "scope" | "route" | "name">,
+  candidate: DirtyCandidate,
+): Promise<BridgeResult<MarkModifiedResult>> {
+  const reply = await bridge.request("mark_modified", { scope: node.scope, route: node.route, expectName: node.name, candidate }, { changes: true, token: true });
+  if (!reply.ok) return reply;
+  const v = reply.value;
+  const flag = (x: unknown): boolean | null | undefined => (typeof x === "boolean" || x === null ? x : undefined);
+  const before = flag(v.can_undo_before);
+  const after = flag(v.can_undo_after);
+  if (typeof v.name !== "string" || v.candidate !== candidate || typeof v.touched !== "string" || before === undefined || after === undefined) {
+    return fail(1, "bad reply from the Remote Script: mark_modified");
+  }
+  return { ok: true, value: { name: v.name, candidate, touched: v.touched, canUndoBefore: before, canUndoAfter: after } };
+}
