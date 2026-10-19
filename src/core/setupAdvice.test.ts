@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { TEXT_NOT_RUNNING } from "../ableton/bridgeProtocol.js";
 import { adviseRemoteScript } from "./setupAdvice.js";
 
 const running = (script: string) => ({ ok: true as const, value: { script, v: 1, ops: ["hello"] } });
