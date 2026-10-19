@@ -5,8 +5,11 @@ import { SCRIPT_VERSION } from "./bridgeProtocol.js";
 
 // Is the Remote Script installed, and is it the version this extension expects?
 // Assumption (0001 §3): macOS default User Library location. The location is
-// configurable in Live and reading outside the bundle may be restricted later,
-// so every failure to look is "unknown" — never an error.
+// configurable in Live, and the INSTALLED Extension Host is sandboxed (Node's permission model:
+// it may read only the Extensions / Extensions Data trees and its temp folder, measured
+// 2026-10-19), so there this always ends in "unknown". Every failure to look is "unknown" —
+// never an error — and the "not running" text (which claims neither "not installed" nor
+// "outdated") is then the honest one. `npm start` (unsandboxed host) can still see the folder.
 
 export type InstalledScript =
   | { status: "missing" } // folder not found in the default location
