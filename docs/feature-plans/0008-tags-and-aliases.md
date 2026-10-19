@@ -4,7 +4,7 @@
 **Depends on:** [0005](0005-command-tree-and-module-authoring.md) (target resolution, pick list),
 [0001](0001-path-addressed-objects-and-commands.md) (Remote Script protocol).
 
-**Status:** 0.1.1 in progress (2026-10-20) — spike done (saved, duplicated, not undoable,
+**Status:** 0.1.1 built (2026-10-20: `c91a2c4`, `2166db5`, `9a77e00`), waiting for its Live test — spike done (saved, duplicated, not undoable,
 marked modified via `toggle_color`); the spike ops and `tagtest` are being replaced. Tags on tracks ship as
 0.1.1, the store and aliases as 0.1.2; tags on chains and pads come with 0.2.0.
 
@@ -129,8 +129,9 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
   buttons, same list core uses for bare `#`) and `api.tags` (`refresh`, `of(node)`, `write(node,
   tags)`) wired to the bridge's tag cache; modules never import `src/ableton/tagCache`
   (architecture rule 5 extended).
-- **`#…` fans out** for every path argument that can take several objects, whatever its
-  `multiple` setting; a fuzzy bare word still asks. `tag` does not declare `multiple: "all"`.
+- **`#…` fans out** (gives every tagged object at once) for every path argument except `rest`
+  arguments and destructive commands, where several hits ask; single-target commands such as
+  `goto` ask. A fuzzy bare word still asks. `tag` does not declare `multiple: "all"`.
 - **History keeps `#fx`** as typed, so a re-run hits the tracks tagged now.
 - **`tag`'s target is one token** in 0.1.1 (`/Lead`, `"SH-101 MIDI"`, `#drum`, `#`); a comma list
   before tag words is not supported yet (`tag /Lead, /Bass fx` → exit 2).
