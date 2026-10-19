@@ -248,7 +248,7 @@ export function isSetupDone(): boolean {
 
 /** The docs site; every setup step ends with a plain URL line to its section. */
 export const DOCS_BASE_URL = "https://marvinhauke.github.io/cmdAbl/";
-export const KEYBOARD_DOCS_URL = `${DOCS_BASE_URL}getting-started/#4-open-the-palette`;
+export const KEYBOARD_DOCS_URL = `${DOCS_BASE_URL}getting-started/#2-run-cmdabl-setup`;
 export const REMOTE_SCRIPT_DOCS_URL = `${DOCS_BASE_URL}getting-started/#3-turn-on-the-remote-script-in-live`;
 
 export function runSetup(): string {

@@ -342,7 +342,7 @@ test("cmdabl setup: the installer's text, then what to do about the Remote Scrip
 test("setup docs links hang off one base URL", async () => {
   const { DOCS_BASE_URL, KEYBOARD_DOCS_URL, REMOTE_SCRIPT_DOCS_URL } = await import("./setup.js");
   assert.ok(KEYBOARD_DOCS_URL.startsWith(DOCS_BASE_URL) && REMOTE_SCRIPT_DOCS_URL.startsWith(DOCS_BASE_URL));
-  assert.equal(KEYBOARD_DOCS_URL, "https://marvinhauke.github.io/cmdAbl/getting-started/#4-open-the-palette");
+  assert.equal(KEYBOARD_DOCS_URL, "https://marvinhauke.github.io/cmdAbl/getting-started/#2-run-cmdabl-setup");
 });
 
 test("validateTree: requires must be a known companion on a runnable node", () => {
