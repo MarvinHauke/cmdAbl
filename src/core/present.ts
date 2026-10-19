@@ -18,7 +18,9 @@ import { ExitCode, type CommandResult } from "./types.js";
  *         Live did not arm it: its arm button is disabled
  *         (e.g. the input device is not available)
  *
- * Successes first, then failures, each group in the given order. A failure's
+ * Successes first, then failures, each group in the given order. Failures with
+ * the same reason are listed one after another and the reason follows once
+ * (groups ordered by their first failure). A failure's
  * reason sits on its own lines under the path; an opening parenthesis (" (")
  * starts a new line, which is the only break rule — the page wraps the rest.
  * A successful result lists nothing when every target succeeded.
@@ -34,9 +36,17 @@ export function presentResult(result: CommandResult, show: (text: string) => voi
   const failed = details.filter((d) => !d.ok);
   if (failed.length > 0 || result.code !== ExitCode.OK) {
     for (const d of details.filter((d) => d.ok)) lines.push(`  ✓ ${d.path}`);
-    for (const d of failed) {
-      lines.push(`  × ${d.path}`);
-      for (const reason of reasonLines(d.message)) lines.push(`      ${reason}`);
+    // Failures sharing a reason are listed together and the reason is printed
+    // once below them; groups keep the order of their first failure.
+    const groups = new Map<string, string[]>();
+    failed.forEach((d, i) => {
+      const reason = (d.message ?? "").trim();
+      const key = reason || `\0${i}`; // no reason: never grouped
+      groups.set(key, [...(groups.get(key) ?? []), d.path]);
+    });
+    for (const [key, paths] of groups) {
+      for (const path of paths) lines.push(`  × ${path}`);
+      for (const reason of reasonLines(key.startsWith("\0") ? undefined : key)) lines.push(`      ${reason}`);
     }
   }
   show(lines.join("\n"));

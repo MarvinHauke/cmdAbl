@@ -227,6 +227,33 @@ test("presentResult: successes first, reasons indented, a parenthesis starts a l
   ]);
 });
 
+test("presentResult: failures with the same reason list their targets and print the reason once", () => {
+  const shown: string[] = [];
+  const why = "Remote Script not running (install it with cmdabl setup, then restart Live)";
+  presentResult(fail(ExitCode.UNAVAILABLE, "mute: 1 of 4 done", [
+    { path: "/2-808 Core Kit/Snare Drum", ok: false, message: why },
+    { path: "/Bass", ok: true },
+    { path: "/Lead", ok: false, message: "not found" },
+    { path: "/Kick", ok: false, message: why },
+    { path: "/Odd", ok: false },
+    { path: "/Odd2", ok: false },
+  ]), (t) => shown.push(t));
+  assert.deepEqual(shown, [
+    [
+      "cmdAbl: mute: 1 of 4 done",
+      "  ✓ /Bass",
+      "  × /2-808 Core Kit/Snare Drum",
+      "  × /Kick",
+      "      Remote Script not running",
+      "      (install it with cmdabl setup, then restart Live)",
+      "  × /Lead",
+      "      not found",
+      "  × /Odd",
+      "  × /Odd2",
+    ].join("\n"),
+  ]);
+});
+
 test("presentResult: an all-success result lists no targets; a message without details is unchanged", () => {
   const shown: string[] = [];
   presentResult(ok("muted 2", [{ path: "/a", ok: true }, { path: "/b", ok: true }]), (t) => shown.push(t));
