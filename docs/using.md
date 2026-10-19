@@ -166,3 +166,19 @@ newest first, so you can run one again.
 - The history is kept in memory. It is cleared when the extension reloads, for example when Live restarts.
 
 Use `↑` and `↓` to choose a remembered line and `Enter` to run it again.
+
+### Clear, forget and restore
+
+The `history` command manages the list. It has three subcommands:
+
+- **`history clear`** removes all entries after a question. Removed entries can be brought back with
+  `history restore` until cmdAbl restarts. `history clear --force` (or `-f`) asks nothing and drops the removed
+  entries too, so they cannot be restored.
+- **`history forget`** removes the newest entry without asking, for example after a mistyped command. `history forget -n 3`
+  removes the newest three. `-n` takes a whole number from 1 to 20.
+- **`history restore`** puts back the entries that the last `clear` or `forget` removed, until cmdAbl restarts.
+  Without `-n` it restores everything that last removal took out. `history restore -n 2` brings back the two most
+  recently removed entries. Entries keep their original order, and an entry that is already in the history again is
+  not added twice.
+
+The [command reference](reference/commands.md) has the full usage.
