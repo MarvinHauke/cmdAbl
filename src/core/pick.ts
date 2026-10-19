@@ -1,7 +1,7 @@
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
 import { quoteIfNeeded } from "./tokenize.js";
-import type { PickPreview, Ui } from "./ui.js";
+import type { PickPreview, StateChange, Ui } from "./ui.js";
 
 // The pick list: shown by the platform whenever an address matches several
 // objects. Whether more than one may be chosen is decided by the command's
@@ -21,7 +21,7 @@ export interface PickOptions {
   /** Single-select only: allow Tab to answer "fill" (the object goes into the prompt). */
   fill?: boolean;
   /** Current state per candidate (true on, false off, null unknown) and its name. */
-  state?: { label: string; values: Array<boolean | null> };
+  state?: { label: string; values: Array<boolean | null>; change?: StateChange };
 }
 
 export async function pickNodes(ui: Ui, options: PickOptions): Promise<ObjectNode[] | { fill: ObjectNode } | null> {
@@ -30,7 +30,7 @@ export async function pickNodes(ui: Ui, options: PickOptions): Promise<ObjectNod
     multi: options.multi,
     ...(options.preview ? { preview: options.preview } : {}),
     ...(options.fill && !options.multi ? { fill: true } : {}),
-    ...(options.state?.values.some((v) => v !== null) ? { state: { label: options.state.label } } : {}),
+    ...(options.state?.values.some((v) => v !== null) ? { state: { label: options.state.label, ...(options.state.change ? { change: options.state.change } : {}) } } : {}),
     items: options.candidates.map((n, i) => {
       const label = options.nodes ? uniquePath(options.nodes, n) : n.path;
       const state = options.state?.values[i];

@@ -2,12 +2,12 @@ import { ExitCode, fail, ok, type CommandResult } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
 import type { CommandRegistry } from "./commandRegistry.js";
-import { helpText, type CommandNode, type Invocation } from "./commandTree.js";
+import { helpText, type CommandNode, type Invocation, type PickState } from "./commandTree.js";
 import { parse } from "./parse.js";
 import { applyPick, lookupTarget, normalizeTargets, resolveTargets, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
-import type { PickPreview } from "./ui.js";
+import type { PickPreview, StateChange } from "./ui.js";
 
 // The one path every typed line takes: parse → resolve (asking the user to
 // pick when an address is ambiguous) → run → result. Everything it needs from
@@ -44,7 +44,7 @@ export interface RunDeps {
     /** Parallel to `candidates`: which typed text each row matched (several texts); absent = the kind. */
     details?: string[];
     /** The command's `pickState`, read for the candidates: shown as symbols (see SelectRequest.state). */
-    state?: { label: string; values: Array<boolean | null> };
+    state?: { label: string; values: Array<boolean | null>; change?: StateChange };
   }) => Promise<ObjectNode[] | null>;
 }
 
@@ -159,7 +159,7 @@ async function readPickState(
   candidates: ObjectNode[],
   invocation: Invocation<string>,
   capMs: number,
-): Promise<{ label: string; values: Array<boolean | null> } | undefined> {
+): Promise<{ label: string; values: Array<boolean | null>; change?: StateChange } | undefined> {
   const spec = node.pickState;
   if (!spec) return undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -171,11 +171,25 @@ async function readPickState(
       }),
     ]);
     if (!Array.isArray(values) || values.length !== candidates.length) return undefined;
-    return { label: spec.label, values: values.map((v) => (v === true || v === false ? v : null)) };
+    return {
+      label: spec.label,
+      values: values.map((v) => (v === true || v === false ? v : null)),
+      ...readChange(spec, invocation),
+    };
   } catch {
     return undefined;
   } finally {
     if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+/** The preview of what confirming does, or nothing: a throwing or odd `change` is "no preview". */
+function readChange(spec: PickState, invocation: Invocation<string>): { change?: StateChange } {
+  try {
+    const change = spec.change?.(invocation);
+    return change === "toggle" || change === "on" || change === "off" ? { change } : {};
+  } catch {
+    return {};
   }
 }
 

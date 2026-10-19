@@ -143,7 +143,7 @@ test("pickNodes: state values become row symbols; none known → no state field 
   assert.ok(requests[1]!.items.every((i) => !("state" in i)));
 });
 
-function stateSetup(read: () => Promise<Array<boolean | null>>, cap = 50) {
+function stateSetup(read: () => Promise<Array<boolean | null>>, cap = 50, change?: (inv: any) => any) {
   const registry = new CommandRegistry();
   const seen: unknown[] = [];
   registry.add({
@@ -151,7 +151,7 @@ function stateSetup(read: () => Promise<Array<boolean | null>>, cap = 50) {
     summary: "m",
     options: [{ name: "set", takesValue: true, choices: ["0", "1"], summary: "state" }],
     args: [{ name: "track", kind: "path", variadic: true }],
-    pickState: { label: "muted", read: async () => read() },
+    pickState: { label: "muted", read: async () => read(), ...(change ? { change } : {}) },
     run: () => {},
   });
   const deps: RunDeps = {
@@ -171,6 +171,30 @@ test("run: a pick list for a command with pickState carries the read state (also
   const { deps, seen } = stateSetup(async () => [true, false]);
   await runLine("mute --set 0 kick", deps); // two Kick tracks → ambiguity list
   assert.deepEqual(seen, [{ label: "muted", values: [true, false] }]);
+});
+
+test("run: pickState.change reaches the request; a throw or odd value means no preview", async () => {
+  const withSet = stateSetup(async () => [true, false], 50, (inv) => (inv.options.set === undefined ? "toggle" : inv.options.set === "1" ? "on" : "off"));
+  await runLine("mute kick", withSet.deps);
+  await runLine("mute --set 1 kick", withSet.deps);
+  await runLine("mute --set 0 kick", withSet.deps);
+  assert.deepEqual(withSet.seen, [
+    { label: "muted", values: [true, false], change: "toggle" },
+    { label: "muted", values: [true, false], change: "on" },
+    { label: "muted", values: [true, false], change: "off" },
+  ]);
+  for (const bad of [() => { throw new Error("x"); }, () => "flip"]) {
+    const { deps, seen } = stateSetup(async () => [true, false], 50, bad);
+    await runLine("mute kick", deps);
+    assert.deepEqual(seen, [{ label: "muted", values: [true, false] }]);
+  }
+});
+
+test("pick: state.change goes into SelectRequest.state", async () => {
+  const requests: SelectRequest[] = [];
+  const ui = { select: async (r: SelectRequest) => (requests.push(r), null) } as unknown as Ui;
+  await pickNodes(ui, { title: "t", candidates: all, multi: true, state: { label: "muted", values: [true, false, null], change: "toggle" } });
+  assert.deepEqual(requests[0]!.state, { label: "muted", change: "toggle" });
 });
 
 test("run: a failing, wrong-length or too slow read means no symbols — never an error, never a long wait", async () => {

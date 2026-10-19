@@ -15,7 +15,7 @@ import { pickNodes } from "./core/pick.js";
 import { quoteIfNeeded } from "./core/tokenize.js";
 import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
-import { createDefaultUi, type PickPreview, type Ui } from "./core/ui.js";
+import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/ui.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
 import { trackFor } from "./ableton/trackLookup.js";
 import { MODULES } from "./modules/index.js";
@@ -60,7 +60,7 @@ export function activate(activation: ActivationContext) {
       preview?: PickPreview;
       details?: string[];
       fill?: boolean;
-      state?: { label: string; values: Array<boolean | null> };
+      state?: { label: string; values: Array<boolean | null>; change?: StateChange };
     } = {},
   ): Promise<ObjectNode[] | null> {
     // A module's own pick has no Live Set at hand; unique labels need it.

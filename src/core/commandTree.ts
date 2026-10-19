@@ -1,4 +1,5 @@
 import type { CommandResult } from "./types.js";
+import type { StateChange } from "./ui.js";
 import type { NodeKind, ObjectNode } from "../ableton/objectTree.js";
 
 // The declarative command tree — the single source of truth for execution,
@@ -94,6 +95,13 @@ export interface PickState {
    * true = on, false = off, null = unknown.
    */
   read(nodes: ObjectNode[], invocation: Invocation<string>): Promise<Array<boolean | null>>;
+  /**
+   * What confirming the pick does to a row's state, for the list to preview:
+   * "toggle" flips each row, "on"/"off" sets it. Same invocation as `read`.
+   * Optional; a throw or another value means no preview. Only read when `read`
+   * succeeded (without states the page shows no buttons to preview on).
+   */
+  change?(invocation: Invocation<string>): StateChange;
 }
 
 /** What a handler receives. `V` is the argument value type (raw strings until resolved). */

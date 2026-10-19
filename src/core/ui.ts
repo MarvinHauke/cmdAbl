@@ -52,11 +52,16 @@ export interface SelectRequest {
   fill?: boolean;
   /**
    * Names the state the rows' `state` shows ("muted", "soloed", "armed"):
-   * present only when at least one row has a state. The page draws `●` for on
-   * and `○` for off before the label and names the state once (hint or header),
-   * so the meaning does not depend on colour. Rows without `state` show no symbol.
+   * present only when at least one row has a state. The page draws a state
+   * button on the right of the row (docs/feature-plans/0007 §4) and names the
+   * state once, so the meaning does not depend on colour. Rows without `state`
+   * show no button.
+   *
+   * `change` previews what confirming does to a row's state: "toggle" flips each
+   * row individually, "on"/"off" sets it. Absent = no preview (the page shows
+   * only the current state).
    */
-  state?: { label: string };
+  state?: { label: string; change?: StateChange };
   items: {
     /** The row's text (for a pick: the unique path, unquoted). */
     label: string;
@@ -67,6 +72,9 @@ export interface SelectRequest {
     state?: "on" | "off";
   }[];
 }
+
+/** What choosing a row does to its state (see `SelectRequest.state`). */
+export type StateChange = "toggle" | "on" | "off";
 
 export interface PickPreview {
   before: string;
