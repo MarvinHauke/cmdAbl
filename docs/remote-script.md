@@ -38,9 +38,9 @@ Run `cmdabl setup` from the palette. It copies the Remote Script into Live's Use
 
 Then turn it on in Live, once:
 
-1. **Restart Live**, so that Live loads the copied script.
+1. **Restart Live.** After the restart, cmdAbl appears in the Control Surface list.
 2. Open **Settings → Tempo & MIDI → MIDI**. Under **Control Surface**, choose **cmdAbl**. Leave Input
-   and Output set to *None*.
+   and Output set to *None*. Choosing it starts the script; you do not need to restart Live again.
 
 ![Live's Settings, Tempo & MIDI page, MIDI section: slot 1 has Control Surface set to cmdAbl and Input and Output set to None](assets/images/control-surface.png)
 
@@ -66,7 +66,7 @@ These are the messages you can get. Each is shown in the palette, with what to d
 | ------- | ------------- | ---------- |
 | *Remote Script not installed; run `cmdabl setup` and restart Live* | The script is not in the User Library. Only a development run (`npm start`) shows this; the installed extension says "not running" instead. | Run `cmdabl setup`, then restart Live. |
 | *installed Remote Script is outdated; run `cmdabl setup` and restart Live* | The copy in the User Library is not the version this cmdAbl ships. Only a development run (`npm start`) shows this; the installed extension says "not running" instead. | Run `cmdabl setup`, then restart Live. |
-| *Remote Script not running (install it with `cmdabl setup`, enable cmdAbl as a Control Surface in Live's Settings → Tempo & MIDI, restart Live)* | The script is not running in Live. It may be missing or not enabled. | Run `cmdabl setup`, enable cmdAbl as a control surface, then restart Live. |
+| *Remote Script not running (install it with `cmdabl setup`, enable cmdAbl as a Control Surface in Live's Settings → Tempo & MIDI, restart Live)* | The script is not running in Live. It may be missing or not enabled. | Run `cmdabl setup` if it is not installed, restart Live, then choose cmdAbl as the Control Surface (Settings → Tempo & MIDI → MIDI). |
 | *the Live Set changed; run the command again* | The track or pad moved or was renamed after you typed the command. | Run the command again. |
 | *the Remote Script did not answer; check Live* | Live did not reply in time. | Check that Live is running and not busy. Then run the command again. A change may or may not have happened, so look at the Set. |
 | *the Remote Script refused the change (access token); restart Live (after `cmdabl setup` if the script was updated)* | The script refused a change, because its access token did not match. | Restart Live. After an update, run `cmdabl setup` first. |

@@ -43,17 +43,17 @@ The command ends with one line of advice. Which line you see depends on what it 
 - *Not installed:* run `cmdabl setup` again and read the messages above the advice.
 - *An older copy is installed:* read the lines above the advice, then restart Live.
 
-Then enable the keyboard rule. In Karabiner-Elements, open **Complex Modifications → Add rule**, and
-turn on **Open cmdAbl command palette with ':' when Ableton Live is focused**. The rule uses
-Shift+period. That types `:` on German (QWERTZ) keyboards.
+Then enable the keyboard rule. In Karabiner-Elements, open **Complex Modifications → Add predefined rule**,
+choose **cmdAbl**, and click **Enable**. The rule opens the palette with `:` (Shift+period, which types `:` on
+German (QWERTZ) keyboards) while Ableton Live is focused.
 
 ## 3. Turn on the Remote Script in Live
 
-A copied script does not run until Live loads it. Do both steps:
+The copied script does not appear in Live's Control Surface list until Live restarts. Do both steps:
 
-1. **Restart Live.**
+1. **Restart Live.** After the restart, cmdAbl appears in the Control Surface list.
 2. Open **Settings → Tempo & MIDI → MIDI**. Under **Control Surface**, choose **cmdAbl**. Leave
-   Input and Output set to *None*.
+   Input and Output set to *None*. Choosing it starts the script; you do not need to restart Live again.
 
 Live's log shows `cmdAbl bridge listening on 127.0.0.1:27185` once the link is active. The log is at
 `~/Library/Preferences/Ableton/Live <version>/Log.txt`, where `<version>` is your Live version; the Remote Script's
