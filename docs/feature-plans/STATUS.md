@@ -300,28 +300,24 @@ Tests 1–8 (pick list, names, history) — **seen by the user on 2026-10-19**; 
 script, pad mutes answer "Remote Script not running" (intended); `goto` makes no Live undo
 entry (selecting is not undoable in Live).
 
-**Dialogs**
-9. `mute nothere`, close the message, open the palette again → it opens.
-10. `goto drum` → `Esc` → palette opens again.
-11. `help` → every line on one row, no scrollbar; `Esc`/`Enter` close.
+Tests 9–17 — **seen by the user on 2026-10-19** (dialogs, `help`, `pakabl update`/`list`/
+`uninstall`, `man ableton warp modes`, `man foo` → "invalid value … choose one of ableton,
+cmdabl", `unmute x` → unknown command), plus `find kick`, `lom /Kick`, `arm` on a group
+refused. `goto kick` runs the track `/Kick` at once (a bare word equal to a top-level track name
+is that track, 0005) — the expectation "asks to pick" was wrong.
 
-**pakabl**
-12. `pakabl update` → "index refreshed (N extensions)".
-13. `pakabl list` → Update, Uninstall, Repo buttons work.
-14. `pakabl uninstall some.thing` → "not installed".
+Still open before the release test: the buttons of `pakabl list` (Update/Uninstall/Repo,
+`Esc`); rename a pad and use the old name → "did you mean"; control surface off and on, restart
+Live, `mute <pad>` still works (token); `mute --set 2 /a` → usage error; `lom` with the control
+surface off.
 
-**man and errors**
-15. `man ableton warp modes` → Live 12 manual results.
-16. `man foo` → "no manual for foo" with topics.
-17. `unmute x` → "unknown command".
-
-14. History commands — **seen by the user on 2026-10-19** (restore, forget, `clear -f`,
+History commands — **seen by the user on 2026-10-19** (restore, forget, `clear -f`,
     "nothing to restore"; the question of plain `clear` not in the screenshots): `mute bass`, `solo lead`, then `history clear` → question with Cancel
     first; Cancel → "history kept"; Clear → no history rows; `history restore` → both back in
     order; `history forget` drops the newest, `history restore -n 1` brings it back;
     `history clear -f` asks nothing, then `history restore` → "nothing to restore"; no
     `history …` line ever appears as a history row.
-13. Not Live: the next pull request shows three checks (`build`, `gitleaks`, `docs-build`,
+Not Live: the next pull request shows three checks (`build`, `gitleaks`, `docs-build`,
     `e23c043`); the next manual run of the pakabl index workflow proves the pinned
     `peter-evans/create-pull-request` (`a5e1adc`).
 
