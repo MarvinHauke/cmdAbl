@@ -208,7 +208,8 @@ Release:
 - Bump the version in `package.json` and `manifest.json`, merge; the release workflow publishes.
 - Release notes for 0.1.0 must say what changed for a user of 0.0.1 (its README documented
   them): `unmute`, `unsolo`, `unarm` removed — use `mute|solo|arm --set 0`; `cmdabl --setup` →
-  `cmdabl setup`; the Remote Script is required for selecting; macOS only. The generated notes
+  `cmdabl setup`; the Remote Script is required for selecting; in a multi-select pick list `Enter` no longer
+  takes the cursor row — mark rows with `Tab`/`Space` first; macOS only. The generated notes
   do not carry this; add it by hand to the release.
 
 ### After 0.1.0 (order to be set then)
