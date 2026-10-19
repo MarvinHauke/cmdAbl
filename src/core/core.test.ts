@@ -334,8 +334,15 @@ test("cmdabl setup: the installer's text, then what to do about the Remote Scrip
   assert.equal(out.result.code, ExitCode.OK);
   assert.equal(
     out.result.message,
-    "OK: installed\n\nRemote Script 0.1.0 is installed, but Live still runs 0.0.9. Restart Live to load Remote Script 0.1.0.",
+    "OK: installed\n\nRemote Script 0.1.0 is installed, but Live still runs 0.0.9. Restart Live to load Remote Script 0.1.0.\n" +
+      "https://marvinhauke.github.io/cmdAbl/getting-started/#3-turn-on-the-remote-script-in-live",
   );
+});
+
+test("setup docs links hang off one base URL", async () => {
+  const { DOCS_BASE_URL, KEYBOARD_DOCS_URL, REMOTE_SCRIPT_DOCS_URL } = await import("./setup.js");
+  assert.ok(KEYBOARD_DOCS_URL.startsWith(DOCS_BASE_URL) && REMOTE_SCRIPT_DOCS_URL.startsWith(DOCS_BASE_URL));
+  assert.equal(KEYBOARD_DOCS_URL, "https://marvinhauke.github.io/cmdAbl/getting-started/#4-open-the-palette");
 });
 
 test("validateTree: requires must be a known companion on a runnable node", () => {

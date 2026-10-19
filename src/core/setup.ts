@@ -246,6 +246,11 @@ export function isSetupDone(): boolean {
   return false;
 }
 
+/** The docs site; every setup step ends with a plain URL line to its section. */
+export const DOCS_BASE_URL = "https://marvinhauke.github.io/cmdAbl/";
+export const KEYBOARD_DOCS_URL = `${DOCS_BASE_URL}getting-started/#4-open-the-palette`;
+export const REMOTE_SCRIPT_DOCS_URL = `${DOCS_BASE_URL}getting-started/#3-turn-on-the-remote-script-in-live`;
+
 export function runSetup(): string {
   if (process.platform !== "darwin" && process.platform !== "win32") {
     return "Unsupported platform — only macOS and Windows are supported.";
@@ -254,6 +259,7 @@ export function runSetup(): string {
   return [
     "— Keyboard trigger —",
     keyboard,
+    KEYBOARD_DOCS_URL,
     "",
     "— Remote Script bridge —",
     runRemoteScriptSetup(),
