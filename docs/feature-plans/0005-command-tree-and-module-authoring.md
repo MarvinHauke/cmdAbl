@@ -282,8 +282,8 @@ both (`250fdd5`: no `--set` → "toggle", `--set 1` → "on", `--set 0` → "off
 
 `api.confirm(message, confirmLabel): Promise<boolean>` asks a yes/no question before a
 destructive command (first user: `history clear`). The platform shows it as a single-select
-pick list with two rows (`confirmLabel`, "Cancel") through `Ui.select` and the dialog queue;
-`Esc` or Cancel → false. A command offers `-f, --force` to skip it.
+pick list with two rows ("Cancel" first, then `confirmLabel`, so a reflex `Enter` does
+nothing; `f113c9a`) through `Ui.select` and the dialog queue; `Esc` or Cancel → false. A command offers `-f, --force` to skip it.
 
 ## Forgiving target resolution (2026-10-12; `461c885`, `46f241a`, `8588a8d`)
 
