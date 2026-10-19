@@ -9,7 +9,6 @@ import * as findModule from "./find/index.js";
 import * as manModule from "./man/index.js";
 import * as lomModule from "./lom/index.js";
 import * as pakablModule from "./pakabl/index.js";
-import * as tagtestModule from "./tagtest/index.js"; // spike for plan 0008, removed before 0.2.0
 
 /**
  * Every module cmdAbl ships with — the single list the platform activates.
@@ -27,5 +26,4 @@ export const MODULES: Module[] = [
   manModule,
   lomModule,
   pakablModule,
-  tagtestModule,
 ];
