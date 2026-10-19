@@ -280,13 +280,16 @@ toggles incl. `arm` on audio/MIDI/return/main/group tracks.
    whose own name matches", which includes a rack named like its track — kept), `Tab` fill,
    the palette `Enter` cases, `--set` and its history form. He reported "all other tests seem
    to work" without going through them one by one.
-1m. State buttons and the larger pick list (`e852014`, `99e290a`, `2b62570`, redesign `839920a`):
-   `mute drum` (two pads, one muted) → on the right the muted pad's speaker is dark, the other
-   lit (orange); hover says "muted"/"unmuted"; no legend, no dots on the left; `solo`/`arm`:
-   "S" / record dot lit on soloed/armed rows; `Tab` marks two rows → light tint + bold label,
-   distinct from the cursor row (grey + orange text); `goto`/`find` show no buttons; control
-   surface disabled → pad rows have no button and line up, the list opens within about half a
-   second; long labels clip before the button; a list with 30+ rows is taller (about 18 rows).
+1m. State buttons, preview and the larger pick list (`e852014`, `99e290a`, `2b62570`, redesign
+   `839920a`, preview `0462eba` `250fdd5` `4f43d7f`): `mute drum` (two pads, one muted) → on
+   the right the muted pad's speaker is dark, the other lit (orange); no legend, no dots; the
+   cursor row shows the flipped state with a dashed ring, `↓` moves it; `Tab` marks two pads →
+   only those show the result with a ring, bold label, no row tint; unmarking restores them;
+   `mute --set 1 drum` → a ring only on pads not yet muted; `Enter` applies exactly what was
+   shown; hover says "muted (on confirm)"; `solo`/`arm` alike ("S" / record dot); `goto drum`
+   shows no buttons, marks as tint + bold; control surface disabled → pad rows have no button
+   and line up, the list opens within about half a second; long labels clip before the button;
+   a list with 30+ rows is taller (about 18 rows).
 2. Hang diagnostics (`689e673`; the new log lines were seen by the user): with nothing open
    `POST /reset` answers "no
    dialog was open" and `GET /reset` 405; after the next real hang, before restarting: Undo in

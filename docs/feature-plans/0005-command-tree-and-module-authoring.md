@@ -269,11 +269,14 @@ example, and every example line must parse — both are tests. Write them for a 
 
 ## `pickState` on the node (2026-10-13)
 
-A runnable command may declare `pickState: { label, read(nodes, invocation) }`. When the
-platform is about to open a pick list for that command, it calls `read` with the candidates
-and shows the returned state (true / false / null) per row under `label` ("muted"). It is
-never called on the direct path, is capped at 600 ms, and any failure means "no symbols".
-`mute`, `solo` and `arm` declare it. Details: 0007 §4, "State symbols".
+A runnable command may declare `pickState: { label, read(nodes, invocation),
+change?(invocation) }`. When the platform is about to open a pick list for that command, it
+calls `read` with the candidates and shows the returned state (true / false / null) per row
+under `label` ("muted") as a state button. `change` (2026-10-19, `0462eba`) returns what
+confirming does — "toggle" | "on" | "off" — and is copied into `SelectRequest.state.change`, so
+the page can preview the result; a failure means absent. `read` is never called on the direct
+path, is capped at 600 ms, and any failure means "no buttons". `mute`, `solo` and `arm` declare
+both (`250fdd5`: no `--set` → "toggle", `--set 1` → "on", `--set 0` → "off"). Details: 0007 §4.
 
 ## Forgiving target resolution (2026-10-12; `461c885`, `46f241a`, `8588a8d`)
 
