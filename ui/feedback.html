@@ -20,15 +20,16 @@
       font: inherit;
       line-height: 18px;
       outline: none;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
     }
+    /* One block per line; a wrapped line hangs under its own text (see the script). */
+    #msg .line { white-space: pre-wrap; overflow-wrap: anywhere; min-height: 18px; }
+    #msg .group { margin-top: 9px; }   /* before each × group after the first */
     #footer { flex-shrink: 0; }
   </style>
 </head>
 <body>
 
-  <pre id="msg" tabindex="-1"></pre>
+  <div id="msg" tabindex="-1"></div>
   <div id="footer"><button id="close">Close</button></div>
 
   <script>
@@ -41,8 +42,31 @@
       else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
     }
 
+    // Each line becomes its own block: padding-left = the line's leading spaces (in ch), and the
+    // "✓ "/"× " marker hangs (negative text-indent), so a wrapped part stays under the text.
+    // The markers are the presenter's (src/core/present.ts): add one on both sides or neither.
+    // Text goes in with textContent (paths and reasons are user data).
+    function renderMessage(box, text) {
+      let seenFail = false, prevFail = false;
+      for (const raw of String(text).split('\n')) {
+        const lead = raw.length - raw.trimStart().length;
+        const body = raw.trimStart();
+        const marker = /^[✓×] /.test(body) ? 2 : 0;
+        const row = document.createElement('div');
+        row.className = 'line';
+        row.style.paddingLeft = (lead + marker) + 'ch';
+        if (marker) row.style.textIndent = '-' + marker + 'ch';
+        row.textContent = body;
+        const fail = body.startsWith('× ');
+        if (fail && !prevFail && seenFail) row.classList.add('group');
+        if (fail) seenFail = true;
+        prevFail = fail;
+        box.appendChild(row);
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('msg').textContent = MESSAGE ?? '';
+      renderMessage(document.getElementById('msg'), MESSAGE ?? '');
       const close = document.getElementById('close');
       close.addEventListener('click', () => send(''));
       document.addEventListener('keydown', e => {
