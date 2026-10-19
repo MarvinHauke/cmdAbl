@@ -27,7 +27,7 @@ export interface HelloInfo {
 export const TEXT_STALE = "the Live Set changed; run the command again";
 export const TEXT_OUTDATED = "installed Remote Script is outdated; run `cmdabl setup` and restart Live";
 export const TEXT_NOT_RUNNING =
-  "Remote Script not running (install it with `cmdabl setup`, enable cmdAbl as a Control Surface in Live's Settings → Tempo & MIDI, restart Live)";
+  "Remote Script not running (install it with `cmdabl setup`, restart Live, then enable cmdAbl as a Control Surface in Live's Settings → Tempo & MIDI)";
 export const TEXT_NOT_INSTALLED = "Remote Script not installed; run `cmdabl setup` and restart Live";
 export const TEXT_FORBIDDEN =
   "the Remote Script refused the change (access token); restart Live (after `cmdabl setup` if the script was updated)";
