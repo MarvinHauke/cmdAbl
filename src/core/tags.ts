@@ -12,13 +12,32 @@ export function tagsOf(node: ObjectNode): string[] {
 }
 
 /** `#fx` (a tag name: letters, digits, `-`, `_`) or the bare `#`; anything else is no tag target. */
-const TAG_TARGET = /^#([A-Za-z0-9_-]*)$/;
+const TAG_TARGET = /^(!?)#([A-Za-z0-9_-]*)$/;
 
-/** What a typed target means as a tag: `"list"` for a bare `#`, `{ name }` (lower-case) for `#fx`, null for any other text. */
-export function parseTagTarget(text: string): "list" | { name: string } | null {
+/**
+ * What a typed target means as a tag: `"list"` for a bare `#`, `{ name }` (lower-case)
+ * for `#fx`, `{ name, negate: true }` for `!#fx` (every track WITHOUT the tag), null for any other text
+ * (a bare `!#` is none).
+ */
+export function parseTagTarget(text: string): "list" | { name: string; negate?: true } | null {
   const match = TAG_TARGET.exec(text.trim());
   if (!match) return null;
-  return match[1] === "" ? "list" : { name: match[1]!.toLowerCase() };
+  if (match[2] === "") return match[1] === "" ? "list" : null;
+  const name = match[2]!.toLowerCase();
+  return match[1] === "!" ? { name, negate: true } : { name };
+}
+
+/**
+ * The objects a tag target stands for: those tagged `name`, or for a negation the
+ * tracks without it (untagged included) — regular tracks only: never the main
+ * track, return tracks only when typed by path.
+ */
+export function nodesForTag(nodes: ObjectNode[], tag: { name: string; negate?: true }, kinds?: NodeKind[]): ObjectNode[] {
+  if (!tag.negate) return nodesWithTag(nodes, tag.name, kinds);
+  const wanted = tag.name.toLowerCase();
+  return nodes.filter(
+    (n) => n.kind === "track" && n.scope === "regular" && (!kinds || kinds.includes("track")) && !tagsOf(n).includes(wanted),
+  );
 }
 
 /** Whether a (bare) word could be a tag name; such a word also finds the objects tagged with it. */

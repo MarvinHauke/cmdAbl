@@ -379,3 +379,60 @@ test("a bare word read as a tag rests on fresh tags: stale cache → refresh dec
   assert.deepEqual(down.calls, [["/FX Bus"]]);
   assert.equal((await runLine("mute bass", down.deps)).result.code, 0); // still works
 });
+
+test("parseTagTarget: !#name is a negation, a bare !# is nothing", () => {
+  assert.deepEqual(parseTagTarget("!#FX"), { name: "fx", negate: true });
+  assert.equal(parseTagTarget("!#"), null);
+  assert.equal(parseTagTarget("!fx"), null);
+});
+
+test("!#drum: every regular track without the tag, untagged included, at once; main/return never", async () => {
+  const set = [
+    ...roots.map((r) => r),
+    ({ ...track("Reverb Return", []), scope: "return" }) as ObjectNode,
+    ({ ...track("Main", []), scope: "main" }) as unknown as ObjectNode,
+  ];
+  assignPaths(set, "");
+  const s = setup();
+  s.deps.liveNodes = () => flattenObjectTree(set);
+  const out = await runLine("mute !#drum", s.deps);
+  assert.equal(out.result.code, 0);
+  assert.equal(s.picks.length, 0);
+  assert.deepEqual(s.calls, [["/Bass", "/SH-101 MIDI", "/Opal Lead", "/Drums/Snare", "/FX Bus"]]);
+  assert.equal(out.line, "mute !#drum"); // as typed
+  const union = setup();
+  await runLine("mute !#drum, /Drums", union.deps);
+  assert.deepEqual(union.calls, [["/Bass", "/SH-101 MIDI", "/Opal Lead", "/Drums/Snare", "/FX Bus", "/Drums"]]);
+});
+
+test("!#tag: exit 3 when every track has it; exit 5 when the script is down; tags are refreshed first", async () => {
+  const tagged = flattenObjectTree([track("A", ["x"]), track("B", ["x"])]);
+  const s = setup();
+  s.deps.liveNodes = () => tagged;
+  const out = await runLine("mute !#x", s.deps);
+  assert.equal(out.result.code, ExitCode.NOT_FOUND);
+  assert.equal(out.result.message, "mute: every track is tagged #x");
+  const down = setup();
+  down.deps.refreshTags = async () => ({ code: ExitCode.UNAVAILABLE, message: "Remote Script not running" });
+  assert.equal((await runLine("mute !#drum", down.deps)).result.code, ExitCode.UNAVAILABLE);
+  const cold = setup();
+  const sets: ObjectNode[][] = [flattenObjectTree([track("Bass")]), all];
+  let reads = 0;
+  cold.deps.liveNodes = () => sets[Math.min(reads, 1)]!;
+  cold.deps.refreshTags = async () => (reads++, null);
+  await runLine("mute !#drum", cold.deps);
+  assert.equal(reads, 1);
+  assert.equal(cold.calls[0]!.length, 5);
+});
+
+test("!#tag keeps the exceptions of #…: rest and destructive ask; --pick lists the tracks, nothing preselected", async () => {
+  const g = setup({ pickAnswer: (c) => [c[0]!] });
+  await runLine("goto !#drum", g.deps);
+  assert.equal(g.picks.length, 1);
+  assert.deepEqual(g.picks[0]!.offered, ["/Bass", "/SH-101 MIDI", "/Opal Lead", "/Drums/Snare", "/FX Bus"]);
+  const p = setup({ pickAnswer: (c) => [c[1]!] });
+  const out = await runLine("mute !#drum --pick", p.deps);
+  assert.equal(p.picks.length, 1);
+  assert.deepEqual(p.calls, [["/SH-101 MIDI"]]);
+  assert.equal(out.line, "mute --pick !#drum");
+});

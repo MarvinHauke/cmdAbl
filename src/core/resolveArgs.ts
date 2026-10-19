@@ -4,7 +4,7 @@ import { resolveStructural } from "../ableton/resolvePath.js";
 import type { NodeKind } from "../ableton/objectTree.js";
 import { matchesNode, suggest } from "./match.js";
 import type { CommandNode, Invocation } from "./commandTree.js";
-import { isTagWord, nodesWithTag, parseTagTarget, tagCounts, type TagCount } from "./tags.js";
+import { isTagWord, nodesForTag, nodesWithTag, parseTagTarget, tagCounts, type TagCount } from "./tags.js";
 
 // "Resolve before the handler": turns the raw strings of `path` arguments into
 // the Live objects they name, so no command ever has to deal with ambiguity.
@@ -101,10 +101,10 @@ export function lookupTarget(nodes: ObjectNode[], text: string, kinds?: NodeKind
  * matches names stays an ordinary, ambiguous target: the user picks).
  * `typed` is the text as the user wrote it (history keeps it).
  */
-export function tagTargetOf(nodes: ObjectNode[], text: string, kinds?: NodeKind[]): "list" | { name: string; typed: string } | null {
+export function tagTargetOf(nodes: ObjectNode[], text: string, kinds?: NodeKind[]): "list" | { name: string; typed: string; negate?: true } | null {
   const tag = parseTagTarget(text);
   if (tag === "list") return "list";
-  if (tag) return { name: tag.name, typed: `#${tag.name}` };
+  if (tag) return { name: tag.name, typed: `${tag.negate ? "!" : ""}#${tag.name}`, ...(tag.negate ? { negate: true as const } : {}) };
   const word = text.trim();
   if (!isTagWord(word) || nodesWithTag(nodes, word, kinds).length === 0) return null;
   const structural = resolveStructural(nodes, text, kinds);
@@ -259,8 +259,11 @@ export function resolveTargets(
         // `#fx`: every object with the tag, at once, for every argument that can take several
         // objects (whatever `multiple` says); a single-target argument (`rest`) still asks, and so does
         // a destructive command (one address never acts on several objects there, as for `multiple`).
-        const tagged = nodesWithTag(nodes, tag.name, def.kinds);
-        if (tagged.length === 0) return { kind: "error", result: fail(ExitCode.NOT_FOUND, `${command}: no track tagged #${tag.name}`) };
+        const tagged = nodesForTag(nodes, tag, def.kinds);
+        if (tagged.length === 0) {
+          const why = tag.negate ? `every track is tagged #${tag.name}` : `no track tagged #${tag.name}`;
+          return { kind: "error", result: fail(ExitCode.NOT_FOUND, `${command}: ${why}`) };
+        }
         if (!forced && (tagged.length === 1 || (def.rest !== true && !node.destructive))) resolved.push(...tagged);
         else ambiguous.push({ valueIndex, query: target, candidates: tagged });
         continue;

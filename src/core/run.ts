@@ -8,7 +8,7 @@ import { applyPick, lookupTarget, normalizeTargets, resolveTargets, tagTargetOf,
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { PickPreview, StateChange } from "./ui.js";
-import { isTagWord, nodesWithTag, parseTagTarget, type TagCount } from "./tags.js";
+import { isTagWord, nodesForTag, nodesWithTag, parseTagTarget, type TagCount } from "./tags.js";
 
 // The one path every typed line takes: parse → resolve (asking the user to
 // pick when an address is ambiguous) → run → result. Everything it needs from
@@ -114,7 +114,7 @@ function canonicalLine(
         const tag = typeof t === "string" ? tagTargetOf(nodes, t, def.kinds) : null;
         if (tag && tag !== "list") {
           words.push(tag.typed);
-          for (const n of nodesWithTag(nodes, tag.name, def.kinds)) covered.add(n.handleId);
+          for (const n of nodesForTag(nodes, tag, def.kinds)) covered.add(n.handleId);
         }
       }
     }
