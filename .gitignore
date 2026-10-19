@@ -22,3 +22,7 @@ __pycache__/
 
 # MkDocs build output
 site/
+
+# Ableton SDK packages: licensed for use, not for redistribution — kept in the private
+# repo MarvinHauke/cmdabl-vendor; put the .tgz files here locally (see README, Development).
+vendor/
