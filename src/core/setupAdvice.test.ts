@@ -21,10 +21,17 @@ test("advice: installed but not running → restart if needed and enable the con
   const text = adviseRemoteScript({
     shipped: SHIPPED,
     installed: { status: "current", version: SHIPPED },
-    running: { ok: false, code: 5, text: "Remote Script not running" },
+    running: { ok: false, code: 5, text: TEXT_NOT_RUNNING },
   });
-  assert.match(text, /is installed but not running \(Remote Script not running\)/);
+  assert.match(text, /is installed but not running\. Restart Live/);
   assert.match(text, /enable cmdAbl as a control surface/);
+  assert.doesNotMatch(text, /Remote Script not running/); // not nested in the sentence
+  const other = adviseRemoteScript({
+    shipped: SHIPPED,
+    installed: { status: "current", version: SHIPPED },
+    running: { ok: false, code: 1, text: "bridge failed: boom" },
+  });
+  assert.match(other, /not running \(bridge failed: boom\)\./);
 });
 
 test("advice: an outdated or missing installed copy is named, not papered over", () => {

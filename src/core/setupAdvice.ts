@@ -1,4 +1,4 @@
-import type { BridgeResult, HelloInfo } from "../ableton/bridgeProtocol.js";
+import { TEXT_NOT_RUNNING, type BridgeResult, type HelloInfo } from "../ableton/bridgeProtocol.js";
 import type { InstalledScript } from "../ableton/installedScript.js";
 
 // What `cmdabl setup` tells the user to do about the Remote Script, from three
@@ -43,6 +43,7 @@ export function adviseRemoteScript(facts: ScriptFacts): string {
   if (live !== null) {
     return `${known}, but Live still runs ${live}. Restart Live to load Remote Script ${shipped}.`;
   }
-  const why = running && !running.ok ? ` (${running.text})` : "";
+  // The bridge's own "not running" text repeats what this sentence says; any other failure is named.
+  const why = running && !running.ok && running.text !== TEXT_NOT_RUNNING ? ` (${running.text})` : "";
   return `${known} but not running${why}. Restart Live if it has not been restarted since, then ${ENABLE}.`;
 }

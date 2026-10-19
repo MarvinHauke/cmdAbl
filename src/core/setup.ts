@@ -52,7 +52,7 @@ if [ -e "$CMDABL_TARGET" ]; then
 fi
 ln -sf "$CMDABL_SOURCE" "$CMDABL_TARGET"
 echo "OK: Karabiner rule linked successfully."
-echo "Next: Karabiner-Elements -> Complex Modifications -> Add rule -> enable cmdAbl"
+echo "Next: Karabiner-Elements → Complex Modifications → Add predefined rule → cmdAbl → Enable"
 `.trim();
 
   const result = spawnSync("bash", ["-c", script], {
