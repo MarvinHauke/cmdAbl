@@ -103,7 +103,7 @@ When a name matches more than one object, cmdAbl shows a **pick list** instead o
 filter, press `↑` and `↓` to move, `Enter` to choose and `Esc` to cancel. Commands that take several
 tracks, such as `mute`, let you mark more than one row with `Tab`.
 
-![The pick list for solo --pick, with five tracks: Drums, Bass, Synth, Lead and FX Sound, each with its tags; the Drums and Synth solo buttons are marked with a dashed ring](assets/images/pick-list.png)
+![The pick list for mute --pick #drums, with five tracks: Drums, Bass, Synth, Lead and FX Sound, each with its tags; the speaker buttons of Drums and Synth are marked with a dashed ring](assets/images/pick-list.png)
 
 *A name that matches several tracks opens the pick list. The line above the filter shows the command that Enter will run, and the buttons show the state that Enter would set.*
 

@@ -46,7 +46,7 @@ with `Tab`. Each row shows its state in Live's colours, a speaker for mute, `S` 
 and marked rows are highlighted. A dashed ring marks each button that Enter would change, and Live does not change
 until you press Enter.
 
-![The pick list for solo --pick #drums: five tracks tagged drums; the solo buttons of Drums and Synth are marked with a dashed ring, and the cursor is on Lead](docs/assets/images/pick-list.png)
+![The pick list for mute --pick #drums: five tracks tagged drums; the speaker buttons of Drums and Synth are marked with a dashed ring, because Enter mutes them, and the cursor is on Lead](docs/assets/images/pick-list.png)
 
 <!-- GIF to come: docs/assets/images/pakabl.gif -->
 
