@@ -12,7 +12,7 @@ export function changeLines(path: string, c: TagChange): string[] {
 }
 
 /**
- * `tag [--set 1|0] [<target> [name…]]` — tags on tracks, kept in the Live Set
+ * `tag [--list] [--set 1|0] <target> [name…]` — tags on tracks, kept in the Live Set
  * by the Remote Script. Toggles like mute; `--set` adds or removes.
  */
 export function activate(api: ModuleApi): void {
@@ -21,7 +21,7 @@ export function activate(api: ModuleApi): void {
     summary: "tag tracks, or list the tags of the Set",
     description:
       "Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx " +
-      "reaches every track tagged fx. Without arguments, lists every tag and the tracks that carry it. " +
+      "reaches every track tagged fx. With --list, lists every tag and the tracks that carry it. " +
       "With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target " +
       "that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. " +
       "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +
@@ -29,7 +29,7 @@ export function activate(api: ModuleApi): void {
       "the command that puts every change back. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or " +
       "a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).",
     examples: [
-      { line: "tag", note: "all tags and their tracks" },
+      { line: "tag --list", note: "all tags and their tracks" },
       { line: "tag /Lead", note: "pick the tags to switch on or off for the track Lead, or type a new one" },
       { line: "tag /Lead fx synth", note: "switch fx and synth on, or off where they are on" },
       { line: "tag --set 1 /Bass fx", note: "make sure Bass is tagged fx" },
@@ -38,6 +38,7 @@ export function activate(api: ModuleApi): void {
     ],
     requires: ["bridge"],
     options: [
+      { name: "list", short: "l", summary: "list every tag with its tracks instead of changing tags" },
       {
         name: "set",
         short: "s",
@@ -51,7 +52,7 @@ export function activate(api: ModuleApi): void {
         name: "target",
         kind: "path",
         kinds: ["track"],
-        required: false,
+        required: false, // not required by the parser: --list takes none; the handler answers a missing one like the parser would
         summary: "A track (quote a name with spaces) or #tag for every track with that tag; without names a list of tags opens",
       },
       { name: "name", kind: "text", required: false, variadic: true, summary: "Tag names: lowercase letters, digits, - and _" },
@@ -60,16 +61,32 @@ export function activate(api: ModuleApi): void {
       const targets = (invocation.args[0] ?? []) as ObjectNode[];
       const words = (invocation.args[1] ?? []) as string[];
 
+      const listing = invocation.options.list === true;
+      if (listing && (targets.length > 0 || words.length > 0 || invocation.options.set !== undefined)) {
+        return fail(ExitCode.USAGE, "tag --list takes no target, names or --set");
+      }
+      if (!listing && targets.length === 0) {
+        // Same answer as the platform gives for a missing argument: exit 2 with the usage.
+        return fail(ExitCode.USAGE, `missing argument <target>\n${api.commands.usage(["tag"]) ?? "usage: tag [--set <0|1>] <target> [<name>…]"}`);
+      }
+
       const fresh = await api.tags.refresh();
       if (!fresh.ok) return fail(fresh.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
       const tracks = api.liveSet.nodes().filter((n) => n.kind === "track");
       const set = invocation.options.set;
       const mode: TagMode = set === "1" ? "add" : set === "0" ? "remove" : "toggle";
 
-      if (targets.length === 0) {
+      if (listing) {
         const index = tagIndex(tracks.map((t) => ({ path: t.path, tags: api.tags.of(t) })));
         if (index.length === 0) return ok("no tags in the Set");
-        return ok(index.map((e) => `#${e.tag}: ${e.paths.join(", ")}`).join("\n"));
+        return {
+          ...ok(index.map((e) => `#${e.tag}: ${e.paths.join(", ")}`).join("\n")),
+          sections: index.map((e) => ({
+            heading: `#${e.tag}`,
+            meta: `${e.paths.length} ${e.paths.length === 1 ? "track" : "tracks"}`,
+            items: e.paths,
+          })),
+        };
       }
 
       let pickedModes: Map<string, TagMode> | null = null;

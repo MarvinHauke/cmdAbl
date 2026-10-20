@@ -80,8 +80,8 @@ test("an unmarked write is still exit 0 and says to save the Set", async () => {
 
 test("without a target the Set's tags are listed", async () => {
   const { run } = setup({ Lead: ["synth", "fx"], Bass: ["synth"] });
-  assert.equal((await run({}, [], []))!.message, "#fx: /Lead\n#synth: /Lead, /Bass");
-  assert.equal((await setup({}).run({}, [], []))!.message, "no tags in the Set");
+  assert.equal((await run({ list: true }, [], []))!.message, "#fx: /Lead\n#synth: /Lead, /Bass");
+  assert.equal((await setup({}).run({ list: true }, [], []))!.message, "no tags in the Set");
 });
 
 test("a target without names opens the tag list with the target's tags lit and applies the marked ones", async () => {
@@ -141,4 +141,25 @@ test("a pick with mixed targets applies each row uniformly, as the list promised
   assert.deepEqual(fake.tagStore.get("Bass"), ["fx"]);
   assert.match(r.message ?? "", /^\/Lead: -drum \(now #fx\)/); // Lead already had fx
   assert.match(r.message ?? "", /\/Bass: \+fx -drum/);
+});
+
+test("a bare tag lists one section per tag, sorted by name, tracks in Set order; the text stays", async () => {
+  const { run } = setup({ Lead: ["synth", "fx"], Bass: ["fx"] });
+  const r = (await run({ list: true }, [], [])) as { message?: string; sections?: unknown };
+  assert.equal(r.message, "#fx: /Lead, /Bass\n#synth: /Lead");
+  assert.deepEqual(r.sections, [
+    { heading: "#fx", meta: "2 tracks", items: ["/Lead", "/Bass"] },
+    { heading: "#synth", meta: "1 track", items: ["/Lead"] },
+  ]);
+});
+
+test("--list takes no target, names or --set (exit 2); a bare tag is a usage error with the usage text", async () => {
+  const { run } = setup({ Lead: ["fx"] });
+  for (const [options, targets, names] of [[{ list: true }, [lead], []], [{ list: true }, [], ["fx"]], [{ list: true, set: "1" }, [], []]] as const) {
+    const r = (await run(options as never, targets as never, names as never))!;
+    assert.equal(r.code, ExitCode.USAGE);
+  }
+  const bare = (await run({}, [], []))!;
+  assert.equal(bare.code, ExitCode.USAGE);
+  assert.match(bare.message ?? "", /^missing argument <target>\nusage: tag/);
 });
