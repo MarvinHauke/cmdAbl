@@ -274,8 +274,8 @@ Release:
   and the unused Vite was removed.
 
 - Tag editing (user, 2026-10-20): plan 0010 — `tag -l` as an editable overview on a new
-  `board` surface (click to remove, Apply, reopen) and `tag --edit <tag>` as a tag-first pick
-  list; module pages move to `ui/modules/<module>/`. A 0.1.2 candidate, no tasks yet.
+  `board` surface like Live's browser tag panel (chips with ×, a checkbox list of all tracks per
+  tag, New tag…, Apply); module pages move to `ui/modules/<module>/`. A 0.1.2 candidate, no tasks yet.
 
 - Ideas from ClyphX (2026-10-20): plan 0009 — `;` action lists with aliases (0.1.2); `.`,
   index, range and `all` targets, `vol`/`pan`/`send` (0.1.x); snapshots (0.2.x); triggers from
