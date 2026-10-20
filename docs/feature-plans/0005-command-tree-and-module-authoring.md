@@ -68,6 +68,7 @@ interface OptionDef {
   choices?: string[];                                   // the value must be one of these
   number?: { min?: number; max?: number; integer?: boolean };
   values?: number; valueLabels?: string[];              // N values: --rename <old> <new> (0010 decision 8, 4033470)
+  valueDefault?: string;                                // used when the value is missing: `tag -e` = `tag -e #`
   summary: string;
 }
 interface ArgDef {

@@ -156,7 +156,8 @@ null when closed. Only real differences are sent; a created section only matters
 
 `--edit` takes the tag as its value (`tag -e fx`, `tag -e #fx`), because the first positional
 is the target path and is resolved before the handler. `tag -e #` first opens the tag list
-with the new-tag row (bare `#` = the tag list, as elsewhere). Usage: `tag --edit <tag|#>`. It ships with the
+with the new-tag row (bare `#` = the tag list, as elsewhere). Usage: `tag --edit [<tag|#>]`; a bare `tag -e` means `tag -e #` (user, Live test 2026-10-21; core adds
+`OptionDef.valueDefault`). `tag -e #` is single-select: Enter picks the tag (`73f0079`, `702fcca`). It ships with the
 board as the keyboard path (decision 5).
 
 ## The UI pattern in `ui/`
