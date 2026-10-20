@@ -77,7 +77,10 @@ untagged                                       4 tracks
   (substring, start of name first) — the best one as ghost text, up to 6 as suggestion chips.
   Tab in a non-empty input puts the highlighted suggestion into the input and stays there (Tab in
   an empty input moves to the next field; user, Live test), Enter adds the best or highlighted suggestion (a chip with a dashed ring), a
-  click on a suggestion adds it. Backspace in an empty input marks the last chip for removal.
+  click on a suggestion adds it. Backspace in an empty input marks the last chip for removal. ← in an empty input (or with the caret
+  at the start) moves a chip cursor onto the chips; ←/→ step through them, Backspace/Delete/Space
+  toggle the mark of the chip under the cursor, → past the last chip or typing returns to the input
+  (user, Live test).
 - **↑/↓** move through the suggestions while they show, otherwise to the previous or next tag's
   input. **Enter in an empty input** applies. **Esc** clears the input, then closes.
 - **`new tag…` input** at the bottom: Enter checks the name and adds an empty section with the
