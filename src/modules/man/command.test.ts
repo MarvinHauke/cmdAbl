@@ -19,7 +19,7 @@ function setup() {
     const outcome = parse(line, fake.commands);
     assert.equal(outcome.kind, "run", line);
     if (outcome.kind !== "run") throw new Error(line);
-    return (await man.run!(outcome.invocation, undefined as never)) as { code: number; message?: string };
+    return (await man.run!(outcome.invocation, undefined as never)) as { code: number; message?: string; link?: { label: string; url: string } };
   };
   return { fake, man, run };
 }
@@ -40,6 +40,7 @@ test("man <command> shows the page of a command and of a subcommand", async () =
   const sub = await run("man history clear");
   assert.match(sub.message ?? "", /usage: history clear/);
   assert.match(sub.message ?? "", /#history-clear$/);
+  assert.deepEqual(sub.link, { label: "Open in browser", url: "https://marvinhauke.github.io/cmdAbl/reference/commands/#history-clear" });
 });
 
 test("an unknown command is exit 3 with close matches", async () => {

@@ -2,13 +2,13 @@ import type { ModuleApi } from "../types.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
 import { openUrl } from "../../core/openUrl.js";
 import { findTopic } from "./topics.js";
-import { closeMatches, findNode, manPage } from "./page.js";
+import { closeMatches, findNode, manPage, webUrl } from "./page.js";
 
 /**
  * `man <command…>` — the full page of a command inside Live, built from the
  * command tree; `man ableton [words]` and `man cmdabl` open the web manuals.
  * `cmdabl` alone is the docs site, `man cmdabl setup` the page of that
- * subcommand. The page goes through the message surface (multi-line text).
+ * subcommand. The page goes through the message surface (multi-line text) with a button that opens its section of the reference.
  */
 export function activate(api: ModuleApi): void {
   api.commands.add({
@@ -48,7 +48,7 @@ export function activate(api: ModuleApi): void {
       const roots = api.commands.roots();
       const found = findNode(roots, words);
       const help = found ? api.commands.help(found.path) : undefined;
-      if (found && help !== undefined) return ok(manPage(help, found.node, found.path));
+      if (found && help !== undefined) return { ...ok(manPage(help, found.node, found.path)), link: { label: "Open in browser", url: webUrl(found.path) } };
 
       const near = closeMatches(roots, words);
       return fail(
