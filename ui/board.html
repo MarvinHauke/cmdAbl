@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips; Tab completes, Enter adds the highlighted one as a chip with a dashed accent ring. A readonly section shows chips only. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. Out (close_and_send): '' when closed (Close, Esc), or JSON { changes: [{ section, item, on }], created: [names] } on Apply: only real differences against the request; a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
+<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips; Tab completes, Enter adds the highlighted one as a chip with a dashed accent ring. A readonly section shows chips only. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names] } on Apply: only real differences against the request; a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -112,6 +112,28 @@
       return out;
     }
     function createdNames() { return S.filter(s => s.created && s.items.some(i => i.cur)).map(s => s.id); }
+
+    // Esc or Close with pending changes warns first (footer); a second Esc or Close discards,
+    // any other key cancels the warning. Without changes it closes at once.
+    const hintEl = document.getElementById('hint');
+    const defaultHint = hintEl.textContent;
+    let armed = false;
+    function disarm() { if (!armed) return; armed = false; hintEl.textContent = defaultHint; hintEl.style.color = ''; }
+    function requestClose() {
+      const n = changes().length;
+      if (n && !armed) {
+        armed = true;
+        hintEl.textContent = n + ' change' + (n === 1 ? '' : 's') + ' not applied — Esc again to discard';
+        hintEl.style.color = 'var(--accent)';
+        return;
+      }
+      send('');
+    }
+    document.addEventListener('keydown', e => {
+      if (armed && e.key !== 'Escape' && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) disarm();
+    }, true);
+    // A click anywhere but on Close also cancels the warning (the count shown would be stale).
+    document.addEventListener('mousedown', e => { if (!(e.target instanceof Element && e.target.closest('#close'))) disarm(); }, true);
 
     function apply() {
       const list = changes();
@@ -351,7 +373,7 @@
         else jump(si, delta);
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        if (s.inputEl.value) { s.q = s.inputEl.value = ''; s.hi = 0; clearNoMatch(s); renderAdd(si); } else send('');
+        if (s.inputEl.value) { s.q = s.inputEl.value = ''; s.hi = 0; clearNoMatch(s); renderAdd(si); } else requestClose();
       }
     }
     function keyInCreate(e) {
@@ -364,13 +386,13 @@
         jump(-1, e.key === 'ArrowDown' ? 1 : -1);
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        if (createInput.value) { createInput.value = ''; createInput.dispatchEvent(new Event('input')); } else send('');
+        if (createInput.value) { createInput.value = ''; createInput.dispatchEvent(new Event('input')); } else requestClose();
       }
     }
     // Focus on nothing (after a click on a button): Esc closes, Enter applies.
     document.addEventListener('keydown', e => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement || e.repeat) return;
-      if (e.key === 'Escape') { e.preventDefault(); send(''); }
+      if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
       else if (e.key === 'Enter') { e.preventDefault(); apply(); }
       else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) inputs()[0]?.input.focus();   // typing starts the first input
     });
@@ -380,7 +402,7 @@
       buildCreate();
       updateFooter();
       document.getElementById('apply').addEventListener('click', apply);
-      document.getElementById('close').addEventListener('click', () => send(''));
+      document.getElementById('close').addEventListener('click', requestClose);
       scroll.tabIndex = -1;
       const first = inputs()[0];
       if (first) first.input.focus({ preventScroll: true }); else scroll.focus();   // opens at the top, whatever the first section holds
