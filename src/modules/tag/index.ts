@@ -111,11 +111,10 @@ export function activate(api: ModuleApi): void {
         name: e.tag,
         count: e.paths.length,
       }));
-      const chosen = await api.pickTags("tag --edit: which tag?", rows, { allowNew: true });
+      const chosen = await api.pickTags("tag --edit: which tag?", rows, { allowNew: true, multi: false });
       if (!chosen || chosen.length === 0) return;
-      if (chosen.length > 1) return fail(ExitCode.USAGE, "tag --edit works on one tag: mark only one");
-      const checked = normalizeTagNames(chosen);
-      if (!checked.ok || checked.names.length !== 1) {
+      const checked = normalizeTagNames([chosen[0]!]);
+      if (!checked.ok) {
         return fail(ExitCode.USAGE, `tag: "${chosen[0]}" is not a tag name — use lowercase letters, digits, - and _`);
       }
       name = checked.names[0]!;

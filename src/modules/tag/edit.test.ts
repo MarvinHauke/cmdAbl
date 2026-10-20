@@ -53,7 +53,11 @@ test("--edit: Esc changes nothing; a #fx value works like fx", async () => {
 
 test("--edit # asks for the tag first (single choice, a new name allowed), then the tracks", async () => {
   const { fake, run } = setup({ Lead: ["fx"] }, { pickTagsAnswer: () => ["Perc"], pickAnswer: (c) => [c[1]!] });
+  const asked: unknown[] = [];
+  const pickTags = fake.api.pickTags;
+  fake.api.pickTags = (title, rows, options) => (asked.push(options?.multi), pickTags(title, rows, options));
   const r = (await run({ edit: "#" }))!;
+  assert.deepEqual(asked, [false]); // single choice: Enter on a tag goes straight to its track list
   assert.equal(r.code, ExitCode.OK);
   assert.equal(fake.tagLists[0]!.allowNew, true);
   assert.deepEqual(fake.tagLists[0]!.rows, [{ name: "fx", count: 1 }]);
@@ -62,8 +66,8 @@ test("--edit # asks for the tag first (single choice, a new name allowed), then 
   const cancelled = setup({}, { pickTagsAnswer: () => null });
   assert.equal(await cancelled.run({ edit: "#" }), undefined);
   assert.equal(cancelled.fake.pickStates.length, 0);
-  const two = setup({}, { pickTagsAnswer: () => ["a", "b"] });
-  assert.equal((await two.run({ edit: "#" }))?.code, ExitCode.USAGE);
+  const bad = setup({}, { pickTagsAnswer: () => ["FX!"] });
+  assert.equal((await bad.run({ edit: "#" }))?.code, ExitCode.USAGE);
 });
 
 test("--edit usage errors are exit 2 and write nothing; script down is exit 5", async () => {
