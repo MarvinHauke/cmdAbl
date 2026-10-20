@@ -354,3 +354,12 @@ test("run: a bridge that throws becomes exit 5, not an exception", async () => {
   assert.equal(out.result.code, ExitCode.UNAVAILABLE);
   assert.match(out.result.message ?? "", /socket exploded/);
 });
+
+test("--help ends with 'more: man <path>' only when a man command exists", async () => {
+  const { deps, registry } = setup();
+  const without = await runLine("mute --help", deps);
+  assert.ok(!String(without.result.message).includes("more:"));
+  registry.add({ name: "man", summary: "manual", run: () => {} });
+  const withMan = await runLine("mute --help", deps);
+  assert.match(String(withMan.result.message), /\nmore: man mute$/);
+});

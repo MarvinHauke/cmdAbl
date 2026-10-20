@@ -362,14 +362,9 @@ export function usage(node: CommandNode<any, any>, path: string[]): string {
   return parts.join(" ");
 }
 
-/**
- * Multi-line help for a node: summary, description, usage, then its arguments,
- * subcommands, options and examples.
- */
-export function helpText(node: CommandNode<any, any>, path: string[]): string {
-  const lines = [node.summary];
-  if (node.description) lines.push("", node.description);
-  lines.push("", `usage: ${usage(node, path)}`);
+/** The lines of the `commands:`, `arguments:` and `options:` sections (shared by the short and the full help). */
+function sections(node: CommandNode<any, any>): string[] {
+  const lines: string[] = [];
   if (node.children?.length) {
     lines.push("", "commands:");
     for (const child of node.children) lines.push(`  ${child.name.padEnd(12)} ${child.summary}`);
@@ -386,6 +381,17 @@ export function helpText(node: CommandNode<any, any>, path: string[]): string {
       lines.push(`  ${flag.padEnd(22)} ${opt.summary}${opt.number ? ` (${numberRule(opt.number)})` : ""}`);
     }
   }
+  return lines;
+}
+
+/**
+ * The full help of a node, for `man` and the reference: summary, description, usage, then its
+ * subcommands, arguments, options and examples.
+ */
+export function helpText(node: CommandNode<any, any>, path: string[]): string {
+  const lines = [node.summary];
+  if (node.description) lines.push("", node.description);
+  lines.push("", `usage: ${usage(node, path)}`, ...sections(node));
   if (node.examples?.length) {
     lines.push("", "examples:");
     for (const example of node.examples) {
@@ -394,6 +400,15 @@ export function helpText(node: CommandNode<any, any>, path: string[]): string {
     }
   }
   return lines.join("\n");
+}
+
+/**
+ * What `<command> --help` shows: how to use it, no prose — usage, subcommands, arguments and
+ * options one line each, then `more: <more>` when the caller names where the full page is.
+ * (Core does not know which module offers it: `run.ts` passes `man <path>` only when a `man` command exists.)
+ */
+export function shortHelpText(node: CommandNode<any, any>, path: string[], more?: string): string {
+  return [`usage: ${usage(node, path)}`, ...sections(node), ...(more ? ["", `more: ${more}`] : [])].join("\n");
 }
 
 /** The tree without handlers — plain JSON for the palette webview. */

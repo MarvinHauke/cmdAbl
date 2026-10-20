@@ -2,7 +2,7 @@ import { ExitCode, fail, ok, type CommandResult } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
 import type { CommandRegistry } from "./commandRegistry.js";
-import { helpText, type CommandNode, type Invocation, type PickState } from "./commandTree.js";
+import { shortHelpText, type CommandNode, type Invocation, type PickState } from "./commandTree.js";
 import { parse } from "./parse.js";
 import { applyPick, lookupTarget, normalizeTargets, resolveTargets, tagTargetOf, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
@@ -252,7 +252,7 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   const parsed = parse<void>(line, registry.roots());
   if (parsed.kind === "error") return { result: parsed.result };
   if (parsed.kind === "help") {
-    if (parsed.node) return { result: ok(helpText(parsed.node, parsed.path)) };
+    if (parsed.node) return { result: ok(shortHelpText(parsed.node, parsed.path, registry.roots().some((n) => n.name === "man") ? `man ${parsed.path.join(" ")}` : undefined)) };
     const lines = registry.list().map((def) => `${def.name.padEnd(12)} ${def.description}`).sort();
     return { result: ok(lines.join("\n")) };
   }

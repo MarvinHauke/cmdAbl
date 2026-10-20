@@ -503,3 +503,52 @@ test("wantsOpen: only {open:true} counts", async () => {
   assert.equal(wantsOpen('{"open":true}'), true);
   for (const raw of [null, "", "{}", '{"open":"yes"}', "nope", "null"]) assert.equal(wantsOpen(raw), false, String(raw));
 });
+
+test("shortHelpText: usage, sections one line each, no prose, no examples, a pointer to man", async () => {
+  const { shortHelpText, PICK_OPTION } = await import("./commandTree.js");
+  const leaf: CommandNode<any, any> = {
+    name: "mute",
+    summary: "mute tracks",
+    description: "A long paragraph that --help no longer prints.",
+    examples: [{ line: "mute bass", note: "mute Bass" }],
+    options: [{ name: "set", short: "s", takesValue: true, choices: ["0", "1"], summary: "set instead of toggle" }],
+    args: [{ name: "target", kind: "path", kinds: ["track"], summary: "the track" }],
+    run: () => {},
+  } as never;
+  assert.equal(
+    shortHelpText(leaf, ["mute"], "man mute"),
+    [
+      "usage: mute [--set <0|1>] [--pick] <target>",
+      "",
+      "arguments:",
+      "  <target>     the track",
+      "",
+      "options:",
+      "  -s, --set <0|1>        set instead of toggle",
+      `  --pick                 ${PICK_OPTION.summary}`,
+      "",
+      "more: man mute",
+    ].join("\n"),
+  );
+});
+
+test("shortHelpText: a group lists its subcommands; more points at the full path", async () => {
+  const { shortHelpText } = await import("./commandTree.js");
+  const group = {
+    name: "history",
+    summary: "past commands",
+    description: "Long prose.",
+    children: [{ name: "clear", summary: "forget everything", run: () => {} }, { name: "list", summary: "show them", run: () => {} }],
+  } as never;
+  assert.equal(
+    shortHelpText(group, ["history"], "man history"),
+    "usage: history <command>\n\ncommands:\n  clear        forget everything\n  list         show them\n\nmore: man history",
+  );
+  assert.match(shortHelpText((group as { children: never[] }).children[0]!, ["history", "clear"], "man history clear"), /more: man history clear$/);
+});
+
+test("shortHelpText: no 'more' line without a hint", async () => {
+  const { shortHelpText } = await import("./commandTree.js");
+  const node = { name: "x", summary: "s", run: () => {} } as never;
+  assert.equal(shortHelpText(node, ["x"]), "usage: x");
+});
