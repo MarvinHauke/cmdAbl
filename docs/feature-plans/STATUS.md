@@ -45,6 +45,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    suggestions (`8e70c73`), Esc/Close guard for pending changes (`065fcbe`); dark scheme.
    Live (user, 2026-10-20): add… input, "no match", Tab accept, ↓ through suggestions, Tab on
    empty → next field — passed. Apply closes (no reopen) after the user's remark.
+   Passed (user, 2026-10-20, later): ←/→ through suggestions; Apply closes quietly with the change
+   and undo lines in `cmdabl log`; Enter applies from the chip cursor and empty inputs (`f8e4135`).
 3. `tag -l` on `board` — built `11815ba` (+ lowercase/merge of created names); Live test
    pending together with 1 and 2.
 5. Module pages moved to `ui/modules/<module>/` (`1b70581`) — Live check: `pakabl list` opens
