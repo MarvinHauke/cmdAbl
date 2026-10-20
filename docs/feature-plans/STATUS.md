@@ -69,10 +69,11 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
 
 ## Next after 0.1.2 (user, 2026-10-20)
 
-0. Bug under diagnosis (2026-10-21): `find kick` missed Drum Rack pads. Bridge `4992d32` refreshes the
-   chain names sooner (400 ms while a rack has none) and logs "(N empty)"; hypothesis: pad chains come
-   back with empty names. Waiting for the user's `find -c` and the "chains refresh:" log line. Later:
-   devices inside chains (e.g. the "Kick Caltroit" device in a pad) as tree nodes, so find sees them.
+0. Nested racks (2026-10-21, user: in 0.1.2): `find kick` missed the pads of a Drum Rack inside the
+   chain of an Instrument Rack ("Strutter Kit"), because devices inside chains were not tree nodes.
+   Bridge: chain nodes get their devices as children, recursively; `select` selects the ancestor
+   chains top-down (script 0.1.6). Core: await the chain-name refresh before find/goto build the tree.
+   `4992d32` (faster refresh while names are missing, "(N empty)" in the log) stays.
 
 1. 0013 `note`: one Markdown note per Set, in a simple form, with the store in 0.1.3. Starts with a spike
    (`Song.set_data`).
