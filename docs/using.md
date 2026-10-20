@@ -134,6 +134,15 @@ A tag marks what a track is, such as `fx` or `drums`. One command then reaches e
 - `mute #` opens a list of the Set's tags. Mark the tags to act on.
 - `mute --pick drums` shows every match in a list, and only the marked rows run.
 
+**Adding a tag.** In the tag list of `tag <target>`, type a name that no tag matches exactly. The list then shows
+`+ new tag "<name>"` as its last row.
+
+- If that row is the only one, type the name and press `Enter` to add it.
+- Otherwise press `↓` to reach the row, then `Enter`.
+- Tags you marked before still come along.
+
+In a Set without tags, the empty list says "type a new tag".
+
 **Rules.**
 
 - Tag names use lowercase letters, digits, `-` and `_`.
