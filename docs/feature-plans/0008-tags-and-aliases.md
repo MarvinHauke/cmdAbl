@@ -4,9 +4,8 @@
 **Depends on:** [0005](0005-command-tree-and-module-authoring.md) (target resolution, pick list),
 [0001](0001-path-addressed-objects-and-commands.md) (Remote Script protocol).
 
-**Status:** 0.1.1 built (2026-10-20: `c91a2c4`, `2166db5`, `9a77e00`), Live-tested 2026-10-20 — spike done (saved, duplicated, not undoable,
-marked modified via `toggle_color`); the spike ops and `tagtest` are being replaced. Tags on tracks ship as
-0.1.1, the store and aliases as 0.1.2; tags on chains and pads come with 0.2.0.
+**Status:** In Progress — 0.1.1 tags on tracks shipped (Live-tested 2026-10-20; script 0.1.5);
+0.1.2 the store and aliases next; tags on chains and pads with 0.2.0.
 
 ## Context
 
