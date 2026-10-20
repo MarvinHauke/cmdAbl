@@ -62,6 +62,8 @@ Done means:
 4. **A core logger, `src/core/log.ts`.**
    - Levels: `debug | info | warn | error`.
    - Line format: `cmdAbl [<source>] <level>: …`.
+   - Every line has a timestamp (user, 2026-10-20). The console shows `HH:MM:SS.mmm cmdAbl [<source>] <level>: …`;
+     `cmdabl log` shows `HH:MM:SS [<source>] <level>: …`, with a date line where the day changes; `--undo` stays bare commands.
    - A ring buffer keeps the last 500 lines in memory.
    - `debug` lines are dropped unless `cmdabl log --debug` turned them on for the session.
    - `ModuleApi.log` stays: it logs `info`, tagged with the module name.
