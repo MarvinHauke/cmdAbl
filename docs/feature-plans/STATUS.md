@@ -41,6 +41,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    Esc changes nothing, script off → exit 5. `tag -e #` becomes single-select (user, Live
    test 2026-10-21: Enter on a tag opens its track list): core adds `multi: false` to `api.pickTags`,
    then modules switches `tag -e #` to it. Built: core `73f0079`, modules `702fcca`.
+   Bare `tag -e` = `tag -e #` (core `c2a6986`, modules `bf85542`). Live (user, 2026-10-21): `tag -e`,
+   `tag -e #`, `tag -e fx`, usage errors and `tag --help` — passed.
 2. `board` surface — core contract built `96e838a` (`api.ui.board` → `{ answer, cut }`);
    `ui/board.html` built by cmdabl-ui, redesigned to an `add…` input with ghost text and
    suggestions (`8e70c73`), Esc/Close guard for pending changes (`065fcbe`); dark scheme.
