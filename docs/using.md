@@ -156,8 +156,8 @@ In a Set without tags, the empty list says "type a new tag".
 - Each tag shows its tracks as chips. Click a chip's **×** to mark that track for removal; it is struck through.
   A second click unmarks it.
 - Each tag ends with an **add…** input. Type a track's name and the best match appears as ghost text. Up to six
-  matching tracks show as chips below it: the tracks that do not carry the tag yet. `Tab` completes the ghost text,
-  `Enter` adds the track, and a click on a suggestion adds it too. The new chip has a dashed ring. "no match" means
+  matching tracks show as chips below it: the tracks that do not carry the tag yet. `Tab` puts the highlighted track
+  in the field and `Enter` adds it; `Tab` in an empty field moves to the next one. A click on a suggestion adds it too. The new chip has a dashed ring. "no match" means
   nothing was added.
 - In an empty input, `Backspace` marks the last chip for removal; a second press unmarks it.
 - **new tag…** at the bottom creates a tag: type its name and press `Enter`. Names are saved in lowercase, so
