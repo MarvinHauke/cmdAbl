@@ -15,8 +15,9 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
 1. Live test `man <command>` (`76cb3ea`): `man tag`, `man history clear`, `man cmdabl` (site),
    `man cmdabl setup`, `man ableton warp modes`, `man tga` (did you mean), bare `man` (usage).
 2. ~~Live test the new-tag row~~ — passed (user, 2026-10-20).
-   Clickable `web:` link in the message dialog (user): notify gets an optional link button that
-   closes the dialog and opens the URL (core `openUrl`); `man` passes it — in progress.
+   Clickable link (user): "Open in browser" button on `man` pages (`2e2e41a`, `06267fa`,
+   `bd1cfbf`) — Live test: `man history clear` / `man tag` button opens the section; Tab+Enter
+   too; Esc/Enter/Close only close; `man tga` no button; `man cmdabl` opens the site.
 3. Recordings by the user (`.mov` in `/tmp/shots/`) → cmdabl-docs makes GIFs:
    `hero` (tags in action), `tags` (tag list), `pakabl` (`pakabl list`); optional: Karabiner
    rule screenshot for Getting started. Then drop unused images (`demo.gif`, old `pakabl-list.png`).
