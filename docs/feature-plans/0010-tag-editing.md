@@ -4,7 +4,8 @@
 **Depends on:** [0008](0008-tags-and-aliases.md) (tags on tracks, `tag -l`),
 [0007](0007-ui-surfaces.md) (a new surface `board`).
 
-**Status:** Draft — planned 2026-10-20 for 0.1.2 or later. No builder tasks yet.
+**Status:** In Progress — 0.1.2 (user, 2026-10-20: 0.1.1 is released first; 0.1.2 = this plan;
+the store and aliases move to 0.1.3). Branch `feat/tag-board`.
 
 ## Context
 
@@ -34,6 +35,15 @@ changes, the extension applies them after the dialog closes, then reopens the pa
    - The contract goes in `src/core/ui.ts`, the page is `ui/board.html` and uses `shared.css`.
    - It can be themed and replaced like the other surfaces (0007 §2).
    - Later users: aliases, the history list, tags on chains and pads.
+4. **After Apply the board reopens** with the new state; Close ends it and shows one summary of
+   all applied changes with the `undo:` lines.
+5. **`tag --edit <tag>` (`-e`) ships with it** as the keyboard path (name decided by the
+   architect: the user already calls it that).
+6. **An "untagged" section** lists the tracks without any tag, read-only (chips without ×, no
+   checkbox list) — ticking a track in a tag's list is how it leaves it. Contract: a section has
+   `readonly?: true`.
+7. **Module pages stay where they are** for now (`ui/pakabl-list.html`); the `ui/modules/`
+   move is optional tidying, done only when a second module page appears.
 
 ## Design (draft)
 
@@ -78,6 +88,7 @@ interface BoardRequest {
     heading: string;
     meta?: string;
     items: { id: string; label: string; on: boolean }[]; // every candidate; on = carries it
+    readonly?: boolean; // only the on items, as chips without ×; no checkbox list
   }[];
   create?: { label: string; pattern?: string };  // "New tag…"; pattern = allowed names
   apply: { label: string };
@@ -125,9 +136,6 @@ can do this, `--edit` only stays if a fast keyboard path is still wanted (open q
 
 ## Open questions
 
-- Keep `tag --edit <tag>` as a keyboard path next to the overview, and what to call it?
-- After Apply: reopen the overview, or close with the result?
-- Should the overview show an "untagged" section?
 - A large change set leaves one undo step per track written. Is a batched `tags_set`
   (script op) worth it?
 

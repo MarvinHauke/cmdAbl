@@ -30,7 +30,7 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
 6. CI green → squash-merge (user's go) → release `v0.1.1`; hand-written notes (tags, `#`/`!#`,
    bare tag word, `--pick`, new-tag row, `man <command>` with link, short `--help`, `tag -l` overview (bare `tag` no longer lists), `find` with tags, run `cmdabl setup` once for script
    0.1.5, Cmd+Z does not undo tags).
-7. pakabl index workflow → merge its PR; STATUS on `main`; delete the branch; 0.1.2 on a new branch.
+7. pakabl index workflow → merge its PR; STATUS on `main`; delete the branch; 0.1.2 (tag editing, 0010) continues on `feat/tag-board`.
 
 
 ## Where the code is
@@ -256,8 +256,9 @@ Release:
 
 ### After 0.1.0 (order to be set then)
 
-- **Versions (user, 2026-10-19, conservative):** 0.1.1 tags on tracks · 0.1.2 the store +
-  aliases, history survives restarts · 0.1.3 small items · more 0.1.x as needed · 0.2.0 a refined
+- **Versions (user, 2026-10-19, conservative):** 0.1.1 tags on tracks · 0.1.2 tag editing
+  (plan 0010: board, `tag --edit`; user, 2026-10-20) · 0.1.3 the store + aliases, history
+  survives restarts · 0.1.4 small items · more 0.1.x as needed · 0.2.0 a refined
   bundle (completion engine with ghost text and Telescope-style fuzzy finding, tags on chains
   and pads, pipes or refined aliases). Tags and aliases: plan 0008. 0.1.1 tags on tracks built on `feat/tags-aliases`
   (script 0.1.5 `c91a2c4`, core `2166db5`/`85ad442`, `tag` `9a77e00`; spike removed), waiting for
@@ -276,9 +277,9 @@ Release:
 
 - Tag editing (user, 2026-10-20): plan 0010 — `tag -l` as an editable overview on a new
   `board` surface like Live's browser tag panel (chips with ×, a checkbox list of all tracks per
-  tag, New tag…, Apply); module pages move to `ui/modules/<module>/`. A 0.1.2 candidate, no tasks yet.
+  tag, New tag…, Apply). 0.1.2, in work on `feat/tag-board`.
 
-- Ideas from ClyphX (2026-10-20): plan 0009 — `;` action lists with aliases (0.1.2); `.`,
+- Ideas from ClyphX (2026-10-20): plan 0009 — `;` action lists with aliases (0.1.3); `.`,
   index, range and `all` targets, `vol`/`pan`/`send` (0.1.x); snapshots (0.2.x); triggers from
   clip, locator and pad names (spike after 0.2.0).
 

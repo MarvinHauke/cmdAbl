@@ -24,12 +24,12 @@ trigger side is a new direction. Concepts only — no code is copied.
 | Selected track | `SEL/MUTE` | — | `.` as a target — 0.1.x |
 | Ranges, all | `1-4/ARM`, `ALL/MUTE`, `SEL-"Bass"/…` | comma lists, `#tag` | `1-4`, `all` — 0.1.x |
 | Relative to selection | `>/MUTE`, `</ARM` | — | later, with `.` |
-| Action lists | `1/MUTE ON ; 2/ARM` | one command per line | `;` in a line — 0.1.2, with aliases (an alias is a saved action list) |
+| Action lists | `1/MUTE ON ; 2/ARM` | one command per line | `;` in a line — 0.1.3, with aliases (an alias is a saved action list) |
 | Value changes | `VOL 50`, `VOL >`, `PAN <4`, `RESET`, `RND50-60` | — | `vol` / `pan` / `send` module: absolute, `+n` / `-n`, `reset` — 0.1.x |
 | Devices | `DEV2 ONOFF`, `DEV1.1`, `DEV"Auto Filter"` | paths to devices | on/off for device paths — 0.1.x |
 | Scenes, clips | `SCENE >`, `1/CLIP2 …` | — | play/stop scenes and clips — later |
 | Snapshots | `1-4/SNAP DEVALL MIX+` | — | `snap save/recall <name>` (mixer and device parameters), stored in the Set with `set_data` — 0.2.x |
-| Variables, sequences, waits | `%v%`, `(PSEQ) …`, `WAIT 10` | — | alias arguments (`$1`) in 0.1.2; sequences and waits later |
+| Variables, sequences, waits | `%v%`, `(PSEQ) …`, `WAIT 10` | — | alias arguments (`$1`) in 0.1.3; sequences and waits later |
 | Startup actions | run on Set load | — | an `onload` alias — later (needs a Set-load event) |
 | X-Triggers | clip `[id] …`, locator, MIDI control, Note Trigger Rack | — | direction below |
 
@@ -54,7 +54,7 @@ is the same move as "tags in track names" (0008, later idea). For cmdAbl:
 
 ## Suggested order
 
-1. 0.1.2: `;` action lists together with aliases (0008).
+1. 0.1.3: `;` action lists together with aliases (0008).
 2. 0.1.x: targets `.`, index, range, `all` (cmdabl-core); `vol` / `pan` / `send` and device
    on/off (cmdabl-modules).
 3. 0.2.x: snapshots.

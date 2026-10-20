@@ -43,7 +43,7 @@ own page, without touching the core or any module.
 | `select` — the pick list | `{ title, multi, items: [{ label, detail?, value?, state? }], preview?, fill?, state?, create? }` (`preview`/`value`/`fill`/`state`: see section 4; `create: { label }` offers a row `+ <label> "<trimmed filter text>"` after the matches while the filter is non-empty and matches no row exactly; when nothing matches it is the only row and has the cursor, as in 0008) | indexes of the chosen items, `{ fill: index }`, `{ created: "<trimmed filter text>", picked: [indexes of the rows marked] }` (only when `create` was sent; `picked` is empty in a single-select list), or null when cancelled |
 | `notify` — a message | `{ text, code, link?, sections? }` (`sections: [{ heading, meta?, items: string[] }]` from `CommandResult.sections` = a structured overview the page draws instead of `text`, which stays the plain fallback; capped by the presenter to 40 sections × 200 items × 300 characters; the page gets it through `/*SECTIONS_PLACEHOLDER*/null`; `code` = the exit code it belongs to; `link: { label, url }` = a button next to Close, a plain https URL, from `CommandResult.link`; the page gets it through `/*LINK_PLACEHOLDER*/null`) | nothing, or `{"open":true}` when the link button was clicked (the platform then opens the request's own `url` with `openUrl`; a failure opening it is shown as a message) |
 
-| `board` — an editable overview (planned, [0010](0010-tag-editing.md)) | `{ title, sections: [{ id, heading, meta?, items: [{ id, label, on }] }], create?: { label, pattern? }, apply: { label } }`: the `on` items are chips with ×, and each section expands to a checkbox list of all items (like the tag panel in Live's browser) | `{ changes: [{ section, item, on }], created: [ids] }`, or null when closed |
+| `board` — an editable overview (planned, [0010](0010-tag-editing.md)) | `{ title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }`: the `on` items are chips with ×, and each section expands to a checkbox list of all items (like the tag panel in Live's browser) | `{ changes: [{ section, item, on }], created: [ids] }`, or null when closed |
 
 Everything is plain JSON. A page receives its request through a build-time placeholder and
 answers with `close_and_send`; each page documents this in a comment at its top.
@@ -51,7 +51,7 @@ answers with `close_and_send`; each page documents this in a comment at its top.
 **Where pages go in `ui/`** (decided 2026-10-20, 0010):
 - Core surfaces are generic and replaceable: `ui/<surface>.html`, with the contract here.
 - A page only one module needs is opened with `api.dialog` and lives in `ui/modules/<module>/`.
-  `pakabl-list.html` moves there.
+  `pakabl-list.html` moves there once a second module page appears.
 - When a second module needs the same kind of page, it becomes a core surface.
 - Editing pages collect the changes and answer once; the extension applies them and reopens the
   page.

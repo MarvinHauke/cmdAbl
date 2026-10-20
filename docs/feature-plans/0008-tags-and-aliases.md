@@ -5,7 +5,7 @@
 [0001](0001-path-addressed-objects-and-commands.md) (Remote Script protocol).
 
 **Status:** In Progress — 0.1.1 tags on tracks shipped (Live-tested 2026-10-20; script 0.1.5);
-0.1.2 the store and aliases next; tags on chains and pads with 0.2.0.
+0.1.2 tag editing (0010); 0.1.3 the store and aliases; tags on chains and pads with 0.2.0.
 
 ## Context
 
