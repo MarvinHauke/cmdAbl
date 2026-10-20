@@ -20,10 +20,11 @@ export function changeLines(path: string, c: TagChange): string[] {
  */
 export function activate(api: ModuleApi): void {
   /** Writes `planFor(node, before)` to every target and builds the result: changed tracks with their undo lines. */
-  const applyPlans = async (targets: ObjectNode[], planFor: (node: ObjectNode, before: string[]) => TagChange, stopOnFail = false): Promise<CommandResult> => {
+  const applyPlans = async (targets: ObjectNode[], planFor: (node: ObjectNode, before: string[]) => TagChange, stopOnFail = false, unchanged?: string): Promise<CommandResult> => {
     const lines: string[] = [];
     const outcomes: TargetOutcome[] = [];
     let unmarked = false;
+    let writes = 0;
     for (const node of targets) {
       const before = api.tags.of(node);
       const plan = planFor(node, before);
@@ -38,6 +39,7 @@ export function activate(api: ModuleApi): void {
         if (stopOnFail) break;
         continue;
       }
+      writes++;
       if (!written.value.marked) unmarked = true;
       const actual = diffTags(before, written.value.tags);
       const text = changeLines(node.path, actual);
@@ -49,6 +51,8 @@ export function activate(api: ModuleApi): void {
     // failure (it lists the failed tracks) or for the one thing the user has to act on, the save hint.
     const log = lines;
     const failed = outcomes.filter((o) => !o.ok);
+    // Nothing written at all would look like it worked: say so (a mix of changed and unchanged stays quiet).
+    if (failed.length === 0 && writes === 0) return { ...ok(targets.length === 1 && unchanged ? unchanged : "nothing changed"), log };
     if (failed.length === 0) return { ...ok(unmarked ? SAVE_HINT : undefined), log };
     const code =
       failed.length === outcomes.length && failed.every((o) => o.code === ExitCode.UNAVAILABLE) ? ExitCode.UNAVAILABLE : ExitCode.FAILURE;
@@ -61,7 +65,7 @@ export function activate(api: ModuleApi): void {
    */
   const tagBoard = async (): Promise<CommandResult | void> => {
     const fresh = await api.tags.refresh();
-    if (!fresh.ok) return fail(fresh.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
+    if (!fresh.ok) return fail(fresh.code === ExitCode.UNAVAILABLE ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
     const nodes = api.liveSet.nodes().filter((n) => n.kind === "track" && n.scope !== "master");
     const byId = new Map(nodes.map((n) => [n.handleId, n]));
     const shown = await api.ui.board(buildBoard(nodes.map((n) => ({ id: n.handleId, label: n.path, tags: api.tags.of(n) }))));
@@ -98,7 +102,7 @@ export function activate(api: ModuleApi): void {
       name = checked.names[0];
     }
     const fresh = await api.tags.refresh();
-    if (!fresh.ok) return fail(fresh.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
+    if (!fresh.ok) return fail(fresh.code === ExitCode.UNAVAILABLE ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
     const nodes = api.liveSet.nodes();
     const tracks = nodes.filter((n) => n.kind === "track" && n.scope !== "master");
 
@@ -124,6 +128,39 @@ export function activate(api: ModuleApi): void {
     return applyPlans(picked, (_node, before) => planTags(before, [tag], "toggle"));
   };
 
+  /**
+   * `tag --rename <old> <new>`: the tag changes its name on every regular and return track that carries it.
+   * A name that exists already merges (a track with both keeps one); that is the only visible message.
+   */
+  const renameTag = async (values: string[], conflicting: boolean): Promise<CommandResult | void> => {
+    if (conflicting) return fail(ExitCode.USAGE, "tag --rename takes only the two names: no target, names, --list, --set, --edit or --pick");
+    if (values.length !== 2) return fail(ExitCode.USAGE, "tag --rename needs <old> <new>");
+    const names: string[] = [];
+    for (const value of values) {
+      const one = normalizeTagNames([value]);
+      if (!one.ok) return fail(ExitCode.USAGE, `tag: "${value}" is not a tag name — use lowercase letters, digits, - and _`);
+      names.push(one.names[0]!);
+    }
+    const [oldName, newName] = names as [string, string];
+    const fresh = await api.tags.refresh();
+    if (!fresh.ok) return fail(fresh.code === ExitCode.UNAVAILABLE ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
+    const tracks = api.liveSet.nodes().filter((n) => n.kind === "track" && n.scope !== "master");
+    const carrying = tracks.filter((t) => api.tags.of(t).includes(oldName));
+    if (carrying.length === 0) return fail(ExitCode.NOT_FOUND, `tag: no track is tagged #${oldName}`);
+    if (oldName === newName) return ok(`#${oldName} is already called that`);
+    const merging = tracks.some((t) => api.tags.of(t).includes(newName));
+    const result = await applyPlans(carrying, (_node, before) => {
+      const after: string[] = [];
+      for (const tag of before) {
+        const next = tag === oldName ? newName : tag;
+        if (!after.includes(next)) after.push(next);
+      }
+      return diffTags(before, after);
+    });
+    if (!merging || result.code !== ExitCode.OK) return result;
+    return { ...result, message: [`merged #${oldName} into #${newName}`, result.message].filter(Boolean).join("\n") };
+  };
+
   api.commands.add({
     name: "tag",
     summary: "tag tracks, or list the tags of the Set",
@@ -131,7 +168,7 @@ export function activate(api: ModuleApi): void {
       "Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx " +
       "reaches every track tagged fx. With --edit and a tag (tag --edit fx) every regular and return track is listed with a button " +
       "that is lit where it carries the tag: mark tracks with Tab and press Enter to switch the tag on or off on each of them; " +
-      "tag --edit # first asks which tag, and a name that is not in that list creates it. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Apply writes the changes and shows nothing; Close changes nothing. " +
+      "tag --edit # first asks which tag, and a name that is not in that list creates it. With --rename and two names (tag --rename fx effects) the tag changes its name on every regular and return track that carries it, and writes nothing else; if the new name exists already the two tags merge, a track with both keeps one, and the result says so because renaming back cannot split them again. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Apply writes the changes and shows nothing; Close changes nothing. " +
       "With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target " +
       "that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. " +
       "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +
@@ -139,6 +176,7 @@ export function activate(api: ModuleApi): void {
       "and cmdabl log --undo lists the undo commands. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or " +
       "a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).",
     examples: [
+      { line: "tag --rename fx effects", note: "every track tagged fx is tagged effects instead; an existing effects tag merges" },
       { line: "tag --list", note: "the tag overview: add or remove tags on many tracks, create a tag" },
       { line: "tag --edit fx", note: "pick the tracks to switch the tag fx on or off for" },
       { line: "tag -e #", note: "pick the tag (or type a new one), then the tracks" },
@@ -155,6 +193,14 @@ export function activate(api: ModuleApi): void {
         short: "e",
         takesValue: true,
         summary: "list the tracks with the tag lit and toggle the tag on the marked ones; # first asks which tag",
+      },
+      {
+        name: "rename",
+        short: "r",
+        takesValue: true,
+        values: 2,
+        valueLabels: ["old", "new"],
+        summary: "rename a tag on every track that carries it; an existing name merges",
       },
       { name: "list", short: "l", summary: "open the tag overview (add or remove tags on many tracks, create a tag) instead of changing tags" },
       {
@@ -179,6 +225,10 @@ export function activate(api: ModuleApi): void {
       const targets = (invocation.args[0] ?? []) as ObjectNode[];
       const words = (invocation.args[1] ?? []) as string[];
 
+      const renameValues = invocation.values?.rename;
+      if (renameValues !== undefined) {
+        return renameTag(renameValues, targets.length > 0 || words.length > 0 || invocation.options.list === true || invocation.options.set !== undefined || invocation.options.edit !== undefined || invocation.options.pick === true);
+      }
       const listing = invocation.options.list === true;
       const edit = typeof invocation.options.edit === "string" ? invocation.options.edit.trim() : undefined;
       if (edit !== undefined) return editTag(edit, targets.length > 0 || words.length > 0 || listing || invocation.options.set !== undefined);
@@ -191,7 +241,7 @@ export function activate(api: ModuleApi): void {
       }
 
       const fresh = await api.tags.refresh();
-      if (!fresh.ok) return fail(fresh.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
+      if (!fresh.ok) return fail(fresh.code === ExitCode.UNAVAILABLE ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
       const tracks = api.liveSet.nodes().filter((n) => n.kind === "track");
       const set = invocation.options.set;
       const mode: TagMode = set === "1" ? "add" : set === "0" ? "remove" : "toggle";
@@ -230,6 +280,8 @@ export function activate(api: ModuleApi): void {
         pickedModes = new Map(names.names.map((n) => [n, rows.find((r) => r.name === n)?.on ? "remove" : "add"]));
       }
 
+      const listed = names.names.map((n) => `#${n}`).join(" ");
+      const unchanged = mode === "add" ? `${targets[0]!.path} already has ${listed}` : mode === "remove" ? `${targets[0]!.path} has no ${listed}` : undefined;
       return applyPlans(targets, (_node, before) =>
         pickedModes
           ? diffTags(
@@ -241,6 +293,8 @@ export function activate(api: ModuleApi): void {
               ).after,
             )
           : planTags(before, names.names, mode),
+        false,
+        unchanged,
       );
     },
   });

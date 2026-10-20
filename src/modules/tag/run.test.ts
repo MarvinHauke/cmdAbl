@@ -155,3 +155,11 @@ test("--list takes no target, names or --set (exit 2); a bare tag is a usage err
   assert.equal(bare.code, ExitCode.USAGE);
   assert.match(bare.message ?? "", /^missing argument <target>\nusage: tag/);
 });
+
+test("a write that changes nothing says so; a mix of changed and unchanged stays quiet", async () => {
+  const { run } = setup({ Lead: ["fx"], Bass: ["fx"] });
+  assert.equal((await run({ set: "1" }, [lead], ["fx"]))!.message, "/Lead already has #fx");
+  assert.equal((await run({ set: "0" }, [drums], ["fx"]))!.message, "/Drums has no #fx");
+  assert.equal((await run({ set: "1" }, [lead, bass], ["fx"]))!.message, "nothing changed");
+  assert.equal((await run({ set: "1" }, [lead, drums], ["fx"]))!.message, undefined);
+});
