@@ -1,48 +1,60 @@
 import type { ModuleApi } from "../types.js";
-import { ExitCode, fail, type CommandResult } from "../../core/types.js";
+import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
 import { openUrl } from "../../core/openUrl.js";
-import { findTopic, topicNames } from "./topics.js";
+import { findTopic } from "./topics.js";
+import { closeMatches, findNode, manPage } from "./page.js";
 
 /**
- * `man <topic> [words]` — open a manual in the browser: `man ableton`,
- * `man cmdabl`. Words after a topic that has a search (`man ableton warp
- * modes`) open a web search scoped to that manual. The parser joins the words
- * with single spaces and drops quotes, so no exact-phrase search.
+ * `man <command…>` — the full page of a command inside Live, built from the
+ * command tree; `man ableton [words]` and `man cmdabl` open the web manuals.
+ * `cmdabl` alone is the docs site, `man cmdabl setup` the page of that
+ * subcommand. The page goes through the message surface (multi-line text).
  */
 export function activate(api: ModuleApi): void {
   api.commands.add({
     name: "man",
-    summary: "open a manual, or search it: ableton, cmdabl",
+    summary: "show a command's page, or open a manual: ableton, cmdabl",
     description:
-      "Opens a manual in your web browser: the Ableton Live reference manual or the cmdAbl documentation. " +
-      "Words after ableton search the Live 12 manual through Ecosia. Needs an internet connection.",
+      "Shows the full page of a command inside Live, offline: summary, usage, subcommands, options, arguments and " +
+      "examples, as in the command reference, plus the web address of its section. Name a subcommand too: man history clear. " +
+      "man ableton opens the Live reference manual (words after it search the Live 12 manual through Ecosia), " +
+      "man cmdabl opens the cmdAbl documentation. The web manuals need an internet connection.",
     examples: [
-      { line: "man ableton", note: "open the Live reference manual" },
+      { line: "man tag", note: "show the page of the tag command" },
+      { line: "man history clear", note: "show the page of a subcommand" },
+      { line: "man cmdabl setup", note: "show the page of cmdabl setup" },
       { line: "man ableton warp modes", note: "search the Live manual for \"warp modes\"" },
       { line: "man cmdabl", note: "open the cmdAbl documentation" },
     ],
-    // The topic is an enum: a bare `man` or an unknown topic is the platform's
-    // usage error (exit 2), which lists the choices. The words after it are a
-    // separate rest argument.
+    // Variadic: the platform tokenizes, so a name with spaces can be quoted.
     args: [
       {
-        name: "topic",
-        kind: "enum",
-        choices: topicNames(),
-        summary: "Which manual: ableton (Live reference manual) or cmdabl (this documentation)",
+        name: "command",
+        kind: "text",
+        variadic: true,
+        summary: "A command, with its subcommand if it has one (man history clear); ableton [words] or cmdabl alone open the web manuals",
       },
-      { name: "words", kind: "text", required: false, rest: true, summary: "What to search for; only for ableton" },
     ],
     run: async (invocation): Promise<CommandResult> => {
-      const topic = invocation.args[0]?.[0] as string | undefined;
-      const entry = topic === undefined ? undefined : findTopic(topic);
-      if (topic === undefined || !entry) return fail(ExitCode.USAGE, `usage: man <topic> [words]`); // not reachable: the platform checks the choices
-      const words = invocation.args[1]?.[0] as string | undefined;
-      if (words === undefined || words.trim() === "") return openUrl(entry.url);
-      if (!entry.search) {
-        return fail(ExitCode.USAGE, `${topic} has no search; try: man ${topic}`);
+      const words = (invocation.args[0] ?? []) as string[];
+      const first = words[0]!.toLowerCase();
+
+      if (first === "ableton") {
+        const entry = findTopic("ableton")!;
+        return words.length === 1 ? openUrl(entry.url) : openUrl(entry.search!(words.slice(1)));
       }
-      return openUrl(entry.search([words]));
+      if (first === "cmdabl" && words.length === 1) return openUrl(findTopic("cmdabl")!.url);
+
+      const roots = api.commands.roots();
+      const found = findNode(roots, words);
+      const help = found ? api.commands.help(found.path) : undefined;
+      if (found && help !== undefined) return ok(manPage(help, found.node, found.path));
+
+      const near = closeMatches(roots, words);
+      return fail(
+        ExitCode.NOT_FOUND,
+        `man: no command "${words.join(" ")}"` + (near.length ? `. Did you mean: ${near.join(", ")}?` : ""),
+      );
     },
   });
 }

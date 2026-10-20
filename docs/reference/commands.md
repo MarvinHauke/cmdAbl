@@ -350,24 +350,35 @@ the object with "snare" in its name
 
 ## `man`
 
-open a manual, or search it: ableton, cmdabl
+show a command's page, or open a manual: ableton, cmdabl
 
-Opens a manual in your web browser: the Ableton Live reference manual or the cmdAbl documentation. Words after ableton search the Live 12 manual through Ecosia. Needs an internet connection.
+Shows the full page of a command inside Live, offline: summary, usage, subcommands, options, arguments and examples, as in the command reference, plus the web address of its section. Name a subcommand too: man history clear. man ableton opens the Live reference manual (words after it search the Live 12 manual through Ecosia), man cmdabl opens the cmdAbl documentation. The web manuals need an internet connection.
 
-**Usage:** `man <ableton|cmdabl> [<words>]`
+**Usage:** `man <command>…`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
-| `<topic>` | one of `ableton`, `cmdabl` | yes | Which manual: ableton (Live reference manual) or cmdabl (this documentation) |
-| `<words>` | text | no | What to search for; only for ableton (takes the rest of the line) |
+| `<command>…` | text | yes | A command, with its subcommand if it has one (man history clear); ableton [words] or cmdabl alone open the web manuals |
 
 **Examples**
 
 ```
-man ableton
+man tag
 ```
 
-open the Live reference manual
+show the page of the tag command
+
+```
+man history clear
+```
+
+show the page of a subcommand
+
+```
+man cmdabl setup
+```
+
+show the page of cmdabl setup
 
 ```
 man ableton warp modes
