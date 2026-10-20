@@ -74,6 +74,7 @@
     body.change.zone-list .row.marked.active { background: var(--border); }
     /* One line per row: the label keeps its width up to the row, the detail gives way first. */
     /* Create row (PICK.create): styled like a hint, accent "+", no state button. */
+    .row.empty { color: var(--dim); }
     .row.create .label { color: var(--dim); }
     .row.create .plus { color: var(--accent); font-weight: 700; }
     .row.create.active .label { color: var(--accent); }
@@ -192,6 +193,12 @@
         });
         list.appendChild(row);
       });
+      if (!visible.length && PICK.create) {   // nothing to pick yet (no rows, no text): say what to do
+        const empty = document.createElement('div');
+        empty.className = 'row empty';
+        empty.textContent = 'type a ' + PICK.create.label;
+        list.appendChild(empty);
+      }
       list.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
       renderPreview();
       renderZone();
