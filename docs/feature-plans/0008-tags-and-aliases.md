@@ -164,6 +164,8 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
   by bare `#` (a tag no track has selects nothing). The module validates the name (exit 2).
   Enter on the create row under the cursor creates without a mark (user; `c76004d`), so
   type + Enter is enough when it is the only row.
+- **`find` understands tags** (user, 2026-10-20): `find #drums`, `find !#drums`, `find drums`
+  (path matches plus tracks tagged drums), `find #drums kick` (tag narrows, words match).
 - **History keeps `#fx`** as typed, so a re-run hits the tracks tagged now.
 - **`tag`'s target is one token** in 0.1.1 (`/Lead`, `"SH-101 MIDI"`, `#drum`, `#`); a comma list
   before tag words is not supported yet (`tag /Lead, /Bass fx` → exit 2).

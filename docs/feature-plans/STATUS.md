@@ -17,6 +17,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    Tag overview: `tag --list` / `-l` as blocks (`10b4038`, ui sections, `4e04a97`, `86fbd53`);
    bare `tag` = usage (exit 2) — Live test: `tag`, `tag -l`, `tag -l /Lead` (exit 2), Set without
    tags, long list scrolls, a failing write still shows the plain ✓/× text.
+   `find` with tags (cmdabl-modules, in progress) — Live test: `find #drums` + next/prev,
+   `find drums`, `find #drums kick`, `find !#drums`, script off.
 3. Recordings by the user (`.mov` in `/tmp/shots/`) → cmdabl-docs makes GIFs:
    `hero` (tags in action), `tags` (tag list), `pakabl` (`pakabl list`); optional: Karabiner
    rule screenshot for Getting started. Then drop unused images (`demo.gif`, old `pakabl-list.png`).
