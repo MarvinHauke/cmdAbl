@@ -20,10 +20,12 @@ function setup(tags: Record<string, string[]>, extra: Opts = {}) {
   activate(fake.api);
   const run = (options: Record<string, string | true>, targets: ObjectNode[] = [], names: string[] = []) =>
     fake.commands[0]!.run!({ path: ["tag"], options, args: [targets, names] } as never, undefined as never) as Promise<
-      { code: number; message?: string } | undefined
+      { code: number; message?: string; log?: string[] } | undefined
     >;
   return { fake, run };
 }
+
+const logOf = (r: { log?: string[] }) => (r.log ?? []).join("\n");
 
 test("--edit <tag> lists regular and return tracks (never the main) lit where tagged, and toggles the marked ones", async () => {
   const { fake, run } = setup(
@@ -34,9 +36,10 @@ test("--edit <tag> lists regular and return tracks (never the main) lit where ta
   assert.equal(r.code, ExitCode.OK);
   assert.deepEqual(fake.pickStates, [{ label: "tagged fx", values: [true, false, false], change: "toggle" }]);
   assert.deepEqual(fake.tagStore.get("Bass"), ["synth", "fx"]);
-  assert.match(r.message ?? "", /\/Lead: -fx/);
-  assert.match(r.message ?? "", /\/Bass: \+fx/);
-  assert.match(r.message ?? "", /undo: tag --set 1 \/Lead fx/);
+  assert.equal(r.message, undefined);
+  assert.match(logOf(r), /\/Lead: -fx/);
+  assert.match(logOf(r), /\/Bass: \+fx/);
+  assert.match(logOf(r), /undo: tag --set 1 \/Lead fx/);
 });
 
 test("--edit: Esc changes nothing; a #fx value works like fx", async () => {

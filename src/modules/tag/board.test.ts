@@ -18,10 +18,12 @@ function setup(tags: Record<string, string[]>, answers: Array<BoardAnswer | null
   activate(fake.api);
   const run = (options: Record<string, string | true>) =>
     fake.commands[0]!.run!({ path: ["tag"], options, args: [[], []] } as never, undefined as never) as Promise<
-      { code: number; message?: string; details?: Array<{ ok: boolean }> } | undefined
+      { code: number; message?: string; log?: string[]; details?: Array<{ ok: boolean }> } | undefined
     >;
   return { fake, run };
 }
+
+const logOf = (r: { log?: string[] }) => (r.log ?? []).join("\n");
 
 test("buildBoard: a section per tag sorted by name with every track, a read-only untagged section last", () => {
   const board = buildBoard([
@@ -79,9 +81,10 @@ test("tag -l: Apply writes per track and ends with the result and its undo lines
   assert.equal(fake.boards.length, 1); // not reopened
   assert.equal(fake.tagStore.get("Lead")?.length ?? 0, 0);
   assert.deepEqual(fake.tagStore.get("Bass"), ["fx", "perc"]);
-  assert.match(r.message ?? "", /\/Lead: -fx/);
-  assert.match(r.message ?? "", /\/Bass: \+fx \+perc/);
-  assert.match(r.message ?? "", /undo: tag --set 1 \/Lead fx/);
+  assert.equal(r.message, undefined);
+  assert.match(logOf(r), /\/Lead: -fx/);
+  assert.match(logOf(r), /\/Bass: \+fx \+perc/);
+  assert.match(logOf(r), /undo: tag --set 1 \/Lead fx/);
 });
 
 test("tag -l: an empty answer closes; a failed write stops the loop and shows the failures", async () => {
@@ -113,7 +116,7 @@ test("tag -l: script down is exit 5; a bad created name is exit 2; the list-cut 
   const cut = setup({}, [{ changes: [{ section: "perc", item: "Lead", on: true }], created: ["perc"] }, null]);
   const base = cut.fake.api.ui.board;
   cut.fake.api.ui.board = async (request) => ({ ...(await base(request)), cut: true });
-  assert.match((await cut.run({ list: true }))?.message ?? "", /list cut/);
+  assert.match(logOf((await cut.run({ list: true }))!), /list cut/);
 });
 
 test("tag -l: a created name is lowercased and merges into the existing tag of that name", async () => {
@@ -135,5 +138,5 @@ test("tag -l: a created name is lowercased and merges into the existing tag of t
   assert.deepEqual(fake.tagStore.get("Bass"), ["fx"]);
   assert.deepEqual(fake.tagStore.get("Drums"), ["perc"]);
   assert.deepEqual(fake.tagStore.get("Lead"), ["fx"]);
-  assert.match(r.message ?? "", /\/Lead: no change/);
+  assert.match(logOf(r), /\/Lead: no change/);
 });

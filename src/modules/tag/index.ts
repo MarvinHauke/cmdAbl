@@ -4,6 +4,8 @@ import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../.
 import { buildBoard, groupChanges } from "./board.js";
 import { changed, diffTags, normalizeTagNames, planTags, reverseLines, tagIndex, type TagChange, type TagMode } from "./plan.js";
 
+const SAVE_HINT = "Live was not told about the change: save the Set (Cmd+S) so the tags are kept.";
+
 const hashed = (tags: string[]): string => (tags.length === 0 ? "no tags" : tags.map((t) => `#${t}`).join(" "));
 
 /** The lines for one changed track: what changed, then the commands that put it back. */
@@ -42,13 +44,15 @@ export function activate(api: ModuleApi): void {
       lines.push(...text);
       outcomes.push({ path: node.path, ok: true, message: text.join("\n") });
     }
-    if (unmarked) lines.push("Live was not told about the change: save the Set (Cmd+S) so the tags are kept.");
 
+    // Quiet writes (plan 0011): the change and undo lines go to the log; a result dialog opens only for a
+    // failure (it lists the failed tracks) or for the one thing the user has to act on, the save hint.
+    const log = lines;
     const failed = outcomes.filter((o) => !o.ok);
-    if (failed.length === 0) return ok(lines.join("\n"));
+    if (failed.length === 0) return { ...ok(unmarked ? SAVE_HINT : undefined), log };
     const code =
       failed.length === outcomes.length && failed.every((o) => o.code === ExitCode.UNAVAILABLE) ? ExitCode.UNAVAILABLE : ExitCode.FAILURE;
-    return fail(code, `tag: ${outcomes.length - failed.length} of ${outcomes.length} done`, outcomes);
+    return { ...fail(code, `tag: ${outcomes.length - failed.length} of ${outcomes.length} done${unmarked ? `\n${SAVE_HINT}` : ""}`, failed), log };
   };
 
   /**
@@ -76,7 +80,7 @@ export function activate(api: ModuleApi): void {
       true,
     );
     if (result.code !== ExitCode.OK || !shown.cut) return result;
-    return { ...result, message: `${result.message ?? ""}\n(list cut: the board showed only part of the Set)` };
+    return { ...result, log: [...(result.log ?? []), "(list cut: the board showed only part of the Set)"] };
   };
 
   /**
@@ -127,12 +131,12 @@ export function activate(api: ModuleApi): void {
       "Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx " +
       "reaches every track tagged fx. With --edit and a tag (tag --edit fx) every regular and return track is listed with a button " +
       "that is lit where it carries the tag: mark tracks with Tab and press Enter to switch the tag on or off on each of them; " +
-      "tag --edit # first asks which tag, and a name that is not in that list creates it. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Apply writes the changes and names what changed with the commands that undo it; Close changes nothing. " +
+      "tag --edit # first asks which tag, and a name that is not in that list creates it. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Apply writes the changes and shows nothing; Close changes nothing. " +
       "With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target " +
       "that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. " +
       "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +
-      "so the script has to run, and they are saved with the Set. Cmd+Z does not undo them: the result names " +
-      "the command that puts every change back. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or " +
+      "so the script has to run, and they are saved with the Set. Cmd+Z does not undo them. A successful write shows nothing: the changes and the undo commands go to the log, " +
+      "and cmdabl log --undo lists the undo commands. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or " +
       "a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).",
     examples: [
       { line: "tag --list", note: "the tag overview: add or remove tags on many tracks, create a tag" },
