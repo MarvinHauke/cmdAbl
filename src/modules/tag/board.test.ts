@@ -131,3 +131,25 @@ test("tag -l: an error after an applied round still names what was applied", asy
   assert.equal(d.code, ExitCode.UNAVAILABLE);
   assert.match(d.message ?? "", /^\/Lead: \+perc[\s\S]*Remote Script not running/);
 });
+
+test("tag -l: a created name is lowercased and merges into the existing tag of that name", async () => {
+  const { fake, run } = setup({ Lead: ["fx"] }, [
+    {
+      changes: [
+        { section: "Fx", item: "Bass", on: true }, // created "Fx" = existing #fx
+        { section: "tag:fx", item: "Lead", on: false },
+        { section: "Fx", item: "Lead", on: true }, // ticked in the new section, unticked in the old: the tick wins
+        { section: "Perc", item: "Drums", on: true },
+      ],
+      created: ["Fx", "Perc"],
+    },
+    null,
+  ]);
+  const r = (await run({ list: true }))!;
+  assert.equal(r.code, ExitCode.OK);
+  assert.equal(((fake.boards[0] as BoardRequest).create?.pattern ?? "").includes("A-Z"), true); // capitals are accepted
+  assert.deepEqual(fake.tagStore.get("Bass"), ["fx"]);
+  assert.deepEqual(fake.tagStore.get("Drums"), ["perc"]);
+  assert.deepEqual(fake.tagStore.get("Lead"), ["fx"]);
+  assert.match(r.message ?? "", /\/Lead: no change/);
+});

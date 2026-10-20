@@ -71,5 +71,8 @@ export function groupChanges(answer: BoardAnswer): { perTrack: Map<string, Track
     (change.on ? entry.add : entry.remove).push(name);
     perTrack.set(change.item, entry);
   }
+  // A created name that equals an existing tag merges into it; where one section ticks and the other
+  // unticks the same track, the tick wins (a new section only ever adds).
+  for (const entry of perTrack.values()) entry.remove = entry.remove.filter((n) => !entry.add.includes(n));
   return { perTrack };
 }
