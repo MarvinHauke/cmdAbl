@@ -104,6 +104,10 @@ Drum Rack pads and the chains of other racks are objects too. Their path goes th
 - `/2-808 Core Kit/808 Core Kit/Snare Drum` is the Snare Drum pad of the Drum Rack on the track `2-808 Core Kit`.
 - `mute 808 snare` finds the same pad, because the two words name only that object.
 
+Racks can sit inside a chain of another rack. An Instrument Rack whose chain holds a Drum Rack gives pads such as
+`/Drums/Strutter Kit/Strutter Kit/<Drum Rack>/Kick Rumble`. `find kick` finds such pads, and `goto`, `mute` and `solo`
+work on them. `find` lists the devices inside chains too.
+
 Use `find` to list everything that matches a pattern:
 
 - `find 808` lists every track, device and chain whose path contains `808`: the 808 track and everything below it.
@@ -198,7 +202,7 @@ keeps one. An old name that no track carries says "no track is tagged #old".
 - Tag names use lowercase letters, digits, `-` and `_`.
 - Tags are stored in the Live Set. They are saved with the Set, copied by Cmd+D, and kept when a track is renamed.
   Regular, return and main tracks can carry tags.
-- Tags need the Remote Script 0.1.5. After you update cmdAbl, run `cmdabl setup` once, then restart Live.
+- Tags need the Remote Script 0.1.6. After you update cmdAbl, run `cmdabl setup` once, then restart Live.
 - Commands that act on one object, such as `goto`, and destructive commands still ask when a tag matches several
   tracks.
 - A write that changes nothing says so: "/Bass already has #bass", "/Bass has no #fx", or "nothing changed" for
