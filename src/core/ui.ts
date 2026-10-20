@@ -63,6 +63,14 @@ export interface SelectRequest {
    * only the current state).
    */
   state?: { label: string; change?: StateChange };
+  /**
+   * Offer a "create" row: when the filter text matches no row exactly (and is not empty),
+   * the page shows one more row after the matches, `+ <label> "<trimmed filter text>"`
+   * (e.g. `+ new tag "perc"`), that Enter (or a click) chooses; when nothing else matches it is the
+   * only row and has the cursor. Choosing it answers `{ created, picked }` (see `SelectCreated`).
+   * Absent: no such row.
+   */
+  create?: { label: string };
   items: {
     /** The row's text (for a pick: the unique path, unquoted). */
     label: string;
@@ -72,6 +80,15 @@ export interface SelectRequest {
     /** The row's current state (see `SelectRequest.state`); absent = unknown. */
     state?: "on" | "off";
   }[];
+}
+
+/**
+ * The answer when the create row was chosen: the trimmed filter text and the indexes
+ * of the rows marked at that moment (multi-select; empty in a single-select list).
+ */
+export interface SelectCreated {
+  created: string;
+  picked: number[];
 }
 
 /** What choosing a row does to its state (see `SelectRequest.state`). */
@@ -93,9 +110,10 @@ export interface Ui {
   prompt(request: PromptRequest): Promise<PaletteResult | null>;
   /**
    * Resolves with the chosen indexes into `request.items`, `{ fill: index }`
-   * when the user pressed Tab on a list that allows it, or null if cancelled.
+   * when the user pressed Tab on a list that allows it, `{ created, picked }` when the
+   * user chose the create row (only offered with `request.create`), or null if cancelled.
    */
-  select(request: SelectRequest): Promise<number[] | { fill: number } | null>;
+  select(request: SelectRequest): Promise<number[] | { fill: number } | SelectCreated | null>;
   notify(request: NotifyRequest): void;
   /** A module's own page: resolves with the string it returns on close, or null if dismissed (an empty string counts as dismissed). */
   page(name: string, html: string, width: number, height: number): Promise<string | null>;
@@ -138,8 +156,10 @@ export function createDefaultUi(
       const width = pickWidth(longest(request.items.map((i) => i.label)), longest(request.items.map((i) => i.detail)));
       const raw = await show("pick", html, width, height);
       const answer = parseSelectAnswer(raw, request.items.length);
+      // A create answer where no create row was offered is treated as cancelled.
+      if (answer && !Array.isArray(answer) && "created" in answer) return request.create ? answer : null;
       // A page that answers "fill" where it was not offered is treated as cancelled.
-      if (answer && !Array.isArray(answer) && !(request.fill && !request.multi)) return null;
+      if (answer && !Array.isArray(answer) && "fill" in answer && !(request.fill && !request.multi)) return null;
       return answer;
     },
 

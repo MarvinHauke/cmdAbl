@@ -44,7 +44,8 @@ export async function pickNodes(ui: Ui, options: PickOptions): Promise<ObjectNod
     }),
   });
   if (!indexes) return null;
-  if (!Array.isArray(indexes)) {
+  if (indexes && !Array.isArray(indexes)) {
+    if (!("fill" in indexes)) return null;
     const node = options.candidates[indexes.fill];
     return node ? { fill: node } : null;
   }
@@ -61,6 +62,8 @@ export interface PickTagsOptions {
   preview?: PickPreview;
   /** What choosing a row does to its state (see `SelectRequest.state`); needs `on` on the rows. */
   change?: StateChange;
+  /** Offer a create row for a new tag name (the text is returned as typed, trimmed; the caller validates). */
+  allowNew?: boolean;
 }
 
 /** The pick list of tags (a bare `#`, or a module's tag list): the chosen names, or null when cancelled. */
@@ -70,6 +73,7 @@ export async function pickTagNames(ui: Ui, options: PickTagsOptions): Promise<st
     title: options.title,
     multi: options.multi,
     ...(options.preview ? { preview: options.preview } : {}),
+    ...(options.allowNew ? { create: { label: "new tag" } } : {}),
     ...(hasState ? { state: { label: "tagged", ...(options.change ? { change: options.change } : {}) } } : {}),
     items: options.tags.map((t) => ({
       label: `#${t.name}`,
@@ -78,7 +82,11 @@ export async function pickTagNames(ui: Ui, options: PickTagsOptions): Promise<st
       ...(t.on === true ? { state: "on" as const } : t.on === false ? { state: "off" as const } : {}),
     })),
   });
-  if (!indexes || !Array.isArray(indexes)) return null;
-  const chosen = indexes.map((i) => options.tags[i]?.name).filter((n): n is string => n !== undefined);
+  if (!indexes) return null;
+  const created = !Array.isArray(indexes) && "created" in indexes ? indexes : null;
+  if (!Array.isArray(indexes) && !created) return null;
+  const picked = created ? created.picked : (indexes as number[]);
+  const chosen = picked.map((i) => options.tags[i]?.name).filter((n): n is string => n !== undefined);
+  if (created) chosen.push(created.created);
   return chosen.length ? chosen : null;
 }

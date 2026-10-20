@@ -115,9 +115,11 @@ export interface ModuleApi {
    * The tag list (the same one the platform shows for a bare `#`): a
    * multi-select list of tags with their state buttons (`TagRow.on`), `options.change`
    * previewing what confirming does ("toggle" flips every marked row). Resolves with the
-   * chosen tag names, or null when cancelled or nothing was marked.
+   * chosen tag names, or null when cancelled or nothing was marked. With `allowNew` the list
+   * offers a create row for the filter text; choosing it adds that text (trimmed, as typed, NOT
+   * validated — the module checks it) as the last name, next to the rows marked.
    */
-  pickTags(title: string, rows: TagRow[], options?: { change?: StateChange; preview?: PickPreview }): Promise<string[] | null>;
+  pickTags(title: string, rows: TagRow[], options?: { change?: StateChange; preview?: PickPreview; allowNew?: boolean }): Promise<string[] | null>;
   /** Track tags (plan 0008). */
   tags: TagsPort;
   /** Notified whenever a pick list was shown, with what was offered and what was chosen. */

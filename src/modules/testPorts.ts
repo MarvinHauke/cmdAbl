@@ -35,7 +35,7 @@ export interface FakeApi {
   /** The messages `api.confirm` was asked. */
   confirms: string[];
   /** The tag lists `api.pickTags` showed (title and rows). */
-  tagLists: Array<{ title: string; rows: TagRow[] }>;
+  tagLists: Array<{ title: string; rows: TagRow[]; allowNew?: boolean }>;
   /** Tags by node `handleId`; `api.tags.write` replaces the entry (empty removes it). */
   tagStore: Map<string, string[]>;
   dialogs: Array<{ html: string; width: number; height: number }>;
@@ -100,8 +100,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       fake.confirms.push(message);
       return options.confirmAnswer ?? false;
     },
-    pickTags: async (title, rows) => {
-      fake.tagLists.push({ title, rows });
+    pickTags: async (title, rows, listOptions) => {
+      fake.tagLists.push({ title, rows, ...(listOptions?.allowNew ? { allowNew: true } : {}) });
       return options.pickTagsAnswer?.(rows) ?? null;
     },
     tags: {

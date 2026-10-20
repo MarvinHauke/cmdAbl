@@ -436,3 +436,14 @@ test("!#tag keeps the exceptions of #…: rest and destructive ask; --pick lists
   assert.deepEqual(p.calls, [["/SH-101 MIDI"]]);
   assert.equal(out.line, "mute --pick !#drum");
 });
+
+test("pickTagNames: allowNew offers the create row and returns the created name last", async () => {
+  const requests: SelectRequest[] = [];
+  const answers: Array<number[] | { created: string; picked: number[] }> = [{ created: "bass", picked: [1] }, [0]];
+  const ui = { select: async (r: SelectRequest) => (requests.push(r), answers.shift()!) } as never;
+  const tags = [{ name: "fx" }, { name: "solo" }];
+  assert.deepEqual(await pickTagNames(ui, { title: "t", tags, multi: true, allowNew: true }), ["solo", "bass"]);
+  assert.deepEqual(requests[0]!.create, { label: "new tag" });
+  assert.deepEqual(await pickTagNames(ui, { title: "t", tags, multi: true }), ["fx"]);
+  assert.equal(requests[1]!.create, undefined);
+});

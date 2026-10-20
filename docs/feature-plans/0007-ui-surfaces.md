@@ -40,7 +40,7 @@ own page, without touching the core or any module.
 | Surface | In | Out |
 |---|---|---|
 | `prompt` — the palette | `{ items: PaletteItem[], initial? }` (later also the command tree and keymap, see 0006) | a `PaletteResult`, or null when dismissed |
-| `select` — the pick list | `{ title, multi, items: [{ label, detail?, value?, state? }], preview?, fill?, state? }` (`preview`/`value`/`fill`/`state`: see section 4) | indexes of the chosen items, `{ fill: index }`, or null when cancelled |
+| `select` — the pick list | `{ title, multi, items: [{ label, detail?, value?, state? }], preview?, fill?, state?, create? }` (`preview`/`value`/`fill`/`state`: see section 4; `create: { label }` offers a row `+ <label> "<trimmed filter text>"` after the matches while the filter is non-empty and matches no row exactly; when nothing matches it is the only row and has the cursor, as in 0008) | indexes of the chosen items, `{ fill: index }`, `{ created: "<trimmed filter text>", picked: [indexes of the rows marked] }` (only when `create` was sent; `picked` is empty in a single-select list), or null when cancelled |
 | `notify` — a message | `{ text, code }` (`code` = the exit code it belongs to) | nothing |
 
 Everything is plain JSON. A page receives its request through a build-time placeholder and

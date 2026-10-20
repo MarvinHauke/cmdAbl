@@ -220,3 +220,11 @@ test("run: the direct path never reads state", async () => {
   await runLine("mute /Opal Lead", deps); // one object: no list
   assert.equal(reads, 0);
 });
+
+test("parseSelectAnswer: a create answer carries the trimmed text and the marked rows", () => {
+  assert.deepEqual(parseSelectAnswer('{"created":"  fx ","picked":[2,0]}', 3), { created: "fx", picked: [2, 0] });
+  assert.deepEqual(parseSelectAnswer('{"created":"fx"}', 3), { created: "fx", picked: [] });
+  assert.deepEqual(parseSelectAnswer('{"created":"fx","picked":[7,1]}', 3), { created: "fx", picked: [1] });
+  assert.equal(parseSelectAnswer('{"created":"  "}', 3), null);
+  assert.equal(parseSelectAnswer('{"created":5}', 3), null);
+});
