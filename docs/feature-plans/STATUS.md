@@ -33,6 +33,17 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
 7. pakabl index workflow → merge its PR; STATUS on `main`; delete the branch; 0.1.2 (tag editing, 0010) continues on `feat/tag-board`.
 
 
+## Release 0.1.2 — tag editing (branch `feat/tag-board`, plan 0010)
+
+1. `tag --edit <tag|#>` (`-e`) — built `9bba54c` (core `api.pick` state option `ad8ba11`); Live
+   test pending: `tag -e fx` (lit rows, mark two, Enter, undo lines, Cmd+S), `tag -e #` (pick or
+   create a tag, then tracks), `tag -e fx /Lead` / `--set 1` → exit 2, `tag -e` alone → usage,
+   Esc changes nothing, script off → exit 5. Known: `tag -e #` uses a multi-select tag list
+   (two marked → exit 2); single-select would need core — later.
+2. `board` surface — cmdabl-core (contract) and cmdabl-ui (`ui/board.html`), in work.
+3. `tag -l` on `board` (cmdabl-modules), after 2.
+4. Docs (cmdabl-docs): `tag --edit` and the board in using.md, one brief after 3.
+
 ## Where the code is
 
 - `main`: contains the command platform rework since 2026-10-11 (PR #9 `refactor/core-modules`,
