@@ -476,3 +476,12 @@ test("numeric option: whole numbers within a range, usage shows <n>, handler get
   assert.match(broken({ takesValue: true, number: { min: 5, max: 1 } }), /min above max/);
   assert.match(broken({ takesValue: true, number: {}, choices: ["1"] }), /both choices and number/);
 });
+
+test("helpForPath finds a command or subcommand by path", async () => {
+  const { helpForPath } = await import("./commandTree.js");
+  const roots = [{ name: "a", summary: "A", children: [{ name: "b", summary: "B", run: () => {} }] }] as any;
+  assert.match(helpForPath(roots, ["a"])!, /^A/);
+  assert.match(helpForPath(roots, ["a", "b"])!, /^B/);
+  assert.equal(helpForPath(roots, ["x"]), undefined);
+  assert.equal(helpForPath(roots, []), undefined);
+});

@@ -1,6 +1,7 @@
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { createFakeBridge, type FakeBridge, type FakeBridgeOptions } from "../ableton/bridgeFake.js";
 import type { Command } from "../core/commandRegistry.js";
+import { helpForPath } from "../core/commandTree.js";
 import type { Provider } from "../core/types.js";
 import type { ModuleApi, TagRow, TrackHandle } from "./types.js";
 
@@ -85,7 +86,11 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       fake.dialogs.push({ html, width, height });
       return options.dialogAnswer || null;
     },
-    commands: { add: (command) => void fake.commands.push(command) },
+    commands: {
+      add: (command) => void fake.commands.push(command),
+      roots: () => fake.commands,
+      help: (path) => helpForPath(fake.commands, path),
+    },
     pick: async (_title, candidates, multi = false) => {
       const chosen = options.pickAnswer?.(candidates, multi) ?? null;
       for (const listener of pickListeners) listener(candidates, chosen);

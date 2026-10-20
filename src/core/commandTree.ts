@@ -402,6 +402,18 @@ export type SerializedNode = Omit<CommandNode<never, never>, "run" | "children" 
   runnable: boolean;
 };
 
+/** The `--help` text of the node at `path` (command, then subcommands), or undefined when there is none. */
+export function helpForPath(roots: readonly CommandNode<any, any>[], path: string[]): string | undefined {
+  let level: readonly CommandNode<any, any>[] = roots;
+  let node: CommandNode<any, any> | undefined;
+  for (const word of path) {
+    node = level.find((n) => n.name === word);
+    if (!node) return undefined;
+    level = node.children ?? [];
+  }
+  return node ? helpText(node, path) : undefined;
+}
+
 export function serializeTree(roots: CommandNode<any, any>[]): SerializedNode[] {
   return roots.map(({ run, children, pickState: _pickState, ...rest }) => ({
     ...rest,

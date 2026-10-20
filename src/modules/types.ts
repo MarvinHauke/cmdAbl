@@ -84,7 +84,13 @@ export interface ModuleApi {
    * arguments to Live objects (asking the user to pick when ambiguous) and
    * only then calls `run` — see docs/feature-plans/0005.
    */
-  commands: { add(command: Command): void };
+  commands: {
+    add(command: Command): void;
+    /** The declared tree, read-only (for `man` and the like). Read the documentation fields only; never call a node's `run` from here — that would bypass parsing, resolution and the result presenter. */
+    roots(): readonly Command[];
+    /** The `--help` text of a command or subcommand by path (`["tag"]`, `["history", "clear"]`); undefined when unknown. */
+    help(path: string[]): string | undefined;
+  };
   /**
    * Show the pick list; resolves with the chosen objects, or null if cancelled.
    * `options.fill` (single-select only) lets Tab put the object into the

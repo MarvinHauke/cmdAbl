@@ -57,6 +57,8 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `showFeedback` | platform | the platform's message dialog | – |  |
 | `registerProvider` | platform | palette item provider | – |  |
 | `onCommandRun` | platform | listener after a command finished | – |  |
+| `commands.roots` | platform | reads the declared command tree | – |  |
+| `commands.help` | platform | renders --help text for a command path | – |  |
 | `commands.add` | platform | declares a node on the command tree | – |  |
 
 ## Remote Script operations ↔ LOM
