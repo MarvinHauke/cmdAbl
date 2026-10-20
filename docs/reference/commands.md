@@ -20,7 +20,7 @@ Switches record arm on for each track that is not armed and off for each that is
 
 | Option | Description |
 | --- | --- |
-| `-s, --set <0|1>` | make sure every target is armed (1) or not (0) instead of toggling |
+| <code>-s, --set &lt;0&#124;1&gt;</code> | make sure every target is armed (1) or not (0) instead of toggling |
 | `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
 **Examples**
@@ -464,7 +464,7 @@ Switches mute on for each target that is not muted and off for each that is, one
 
 | Option | Description |
 | --- | --- |
-| `-s, --set <0|1>` | make sure every target is muted (1) or not (0) instead of toggling |
+| <code>-s, --set &lt;0&#124;1&gt;</code> | make sure every target is muted (1) or not (0) instead of toggling |
 | `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
 **Examples**
@@ -659,7 +659,7 @@ Switches solo on for each target that is not soloed and off for each that is, on
 
 | Option | Description |
 | --- | --- |
-| `-s, --set <0|1>` | make sure every target is soloed (1) or not (0) instead of toggling |
+| <code>-s, --set &lt;0&#124;1&gt;</code> | make sure every target is soloed (1) or not (0) instead of toggling |
 | `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
 **Examples**
@@ -709,10 +709,10 @@ Tags say what a track is, so one command can act on a group: after tag /Lead fx 
 
 | Option | Description |
 | --- | --- |
-| `-e, --edit <tag|#>` | list the tracks with the tag lit and toggle the tag on the marked ones; # first asks which tag |
+| <code>-e, --edit &lt;tag&#124;#&gt;</code> | list the tracks with the tag lit and toggle the tag on the marked ones; # first asks which tag |
 | `-r, --rename <old> <new>` | rename a tag on every track that carries it; an existing name merges |
 | `-l, --list` | open the tag overview (add or remove tags on many tracks, create a tag) instead of changing tags |
-| `-s, --set <0|1>` | make sure every target has the tags (1) or lacks them (0) instead of toggling |
+| <code>-s, --set &lt;0&#124;1&gt;</code> | make sure every target has the tags (1) or lacks them (0) instead of toggling |
 | `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
 - Needs the Remote Script (reports "not running" / "outdated" otherwise).
