@@ -162,8 +162,8 @@ In a Set without tags, the empty list says "type a new tag".
 - Chips can also be reached from the keyboard. In an empty field, or with no match and the cursor at the start,
   `←` moves onto the tag's last chip. `←` and `→` step through the chips, and `→` past the last one returns to the field.
   `Backspace`, `Delete` or `Space` marks the chip under the cursor for removal, and a second press unmarks it. A chip
-  you just added disappears instead. Typing a letter, `Tab` or `Esc` returns to the field, and `Enter` on a chip does
-  nothing. `Backspace` in an empty field marks the last chip, as before.
+  you just added disappears instead. Typing a letter, `Tab` or `Esc` returns to the field. `Backspace` in an empty field
+  marks the last chip, as before.
 - **new tag…** at the bottom creates a tag: type its name and press `Enter`. Names are saved in lowercase, so
   "Perc" becomes `perc`. A name that already exists is refused ("exists already"): add the track in that tag's
   **add…** input instead. Then add tracks in the new tag's **add…** input. A new tag with no track is not kept.
@@ -174,8 +174,10 @@ each change with its undo command goes to the log (see [Logs](#logs)). If some t
 lists only those. **Close** with nothing applied changes nothing and shows no message.
 
 Keys: while suggestions show, `↑`, `↓`, `←` and `→` move through them. With no match, `←` and `→` move the text
-cursor, and `↑` and `↓` go to the other tags. `Alt+←` and `Alt+→` move the cursor in the typed text. `Enter` in an
-empty input applies. `Esc` clears the input, then closes the board. With pending changes, the first `Esc` (or Close)
+cursor, and `↑` and `↓` go to the other tags. `Alt+←` and `Alt+→` move the cursor in the typed text. `Enter` applies
+whenever nothing is typed to add: on a chip under the chip cursor, in an empty **add…** input, or in an empty
+**new tag…** input. With no pending changes, `Enter` does nothing. The footer hint reads "Enter = apply · Esc".
+`Esc` clears the input, then closes the board. With pending changes, the first `Esc` (or Close)
 warns "N changes not applied — Esc again to discard". Any other key, or any click except Close, cancels the warning.
 
 <!-- image to come: docs/assets/images/tag-board.png -->
