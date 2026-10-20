@@ -41,7 +41,7 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    Esc changes nothing, script off → exit 5. Known: `tag -e #` uses a multi-select tag list
    (two marked → exit 2); single-select would need core — later.
 2. `board` surface — core contract built `96e838a` (`api.ui.board` → `{ answer, cut }`);
-   `ui/board.html` by cmdabl-ui in work (core left a stub).
+   `ui/board.html` built by cmdabl-ui (dark scheme; created names normalised by the module).
 3. `tag -l` on `board` (cmdabl-modules), after 2.
 4. Docs (cmdabl-docs): `tag --edit` and the board in using.md, one brief after 3.
 
