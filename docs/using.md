@@ -153,17 +153,24 @@ In a Set without tags, the empty list says "type a new tag".
 
 **Edit tags on the board.** `tag -l` opens the tag board: one section per tag, with its tracks as chips.
 
-- Click a chip's **×** to mark that track for removal, and strike it through. A second click unmarks it.
-- Open a section with **▸** (or `→`). It shows a checkbox list of every regular and return track, never the main
-  track. Tick a track to add the tag, untick it to remove the tag. Typing filters the list.
-- **⊕ New tag…** adds a tag: type its name, then tick the tracks. Names are saved in lowercase, so "Perc" becomes
-  `perc`. A name that already exists adds to that tag. A new tag with no ticked track is not kept.
+- Each tag shows its tracks as chips. Click a chip's **×** to mark that track for removal; it is struck through.
+  A second click unmarks it.
+- Each tag ends with an **add…** input. Type a track's name and the best match appears as ghost text. Up to six
+  matching tracks show as chips below it: the tracks that do not carry the tag yet. `Tab` completes the ghost text,
+  `Enter` adds the track, and a click on a suggestion adds it too. The new chip has a dashed ring. "no match" means
+  nothing was added.
+- In an empty input, `Backspace` marks the last chip for removal; a second press unmarks it.
+- **new tag…** at the bottom creates a tag: type its name and press `Enter`. Names are saved in lowercase, so
+  "Perc" becomes `perc`. A name that already exists is refused ("exists already"): add the track in that tag's
+  **add…** input instead. Then add tracks in the new tag's **add…** input. A new tag with no track is not kept.
 - The untagged tracks are listed at the end, read-only.
 
 Live does not change until you press **Apply (N changes)**. The board then reopens with the new state. **Close**
-ends it and shows one summary of what was applied, with the commands that put it back. With nothing applied, Close
-shows nothing. Keys: `↑` and `↓` move, `→` and `←` open and close a section, `Space` toggles, `/` or typing filters,
-`Enter` applies, and `Esc` steps back: out of the filter first, then out of the board.
+ends it and shows one summary of what was applied, with the commands that put it back.
+
+Keys: `↑` and `↓` move through the suggestions while they show, otherwise to the previous or next tag. `Enter` in an
+empty input applies. `Esc` clears the input, then closes the board. With pending changes, the first `Esc` (or Close)
+warns "N changes not applied — Esc again to discard". Any other key, or any click except Close, cancels the warning.
 
 <!-- image to come: docs/assets/images/tag-board.png -->
 
