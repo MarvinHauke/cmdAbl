@@ -113,15 +113,17 @@ null when closed. Only real differences are sent; a created section only matters
 - Reopen the overview after Apply, or end with the result? Open question below.
 - A failed write shows the ✓/× result. The script being down gives exit 5, as today.
 
-### Keyboard path: `tag --edit <tag>` (optional)
+### Keyboard path: `tag --edit <tag>` (`-e`)
 
 `tag --edit fx` opens the existing pick list:
 
 - every track, `multi: true`, `state: { label: "tagged fx", change: "toggle" }`;
 - Tab marks and Enter writes, the mute pick-list pattern, so `select` needs no change.
+- `ModuleApi.pick` gets the additive option `state: { label, values, change }`, passed to
+  `pickNodes` (architect, 2026-10-20; until then only the platform's `--pick` flow had states).
 
-Without a tag, `tag --edit` first opens the tag list with the new-tag row. Once the overview
-can do this, `--edit` only stays if a fast keyboard path is still wanted (open question).
+Without a tag, `tag --edit` first opens the tag list with the new-tag row. It ships with the
+board as the keyboard path (decision 5).
 
 ## The UI pattern in `ui/`
 
