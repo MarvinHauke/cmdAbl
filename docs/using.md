@@ -121,7 +121,8 @@ changed. cmdAbl never folds the chains back. To fold them again, do it in Live.
 A tag marks what a track is, such as `fx` or `drums`. One command then reaches every track with that tag:
 `mute #fx` mutes all tracks tagged `fx`, at once and without a list.
 
-- `tag` lists every tag and the tracks that carry it.
+- `tag --list` (or `tag -l`) lists every tag as a block: its name, how many tracks carry it, and those tracks. A bare
+  `tag` is a usage error that shows the short usage.
 - `tag /Lead` opens a list of tags, with buttons that show which ones Lead has. Mark the tags to switch with `Tab`,
   then press `Enter`.
 - `tag /Lead fx synth` switches `fx` and `synth` on for Lead, or off where they are on.
