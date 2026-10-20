@@ -102,6 +102,7 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "registerProvider", via: "platform", call: "palette item provider", lom: [] },
   { port: "onCommandRun", via: "platform", call: "listener after a command finished", lom: [] },
   { port: "commands.roots", via: "platform", call: "reads the declared command tree", lom: [] },
+  { port: "commands.usage", via: "platform", call: "renders the short --help text for a command path", lom: [] },
   { port: "commands.help", via: "platform", call: "renders --help text for a command path", lom: [] },
   { port: "commands.add", via: "platform", call: "declares a node on the command tree", lom: [] },
 ];

@@ -583,3 +583,12 @@ test("presentResult: sections never hide failures", () => {
   presentResult({ ...ok("x", [{ path: "/A", ok: false, message: "no" }]), sections }, (_t, _l, s) => void seen.push(s));
   assert.deepEqual(seen, [undefined, undefined]);
 });
+
+test("usageForPath is what --help prints: short, 'more: man' only with a man command", async () => {
+  const { usageForPath } = await import("./commandTree.js");
+  const a = { name: "a", summary: "A", description: "prose", children: [{ name: "b", summary: "B", run: () => {} }] } as never;
+  assert.equal(usageForPath([a], ["a"]), "usage: a <command>\n\ncommands:\n  b            B");
+  const man = { name: "man", summary: "m", run: () => {} } as never;
+  assert.match(usageForPath([a, man], ["a", "b"])!, /usage: a b\n\nmore: man a b$/);
+  assert.equal(usageForPath([a], ["x"]), undefined);
+});

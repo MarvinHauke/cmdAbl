@@ -417,8 +417,15 @@ export type SerializedNode = Omit<CommandNode<never, never>, "run" | "children" 
   runnable: boolean;
 };
 
-/** The `--help` text of the node at `path` (command, then subcommands), or undefined when there is none. */
-export function helpForPath(roots: readonly CommandNode<any, any>[], path: string[]): string | undefined {
+/**
+ * Exactly what `<command> --help` prints for `node`: the short help, with the `more: man <path>`
+ * line only when the tree has a command named `man`.
+ */
+export function shortHelpIn(roots: readonly CommandNode<any, any>[], node: CommandNode<any, any>, path: string[]): string {
+  return shortHelpText(node, path, roots.some((n) => n.name === "man") ? `man ${path.join(" ")}` : undefined);
+}
+
+function nodeAt(roots: readonly CommandNode<any, any>[], path: string[]): CommandNode<any, any> | undefined {
   let level: readonly CommandNode<any, any>[] = roots;
   let node: CommandNode<any, any> | undefined;
   for (const word of path) {
@@ -426,6 +433,18 @@ export function helpForPath(roots: readonly CommandNode<any, any>[], path: strin
     if (!node) return undefined;
     level = node.children ?? [];
   }
+  return node;
+}
+
+/** What `<command> --help` prints for the node at `path`, or undefined when there is none. */
+export function usageForPath(roots: readonly CommandNode<any, any>[], path: string[]): string | undefined {
+  const node = nodeAt(roots, path);
+  return node ? shortHelpIn(roots, node, path) : undefined;
+}
+
+/** The full help text of the node at `path` (command, then subcommands), or undefined when there is none. */
+export function helpForPath(roots: readonly CommandNode<any, any>[], path: string[]): string | undefined {
+  const node = nodeAt(roots, path);
   return node ? helpText(node, path) : undefined;
 }
 

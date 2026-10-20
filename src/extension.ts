@@ -1,6 +1,6 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./core/commandRegistry.js";
-import { helpForPath } from "./core/commandTree.js";
+import { helpForPath, usageForPath } from "./core/commandTree.js";
 import { createCommandProvider } from "./core/commandProvider.js";
 import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail } from "./core/types.js";
 import type { Module, ModuleApi } from "./modules/types.js";
@@ -113,6 +113,7 @@ export function activate(activation: ActivationContext) {
       add: (command) => void registry.add(command),
       roots: () => registry.roots(),
       help: (path) => helpForPath(registry.roots(), path),
+      usage: (path) => usageForPath(registry.roots(), path),
     },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),

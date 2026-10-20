@@ -90,6 +90,8 @@ export interface ModuleApi {
     roots(): readonly Command[];
     /** The `--help` text of a command or subcommand by path (`["tag"]`, `["history", "clear"]`); undefined when unknown. */
     help(path: string[]): string | undefined;
+    /** Exactly what `<command> --help` prints (usage, sections, and `more: man …` when `man` exists); undefined when unknown. For a handler that answers exit 2 with the usage. */
+    usage(path: string[]): string | undefined;
   };
   /**
    * Show the pick list; resolves with the chosen objects, or null if cancelled.
