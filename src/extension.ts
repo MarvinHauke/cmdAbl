@@ -115,7 +115,7 @@ export function activate(activation: ActivationContext) {
       help: (path) => helpForPath(registry.roots(), path),
       usage: (path) => usageForPath(registry.roots(), path),
     },
-    pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill }),
+    pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
     pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, multi: true, ...options }),
     tags: {

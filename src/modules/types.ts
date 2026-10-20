@@ -98,12 +98,15 @@ export interface ModuleApi {
    * `options.fill` (single-select only) lets Tab put the object into the
    * prompt instead of choosing it: the platform then ends the command without a
    * message and reopens the palette; the module sees a cancelled pick.
+   * `options.state` gives each candidate (in order) a state button — `values[i]` true = on,
+   * false = off, null = unknown (a missing entry counts as unknown) — named once by `label` ("tagged fx"); `change` previews what
+   * confirming does ("toggle" flips each marked row, "on"/"off" sets it).
    */
   pick(
     title: string,
     candidates: ObjectNode[],
     multi?: boolean,
-    options?: { fill?: boolean },
+    options?: { fill?: boolean; state?: { label: string; values: Array<boolean | null>; change?: StateChange } },
   ): Promise<ObjectNode[] | null>;
   /**
    * Ask a yes/no question: a single-select list titled `message` with two
