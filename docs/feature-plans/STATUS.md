@@ -55,7 +55,7 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    bridge `94c1648`. Tag writes are quiet, `cmdabl log [-n] [--undo] [--debug]`, lines read
    `cmdAbl [<source>] <level>:`. Live test: `tag /Lead fx` opens no window, then `cmdabl log --undo`
    shows the undo line; `cmdabl log -n 5`; `arm /x`, then `cmdabl log` (no double prefix); a failed
-   write still shows ✓/×; the script line in Log.txt after `cmdabl setup`. Docs pending (cmdabl-docs).
+   write still shows ✓/×; the script line in Log.txt after `cmdabl setup`. Docs `e222996`.
 
 ## Next after 0.1.2 (user, 2026-10-20)
 
