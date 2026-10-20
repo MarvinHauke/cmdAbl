@@ -1,5 +1,6 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./core/commandRegistry.js";
+import { runBoard } from "./core/board.js";
 import { helpForPath, usageForPath } from "./core/commandTree.js";
 import { createCommandProvider } from "./core/commandProvider.js";
 import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail } from "./core/types.js";
@@ -117,6 +118,7 @@ export function activate(activation: ActivationContext) {
     },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
+    ui: { board: (request) => runBoard(ui, request) },
     pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, multi: true, ...options }),
     tags: {
       refresh: () => getTagCache().refreshNow(getBridge()),

@@ -9,7 +9,7 @@ import type { Command } from "../core/commandRegistry.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { Provider } from "../core/types.js";
-import type { PickPreview, StateChange } from "../core/ui.js";
+import type { BoardAnswer, BoardRequest, PickPreview, StateChange } from "../core/ui.js";
 import type { BridgeResult } from "../ableton/bridgeProtocol.js";
 import type { TagsWritten } from "../ableton/bridgeOps.js";
 
@@ -108,6 +108,15 @@ export interface ModuleApi {
     multi?: boolean,
     options?: { fill?: boolean; state?: { label: string; values: Array<boolean | null>; change?: StateChange } },
   ): Promise<ObjectNode[] | null>;
+  /**
+   * The board editor (plan 0010): sections whose items are on or off. Resolves when the page
+   * closes with `answer` = the changes and new section names core validated against the request
+   * (unknown ids, readonly sections, no-ops and names not matching `create.pattern` are already
+   * dropped), or null when closed. `cut` says the request was capped (40 sections × 200 items ×
+   * 300 characters) or had entries dropped, so the module can say "list cut". Nothing is applied
+   * by the page: write the changes, then show a new board if wanted. Section and item ids must be at most 300 characters (longer ones are dropped, `cut` is true); `create.pattern` is used as given.
+   */
+  ui: { board(request: BoardRequest): Promise<{ answer: BoardAnswer | null; cut: boolean }> };
   /**
    * Ask a yes/no question: a single-select list titled `message` with two
    * rows, "Cancel" first and `confirmLabel` second, through the platform's dialog queue.

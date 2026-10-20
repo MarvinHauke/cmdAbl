@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<!-- board surface (see src/core/ui.ts, plan 0010). MINIMAL STUB by cmdabl-core so the import and the build work; cmdabl-ui replaces it.
+     In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }.
+     Out: '' (closed) or JSON { changes: [{ section, item, on }], created: [names] } on Apply. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark" />
+  <title>cmdAbl</title>
+  <style>
+    /*SHARED_CSS_PLACEHOLDER*/
+    body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  </style>
+</head>
+<body>
+  <div id="msg"></div>
+  <div><button id="close">Close</button></div>
+  <script>
+    const BOARD = /*BOARD_PLACEHOLDER*/null;
+    function send(value) {
+      const m = { method: 'close_and_send', params: [value] };
+      if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
+      else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
+    }
+    document.getElementById('msg').textContent = BOARD ? BOARD.title : '';
+    document.getElementById('close').addEventListener('click', () => send(''));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') send(''); });
+  </script>
+</body>
+</html>

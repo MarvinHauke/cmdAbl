@@ -193,6 +193,7 @@ test("pickNodes: label is the unique path, value is the quoted unique path", asy
     select: async (r: SelectRequest) => (requests.push(r), [0]),
     prompt: async () => null,
     notify: () => {},
+    board: async () => null,
     page: async () => null,
   };
   const candidates = all.filter((n) => n.name === "Kick" || n.name === "Vermona DRM Audio");

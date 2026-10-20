@@ -3,7 +3,7 @@ import { createFakeBridge, type FakeBridge, type FakeBridgeOptions } from "../ab
 import type { Command } from "../core/commandRegistry.js";
 import { helpForPath, usageForPath } from "../core/commandTree.js";
 import type { Provider } from "../core/types.js";
-import type { StateChange } from "../core/ui.js";
+import type { BoardAnswer, BoardRequest, StateChange } from "../core/ui.js";
 import type { ModuleApi, TagRow, TrackHandle } from "./types.js";
 
 // A ModuleApi made of fakes, so a module's `activate` and its commands' `run`
@@ -17,6 +17,8 @@ export interface FakeApiOptions {
   dialogAnswer?: string | null;
   /** What `api.pick` answers (default: cancelled). Registered `onPick` listeners are notified like the platform does. */
   pickAnswer?: (candidates: ObjectNode[], multi: boolean) => ObjectNode[] | null;
+  /** What `api.ui.board` answers (default: closed). The request is recorded in `fake.boards`. */
+  boardAnswer?: (request: BoardRequest) => BoardAnswer | null;
   /** What `api.confirm` answers (default: false, i.e. cancelled). */
   confirmAnswer?: boolean;
   /** What `api.pickTags` answers (default: cancelled). */
@@ -33,6 +35,8 @@ export interface FakeApi {
   providers: Provider[];
   logs: string[];
   feedback: string[];
+  /** The boards `api.ui.board` was asked to show. */
+  boards: BoardRequest[];
   /** The `state` options `api.pick` was given, in order. */
   pickStates: Array<{ label: string; values: Array<boolean | null>; change?: StateChange }>;
   /** The messages `api.confirm` was asked. */
@@ -59,6 +63,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     providers: [],
     logs: [],
     feedback: [],
+    boards: [],
     pickStates: [],
     confirms: [],
     tagLists: [],
@@ -101,6 +106,12 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       const chosen = options.pickAnswer?.(candidates, multi) ?? null;
       for (const listener of pickListeners) listener(candidates, chosen);
       return chosen;
+    },
+    ui: {
+      board: async (request) => {
+        fake.boards.push(request);
+        return { answer: options.boardAnswer?.(request) ?? null, cut: false };
+      },
     },
     confirm: async (message) => {
       fake.confirms.push(message);
