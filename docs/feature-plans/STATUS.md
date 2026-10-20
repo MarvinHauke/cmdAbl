@@ -38,8 +38,9 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
 1. `tag --edit <tag|#>` (`-e`) — built `9bba54c` (core `api.pick` state option `ad8ba11`); Live
    test pending: `tag -e fx` (lit rows, mark two, Enter, undo lines, Cmd+S), `tag -e #` (pick or
    create a tag, then tracks), `tag -e fx /Lead` / `--set 1` → exit 2, `tag -e` alone → usage,
-   Esc changes nothing, script off → exit 5. Known: `tag -e #` uses a multi-select tag list
-   (two marked → exit 2); single-select would need core — later.
+   Esc changes nothing, script off → exit 5. `tag -e #` becomes single-select (user, Live
+   test 2026-10-21: Enter on a tag opens its track list): core adds `multi: false` to `api.pickTags`,
+   then modules switches `tag -e #` to it.
 2. `board` surface — core contract built `96e838a` (`api.ui.board` → `{ answer, cut }`);
    `ui/board.html` built by cmdabl-ui, redesigned to an `add…` input with ghost text and
    suggestions (`8e70c73`), Esc/Close guard for pending changes (`065fcbe`); dark scheme.
