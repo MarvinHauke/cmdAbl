@@ -81,6 +81,10 @@ untagged                                       4 tracks
 - **`new tag…` input** at the bottom: Enter checks the name and adds an empty section with the
   focus in its `add…` input. A tag with no track added is not kept.
 - **Apply (N changes)** sends the change set; Close or Esc discards it.
+- **Esc or Close with pending changes** warns once ("N changes not applied — Esc again to
+  discard"); the second discards (architect, 2026-10-20).
+- The page does not draw `title` (the dialog already names the command); it stays in the
+  request for replacement pages.
 - The contract is unchanged; only `ui/board.html` changes.
 
 ### The `board` surface (contract addition, cmdabl-core)
