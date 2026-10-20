@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips; Tab completes, Enter adds the highlighted one as a chip with a dashed accent ring. A readonly section shows chips only. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names] } on Apply: only real differences against the request; a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
+<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips; Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. A readonly section shows chips only. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names] } on Apply: only real differences against the request; a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -69,7 +69,7 @@
     <div id="create" hidden></div>
   </div>
   <div id="footer">
-    <span id="hint">type to add · Tab complete · Enter add · ⌫ remove last · ↑↓ move · Enter on empty = apply · Esc</span>
+    <span id="hint">type to add · Tab accept · Enter add · ⌫ remove last · ↑↓ move · Enter on empty = apply · Esc</span>
     <button id="apply" disabled></button>
     <button id="close">Close</button>
   </div>
@@ -172,8 +172,13 @@
       const q = s.q.trim().toLowerCase();
       if (!q) return [];
       const out = [];
-      s.items.forEach((i, ii) => { if (!i.cur) { const r = rank(i.label, q); if (r >= 0) out.push({ ii, r }); } });
-      out.sort((a, b) => a.r - b.r || a.ii - b.ii);
+      s.items.forEach((i, ii) => {
+        if (i.cur) return;
+        const r = rank(i.label, q);
+        const l = i.label.toLowerCase();
+        if (r >= 0) out.push({ ii, r, exact: l === q || l.replace(/^\//, '') === q ? 0 : 1 });
+      });
+      out.sort((a, b) => a.r - b.r || a.exact - b.exact || a.ii - b.ii);   // an exact name first, so it survives the cap
       return out.slice(0, 6).map(o => o.ii);
     }
     // The ghost: the rest of the highlighted label, only when what was typed is a prefix of it.
@@ -359,8 +364,17 @@
         if (!s.q.trim()) { apply(); return; }
         const sugs = s.sugList ?? [];
         if (sugs.length) addItem(si, sugs[s.hi]); else noMatch(s);
-      } else if (e.key === 'Tab') {
-        if (s.rest) { e.preventDefault(); s.q = s.inputEl.value = s.q + s.rest; s.hi = 0; renderAdd(si); }
+      } else if (e.key === 'Tab' && !e.shiftKey && s.inputEl.value) {
+        // Tab accepts: the highlighted suggestion's label goes into the input (caret at the end) and the
+        // field keeps focus, so Enter then adds it. With ghost text or without. No match: shake, stay.
+        // An empty input (or Shift+Tab) leaves the field as the browser does.
+        e.preventDefault();
+        const sugs = s.sugList ?? [];
+        if (!sugs.length) { noMatch(s); return; }
+        const ii = sugs[s.hi];
+        s.q = s.inputEl.value = s.items[ii].label;
+        s.hi = Math.max(0, suggestions(s).indexOf(ii));   // keep the accepted one highlighted
+        renderAdd(si);
       } else if (e.key === 'Backspace' && !s.inputEl.value) {
         e.preventDefault();
         const idx = chipIdx(s);
@@ -381,6 +395,9 @@
         e.preventDefault();
         if (e.repeat) return;
         if (createInput.value.trim()) submitCreate(); else apply();
+      } else if (e.key === 'Tab' && !e.shiftKey && createInput.value) {
+        e.preventDefault();   // no suggestions here: stay in the field
+        createInput.classList.remove('shake'); void createInput.offsetWidth; createInput.classList.add('shake');
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         jump(-1, e.key === 'ArrowDown' ? 1 : -1);
