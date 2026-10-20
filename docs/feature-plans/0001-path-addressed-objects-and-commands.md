@@ -493,7 +493,7 @@ background** (`src/ableton/chainNames.ts`):
 - `buildObjectTree` reads names from the cache and **never waits**: a cached entry is used only
   while the SDK still shows the same rack (handle id) with the same chain count; otherwise the
   rack's chains are simply absent. Each build calls `scheduleRefresh` (stale-while-revalidate:
-  not more often than every 2 s, every 10 s while the script is unavailable, never two at once).
+  not more often than every 2 s (every 400 ms while a rack has no usable names yet — also for a rack the script can never name, one cheap request per tree build, deliberate; `ChainNameCache.refreshNow` lets a caller wait for the names before reading the tree — not wired yet), every 10 s while the script is unavailable, never two at once).
   The palette opening builds the tree, which warms the cache before the user commits a command.
 - A renamed pad is seen after the next refresh; until then `select`'s `expectName` makes a
   command on the old name answer "the Live Set changed; run the command again".
