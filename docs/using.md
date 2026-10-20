@@ -112,6 +112,12 @@ Use `find` to list everything that matches a pattern:
 - `find -t bass` lists only tracks, and `find -d 808` only devices.
 - `next` and `prev` step through the last `find` list.
 
+**Tags in `find`.** `find #drums` lists the tracks tagged `drums`, and `next` and `prev` step through them.
+`find !#drums` lists the regular tracks without the tag. `find drums` lists what the path matches, and also the
+tracks tagged `drums`; their rows show their tags. `find #drums kick` searches inside the tagged tracks. The kind
+flags and `-L` apply as usual, for example `find #drums -c` lists the chains and pads of the tagged tracks. Without
+the Remote Script, `#` answers that the Remote Script is not running; plain words work as before.
+
 Selecting a pad or a chain does not change how the track is shown. Add `--unfold` to `goto` or `find` to show the
 track's chains as columns in the Session mixer. Live stores this view state with the Set, so the Set counts as
 changed. cmdAbl never folds the chains back. To fold them again, do it in Live.
@@ -133,6 +139,7 @@ A tag marks what a track is, such as `fx` or `drums`. One command then reaches e
 - `mute drums` acts like `#drums` when `drums` is a tag and no track name matches it. A track such as "Drums Bus"
   brings up a list instead, with the tagged tracks first.
 - `mute #` opens a list of the Set's tags. Mark the tags to act on.
+- `find #fx` lists the tracks tagged `fx`, and `find !#drums` the regular tracks without the tag `drums`.
 - `mute --pick drums` shows every match in a list, and only the marked rows run.
 
 **Adding a tag.** In the tag list of `tag <target>`, type a name that no tag matches exactly. The list then shows
