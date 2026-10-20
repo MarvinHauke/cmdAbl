@@ -82,8 +82,15 @@ test("no track with the tag is exit 3 with the tag in the message", async () => 
   const { run } = setup();
   const r = await run("#nope");
   assert.equal(r?.code, ExitCode.NOT_FOUND);
-  assert.equal(r?.message, "find: no track tagged #nope");
-  assert.equal((await run("!#drums !#synth !#lead !#fx !#bus"))?.code, ExitCode.OK); // Lead has none of them
+  assert.equal(r?.message, "find: no track is tagged #nope");
+  // a tag nobody carries is "not tagged" even when negated — never every track
+  const negated = await run("!#nope");
+  assert.equal(negated?.code, ExitCode.NOT_FOUND);
+  assert.equal(negated?.message, "find: no track is tagged #nope");
+  assert.equal((await run("!#drums #nope"))?.message, "find: no track is tagged #nope");
+  // known tags that leave no track: the combination message
+  assert.equal((await run("!#drums !#synth !#bus"))?.code, ExitCode.OK); // Lead has none of them
+  assert.equal((await run("#drums #synth"))?.message, "find: no track is tagged #drums #synth");
   assert.equal((await setup({ tags: { l: ["a"], b: ["a"], d: ["a"], kb: ["a"] } }).run("!#a"))?.message, "find: no track without #a");
 });
 

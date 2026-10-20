@@ -5,7 +5,7 @@ import { ExitCode, fail, type CommandResult } from "../../core/types.js";
 import { MatchList } from "./matches.js";
 import { findKinds } from "./kinds.js";
 import { findNodes } from "./select.js";
-import { addTagMatches, describeTags, findTagged, splitPattern } from "./tagged.js";
+import { addTagMatches, describeTags, findTagged, splitPattern, unknownTags } from "./tagged.js";
 
 /**
  * `find [pattern] [-L <n>] [-t] [-d] [-c]` — grep for the Live Set: every track/device/chain
@@ -111,6 +111,8 @@ export function activate(api: ModuleApi): void {
       const what = pattern === "" ? "" : ` "${pattern}"`;
       let hits;
       if (tags.length > 0) {
+        const unknown = unknownTags(all, tags, tagsOf);
+        if (unknown.length > 0) return fail(ExitCode.NOT_FOUND, `find: no track is tagged ${unknown.map((t) => `#${t.name}`).join(" ")}`);
         const tagged = findTagged(all, { plain, tags, level, kinds, kindFlag: Boolean(kindFlag), tagsOf });
         if (tagged.scope.length === 0) return fail(ExitCode.NOT_FOUND, `find: ${describeTags(tags)}`);
         hits = tagged.hits;

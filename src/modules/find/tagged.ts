@@ -28,7 +28,7 @@ export function splitPattern(pattern: string): { plain: string[]; tags: TagFilte
 
 export const describeTags = (tags: TagFilter[]): string =>
   tags.every((t) => !t.negate)
-    ? `no track tagged ${tags.map((t) => `#${t.name}`).join(" ")}`
+    ? `no track is tagged ${tags.map((t) => `#${t.name}`).join(" ")}`
     : tags.every((t) => t.negate)
       ? `no track without ${tags.map((t) => `#${t.name}`).join(" ")}`
       : `no track matches ${tags.map((t) => `${t.negate ? "!" : ""}#${t.name}`).join(" ")}`;
@@ -94,4 +94,11 @@ export function addTagMatches(
     if (tags.length > 0 && plain.every((w) => matches(n.path, w) || tags.includes(w.toLowerCase()))) keep.add(n);
   }
   return nodes.filter((n) => keep.has(n));
+}
+
+/** The tags of the filters that no track carries: asking for tracks without such a tag would list everything. */
+export function unknownTags(nodes: ObjectNode[], tags: TagFilter[], tagsOf: (node: ObjectNode) => string[]): TagFilter[] {
+  const known = new Set<string>();
+  for (const n of nodes) if (n.kind === "track") for (const t of tagsOf(n)) known.add(t);
+  return tags.filter((t) => !known.has(t.name));
 }
