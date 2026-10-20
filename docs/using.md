@@ -116,6 +116,37 @@ Selecting a pad or a chain does not change how the track is shown. Add `--unfold
 track's chains as columns in the Session mixer. Live stores this view state with the Set, so the Set counts as
 changed. cmdAbl never folds the chains back. To fold them again, do it in Live.
 
+## Tags
+
+A tag marks what a track is, such as `fx` or `drums`. One command then reaches every track with that tag:
+`mute #fx` mutes all tracks tagged `fx`, at once and without a list.
+
+- `tag` lists every tag and the tracks that carry it.
+- `tag /Lead` opens a list of tags, with buttons that show which ones Lead has. Mark the tags to switch with `Tab`,
+  then press `Enter`.
+- `tag /Lead fx synth` switches `fx` and `synth` on for Lead, or off where they are on.
+- `tag --set 1 /Bass fx` makes sure Bass has `fx`. `tag --set 0 /Bass fx` removes it.
+- `mute #fx, #drums` acts on the tracks tagged `fx` and the tracks tagged `drums`, together.
+- `mute !#drums` acts on every regular track without the tag `drums`, untagged ones included. It never acts on the
+  main track, and return tracks only when you name them by path.
+- `mute drums` acts like `#drums` when `drums` is a tag and no track name matches it. A track such as "Drums Bus"
+  brings up a list instead, with the tagged tracks first.
+- `mute #` opens a list of the Set's tags. Mark the tags to act on.
+- `mute --pick drums` shows every match in a list, and only the marked rows run.
+
+**Rules.**
+
+- Tag names use lowercase letters, digits, `-` and `_`.
+- Tags are stored in the Live Set. They are saved with the Set, copied by Cmd+D, and kept when a track is renamed.
+  Regular, return and main tracks can carry tags.
+- Tags need the Remote Script 0.1.5. After you update cmdAbl, run `cmdabl setup` once, then restart Live.
+- Commands that act on one object, such as `goto`, and destructive commands still ask when a tag matches several
+  tracks.
+- Cmd+Z does not undo a tag change. The result prints the reverse command, for example
+  `undo: tag --set 0 /Lead fx`. Each change also leaves an invisible step in Live's undo list, so Cmd+Z may need
+  several presses, and Live asks you to save when you close the Set.
+- A comma list before tag names is not supported yet: `tag /Lead, /Bass fx` fails. Use `#tag`, `!#tag` or `--pick`.
+
 ## Look up a Live Object Model path
 
 `lom <target>` shows the Live Object Model path of a track, device or chain, and links to the Live Object Model
