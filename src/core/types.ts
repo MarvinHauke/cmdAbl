@@ -101,6 +101,19 @@ export interface CommandResult {
    * else is dropped). The user's click makes the platform open it in the browser.
    */
   link?: ResultLink;
+  /**
+   * A structured overview the message page draws instead of the plain text (headings, a
+   * small meta text, one line per item). `message` stays the plain-text fallback and what
+   * the log shows. Plain JSON; the presenter caps sizes (see `capSections`).
+   */
+  sections?: ResultSection[];
+}
+
+export interface ResultSection {
+  heading: string;
+  /** Short text next to the heading, e.g. a count. */
+  meta?: string;
+  items: string[];
 }
 
 export interface ResultLink {

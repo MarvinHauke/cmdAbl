@@ -552,3 +552,34 @@ test("shortHelpText: no 'more' line without a hint", async () => {
   const node = { name: "x", summary: "s", run: () => {} } as never;
   assert.equal(shortHelpText(node, ["x"]), "usage: x");
 });
+
+test("presentResult: sections pass through capped; junk is dropped", async () => {
+  const { capSections, MAX_ITEMS, MAX_TEXT } = await import("./present.js");
+  const seen: unknown[] = [];
+  presentResult(
+    { ...ok("#fx: Lead"), sections: [{ heading: "#fx", meta: "1 track", items: ["/Lead"] }, { heading: "  ", items: ["x"] }] },
+    (_t, _l, sections) => void seen.push(sections),
+  );
+  assert.deepEqual(seen[0], [{ heading: "#fx", meta: "1 track", items: ["/Lead"] }]);
+  presentResult(ok("plain"), (_t, _l, sections) => void seen.push(sections));
+  assert.equal(seen[1], undefined);
+  const big = capSections([{ heading: "h", items: Array.from({ length: MAX_ITEMS + 5 }, () => "y".repeat(MAX_TEXT + 10)) }]);
+  assert.equal(big[0]!.items.length, MAX_ITEMS + 1);
+  assert.equal(big[0]!.items[0]!.length, MAX_TEXT);
+  assert.equal(big[0]!.items.at(-1), "…");
+  assert.deepEqual(capSections(undefined), []);
+  assert.deepEqual(capSections([{ heading: "h", items: [1 as never, "a"] }]), [{ heading: "h", items: ["a"] }]);
+});
+
+test("sectionsText sizes the dialog from the sections", async () => {
+  const { sectionsText } = await import("./notifySize.js");
+  assert.equal(sectionsText([{ heading: "#fx", meta: "2 tracks", items: ["/A", "/B"] }, { heading: "#x", items: [] }]), "#fx  2 tracks\n  /A\n  /B\n\n#x");
+});
+
+test("presentResult: sections never hide failures", () => {
+  const seen: unknown[] = [];
+  const sections = [{ heading: "h", items: ["a"] }];
+  presentResult({ ...fail(ExitCode.FAILURE, "mute: 0 of 1 done", [{ path: "/A", ok: false, message: "no" }]), sections }, (_t, _l, s) => void seen.push(s));
+  presentResult({ ...ok("x", [{ path: "/A", ok: false, message: "no" }]), sections }, (_t, _l, s) => void seen.push(s));
+  assert.deepEqual(seen, [undefined, undefined]);
+});

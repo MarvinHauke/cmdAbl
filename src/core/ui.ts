@@ -1,9 +1,9 @@
 import type { ExtensionContext } from "@ableton-extensions/sdk";
-import type { PaletteItem, PaletteResult } from "./types.js";
+import type { PaletteItem, PaletteResult, ResultSection } from "./types.js";
 import { parseSelectAnswer } from "./pickResult.js";
-import { notifySize } from "./notifySize.js";
+import { notifySize, sectionsText } from "./notifySize.js";
 import { pickHeight, pickWidth } from "./pickSize.js";
-import { inlineJson } from "./inlineJson.js";
+import { fillTemplate } from "./inlineJson.js";
 import { createDialogQueue, type DialogQueue } from "./dialogQueue.js";
 import promptTemplate from "../../ui/interface.html";
 import selectTemplate from "../../ui/pick.html";
@@ -111,6 +111,12 @@ export interface NotifyRequest {
    * `url` is a plain https:// URL (checked before it gets here).
    */
   link?: { label: string; url: string };
+  /**
+   * A structured overview the page draws instead of `text` (which stays the plain fallback):
+   * per section a heading, an optional meta text next to it and one line per item. Already
+   * capped by the presenter. The dialog is sized from the same content (`sectionsText`).
+   */
+  sections?: ResultSection[];
 }
 
 export interface Ui {
@@ -144,9 +150,7 @@ export function createDefaultUi(
 
   const ui: Ui = {
     async prompt(request) {
-      const html = promptTemplate
-        .replace("/*ITEMS_PLACEHOLDER*/null", () => inlineJson(request.items))
-        .replace("/*INITIAL_PLACEHOLDER*/null", () => inlineJson(request.initial ?? null));
+      const html = fillTemplate(promptTemplate, { ITEMS: request.items, INITIAL: request.initial ?? null });
       const raw = await show("palette", html, 500, 260);
       if (!raw) return null;
       try {
@@ -158,7 +162,7 @@ export function createDefaultUi(
     },
 
     async select(request) {
-      const html = selectTemplate.replace("/*PICK_PLACEHOLDER*/null", () => inlineJson(request));
+      const html = fillTemplate(selectTemplate, { PICK: request });
       const height = pickHeight(request.items.length, request.preview !== undefined);
       const longest = (texts: Array<string | undefined>) => texts.reduce((m, t) => Math.max(m, t?.length ?? 0), 0);
       const width = pickWidth(longest(request.items.map((i) => i.label)), longest(request.items.map((i) => i.detail)));
@@ -172,10 +176,8 @@ export function createDefaultUi(
     },
 
     notify(request) {
-      const html = notifyTemplate
-        .replace("/*MESSAGE_PLACEHOLDER*/null", () => inlineJson(request.text))
-        .replace("/*LINK_PLACEHOLDER*/null", () => inlineJson(request.link ?? null));
-      const { width, height } = notifySize(request.text);
+      const html = fillTemplate(notifyTemplate, { MESSAGE: request.text, LINK: request.link ?? null, SECTIONS: request.sections ?? null });
+      const { width, height } = notifySize(request.sections ? sectionsText(request.sections) : request.text);
       void show("message", html, width, height).then((raw) => {
         if (!request.link || !wantsOpen(raw)) return;
         void openUrl(request.link.url)

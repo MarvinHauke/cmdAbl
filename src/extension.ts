@@ -201,7 +201,9 @@ export function activate(activation: ActivationContext) {
 
   /** The single place results become user-visible (see src/core/present.ts). */
   function present(outcome: CommandResult): void {
-    presentResult(outcome, (text, link) => ui.notify({ text, code: outcome.code, ...(link ? { link } : {}) }));
+    presentResult(outcome, (text, link, sections) =>
+      ui.notify({ text, code: outcome.code, ...(link ? { link } : {}), ...(sections ? { sections } : {}) }),
+    );
   }
 
   async function openPalette(): Promise<void> {
