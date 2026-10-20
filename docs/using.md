@@ -195,14 +195,22 @@ A name that matches more than one object does not produce an error: the pick lis
 
 ## History
 
-cmdAbl remembers the last 20 commands that worked and that had arguments. They appear at the top of the palette,
-newest first, so you can run one again.
+cmdAbl remembers the last 20 commands that worked and that had arguments. They appear at the top of the empty
+palette, newest first.
 
-- A remembered line holds the exact objects, each by its full path. A rerun therefore never asks again, even if
-  a later track has the same name.
-- The history is kept in memory. It is cleared when the extension reloads, for example when Live restarts.
+- `↑` and `↓` choose a remembered line, and `Enter` runs it again.
+- `Tab` puts the line into the prompt, so you can edit it first.
 
-Use `↑` and `↓` to choose a remembered line and `Enter` to run it again.
+**What a remembered line keeps.**
+
+- An object target (a track, a device, a chain or a pad) is kept by its full path. A rerun therefore never asks
+  again, even if a later track has the same name.
+- A tag target (`#fx`, `!#drums` or a bare tag word such as `mute drums`) and `--pick` are kept as you typed them.
+  A rerun resolves them again: a track tagged since then is included, and `--pick` opens the list again.
+- A `#` that you picked from the tag list is kept as the `#name` tags you chose.
+
+**In memory only.** The history is kept in memory. It is gone when cmdAbl restarts. A history that survives
+restarts is planned for 0.1.2.
 
 ### Clear, forget and restore
 
