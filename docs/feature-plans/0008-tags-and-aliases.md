@@ -40,7 +40,8 @@ mutes all of them. Aliases come along: a saved command line, e.g.
   | `tag /Lead fx synth` | toggles `fx` and `synth` |
   | `tag --set 1 /Lead fx` | adds `fx` |
   | `tag --set 0 #drum fx` | removes `fx` from every track tagged `drum` |
-  | `tag` | all tags and their tracks |
+  | `tag --list` / `-l` | all tags and their tracks, one block per tag (user, 2026-10-20) |
+  | `tag` | the short usage |
 
   The first argument is the target (a path, a quoted name, `#tag`, `#`, or a comma list such as
   `/Lead, /Bass`); every word after it is a tag name. Rejected: `+fx -drum` (a word starting
