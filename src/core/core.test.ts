@@ -652,3 +652,63 @@ test("cmdabl log: times, and a date line where the day changes", async () => {
   const out = String((await runLine("cmdabl log", deps as never)).result.message);
   assert.equal(out, "2026-10-20\n23:59:58 [tag] info: one\n2026-10-21\n00:00:01 [tag] info: two");
 });
+
+// ── options with several values ─────────────────────────────────────────────
+
+const renameTree: CommandNode<void, string>[] = [
+  {
+    name: "tag",
+    summary: "tags",
+    args: [{ name: "target", kind: "path", required: false }],
+    options: [{ name: "rename", takesValue: true, values: 2, valueLabels: ["old", "new"], summary: "rename a tag" }],
+    run: () => {},
+  },
+];
+
+test("option with values: 2 takes the next two tokens; # and - stay plain text", () => {
+  const r = parse("tag --rename #fx effects", renameTree);
+  assert.equal(r.kind, "run");
+  if (r.kind === "run") {
+    assert.deepEqual(r.invocation.values, { rename: ["#fx", "effects"] });
+    assert.equal(r.invocation.options.rename, true);
+    assert.deepEqual(r.invocation.args, [[]]);
+  }
+  const after = parse("tag --rename fx effects /bass", renameTree);
+  if (after.kind === "run") assert.deepEqual(after.invocation.args, [["/bass"]]);
+  const inline = parse("tag --rename=fx -x", renameTree);
+  if (inline.kind === "run") assert.deepEqual(inline.invocation.values, { rename: ["fx", "-x"] });
+  assert.equal(parse("tag", renameTree).kind, "run");
+});
+
+test("option with values: too few values is a usage error naming the labels; usage and help show them", () => {
+  const bad = parse("tag --rename fx", renameTree);
+  assert.equal(bad.kind, "error");
+  if (bad.kind === "error") {
+    assert.equal(bad.result.code, ExitCode.USAGE);
+    assert.match(bad.result.message ?? "", /option "--rename" needs <old> <new>/);
+  }
+  assert.equal(parse("tag --rename", renameTree).kind, "error");
+  assert.match(usage(renameTree[0]!, ["tag"]), /\[--rename <old> <new>\]/);
+  assert.match(helpText(renameTree[0]!, ["tag"]), /--rename <old> <new>/);
+});
+
+test("option with values: validation", () => {
+  assert.deepEqual(validateTree(renameTree), []);
+  const opt = (o: object): CommandNode<void, string>[] => [{ name: "x", summary: "s", options: [{ name: "o", summary: "s", ...o } as never], run: () => {} }];
+  assert.match(validateTree(opt({ takesValue: true, values: 0 })).join("\n"), /at least 1/);
+  assert.match(validateTree(opt({ takesValue: true, values: 2, choices: ["a"] })).join("\n"), /values together with choices or number/);
+  assert.match(validateTree(opt({ takesValue: true, values: 2, number: {} })).join("\n"), /values together with choices or number/);
+  assert.match(validateTree(opt({ takesValue: false, values: 2 })).join("\n"), /takes no value/);
+  assert.match(validateTree(opt({ takesValue: true, values: 2, valueLabels: ["a"] })).join("\n"), /valueLabels/);
+});
+
+test("option with values: the remembered line keeps every value", async () => {
+  const { CommandRegistry } = await import("./commandRegistry.js");
+  const { runLine } = await import("./run.js");
+  const registry = new CommandRegistry();
+  let seen: string[] | undefined;
+  registry.add({ ...renameTree[0]!, run: (inv: { values?: Record<string, string[]> }) => { seen = inv.values?.rename; return ok("renamed"); } } as never);
+  const out = await runLine('tag --rename fx "new name"', { registry, liveNodes: () => [], pick: async () => null } as never);
+  assert.deepEqual(seen, ["fx", "new name"]);
+  assert.equal(out.line, 'tag --rename fx "new name"');
+});

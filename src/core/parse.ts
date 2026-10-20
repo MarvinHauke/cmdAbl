@@ -1,5 +1,5 @@
 import { ExitCode, fail, type CommandResult } from "./types.js";
-import { checkNumber, effectiveOptions, numberRule, type CommandNode, type Invocation, usage } from "./commandTree.js";
+import { checkNumber, effectiveOptions, numberRule, type CommandNode, type Invocation, usage, valueNames } from "./commandTree.js";
 import { tokenize, type Token } from "./tokenize.js";
 
 // Turns a typed line into a matched leaf plus a (not yet resolved) invocation.
@@ -75,6 +75,7 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
 
   // 2. Options and positionals of the leaf.
   const options: Record<string, string | true> = {};
+  const multi: Record<string, string[]> = {};
   const positionals: string[] = [];
   const positionalQuoted: boolean[] = [];
   const defs = effectiveOptions(node);
@@ -111,6 +112,19 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
     if (!def.takesValue) {
       if (inlineValue !== undefined) return error(ExitCode.USAGE, `option "--${def.name}" takes no value`);
       options[def.name] = true;
+      continue;
+    }
+    if (def.values !== undefined) {
+      const got: string[] = inlineValue === undefined ? [] : [inlineValue];
+      while (got.length < def.values && rest[k + 1] !== undefined) got.push(rest[++k]!.value);
+      if (got.length < def.values) {
+        return error(
+          ExitCode.USAGE,
+          `option "--${def.name}" needs ${valueNames(def).map((n) => `<${n}>`).join(" ")}\nusage: ${usage(node, path)}`,
+        );
+      }
+      options[def.name] = true;
+      multi[def.name] = got;
       continue;
     }
     const value = inlineValue ?? rest[++k]?.value;
@@ -182,5 +196,5 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
     return error(ExitCode.USAGE, `unexpected argument "${positionals[p]}"\nusage: ${usage(node, path)}`);
   }
 
-  return { kind: "run", node, invocation: { path, options, args }, quoted };
+  return { kind: "run", node, invocation: { path, options, ...(Object.keys(multi).length ? { values: multi } : {}), args }, quoted };
 }

@@ -74,7 +74,9 @@ function headWords(invocation: Invocation<string>): string[] {
   for (const [name, value] of Object.entries(invocation.options)) {
     // `--name value`, the form the docs use; `=` only where a space would be wrong
     // (an empty value, or one starting with a dash that would read as an option).
-    if (value === true) words.push(`--${name}`);
+    const several = invocation.values?.[name];
+    if (several) words.push(`--${name}`, ...several.map(quoteIfNeeded));
+    else if (value === true) words.push(`--${name}`);
     else if (value === "" || value.startsWith("-")) words.push(`--${name}=${quoteIfNeeded(value)}`);
     else words.push(`--${name}`, quoteIfNeeded(value));
   }

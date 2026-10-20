@@ -79,6 +79,16 @@ export interface OptionDef {
    * accepted. The handler gets the typed text (a string, like every option).
    */
   number?: { min?: number; max?: number; integer?: boolean };
+  /**
+   * How many values the option takes (needs `takesValue`; 1 or more; not with `choices` or
+   * `number`): `--rename fx effects` has `values: 2`. The parser takes the next N tokens as the
+   * values (a token starting with `#` or `-` stays plain text) and the handler gets them in
+   * `invocation.values[name]`; `options[name]` is `true`, so presence checks keep working.
+   * Fewer than N: usage error "--rename needs <old> <new>".
+   */
+  values?: number;
+  /** Names of the values, one per value, shown as `--rename <old> <new>`; default "value". */
+  valueLabels?: string[];
   summary: string;
 }
 
@@ -112,6 +122,8 @@ export interface Invocation<V = string> {
   path: string[];
   /** Options by long name; `true` for flags without a value. */
   options: Record<string, string | true>;
+  /** The values of options declared with `values`, by long name (absent when the option was not given). */
+  values?: Record<string, string[]>;
   /** One entry per declared argument, in order; each holds 0..n values. */
   args: V[][];
 }
@@ -232,6 +244,14 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
         if (optionShorts.has(opt.short)) problems.push(`${at}: duplicate short option "-${opt.short}"`);
         optionShorts.add(opt.short);
       }
+      if (opt.values !== undefined) {
+        if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" has values but takes no value`);
+        if (!Number.isInteger(opt.values) || opt.values < 1) problems.push(`${at}: option "--${opt.name}" needs values of at least 1`);
+        if (opt.choices !== undefined || opt.number !== undefined) problems.push(`${at}: option "--${opt.name}" has values together with choices or number`);
+        if (opt.valueLabels !== undefined && opt.valueLabels.length !== opt.values) problems.push(`${at}: option "--${opt.name}" has ${opt.valueLabels.length} valueLabels for ${opt.values} values`);
+      } else if (opt.valueLabels !== undefined) {
+        problems.push(`${at}: option "--${opt.name}" has valueLabels without values`);
+      }
       if (opt.number !== undefined) {
         if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" is numeric but takes no value`);
         if (opt.choices !== undefined) problems.push(`${at}: option "--${opt.name}" has both choices and number`);
@@ -300,10 +320,16 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
   return problems;
 }
 
-/** `value`, or `0|1` for an option with declared choices. */
+/** `value`, or `0|1` for an option with declared choices, or `old> <new` for a multi-value option. */
 export function valueLabel(opt: OptionDef): string {
+  if (opt.values !== undefined) return valueNames(opt).join("> <");
   if (opt.choices?.length) return opt.choices.join("|");
   return opt.number ? "n" : "value";
+}
+
+/** The names of a multi-value option's values (`valueLabels`, else "value" each). */
+export function valueNames(opt: OptionDef): string[] {
+  return Array.from({ length: opt.values ?? 1 }, (_, i) => opt.valueLabels?.[i] ?? "value");
 }
 
 /** "a whole number from 1 to 12" — what a numeric option accepts. */
