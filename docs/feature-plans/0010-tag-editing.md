@@ -18,7 +18,7 @@ built from `CommandResult.sections`. In the Live test the user asked for two thi
 
 A dialog cannot call the extension while it is open. It answers once, when it closes. Editing
 therefore follows the pick-list rule that Live changes only on confirm: the page collects the
-changes, the extension applies them after the dialog closes, then reopens the page.
+changes, the extension applies them after the dialog closes.
 
 ## Decisions (user, 2026-10-20)
 
@@ -27,8 +27,8 @@ changes, the extension applies them after the dialog closes, then reopens the pa
      second click unmarks it.
    - The footer shows `Apply (N changes)` and `Close`.
    - Apply closes the page with the change set. The module writes it with the existing
-     `planTags` and `tags_set` (one write per track), then reopens the overview with the new state.
-   - Close, or Esc, ends the loop.
+     `planTags` and `tags_set` (one write per track); the board stays closed.
+   - Close, or Esc, changes nothing.
    - The result message lists the changes and the `undo:` lines, as `tag` does today.
 2. **Assign in the same window, like the tag bar in Live's browser** (user, 2026-10-20): each tag
    in the overview has an `add…` input that suggests tracks (first built as a checkbox list,
@@ -37,8 +37,9 @@ changes, the extension applies them after the dialog closes, then reopens the pa
    - The contract goes in `src/core/ui.ts`, the page is `ui/board.html` and uses `shared.css`.
    - It can be themed and replaced like the other surfaces (0007 §2).
    - Later users: aliases, the history list, tags on chains and pads.
-4. **After Apply the board reopens** with the new state; Close ends it and shows one summary of
-   all applied changes with the `undo:` lines.
+4. **After Apply the board stays closed** and the result shows the changes with the `undo:` lines
+   (user, after the Live test, 2026-10-20 — reopening felt strange; first built as a reopen loop).
+   Close or Esc changes nothing and shows no message.
 5. **`tag --edit <tag>` (`-e`) ships with it** as the keyboard path (name decided by the
    architect: the user already calls it that).
 6. **An "untagged" section** lists the tracks without any tag, read-only (chips without ×, no
@@ -124,7 +125,7 @@ null when closed. Only real differences are sent; a created section only matters
 - One section per tag, with every track as an item.
 - Apply → group the changes per track → `planTags` / `tags_set` (one write per track) → the
   result with the `undo:` lines.
-- Reopen the overview after Apply, or end with the result? Open question below.
+- After Apply the board stays closed and the result is shown (decision 4).
 - A failed write shows the ✓/× result. The script being down gives exit 5, as today.
 
 ### Keyboard path: `tag --edit <tag>` (`-e`)
@@ -150,7 +151,7 @@ board as the keyboard path (decision 5).
 - **Module pages** are pages only one module needs, opened with `api.dialog`. They move to
   `ui/modules/<module>/…`, for example `ui/modules/pakabl/list.html`.
 - **Rule:** when a second module needs the same kind of page, it becomes a core surface. Every
-  page answers once when it closes, and edits follow collect → apply → reopen.
+  page answers once when it closes, and edits follow collect → apply.
 
 ## Open questions
 
@@ -171,8 +172,8 @@ board as the keyboard path (decision 5).
 
 - Every phase: `npm test` and `npm run build`. The ui agent checks `board.html` in a browser.
 - Live:
-  - In `tag -l`, mark two labels and press Apply: the tags are gone and the overview reopens
-    with the new state.
+  - In `tag -l`, mark two labels and press Apply: the tags are gone, the board closes and the
+    result shows the undo lines.
   - Close with nothing marked changes nothing.
   - Open a tag, tick two tracks, untick one, Apply: exactly those three changes are written.
   - New tag… "perc", tick a track, Apply: the track is tagged `perc`.

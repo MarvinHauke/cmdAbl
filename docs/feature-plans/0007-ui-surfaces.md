@@ -54,8 +54,8 @@ answers with `close_and_send`; each page documents this in a comment at its top.
   `pakabl-list.html` moved there (`ui/modules/pakabl/list.html`, user, 2026-10-20); the
   architecture test enforces it.
 - When a second module needs the same kind of page, it becomes a core surface.
-- Editing pages collect the changes and answer once; the extension applies them and reopens the
-  page.
+- Editing pages collect the changes and answer once; the extension applies them after the page
+  closes.
 
 ### 2. Three levels of customization
 
