@@ -16,7 +16,26 @@ export interface Logger {
 export const LOG_CAPACITY = 500;
 
 /** Where a finished line goes (the extension's console in production, an array in tests). */
-export type LogSink = (line: string, level: LogLevel) => void;
+export type LogSink = (line: string, level: LogLevel, time: number) => void;
+
+/** One kept line with the time (ms since the epoch) it was written. */
+export interface LogEntry {
+  time: number;
+  line: string;
+}
+
+const two = (n: number): string => String(n).padStart(2, "0");
+/** Local time `HH:MM:SS`, or `HH:MM:SS.mmm` with `millis`. */
+export function clockText(time: number, millis = false): string {
+  const d = new Date(time);
+  const base = `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+  return millis ? `${base}.${String(d.getMilliseconds()).padStart(3, "0")}` : base;
+}
+/** Local date `YYYY-MM-DD`. */
+export function dayText(time: number): string {
+  const d = new Date(time);
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
+}
 
 export interface Log {
   /** A logger whose lines carry `source` (a module, `run`, `ui`, …). */
@@ -25,26 +44,32 @@ export interface Log {
   record(line: string, level?: LogLevel): void;
   /** The last `count` lines kept, oldest first (all of them when `count` is omitted). */
   lines(count?: number): string[];
+  /** Like `lines`, with the time each line was written. */
+  entries(count?: number): LogEntry[];
   /** Turn debug lines on or off for the session. */
   setDebug(on: boolean): void;
   debugOn(): boolean;
 }
 
 /** The only place that touches the console. */
-export const consoleSink: LogSink = (line, level) => {
-  if (level === "error" || level === "warn") console.error(line);
-  else console.log(line);
+export const consoleSink: LogSink = (line, level, time) => {
+  const stamped = `${clockText(time, true)} ${line}`;
+  if (level === "error" || level === "warn") console.error(stamped);
+  else console.log(stamped);
 };
 
-export function createLog(sink: LogSink = consoleSink, capacity = LOG_CAPACITY): Log {
-  const buffer: string[] = [];
+const pick = <T>(items: T[], count?: number): T[] => (count === undefined ? [...items] : count <= 0 ? [] : items.slice(-count));
+
+export function createLog(sink: LogSink = consoleSink, capacity = LOG_CAPACITY, now: () => number = Date.now): Log {
+  const buffer: LogEntry[] = [];
   let debug = false;
 
   const write = (line: string, level: LogLevel): void => {
-    buffer.push(line);
+    const time = now();
+    buffer.push({ time, line });
     if (buffer.length > capacity) buffer.splice(0, buffer.length - capacity);
     try {
-      sink(line, level);
+      sink(line, level, time);
     } catch {
       // a failing sink must never break the caller
     }
@@ -74,7 +99,8 @@ export function createLog(sink: LogSink = consoleSink, capacity = LOG_CAPACITY):
         write(part, lineLevel);
       }
     },
-    lines: (count) => (count === undefined ? [...buffer] : count <= 0 ? [] : buffer.slice(-count)),
+    lines: (count) => pick(buffer, count).map((e) => e.line),
+    entries: (count) => pick(buffer, count).map((e) => ({ ...e })),
     setDebug: (on) => {
       debug = on;
     },

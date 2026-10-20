@@ -5,7 +5,7 @@ import { REMOTE_SCRIPT_DOCS_URL, runSetup } from "./setup.js";
 import { ok, fail, ExitCode } from "./types.js";
 import { reportBridge, type BridgeProbe } from "./bridgeStatus.js";
 import { adviseRemoteScript } from "./setupAdvice.js";
-import { appLog, type Log } from "./log.js";
+import { appLog, clockText, dayText, type Log } from "./log.js";
 
 // The only commands baked into cmdAbl itself — what a first-time user needs
 // before any module is involved. Everything else is a module
@@ -21,7 +21,7 @@ export interface BuiltinsDeps {
   installed?: () => InstalledScript;
   shippedVersion?: string;
   /** The log `cmdabl log` shows (default: the extension's). */
-  log?: Pick<Log, "lines" | "setDebug" | "debugOn">;
+  log?: Pick<Log, "entries" | "setDebug" | "debugOn">;
 }
 
 export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps = {}): void {
@@ -93,17 +93,30 @@ export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps =
           const turnedOn = invocation.options.debug === true && !log.debugOn();
           if (invocation.options.debug === true) log.setDebug(true);
           const count = invocation.options.count ? Number(invocation.options.count) : 50;
-          const all = log.lines();
+          const all = log.entries();
           const undoOnly = invocation.options.undo === true;
-          // --undo: just the commands that undo a change, without prefix, level, indentation or "undo: "
-          const wanted = undoOnly
-            ? all.flatMap((l) => {
-                const m = /^cmdAbl \[[^\]]+\] info:\s+undo: (.+)$/.exec(l);
-                const command = m ? m[1].trim() : "";
-                return command === "" ? [] : [command];
-              })
-            : all;
-          const shown = wanted.slice(-count);
+          let wanted: string[];
+          if (undoOnly) {
+            // just the commands that undo a change, without time, prefix, level, indentation or "undo: "
+            wanted = all.flatMap((e) => {
+              const m = /^cmdAbl \[[^\]]+\] info:\s+undo: (.+)$/.exec(e.line);
+              const command = m ? m[1].trim() : "";
+              return command === "" ? [] : [command];
+            });
+          } else {
+            const last = all.slice(-count);
+            const multiDay = new Set(last.map((e) => dayText(e.time))).size > 1;
+            wanted = [];
+            let day = "";
+            for (const e of last) {
+              if (multiDay && dayText(e.time) !== day) {
+                day = dayText(e.time);
+                wanted.push(day);
+              }
+              wanted.push(`${clockText(e.time)} ${e.line.replace(/^cmdAbl \[/, "[")}`);
+            }
+          }
+          const shown = undoOnly ? wanted.slice(-count) : wanted;
           const note = turnedOn ? "debug lines are on for this session\n" : "";
           if (shown.length === 0) return ok(`${note}${invocation.options.undo === true ? "no undo commands logged yet" : "the log is empty"}`);
           return ok(`${note}${shown.join("\n")}`);

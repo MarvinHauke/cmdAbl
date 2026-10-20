@@ -607,6 +607,7 @@ test("cmdabl log: last 50 lines, -n, --undo, --debug", async () => {
   const text = async (line: string) => String((await runLine(line, deps as never)).result.message);
   assert.equal((await text("cmdabl log")).split("\n").length, 50);
   assert.ok((await text("cmdabl log")).endsWith("changed 59"));
+  assert.match((await text("cmdabl log -n 1")), /^\d\d:\d\d:\d\d \[tag\] info: changed 59$/);
   assert.equal((await text("cmdabl log -n 5")).split("\n").length, 5);
   const undo = (await text("cmdabl log --undo")).split("\n");
   assert.equal(undo.length, 6);
@@ -626,4 +627,28 @@ test("cmdabl log: last 50 lines, -n, --undo, --debug", async () => {
   registerBuiltins(r2, { log: empty });
   assert.equal(String((await runLine("cmdabl log", { ...deps, registry: r2 } as never)).result.message), "the log is empty");
   assert.equal(String((await runLine("cmdabl log --undo", { ...deps, registry: r2 } as never)).result.message), "no undo commands logged yet");
+});
+
+test("cmdabl log: times, and a date line where the day changes", async () => {
+  const { createLog, clockText, dayText } = await import("./log.js");
+  const { CommandRegistry } = await import("./commandRegistry.js");
+  const { registerBuiltins } = await import("./builtins.js");
+  const { runLine } = await import("./run.js");
+  const day1 = new Date(2026, 9, 20, 23, 59, 58, 123).getTime();
+  const day2 = new Date(2026, 9, 21, 0, 0, 1, 5).getTime();
+  let t = day1;
+  const sunk: Array<[string, number]> = [];
+  const log = createLog((line, _l, time) => void sunk.push([line, time]), 500, () => t);
+  log.logger("tag").info("one");
+  t = day2;
+  log.logger("tag").info("two");
+  assert.equal(clockText(day1, true), "23:59:58.123");
+  assert.equal(dayText(day2), "2026-10-21");
+  assert.deepEqual(sunk.map((x) => x[0]), ["cmdAbl [tag] info: one", "cmdAbl [tag] info: two"]);
+  assert.deepEqual(log.lines(), ["cmdAbl [tag] info: one", "cmdAbl [tag] info: two"]);
+  const registry = new CommandRegistry();
+  registerBuiltins(registry, { log });
+  const deps = { registry, liveNodes: () => [], pick: async () => null };
+  const out = String((await runLine("cmdabl log", deps as never)).result.message);
+  assert.equal(out, "2026-10-20\n23:59:58 [tag] info: one\n2026-10-21\n00:00:01 [tag] info: two");
 });

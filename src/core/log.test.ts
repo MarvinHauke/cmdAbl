@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createLog, LOG_CAPACITY } from "./log.js";
+import { consoleSink, createLog, LOG_CAPACITY } from "./log.js";
 
 function make() {
   const sunk: Array<[string, string]> = [];
@@ -52,4 +52,16 @@ test("record keeps a preformatted line; a throwing sink never breaks the caller"
   log.record("cmdAbl [run] info: start: x");
   log.logger("a").error("b");
   assert.deepEqual(log.lines(), ["cmdAbl [run] info: start: x", "cmdAbl [a] error: b"]);
+});
+
+test("console sink stamps the local time before the prefix", () => {
+  const seen: string[] = [];
+  const orig = console.log;
+  console.log = (l: string) => void seen.push(l);
+  try {
+    consoleSink("cmdAbl [x] info: hi", "info", new Date(2026, 9, 20, 23, 35, 2, 123).getTime());
+  } finally {
+    console.log = orig;
+  }
+  assert.deepEqual(seen, ["23:35:02.123 cmdAbl [x] info: hi"]);
 });
