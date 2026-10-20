@@ -22,7 +22,7 @@ export function activate(api: ModuleApi): void {
     description:
       "Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx " +
       "reaches every track tagged fx. Without arguments, lists every tag and the tracks that carry it. " +
-      "With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. With names, switches each tag on for a target " +
+      "With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target " +
       "that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. " +
       "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +
       "so the script has to run, and they are saved with the Set. Cmd+Z does not undo them: the result names " +
@@ -30,7 +30,7 @@ export function activate(api: ModuleApi): void {
       "a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).",
     examples: [
       { line: "tag", note: "all tags and their tracks" },
-      { line: "tag /Lead", note: "pick the tags to switch on or off for the track Lead" },
+      { line: "tag /Lead", note: "pick the tags to switch on or off for the track Lead, or type a new one" },
       { line: "tag /Lead fx synth", note: "switch fx and synth on, or off where they are on" },
       { line: "tag --set 1 /Bass fx", note: "make sure Bass is tagged fx" },
       { line: "tag --set 0 #drum fx", note: "remove fx from every track tagged drum" },
@@ -73,27 +73,35 @@ export function activate(api: ModuleApi): void {
       }
 
       let pickedModes: Map<string, TagMode> | null = null;
+      let pickedRows: Array<{ name: string; on: boolean }> | null = null;
       if (words.length === 0) {
         // The Set's tags as a list; the state buttons show what the target(s) have, Enter applies the marked ones.
         const index = tagIndex(tracks.map((t) => ({ path: t.path, tags: api.tags.of(t) })));
-        if (index.length === 0) return ok("no tags in the Set — name one to create it: tag <target> <name>");
         const rows = index.map((e) => ({
           name: e.tag,
           count: e.paths.length,
           on: targets.every((t) => api.tags.of(t).includes(e.tag)),
         }));
         const title = `tag ${targets.length === 1 ? targets[0]!.path : `${targets.length} tracks`}`;
-        const chosen = await api.pickTags(title, rows, { change: mode === "add" ? "on" : mode === "remove" ? "off" : "toggle" });
+        const chosen = await api.pickTags(title, rows, {
+          change: mode === "add" ? "on" : mode === "remove" ? "off" : "toggle",
+          allowNew: true,
+        });
+        // The created name, if any, comes last as typed; it is checked below like a typed one.
         if (!chosen || chosen.length === 0) return;
         words.push(...chosen);
-        // The list promised one result per row: a lit row is removed from every target, any other added to
-        // every target (a per-track toggle would flip tracks that disagree the wrong way round).
-        if (mode === "toggle") pickedModes = new Map(chosen.map((n) => [n, rows.find((r) => r.name === n)?.on ? "remove" : "add"]));
+        pickedRows = rows;
       }
 
       const names = normalizeTagNames(words);
       if (!names.ok) {
         return fail(ExitCode.USAGE, `tag: "${names.bad}" is not a tag name — use lowercase letters, digits, - and _`);
+      }
+      // The list promised one result per row: a lit row is removed from every target, any other (a created
+      // name included) added to every target (a per-track toggle would flip tracks that disagree the wrong way round).
+      if (pickedRows && mode === "toggle") {
+        const rows = pickedRows;
+        pickedModes = new Map(names.names.map((n) => [n, rows.find((r) => r.name === n)?.on ? "remove" : "add"]));
       }
 
       const lines: string[] = [];

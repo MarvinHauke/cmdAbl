@@ -640,7 +640,7 @@ words typed together name one object when they fit it (here the Bass Drum pad of
 
 tag tracks, or list the tags of the Set
 
-Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx reaches every track tagged fx. Without arguments, lists every tag and the tracks that carry it. With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. With names, switches each tag on for a target that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, so the script has to run, and they are saved with the Set. Cmd+Z does not undo them: the result names the command that puts every change back. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).
+Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx reaches every track tagged fx. Without arguments, lists every tag and the tracks that carry it. With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, so the script has to run, and they are saved with the Set. Cmd+Z does not undo them: the result names the command that puts every change back. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).
 
 **Usage:** `tag [--set <0|1>] [--pick] [<target>] [<name>…]`
 
@@ -668,7 +668,7 @@ all tags and their tracks
 tag /Lead
 ```
 
-pick the tags to switch on or off for the track Lead
+pick the tags to switch on or off for the track Lead, or type a new one
 
 ```
 tag /Lead fx synth

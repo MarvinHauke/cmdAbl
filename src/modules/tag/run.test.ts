@@ -96,12 +96,34 @@ test("a target without names opens the tag list with the target's tags lit and a
   assert.deepEqual(fake.tagStore.get("Lead"), ["synth", "fx"]);
 });
 
-test("a cancelled list changes nothing; a Set without tags says how to create one", async () => {
+test("a cancelled list changes nothing; a Set without tags still opens the list, with only the create row", async () => {
   const { run, fake } = setup({ Bass: ["fx"] }, { pickTagsAnswer: () => null });
   assert.equal(await run({}, [lead], []), undefined);
   assert.equal(fake.tagStore.has("Lead"), false);
-  const none = (await setup({}).run({}, [lead], []))!;
-  assert.match(none.message ?? "", /no tags in the Set/);
+  assert.equal(fake.tagLists[0]!.allowNew, true);
+  const none = setup({}, { pickTagsAnswer: () => null });
+  assert.equal(await none.run({}, [lead], []), undefined);
+  assert.deepEqual(none.fake.tagLists[0]!.rows, []);
+});
+
+test("a created name is added to every target like an unlit row, with its undo line", async () => {
+  const { run, fake } = setup({ Lead: ["fx"], Bass: ["fx"] }, { pickTagsAnswer: () => ["fx", "Perc"] });
+  const r = (await run({}, [lead, bass], []))!;
+  assert.equal(r.code, ExitCode.OK);
+  assert.deepEqual(fake.tagStore.get("Lead"), ["perc"]); // fx was lit on both: removed; perc created
+  assert.deepEqual(fake.tagStore.get("Bass"), ["perc"]);
+  assert.match(r.message ?? "", /\/Lead: \+perc -fx/);
+  assert.match(r.message ?? "", /undo: tag --set 0 \/Lead perc/);
+});
+
+test("a created name that is already a row follows that row; an invalid one is exit 2 and writes nothing", async () => {
+  const same = setup({ Lead: ["fx"] }, { pickTagsAnswer: () => ["FX"] });
+  const sr = await same.run({}, [lead], []);
+  assert.equal(sr?.message, "/Lead: -fx (now no tags)\n  undo: tag --set 1 /Lead fx");
+  const bad = setup({}, { pickTagsAnswer: () => ["FX!"] });
+  const r = (await bad.run({}, [lead], []))!;
+  assert.equal(r.code, ExitCode.USAGE);
+  assert.equal(bad.fake.tagStore.has("Lead"), false);
 });
 
 test("changeLines quotes a path with spaces in the undo command", () => {
