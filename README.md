@@ -30,15 +30,6 @@ SDK, with a small Remote Script for what the SDK cannot do.
 
 ## Why cmdAbl
 
-<!-- GIF to come: docs/assets/images/picklist.gif -->
-
-### A pick list you control
-
-When a name fits more than one object, `mute`, `solo` and `arm` ask instead of guessing. Mark the rows you mean
-with `Tab`. Each row shows its state in Live's colours, a speaker for mute, `S` for solo or a record dot for arm,
-and marked rows are highlighted. A dashed ring marks each button that Enter would change, and Live does not change
-until you press Enter.
-
 <!-- GIF to come: docs/assets/images/tags.gif -->
 
 ### Tags that group your tracks
@@ -48,6 +39,15 @@ Tag tracks by what they are: `tag /Lead fx synth`. After that, `mute #fx` reache
 are saved with the Set, and they need the [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/).
 
 <!-- GIF to come: docs/assets/images/pakabl.gif -->
+
+<!-- GIF to come: docs/assets/images/picklist.gif -->
+
+### A pick list you control
+
+When a name fits more than one object, `mute`, `solo` and `arm` ask instead of guessing. Mark the rows you mean
+with `Tab`. Each row shows its state in Live's colours, a speaker for mute, `S` for solo or a record dot for arm,
+and marked rows are highlighted. A dashed ring marks each button that Enter would change, and Live does not change
+until you press Enter.
 
 ### Community extensions, one list
 

@@ -6,11 +6,11 @@
 
 ## Why cmdAbl
 
+- **Tags that group your tracks.** `tag /Lead fx synth` tags a track. Then `mute #fx` reaches every `fx` track at
+  once, and `mute !#drums` every regular track without the tag. Tags are saved with the Set.
 - **A pick list you control.** When a name fits more than one object, `mute`, `solo` and `arm` ask instead of
   guessing. Mark the rows you mean with `Tab`. The buttons show the state Enter would set, and nothing changes in
   Live until you press Enter.
-- **Tags that group your tracks.** `tag /Lead fx synth` tags a track. Then `mute #fx` reaches every `fx` track at
-  once, and `mute !#drums` every regular track without the tag. Tags are saved with the Set.
 - **Community extensions, one list.** `pakabl` installs Ableton Live extensions from a curated community list.
 
 [Get started](getting-started.md) walks through the install step by step.
