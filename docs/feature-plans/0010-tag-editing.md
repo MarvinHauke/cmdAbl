@@ -37,9 +37,10 @@ changes, the extension applies them after the dialog closes.
    - The contract goes in `src/core/ui.ts`, the page is `ui/board.html` and uses `shared.css`.
    - It can be themed and replaced like the other surfaces (0007 §2).
    - Later users: aliases, the history list, tags on chains and pads.
-4. **After Apply the board stays closed** and the result shows the changes with the `undo:` lines
-   (user, after the Live test, 2026-10-20 — reopening felt strange; first built as a reopen loop).
-   Close or Esc changes nothing and shows no message.
+4. **After Apply the board stays closed, quietly** (user, after the Live test, 2026-10-20 —
+   reopening felt strange; first built as a reopen loop). The changes and `undo:` lines go to the
+   log (`CommandResult.log`, [0011](0011-logging.md)); only failures show a dialog. Close or Esc
+   changes nothing and shows no message.
 5. **`tag --edit <tag>` (`-e`) ships with it** as the keyboard path (name decided by the
    architect: the user already calls it that).
 6. **An "untagged" section** lists the tracks without any tag, read-only (chips without ×, no
@@ -128,8 +129,8 @@ null when closed. Only real differences are sent; a created section only matters
 ### `tag -l` on `board` (cmdabl-modules)
 
 - One section per tag, with every track as an item.
-- Apply → group the changes per track → `planTags` / `tags_set` (one write per track) → the
-  result with the `undo:` lines.
+- Apply → group the changes per track → `planTags` / `tags_set` (one write per track) → a quiet
+  result; the change and `undo:` lines go to `log` (0011).
 - After Apply the board stays closed and the result is shown (decision 4).
 - A failed write shows the ✓/× result. The script being down gives exit 5, as today.
 

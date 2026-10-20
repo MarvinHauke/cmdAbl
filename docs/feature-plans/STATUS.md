@@ -51,6 +51,10 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    and looks the same, Install/Repo answer.
 4. Docs: `tag --edit` and the board in using.md and README — done `4dbeee0` (image
    `tag-board.png` to come).
+6. Logging (plan 0011, approved 2026-10-20): tag writes go quiet (changes and `undo:` lines in
+   `CommandResult.log`), a core logger with levels and a ring buffer, `cmdabl log [-n] [--debug]
+   [--undo]`, no `console.` outside `log.ts`. Quiet writes are in 0.1.2; the logger and `cmdabl log`
+   go in 0.1.2 if they are small, otherwise 0.1.3. Tasks: core → modules → bridge → docs.
 
 ## Where the code is
 
