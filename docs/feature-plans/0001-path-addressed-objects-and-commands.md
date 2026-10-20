@@ -528,8 +528,11 @@ background** (`src/ableton/chainNames.ts`):
   pick); `goto` on a chain runs `select` with a route of length 3 (`rack.view.selected_chain`,
   unverified). A 0.3.0 script keeps working (the op list decides); only `cmdabl bridge` differs.
 - Chain nodes: `kind: "chain"`, route `[track, device, chain]`, path under the rack
-  (`/Vermona MIDI/Drum Rack/Kick`), no children in step 4 (devices inside chains stay out of the
-  tree; the route scheme already addresses them).
+  (`/Vermona MIDI/Drum Rack/Kick`), and — since script 0.1.6 — the devices in
+  the chain as children (SDK `Chain.devices`), recursively: a rack nested in a chain gets its own
+  chain nodes, so `/Drums/Strutter Kit/Strutter Kit/Kit/Kick Rumble` exists. They appear only
+  while the chain-name cache holds the names of the rack that contains them. `select` shows the
+  enclosing chains from the outside in before it selects the target (best effort).
 
 ### 7. Build order (each step has a Live test)
 

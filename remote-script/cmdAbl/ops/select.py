@@ -14,7 +14,8 @@ take) or null (the track cannot show chains, or reading failed). It never
 turns a successful selection into a failure. View state, not a writing op.
 
 Route length: 1 track, 2 device on the track, 3 chain (selected in its rack's
-view), 4+ device inside a chain (see routes.py). Parent groups are unfolded
+view), 4+ device inside a chain (see routes.py). For a target nested in
+chains, the enclosing chains are shown first, outermost first (best effort). Parent groups are unfolded
 first so the object is visible. Live's objects are wrappers, so the read-back compares with
 `!=`, never `is not`. A `failed` or `unsupported` device/chain select may already have
 selected the track (partial change); the caller must not claim "nothing changed".
@@ -40,6 +41,18 @@ def _show_chains(track):
         return None
 
 
+def _select_ancestor_chains(view, path):
+    """Show every enclosing chain of the target, outermost first (a rack nested in a chain is
+    only reachable once the chain around it is the one its rack shows). Best effort: a refusal
+    here is not an error, the final read-back of the target decides."""
+    for i in range(2, len(path) - 1, 2):
+        try:
+            view.select_device(path[i - 1])
+            path[i - 1].view.selected_chain = path[i]
+        except Exception:
+            pass
+
+
 def select(song, args):
     scope, route = parse_target(args)
     expect = args.get("expectName")
@@ -61,12 +74,14 @@ def select(song, args):
             raise _fail("Live did not select the track")
     elif len(route) % 2 == 0:  # a device
         view.selected_track = track
+        _select_ancestor_chains(view, path)
         view.select_device(target)
         if track.view.selected_device != target:
             raise _fail("Live did not select the device")
     else:  # a chain: show it in its rack's view
         rack = path[-2]
         view.selected_track = track
+        _select_ancestor_chains(view, path)
         view.select_device(rack)
         try:
             rack.view.selected_chain = target

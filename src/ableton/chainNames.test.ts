@@ -181,3 +181,12 @@ test("the refresh line counts empty chain names", async () => {
   await cache.refresh(findRacks(song()), bridge);
   assert.match(lines[0]!, /\(1 empty\)/);
 });
+
+test("refreshNow returns at once while the script is known to be unavailable", async () => {
+  const bridge = createFakeBridge({ running: false });
+  await bridge.request("hello", {}); // learns the state
+  const cache = new ChainNameCache(() => 0);
+  const started = Date.now();
+  await cache.refreshNow(findRacks(song()), bridge);
+  assert.ok(Date.now() - started < 100);
+});

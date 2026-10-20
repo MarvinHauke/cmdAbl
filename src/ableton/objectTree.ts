@@ -1,4 +1,4 @@
-import type { ExtensionContext, Track } from "@ableton-extensions/sdk";
+import type { Device, ExtensionContext, Track } from "@ableton-extensions/sdk";
 import type { PaletteItemType, TrackScope } from "../core/types.js";
 import { getBridge } from "./bridge.js";
 import { findRacks, getChainNameCache, type ChainNameCache } from "./chainNames.js";
@@ -133,20 +133,25 @@ function buildTrackNode(track: Track<"1.0.0">, trackIndex: number, scope: TrackS
     name: track.name,
     path: "",
     ...(tags ? { tags: tags.slice() } : {}),
-    children: track.devices.map((device, deviceIndex) => {
-      const route = [trackIndex, deviceIndex];
-      const handleId = device.handle.id.toString();
-      return {
-        handleId,
-        route,
-        kind: "device" as const,
-        scope,
-        name: device.name,
-        path: "",
-        children: chainNodes(device, route, handleId, scope, cache),
-      };
-    }),
+    children: deviceNodes(track.devices, [trackIndex], scope, cache),
   };
+}
+
+/** Device nodes for `devices` under `prefix` (a track route, or a chain route), racks with their chains and what is in them. */
+function deviceNodes(devices: readonly Device<"1.0.0">[], prefix: number[], scope: TrackScope, cache: ChainNameCache | null): ObjectNode[] {
+  return devices.map((device, deviceIndex) => {
+    const route = [...prefix, deviceIndex];
+    const handleId = device.handle.id.toString();
+    return {
+      handleId,
+      route,
+      kind: "device" as const,
+      scope,
+      name: device.name,
+      path: "",
+      children: chainNodes(device, route, handleId, scope, cache),
+    };
+  });
 }
 
 /** The chains of a rack device, named from the cache; none when the names are unknown or out of date. */
@@ -162,14 +167,15 @@ function chainNodes(
   const chainIds = chains.map((c: { handle: { id: { toString(): string } } }) => c.handle.id.toString());
   const entry = cache.get(scope, route, handleId, chainIds);
   if (!entry) return [];
-  return chains.map((_chain: unknown, chainIndex: number) => ({
+  return chains.map((chain: { devices?: readonly Device<"1.0.0">[] }, chainIndex: number) => ({
     handleId: chainIds[chainIndex]!,
     route: [...route, chainIndex],
     kind: "chain" as const,
     scope,
     name: entry.names[chainIndex] ?? "",
     path: "",
-    children: [],
+    // the devices in the chain (a rack nested in a chain too, recursively), named by the SDK
+    children: deviceNodes(Array.isArray(chain.devices) ? chain.devices : [], [...route, chainIndex], scope, cache),
   }));
 }
 

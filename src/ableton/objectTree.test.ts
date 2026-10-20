@@ -70,3 +70,40 @@ test("tracks and devices are unchanged by chain support", async () => {
   const nodes = flattenObjectTree(buildObjectTree(ctx.context, { chainNames: await warmedCache(ctx, ["A", "B", "C"]) }));
   assert.deepEqual(nodes.filter((n) => n.kind !== "chain").map((n) => n.path), ["/Vermona MIDI", "/Vermona MIDI/EQ", "/Vermona MIDI/Drum Rack", "/Main"]);
 });
+
+test("a Drum Rack nested in an Instrument Rack chain: its pads are tree nodes with the right routes and paths", async () => {
+  const pad = (id: string, devices: object[] = []) => ({ handle: handle(id), devices });
+  const drum = { handle: handle("dr"), name: "Kit", chains: [pad("p0", [{ handle: handle("s0"), name: "Kick Caltroit" }]), pad("p1")] };
+  const outer = { handle: handle("ir"), name: "Strutter Kit", chains: [{ handle: handle("oc"), devices: [drum] }] };
+  const drums = track("t1", "Drums", [outer as never]);
+  const ctx = { application: { song: { tracks: [drums], returnTracks: [], mainTrack: track("m", "Main", []) } } } as never;
+  const cache = new ChainNameCache();
+  const answers: Record<string, string[]> = { "0.0": ["Strutter Kit"], "0.0.0.0": ["Kick Rumble", "Kick Yolo"] };
+  const bridge = createFakeBridge({
+    ops: {
+      chains: (a) => ({
+        ok: true,
+        value: { racks: (a.targets as Array<{ route: number[] }>).map((t) => ({ kind: "rack", total: answers[t.route.join(".")]!.length, offset: 0, chains: answers[t.route.join(".")]!.map((name) => ({ name })) })) },
+      }),
+    },
+  });
+  await cache.refresh(
+    [
+      { scope: "regular", route: [0, 0], handleId: "ir", chainIds: ["oc"] },
+      { scope: "regular", route: [0, 0, 0, 0], handleId: "dr", chainIds: ["p0", "p1"] },
+    ],
+    bridge,
+  );
+  const nodes = flattenObjectTree(buildObjectTree(ctx, { chainNames: cache }));
+  assert.deepEqual(
+    nodes.filter((n) => n.route.length > 1).map((n) => [n.path, n.kind, n.route]),
+    [
+      ["/Drums/Strutter Kit", "device", [0, 0]],
+      ["/Drums/Strutter Kit/Strutter Kit", "chain", [0, 0, 0]],
+      ["/Drums/Strutter Kit/Strutter Kit/Kit", "device", [0, 0, 0, 0]],
+      ["/Drums/Strutter Kit/Strutter Kit/Kit/Kick Rumble", "chain", [0, 0, 0, 0, 0]],
+      ["/Drums/Strutter Kit/Strutter Kit/Kit/Kick Rumble/Kick Caltroit", "device", [0, 0, 0, 0, 0, 0]],
+      ["/Drums/Strutter Kit/Strutter Kit/Kit/Kick Yolo", "chain", [0, 0, 0, 0, 1]],
+    ],
+  );
+});

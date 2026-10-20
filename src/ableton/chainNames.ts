@@ -125,6 +125,7 @@ export class ChainNameCache {
   async refreshNow(racks: RackRef[], bridge: Bridge): Promise<void> {
     try {
       if (this.missing(racks) === 0) return;
+      if (bridge.state() === "unavailable") return; // no script: every rack stays missing, do not wait for the request timeout
       this.latest = { racks, bridge };
       while (this.inFlight) await this.inFlight; // may predate the change; read again below
       if (this.missing(racks) === 0) return;

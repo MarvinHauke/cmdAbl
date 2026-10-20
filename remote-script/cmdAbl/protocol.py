@@ -13,7 +13,7 @@ logs them); nothing raises out of `handle_request`.
 import hmac
 import json
 
-VERSION = "0.1.5"  # the script's own version; keep in step with SCRIPT_VERSION in src/ableton/bridgeProtocol.ts
+VERSION = "0.1.6"  # the script's own version; keep in step with SCRIPT_VERSION in src/ableton/bridgeProtocol.ts
 PROTOCOL = 1
 MAX_REPLY_BYTES = 4096
 
