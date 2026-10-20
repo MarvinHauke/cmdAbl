@@ -177,6 +177,11 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
 - **Script version 0.1.5** on this branch (0.1.3/0.1.4 were spike builds; setup compares versions
   for equality, so a fresh number avoids "current" for a spike script).
 
+## Later: editing tags from the overview
+
+`tag -l` as an editable overview and `tag --edit <tag>` for one tag on many tracks: plan
+[0010](0010-tag-editing.md) (user, 2026-10-20).
+
 ## Later idea: tags in track names (user, 2026-10-20)
 
 `Lead [#fx, #drums]`: visible in Live, editable by hand, Cmd+Z works, Live marks the Set itself,
