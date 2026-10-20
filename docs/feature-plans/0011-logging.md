@@ -1,9 +1,11 @@
 # Logging: what goes where, a core logger and `cmdabl log`
 
-**Status:** Approved (2026-10-20). Quiet tag writes go into 0.1.2. The logger and `cmdabl log` go
-into 0.1.2 if they are small enough, otherwise into 0.1.3. Trigger: after Apply on the tag board, a
-message window listed every change with its `undo:` lines. The user wants that report in the log,
-not in a dialog.
+**Status:** Built (2026-10-20) for 0.1.2: core `e7ff3e8`, `9d2fda1`, `c5ce946`; modules `6a958fe`,
+`9e15cff`; bridge `94c1648`. Live test pending. Quiet tag writes ship only together with
+`cmdabl log --undo` (reviewer, architect decision 2026-10-20), so the undo commands stay reachable.
+Log lines now read `cmdAbl [<source>] <level>: …`, so filter on `cmdAbl [`.
+Trigger: after Apply on the tag board, a message window listed every change with its `undo:` lines.
+The user wants that report in the log, not in a dialog.
 
 **Parent:** [0004](0004-command-platform.md)
 **Related:** [0002](0002-command-feedback-pattern.md) (the feedback pattern, extended by the rule

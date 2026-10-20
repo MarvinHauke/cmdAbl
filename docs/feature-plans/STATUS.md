@@ -51,10 +51,18 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    and looks the same, Install/Repo answer.
 4. Docs: `tag --edit` and the board in using.md and README — done `4dbeee0` (image
    `tag-board.png` to come).
-6. Logging (plan 0011, approved 2026-10-20): tag writes go quiet (changes and `undo:` lines in
-   `CommandResult.log`), a core logger with levels and a ring buffer, `cmdabl log [-n] [--debug]
-   [--undo]`, no `console.` outside `log.ts`. Quiet writes are in 0.1.2; the logger and `cmdabl log`
-   go in 0.1.2 if they are small, otherwise 0.1.3. Tasks: core → modules → bridge → docs.
+6. Logging (plan 0011) — built: core `e7ff3e8` `9d2fda1` `c5ce946`, modules `6a958fe` `9e15cff`,
+   bridge `94c1648`. Tag writes are quiet, `cmdabl log [-n] [--undo] [--debug]`, lines read
+   `cmdAbl [<source>] <level>:`. Live test: `tag /Lead fx` opens no window, then `cmdabl log --undo`
+   shows the undo line; `cmdabl log -n 5`; `arm /x`, then `cmdabl log` (no double prefix); a failed
+   write still shows ✓/×; the script line in Log.txt after `cmdabl setup`. Docs pending (cmdabl-docs).
+
+## Next after 0.1.2 (user, 2026-10-20)
+
+1. 0013 `note`: one Markdown note per Set, in a simple form, with the store in 0.1.3. Starts with a spike
+   (`Song.set_data`).
+2. 0012 `vol` (fader levels, absolute or relative), then `dca` (one Utility per DCA in a rack),
+   then the desk bridges (X32 first). Starts with a spike (dB mapping, `insert_device`).
 
 ## Where the code is
 
