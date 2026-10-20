@@ -12,6 +12,7 @@ import { registerBuiltins } from "./core/builtins.js";
 import { reportBridge } from "./core/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { getTagCache } from "./ableton/tagCache.js";
+import { findRacks, getChainNameCache } from "./ableton/chainNames.js";
 import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
 import { objectRowLine } from "./core/objectRow.js";
@@ -218,6 +219,12 @@ export function activate(activation: ActivationContext) {
         const read = await getTagCache().refreshNow(getBridge());
         return read.ok ? null : fail(read.code, read.text);
       },
+      // Nested rack chains are tree nodes only while their names are cached: read them first.
+      // Without a running script every rack stays "missing": ask nothing then (no 0.5 s wait per command).
+      refreshStructure: () =>
+        getBridge().state() === "unavailable"
+          ? Promise.resolve()
+          : getChainNameCache().refreshNow(findRacks(context.application.song), getBridge()),
       pickTags: (request) => pickTagNames(ui, request),
     });
     if (outcome.fill !== undefined) return outcome.fill;

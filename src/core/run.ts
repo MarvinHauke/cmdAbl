@@ -54,6 +54,12 @@ export interface RunDeps {
    * (exit 5, the script's text) ends the run. Absent: the bridge check alone.
    */
   refreshTags?: () => Promise<CommandResult | null>;
+  /**
+   * Make the Set's structure current before the tree is built for a command that takes paths
+   * (nested rack chains exist as nodes only while their names are cached). Capped at
+   * `STRUCTURE_CAP_MS`: a dead script, a rejection or a throw never blocks or fails the command.
+   */
+  refreshStructure?: () => Promise<void>;
   /** Ask the user to choose among the Set's tags (a bare `#` target); null = cancelled. Absent: `#` answers exit 5. */
   pickTags?: (request: { title: string; tags: TagCount[]; multi: boolean; preview: PickPreview }) => Promise<string[] | null>;
 }
@@ -66,6 +72,26 @@ export interface RunOutcome {
   cancelled?: boolean;
   /** Tab on a pick list: nothing ran; reopen the palette with this text in the prompt. */
   fill?: string;
+}
+
+/** How long a command waits for the Set's structure to refresh. */
+export const STRUCTURE_CAP_MS = 1500;
+
+/** Run `fn`, wait at most `ms` for it; a throw, a rejection or a timeout just ends the wait. */
+async function capped(fn: () => Promise<void>, ms: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.resolve().then(fn),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, ms);
+      }),
+    ]);
+  } catch {
+    // never fail a command because of a refresh
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 /** The command and its options, before any target. */
@@ -277,6 +303,7 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   }
 
   const needsLive = (node.args ?? []).some((def) => def.kind === "path");
+  if (needsLive && deps.refreshStructure) await capped(deps.refreshStructure, STRUCTURE_CAP_MS);
   let nodes = needsLive ? deps.liveNodes() : [];
   let targets = normalizeTargets(node, invocation, nodes, quoted);
   const typedTargets = targets.map((values) => [...values]);

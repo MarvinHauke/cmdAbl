@@ -4,7 +4,7 @@ import { CommandRegistry, type Command } from "./commandRegistry.js";
 import { assignPaths, flattenObjectTree, type ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
 import { ExitCode, fail } from "./types.js";
-import { runLine, type RunDeps } from "./run.js";
+import { runLine, STRUCTURE_CAP_MS, type RunDeps } from "./run.js";
 import { presentResult } from "./present.js";
 import { parse } from "./parse.js";
 import { pickNodes } from "./pick.js";
@@ -380,4 +380,32 @@ test("a result's log lines go to the log under the command name; code 0 with onl
   const failed: string[] = [];
   presentResult({ code: 1, message: "bad", log: ["secret detail"] }, (text) => void failed.push(text));
   assert.ok(!failed[0]!.includes("secret detail"));
+});
+
+test("run: the structure is refreshed before the tree is read, only for commands with paths; failures never block", async () => {
+  const { deps, calls } = setup();
+  const order: string[] = [];
+  const live = deps.liveNodes;
+  deps.liveNodes = () => (order.push("tree"), live());
+  deps.refreshStructure = async () => void order.push("refresh");
+  assert.equal((await runLine("goto /Opal Lead", deps)).result.code, ExitCode.OK);
+  assert.deepEqual(order, ["refresh", "tree"]);
+  order.length = 0;
+  await runLine("boom", deps); // no path argument: no refresh
+  assert.ok(!order.includes("refresh"));
+  deps.refreshStructure = async () => { throw new Error("script died"); };
+  assert.equal((await runLine("goto /Opal Lead", deps)).result.code, ExitCode.OK);
+  deps.refreshStructure = () => { throw new Error("sync"); };
+  assert.equal((await runLine("goto /Opal Lead", deps)).result.code, ExitCode.OK);
+  assert.equal(calls.length, 3);
+});
+
+test("run: a refresh that never answers is cut off after STRUCTURE_CAP_MS", async () => {
+  const { deps, calls } = setup();
+  deps.refreshStructure = () => new Promise<void>(() => {}); // hangs
+  const started = Date.now();
+  const out = await runLine("goto /Opal Lead", deps);
+  assert.equal(out.result.code, ExitCode.OK);
+  assert.ok(Date.now() - started >= STRUCTURE_CAP_MS - 50);
+  assert.equal(calls.length, 1);
 });
