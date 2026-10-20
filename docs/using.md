@@ -264,11 +264,15 @@ write shows nothing in the palette, so the log is where to look for it.
 
 - `cmdabl log` shows the last 50 lines, newest at the bottom.
 - `cmdabl log -n <count>` shows up to 500 lines.
-- `cmdabl log --undo` shows only the undo lines, which say how to put a change back.
+- `cmdabl log --undo` shows only the bare undo commands, which put a change back when you type them.
 - `cmdabl log --debug` turns debug lines on for the rest of the session.
 
-The log keeps the last 500 lines of the session. A line reads `cmdAbl [<source>] <level>: …`, where `<source>` is the
-part that wrote it, for example `cmdAbl [run]` for each command or `cmdAbl [dialog]` for the dialogs. The Remote
+The log keeps the last 500 lines of the session. A line reads `HH:MM:SS [<source>] <level>: …`, for example
+`14:05:31 [run] info: start: mute /Bass`. A line `YYYY-MM-DD` appears where the day changes. `<source>` is the part
+that wrote the line, such as `run` for each command or `dialog` for the dialogs.
+
+The npm start terminal shows the same lines with milliseconds: `HH:MM:SS.mmm cmdAbl [<source>] …`. Filter on `cmdAbl [`
+there, too. The Remote
 Script's lines (`cmdAbl [script] …`) are not in `cmdabl log`: they are only in Live's log file, `Log.txt` (see
 [Getting started](getting-started.md)). Search that file for `cmdAbl [script]`.
 
