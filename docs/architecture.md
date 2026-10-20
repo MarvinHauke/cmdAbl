@@ -99,7 +99,8 @@ The test states five rules:
    page only from its own folder, `ui/modules/<its own name>/`. Helpers placed directly under
    `src/modules/` are shared and follow the same rules. Only `src/modules/index.ts`, the manifest, may import every module folder.
 2. `src/core/` does not import `src/modules/`, `src/httpTrigger.ts` or `src/extension.ts`.
-3. `src/ableton/` does not import `src/modules/`, `src/core/ui.ts` or `src/extension.ts`.
+3. `src/ableton/` does not import `src/modules/`, `src/core/ui.ts` or `src/extension.ts`. It knows the platform
+   only through its shared types and the logger (`src/core/log.ts`).
 4. Only `src/core/ui.ts` opens a dialog with `showModalDialog`. A module hands its page to the UI
    surfaces instead. The list of exceptions is empty.
 5. A module reaches Live through the ports on `ModuleApi`. It does not import `src/ableton/bridge.ts`,

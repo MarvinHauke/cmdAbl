@@ -169,9 +169,9 @@ In a Set without tags, the empty list says "type a new tag".
   **add…** input instead. Then add tracks in the new tag's **add…** input. A new tag with no track is not kept.
 - The untagged tracks are listed at the end, read-only.
 
-Live does not change until you press **Apply (N changes)**. Then the board closes and shows the result: each
-change that was written, with the command that puts it back. **Close** with nothing applied changes nothing and
-shows no message.
+Live does not change until you press **Apply (N changes)**. A successful Apply shows nothing: the board closes, and
+each change with its undo command goes to the log (see [Logs](#logs)). If some tracks could not be written, a window
+lists only those. **Close** with nothing applied changes nothing and shows no message.
 
 Keys: while suggestions show, `↑`, `↓`, `←` and `→` move through them. With no match, `←` and `→` move the text
 cursor, and `↑` and `↓` go to the other tags. `Alt+←` and `Alt+→` move the cursor in the typed text. `Enter` in an
@@ -194,8 +194,8 @@ in the new-tag row, and then opens the track list. `--edit` cannot be combined w
 - Tags need the Remote Script 0.1.5. After you update cmdAbl, run `cmdabl setup` once, then restart Live.
 - Commands that act on one object, such as `goto`, and destructive commands still ask when a tag matches several
   tracks.
-- Cmd+Z does not undo a tag change. The result prints the reverse command, for example
-  `undo: tag --set 0 /Lead fx`. Each change also leaves an invisible step in Live's undo list, so Cmd+Z may need
+- Cmd+Z does not undo a tag change. Each change is logged with its reverse command, for example
+  `undo: tag --set 0 /Lead fx`; `cmdabl log --undo` lists them. Each change also leaves an invisible step in Live's undo list, so Cmd+Z may need
   several presses, and Live asks you to save when you close the Set.
 - A comma list before tag names is not supported yet: `tag /Lead, /Bass fx` fails. Use `#tag`, `!#tag` or `--pick`.
 
@@ -256,6 +256,21 @@ After a command runs, cmdAbl shows a short message only when there is something 
   [Remote Script](remote-script.md) page for what to do.
 
 A name that matches more than one object does not produce an error: the pick list answers it.
+
+## Logs
+
+cmdAbl writes what it does to a log: what changed, the undo lines of tag writes, and diagnostics. A successful tag
+write shows nothing in the palette, so the log is where to look for it.
+
+- `cmdabl log` shows the last 50 lines, newest at the bottom.
+- `cmdabl log -n <count>` shows up to 500 lines.
+- `cmdabl log --undo` shows only the undo lines, which say how to put a change back.
+- `cmdabl log --debug` turns debug lines on for the rest of the session.
+
+The log keeps the last 500 lines of the session. A line reads `cmdAbl [<source>] <level>: …`, where `<source>` is the
+part that wrote it, for example `cmdAbl [run]` for each command or `cmdAbl [dialog]` for the dialogs. The Remote
+Script's lines (`cmdAbl [script] …`) are not in `cmdabl log`: they are only in Live's log file, `Log.txt` (see
+[Getting started](getting-started.md)). Search that file for `cmdAbl [script]`.
 
 ## History
 
