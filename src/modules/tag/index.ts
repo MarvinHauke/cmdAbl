@@ -52,47 +52,31 @@ export function activate(api: ModuleApi): void {
   };
 
   /**
-   * `tag --list`: the board. Apply writes the changes per track, then the board reopens with fresh state;
-   * Close ends with one summary of everything applied (nothing applied: no message).
+   * `tag --list`: the board. Apply writes the changes per track and ends with the usual result (the changed
+   * lines with their undo lines); Close or Esc changes nothing and says nothing. The board does not reopen.
    */
   const tagBoard = async (): Promise<CommandResult | void> => {
-    const applied: string[] = [];
-    let cut = false;
-    /** An error after earlier rounds applied changes still names them (with their undo lines). */
-    const failed = (code: typeof ExitCode.FAILURE | typeof ExitCode.USAGE | typeof ExitCode.UNAVAILABLE, message: string): CommandResult =>
-      fail(code, applied.length > 0 ? `${[...new Set(applied)].join("\n")}\n${message}` : message);
-    const summary = (): CommandResult | void => {
-      if (applied.length === 0) return;
-      const text = [...new Set(applied)].join("\n") + (cut ? "\n(list cut: the board showed only part of the Set)" : "");
-      return ok(text);
-    };
-    for (;;) {
-      const fresh = await api.tags.refresh();
-      if (!fresh.ok) return failed(fresh.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
-      const nodes = api.liveSet.nodes().filter((n) => n.kind === "track" && n.scope !== "master");
-      const byId = new Map(nodes.map((n) => [n.handleId, n]));
-      const shown = await api.ui.board(buildBoard(nodes.map((n) => ({ id: n.handleId, label: n.path, tags: api.tags.of(n) }))));
-      cut = cut || shown.cut;
-      if (!shown.answer || shown.answer.changes.length === 0) return summary();
+    const fresh = await api.tags.refresh();
+    if (!fresh.ok) return fail(fresh.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
+    const nodes = api.liveSet.nodes().filter((n) => n.kind === "track" && n.scope !== "master");
+    const byId = new Map(nodes.map((n) => [n.handleId, n]));
+    const shown = await api.ui.board(buildBoard(nodes.map((n) => ({ id: n.handleId, label: n.path, tags: api.tags.of(n) }))));
+    if (!shown.answer || shown.answer.changes.length === 0) return;
 
-      const { perTrack, bad } = groupChanges(shown.answer);
-      if (bad !== undefined) return failed(ExitCode.USAGE, `tag: "${bad}" is not a tag name — use lowercase letters, digits, - and _`);
-      const targets = [...perTrack.keys()].map((id) => byId.get(id)).filter((n): n is ObjectNode => n !== undefined);
-      const result = await applyPlans(
-        targets,
-        (node, before) => {
-          const change = perTrack.get(node.handleId)!;
-          const added = planTags(before, change.add, "add").after;
-          return diffTags(before, planTags(added, change.remove, "remove").after);
-        },
-        true,
-      );
-      if (result.code !== ExitCode.OK) {
-        const earlier = applied.length > 0 ? `${[...new Set(applied)].join("\n")}\n` : "";
-        return { ...result, message: `${earlier}${result.message ?? ""}` };
-      }
-      if (result.message) applied.push(...result.message.split("\n"));
-    }
+    const { perTrack, bad } = groupChanges(shown.answer);
+    if (bad !== undefined) return fail(ExitCode.USAGE, `tag: "${bad}" is not a tag name — use lowercase letters, digits, - and _`);
+    const targets = [...perTrack.keys()].map((id) => byId.get(id)).filter((n): n is ObjectNode => n !== undefined);
+    const result = await applyPlans(
+      targets,
+      (node, before) => {
+        const change = perTrack.get(node.handleId)!;
+        const added = planTags(before, change.add, "add").after;
+        return diffTags(before, planTags(added, change.remove, "remove").after);
+      },
+      true,
+    );
+    if (result.code !== ExitCode.OK || !shown.cut) return result;
+    return { ...result, message: `${result.message ?? ""}\n(list cut: the board showed only part of the Set)` };
   };
 
   /**
@@ -143,7 +127,7 @@ export function activate(api: ModuleApi): void {
       "Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx " +
       "reaches every track tagged fx. With --edit and a tag (tag --edit fx) every regular and return track is listed with a button " +
       "that is lit where it carries the tag: mark tracks with Tab and press Enter to switch the tag on or off on each of them; " +
-      "tag --edit # first asks which tag, and a name that is not in that list creates it. With --list, opens an overview: a section per tag with the tracks that carry it as chips, a checkbox list of every regular and return track to add or remove the tag, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Apply writes the changes and reopens the overview; Close ends and names what was applied with the commands that undo it. " +
+      "tag --edit # first asks which tag, and a name that is not in that list creates it. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Apply writes the changes and names what changed with the commands that undo it; Close changes nothing. " +
       "With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target " +
       "that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. " +
       "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +

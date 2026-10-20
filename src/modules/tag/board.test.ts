@@ -69,14 +69,14 @@ test("tag -l: the board lists regular and return tracks (never main); Close with
   assert.deepEqual(fake.tagStore.get("Lead"), ["fx"]); // untouched
 });
 
-test("tag -l: Apply writes per track, the board reopens with fresh state, Close gives one summary with undo lines", async () => {
+test("tag -l: Apply writes per track and ends with the result and its undo lines; the board does not reopen", async () => {
   const { fake, run } = setup({ Lead: ["fx"] }, [
     { changes: [{ section: "tag:fx", item: "Lead", on: false }, { section: "tag:fx", item: "Bass", on: true }, { section: "perc", item: "Bass", on: true }], created: ["perc"] },
     null,
   ]);
   const r = (await run({ list: true }))!;
   assert.equal(r.code, ExitCode.OK);
-  assert.equal(fake.boards.length, 2); // reopened once
+  assert.equal(fake.boards.length, 1); // not reopened
   assert.equal(fake.tagStore.get("Lead")?.length ?? 0, 0);
   assert.deepEqual(fake.tagStore.get("Bass"), ["fx", "perc"]);
   assert.match(r.message ?? "", /\/Lead: -fx/);
@@ -114,22 +114,6 @@ test("tag -l: script down is exit 5; a bad created name is exit 2; the list-cut 
   const base = cut.fake.api.ui.board;
   cut.fake.api.ui.board = async (request) => ({ ...(await base(request)), cut: true });
   assert.match((await cut.run({ list: true }))?.message ?? "", /list cut/);
-});
-
-test("tag -l: an error after an applied round still names what was applied", async () => {
-  const first = { changes: [{ section: "perc", item: "Lead", on: true }], created: ["perc"] };
-  const bad = setup({}, [first, { changes: [{ section: "a b", item: "Lead", on: true }], created: ["a b"] }]);
-  const r = (await bad.run({ list: true }))!;
-  assert.equal(r.code, ExitCode.USAGE);
-  assert.match(r.message ?? "", /^\/Lead: \+perc[\s\S]*undo: tag --set 0 \/Lead perc[\s\S]*"a b" is not a tag name/);
-
-  const down = setup({}, [first, null]);
-  let calls = 0;
-  const refresh = down.fake.api.tags.refresh;
-  down.fake.api.tags.refresh = async () => (++calls <= 2 ? refresh() : bridgeFail(5, "Remote Script not running"));
-  const d = (await down.run({ list: true }))!;
-  assert.equal(d.code, ExitCode.UNAVAILABLE);
-  assert.match(d.message ?? "", /^\/Lead: \+perc[\s\S]*Remote Script not running/);
 });
 
 test("tag -l: a created name is lowercased and merges into the existing tag of that name", async () => {
