@@ -14,6 +14,9 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
 
 1. ~~Live tests: `man <command>` with "Open in browser", short `--help`~~ — passed (user, 2026-10-20).
 2. ~~Live test the new-tag row~~ — passed (user, 2026-10-20).
+   Tag overview: `tag --list` / `-l` as blocks (`10b4038`, ui sections, `4e04a97`, `86fbd53`);
+   bare `tag` = usage (exit 2) — Live test: `tag`, `tag -l`, `tag -l /Lead` (exit 2), Set without
+   tags, long list scrolls, a failing write still shows the plain ✓/× text.
 3. Recordings by the user (`.mov` in `/tmp/shots/`) → cmdabl-docs makes GIFs:
    `hero` (tags in action), `tags` (tag list), `pakabl` (`pakabl list`); optional: Karabiner
    rule screenshot for Getting started. Then drop unused images (`demo.gif`, old `pakabl-list.png`).
@@ -22,7 +25,7 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
 5. Secret scan of the branch (counts only), `ssh-add`, push, PR "Release 0.1.1: tags" — on the
    user's go.
 6. CI green → squash-merge (user's go) → release `v0.1.1`; hand-written notes (tags, `#`/`!#`,
-   bare tag word, `--pick`, new-tag row, `man <command>` with link, short `--help`, run `cmdabl setup` once for script
+   bare tag word, `--pick`, new-tag row, `man <command>` with link, short `--help`, `tag -l` overview (bare `tag` no longer lists), run `cmdabl setup` once for script
    0.1.5, Cmd+Z does not undo tags).
 7. pakabl index workflow → merge its PR; STATUS on `main`; delete the branch; 0.1.2 on a new branch.
 
