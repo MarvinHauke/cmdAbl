@@ -155,6 +155,12 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
   only by path. Works in every command (`tag --set 1 !#drums synth`, `mute !#drums, /Lead`) and
   with `--pick`; none → exit 3; script down → exit 5; history keeps it as typed. Intersections
   (`#fx&!#drums`) only if wanted later; a comma stays a union.
+- **New tag from the tag list** (user, 2026-10-20, now in 0.1.1; `Ui` contract change, additive):
+  `SelectRequest.create?: { label }` — when the filter text matches no row exactly, the list shows
+  a row `+ <label> "<text>"` (e.g. `+ new tag "perc"`) after the matches; when nothing matches it
+  is the only row and has the cursor. Marking/Enter on it returns the text as a created value
+  next to the marked rows. Used by `tag <target>` (`api.pickTags(..., { allowNew: true })`), not
+  by bare `#` (a tag no track has selects nothing). The module validates the name (exit 2).
 - **History keeps `#fx`** as typed, so a re-run hits the tracks tagged now.
 - **`tag`'s target is one token** in 0.1.1 (`/Lead`, `"SH-101 MIDI"`, `#drum`, `#`); a comma list
   before tag words is not supported yet (`tag /Lead, /Bass fx` → exit 2).
