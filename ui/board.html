@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips; Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. A readonly section shows chips only. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names] } on Apply: only real differences against the request; a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
+<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips; Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. ←/→ in an empty input (or at caret 0) put a chip cursor on the section's chips: Backspace/Delete/Space toggle the removal mark of the chip under it, typing/Esc/Tab return to the input, Enter does nothing. A readonly section shows chips only. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names] } on Apply: only real differences against the request; a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -29,6 +29,9 @@
     /* Marked for removal: struck through with an accent outline. Added (not in Live yet): dashed accent ring. */
     .chip.rm { text-decoration: line-through; color: var(--dim); outline: 1px solid var(--accent); outline-offset: 1px; }
     .chip.add { outline: 1px dashed var(--accent); outline-offset: 1px; }
+    /* The chip cursor (← / → in the add input): a tint and an accent underline; the input caret hides. */
+    .chip.cur { background: hsla(31, 100%, 67%, 0.22); box-shadow: inset 0 -2px 0 var(--accent); }
+    .addwrap.chipmode input { caret-color: transparent; }
     .none { color: var(--dim); font-size: 11px; line-height: 20px; }
 
     /* The inline input is the last "chip": a dashed outline, ghost text behind the typed text. */
@@ -69,7 +72,7 @@
     <div id="create" hidden></div>
   </div>
   <div id="footer">
-    <span id="hint">type to add · Tab accept · Enter add · ⌫ remove last · ↑↓ move · Enter on empty = apply · Esc</span>
+    <span id="hint">type to add · Tab accept · Enter add · ←→ chips · ⌫ remove · ↑↓ move · Enter on empty = apply · Esc</span>
     <button id="apply" disabled></button>
     <button id="close">Close</button>
   </div>
@@ -95,7 +98,7 @@
     // orig = the state in the request; cur = the pending state. `added` = item indexes turned on
     // here, in the order added (their chips follow the section's own chips).
     const S = (BOARD?.sections ?? []).map(s => ({
-      id: s.id, heading: s.heading, meta: s.meta, readonly: !!s.readonly, created: false, q: '', hi: 0, added: [],
+      id: s.id, heading: s.heading, meta: s.meta, readonly: !!s.readonly, created: false, q: '', hi: 0, added: [], cc: null,
       items: (s.items ?? []).map(i => ({ id: i.id, label: i.label ?? i.id, orig: !!i.on, cur: !!i.on })),
     }));
     // A created section can carry any item the request names (first label wins), all off.
@@ -205,9 +208,11 @@
       const s = S[si];
       for (const c of [...s.chipsEl.querySelectorAll('.chip, .none')]) c.remove();
       const idx = chipIdx(s);
+      if (s.cc != null && !idx.includes(s.cc)) s.cc = null;
+      s.addEl?.classList.toggle('chipmode', s.cc != null);
       for (const ii of idx) {
         const i = s.items[ii];
-        const chip = el('span', 'chip' + (i.orig && !i.cur ? ' rm' : '') + (!i.orig && i.cur ? ' add' : ''));
+        const chip = el('span', 'chip' + (i.orig && !i.cur ? ' rm' : '') + (!i.orig && i.cur ? ' add' : '') + (ii === s.cc ? ' cur' : ''));
         chip.append(el('span', 'l', i.label));
         if (!s.readonly) {
           chip.append(el('span', 'x', '×'));
@@ -284,7 +289,7 @@
         s.el.append(s.sugEls);
         s.inputEl.addEventListener('input', () => { s.q = s.inputEl.value; s.hi = 0; clearNoMatch(s); renderAdd(si); });
         s.inputEl.addEventListener('focus', () => renderAdd(si));
-        s.inputEl.addEventListener('blur', () => renderAdd(si));
+        s.inputEl.addEventListener('blur', () => { renderAdd(si); if (s.cc != null) { s.cc = null; renderChips(si); } });
         s.inputEl.addEventListener('keydown', e => keyInSection(e, si));
         // A click anywhere in the section (not on a chip) puts the caret in its input.
         s.el.addEventListener('mousedown', e => { if (!e.target.closest('.chip') && e.target !== s.inputEl) { e.preventDefault(); s.inputEl.focus(); } });
@@ -345,7 +350,7 @@
       const hint = text => { createErr.textContent = text; createErr.hidden = false; createInput.classList.remove('shake'); void createInput.offsetWidth; createInput.classList.add('shake'); };
       if (S.some(s => s.id === name || norm(s.heading) === norm(name))) { hint('exists already'); return; }
       if (!validName(name)) { hint('not a valid name'); return; }
-      S.push({ id: name, heading: name, meta: undefined, readonly: false, created: true, q: '', hi: 0, added: [],
+      S.push({ id: name, heading: name, meta: undefined, readonly: false, created: true, q: '', hi: 0, added: [], cc: null,
                items: candidates.map(c => ({ id: c.id, label: c.label, orig: false, cur: false })) });
       createInput.value = '';
       createInput.dispatchEvent(new Event('input'));
@@ -356,8 +361,35 @@
     }
 
     // ---- keys ------------------------------------------------------------------------------
+    // The chip cursor (s.cc = an item index, DOM focus stays in the input): ←/→ step through the
+    // chips, Backspace/Delete/Space toggle the mark, typing or Esc/Tab return to the input.
+    function keyOnChip(e, si) {
+      const s = S[si];
+      const idx = chipIdx(s);
+      const at = idx.indexOf(s.cc);
+      const leave = () => { s.cc = null; renderChips(si); };
+      if (e.key === 'ArrowLeft') { e.preventDefault(); if (at > 0) { s.cc = idx[at - 1]; renderChips(si); } }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); if (at < idx.length - 1) { s.cc = idx[at + 1]; renderChips(si); } else leave(); }
+      else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === ' ') {
+        e.preventDefault();
+        const ii = s.cc;
+        toggleItem(si, ii);
+        if (!chipIdx(s).includes(ii)) { s.cc = idx[at - 1] ?? null; renderChips(si); }   // an added chip vanished: previous chip, else the input
+      }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); leave(); jump(si, e.key === 'ArrowDown' ? 1 : -1); }
+      else if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); if (e.key === 'Escape') leave(); }   // Enter: nothing (no accidental Apply)
+      else if (e.key === 'Tab') { e.preventDefault(); leave(); }
+      else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) leave();   // not prevented: the key is typed in the input
+    }
+
     function keyInSection(e, si) {
       const s = S[si];
+      if (s.cc != null) { keyOnChip(e, si); return; }
+      if (e.key === 'ArrowLeft' && !e.shiftKey && s.inputEl.selectionStart === 0 && s.inputEl.selectionEnd === 0) {
+        const idx = chipIdx(s);
+        if (idx.length) { e.preventDefault(); s.cc = idx[idx.length - 1]; renderChips(si); }
+        return;
+      }
       if (e.key === 'Enter') {
         e.preventDefault();
         if (e.repeat) return;   // a held Enter from the dialog before must not apply
