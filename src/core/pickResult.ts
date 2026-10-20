@@ -44,3 +44,13 @@ export function parseSelectAnswer(raw: string | null | undefined, count: number)
   }
   return parseIndexes(raw, count);
 }
+
+/** The message page's answer when its link button was clicked. */
+export function wantsOpen(raw: string | null | undefined): boolean {
+  if (!raw) return false;
+  try {
+    return (JSON.parse(raw) as { open?: unknown } | null)?.open === true;
+  } catch {
+    return false;
+  }
+}

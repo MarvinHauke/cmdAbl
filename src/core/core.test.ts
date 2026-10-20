@@ -485,3 +485,21 @@ test("helpForPath finds a command or subcommand by path", async () => {
   assert.equal(helpForPath(roots, ["x"]), undefined);
   assert.equal(helpForPath(roots, []), undefined);
 });
+
+test("presentResult: a link goes to the message only when it is a plain https URL with a label", () => {
+  const seen: Array<{ text: string; link?: unknown }> = [];
+  const show = (text: string, link?: unknown) => void seen.push({ text, link });
+  const good = { label: "Open in browser", url: "https://example.com/a" };
+  presentResult({ ...ok("man tag"), link: good }, show);
+  presentResult({ ...ok("x"), link: { label: "Open", url: "javascript:alert(1)" } }, show);
+  presentResult({ ...ok("y"), link: { label: " ", url: "https://example.com" } }, show);
+  assert.deepEqual(seen[0]!.link, good);
+  assert.equal(seen[1]!.link, undefined);
+  assert.equal(seen[2]!.link, undefined);
+});
+
+test("wantsOpen: only {open:true} counts", async () => {
+  const { wantsOpen } = await import("./pickResult.js");
+  assert.equal(wantsOpen('{"open":true}'), true);
+  for (const raw of [null, "", "{}", '{"open":"yes"}', "nope", "null"]) assert.equal(wantsOpen(raw), false, String(raw));
+});

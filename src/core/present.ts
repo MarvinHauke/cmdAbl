@@ -1,4 +1,5 @@
-import { ExitCode, type CommandResult } from "./types.js";
+import { isHttpsUrl } from "./openUrl.js";
+import { ExitCode, type CommandResult, type ResultLink } from "./types.js";
 
 /**
  * The one place a CommandResult becomes user-visible feedback.
@@ -25,8 +26,9 @@ import { ExitCode, type CommandResult } from "./types.js";
  * starts a new line, which is the only break rule — the page wraps the rest.
  * A successful result lists nothing when every target succeeded.
  */
-export function presentResult(result: CommandResult, show: (text: string) => void): void {
+export function presentResult(result: CommandResult, show: (text: string, link?: ResultLink) => void): void {
   if (result.code === ExitCode.OK && !result.message) return;
+  const link = result.link && result.link.label.trim() && isHttpsUrl(result.link.url) ? result.link : undefined;
 
   const lines: string[] = [];
   if (result.message) lines.push(result.code === ExitCode.OK ? result.message : `cmdAbl: ${result.message}`);
@@ -49,7 +51,7 @@ export function presentResult(result: CommandResult, show: (text: string) => voi
       for (const reason of reasonLines(key.startsWith("\0") ? undefined : key)) lines.push(`      ${reason}`);
     }
   }
-  show(lines.join("\n"));
+  show(lines.join("\n"), link);
 }
 
 /**

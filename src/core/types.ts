@@ -96,6 +96,16 @@ export interface CommandResult {
   details?: TargetOutcome[];
   /** AMBIGUOUS only: the paths that matched (candidates are not outcomes). */
   candidates?: string[];
+  /**
+   * A web page the message offers as a button next to Close (a plain `https://` URL; anything
+   * else is dropped). The user's click makes the platform open it in the browser.
+   */
+  link?: ResultLink;
+}
+
+export interface ResultLink {
+  label: string;
+  url: string;
 }
 
 export const ok = (message?: string, details?: TargetOutcome[]): CommandResult => ({

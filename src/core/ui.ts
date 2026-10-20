@@ -7,6 +7,8 @@ import { inlineJson } from "./inlineJson.js";
 import { createDialogQueue, type DialogQueue } from "./dialogQueue.js";
 import promptTemplate from "../../ui/interface.html";
 import selectTemplate from "../../ui/pick.html";
+import { openUrl } from "./openUrl.js";
+import { wantsOpen } from "./pickResult.js";
 import notifyTemplate from "../../ui/feedback.html";
 
 // The UI contract. The platform never touches an HTML file directly — it talks
@@ -103,6 +105,12 @@ export interface PickPreview {
 export interface NotifyRequest {
   text: string;
   code: number;
+  /**
+   * A button next to Close. Clicking it closes the page with `{"open":true}`; the platform
+   * then opens `url` (the one in this request, never one the page sends) in the browser.
+   * `url` is a plain https:// URL (checked before it gets here).
+   */
+  link?: { label: string; url: string };
 }
 
 export interface Ui {
@@ -134,7 +142,7 @@ export function createDefaultUi(
     // A failure is already logged by the queue; here it only counts as dismissed.
     queue.run(name, () => context.ui.showModalDialog(dataUrl(html), width, height)).catch(() => null);
 
-  return {
+  const ui: Ui = {
     async prompt(request) {
       const html = promptTemplate
         .replace("/*ITEMS_PLACEHOLDER*/null", () => inlineJson(request.items))
@@ -164,9 +172,18 @@ export function createDefaultUi(
     },
 
     notify(request) {
-      const html = notifyTemplate.replace("/*MESSAGE_PLACEHOLDER*/null", () => inlineJson(request.text));
+      const html = notifyTemplate
+        .replace("/*MESSAGE_PLACEHOLDER*/null", () => inlineJson(request.text))
+        .replace("/*LINK_PLACEHOLDER*/null", () => inlineJson(request.link ?? null));
       const { width, height } = notifySize(request.text);
-      void show("message", html, width, height);
+      void show("message", html, width, height).then((raw) => {
+        if (!request.link || !wantsOpen(raw)) return;
+        void openUrl(request.link.url)
+          .then((result) => {
+            if (result.code !== 0) ui.notify({ text: result.message ?? "cannot open the page", code: result.code });
+          })
+          .catch(() => {});
+      });
     },
 
     async page(name, html, width, height) {
@@ -174,4 +191,5 @@ export function createDefaultUi(
       return (await show(name, html, width, height)) || null;
     },
   };
+  return ui;
 }
