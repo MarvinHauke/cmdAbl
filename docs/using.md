@@ -147,6 +147,17 @@ A tag marks what a track is, such as `fx` or `drums`. One command then reaches e
   several presses, and Live asks you to save when you close the Set.
 - A comma list before tag names is not supported yet: `tag /Lead, /Bass fx` fails. Use `#tag`, `!#tag` or `--pick`.
 
+## Read a command's page
+
+`<command> --help` and `man <command>` show the same page inside Live, offline: summary, usage, options, arguments
+and examples. `man` adds notes and a web link to the command's section, and it finds a command by its words, so you
+can name a subcommand too: `man history clear` or `man cmdabl setup`.
+
+- `man ableton` opens the Live manual; `man ableton <words>` searches it for the words.
+- `man cmdabl` opens the cmdAbl documentation.
+- The web manuals need an internet connection. The command page does not.
+- An unknown command answers with close matches under "Did you mean".
+
 ## Look up a Live Object Model path
 
 `lom <target>` shows the Live Object Model path of a track, device or chain, and links to the Live Object Model

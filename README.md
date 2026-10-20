@@ -69,7 +69,7 @@ These commands ship with cmdAbl. Each feature is a module that declares its comm
 - `arm`: toggle record arm on tracks.
 - `tag`: tag tracks, or list the tags of the Set.
 - `history`: manage the list of recent commands.
-- `man`: open a manual, or search it.
+- `man`: show a command's full page in Live, or open the Live manual or the cmdAbl documentation.
 - `lom`: show the Live Object Model path of a track, device or chain.
 - `pakabl`: install and manage Ableton Live extensions.
 - `cmdabl setup`, `cmdabl bridge`: install the key trigger and the Remote Script; show the Remote Script's status.
