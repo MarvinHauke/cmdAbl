@@ -147,3 +147,9 @@ Today's precursor: the per-word tags of 0005 "Forgiving target resolution". Open
   and only its children; `mute -` → only valid options.
 - Typing an exact path surfaces that one object, not unrelated fuzzy hits.
 - A Set with 300+ tracks stays responsive while typing.
+
+## Note (2026-10-21)
+
+Option values got label hints first (`PaletteItem.valueOptions`, core `ec9c567`): the palette shows
+`<old>`, `<new>` or `<tag|#>` while the caret is in an option's values. A completer per option value
+(for example the tag list for `tag --rename` and `tag --edit`) belongs to this plan.
