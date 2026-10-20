@@ -21,7 +21,7 @@ import { builtinModules } from "node:module";
 //   2. src/core/…            does not import src/modules/, src/httpTrigger
 //      or src/extension.
 //   3. src/ableton/…         does not import src/modules/, src/extension or
-//      anything in src/core/ but the shared types (src/core/types).
+//      anything in src/core/ but the shared types (src/core/types) and the logger (src/core/log).
 //   5. src/modules/…         reaches Live through the ModuleApi ports: it does
 //      not import src/ableton/bridge, src/ableton/trackLookup,
 //      src/ableton/tagCache or the SDK
@@ -123,8 +123,8 @@ export function brokenRule(file: string, target: string): string | null {
   if (file.startsWith("src/ableton/")) {
     if (target.startsWith("src/modules/")) return "3: ableton does not import modules";
     if (target === "src/extension") return `3: ableton does not import ${target}`;
-    if (target.startsWith("src/core/") && target !== "src/core/types") {
-      return `3: ableton knows the platform only through its shared types, not ${target}`;
+    if (target.startsWith("src/core/") && target !== "src/core/types" && target !== "src/core/log") {
+      return `3: ableton knows the platform only through its shared types and the logger, not ${target}`;
     }
   }
   return null;
@@ -198,13 +198,7 @@ test("architecture: only core/ui.ts opens dialogs (apart from the listed excepti
 });
 
 // Rule 7 (plan 0011): every log line goes through src/core/log.ts, the one file that touches the console.
-// TODO(cmdabl-bridge): move these to the logger, then empty this list (the stale-entry test below
-// fails once a file no longer needs its exception).
-const CONSOLE_EXCEPTIONS: { file: string; why: string }[] = [
-  { file: "src/ableton/bridgeToken.ts", why: "default log sink; bridge moves it" },
-  { file: "src/ableton/tagCache.ts", why: "default log sink; bridge moves it" },
-  { file: "src/ableton/chainNames.ts", why: "default log sink; bridge moves it" },
-];
+const CONSOLE_EXCEPTIONS: { file: string; why: string }[] = [];
 
 function filesUsingConsole(): string[] {
   return sourceFiles("src").filter(
@@ -274,6 +268,8 @@ test("architecture: the checker sees the imports and flags what it should", () =
   assert.match(brokenRule("src/ableton/select.ts", "src/core/ui") ?? "", /^3:/);
   assert.match(brokenRule("src/ableton/select.ts", "src/modules/types") ?? "", /^3:/);
   assert.equal(brokenRule("src/ableton/select.ts", "src/core/types"), null);
+  assert.equal(brokenRule("src/ableton/tagCache.ts", "src/core/log"), null); // the logger is allowed
+  assert.match(brokenRule("src/ableton/tagCache.ts", "src/core/run") ?? "", /^3:/);
   assert.match(brokenRule("src/ableton/select.ts", "src/core/run") ?? "", /^3:/); // ableton knows core only through its shared types
   assert.match(brokenRule("src/ableton/select.ts", "src/core/setup") ?? "", /^3:/);
 });
