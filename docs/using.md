@@ -3,7 +3,7 @@
 This page is for daily use, after [Getting started](getting-started.md). It covers how to type a command,
 how to name the objects of your Set, what the pick list asks, and what the palette remembers. The exact
 usage of every command is in the [command reference](reference/commands.md). Type `<command> --help` in the
-palette for the same text.
+palette for a short usage line, and `man <command>` for the full page.
 
 ## Open the palette
 
@@ -158,9 +158,10 @@ In a Set without tags, the empty list says "type a new tag".
 
 ## Read a command's page
 
-`<command> --help` and `man <command>` show the same page inside Live, offline: summary, usage, options, arguments
-and examples. `man` adds notes and a web link to the command's section, and it finds a command by its words, so you
-can name a subcommand too: `man history clear` or `man cmdabl setup`.
+`<command> --help` shows a short usage: the usage line, and each subcommand, option and argument on one line. It also says
+`more: man <command>` when a full page exists. `man <command>` shows the full page inside Live, offline: summary,
+usage, options, arguments and examples. It has an **Open in browser** button for the command's section on the web.
+It finds a command by its words, so you can name a subcommand too: `man history clear` or `man cmdabl setup`.
 
 - `man ableton` opens the Live manual; `man ableton <words>` searches it for the words.
 - `man cmdabl` opens the cmdAbl documentation.

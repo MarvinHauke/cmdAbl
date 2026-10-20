@@ -91,7 +91,7 @@ In the palette:
 Start with these three. Type each one in the palette and press `Enter`.
 
 **`help`** lists every command with a one-line summary. Type a command followed by `--help`, for example
-`mute --help`, to see its full usage. This works without the Remote Script.
+`mute --help`, to see its usage: the usage line, and each option and argument on one line. This works without the Remote Script.
 
 **`goto <track>`** selects a track in Live. A full path such as `goto /Lead` selects one track. Partial names work
 too, and `goto` needs the Remote Script.
