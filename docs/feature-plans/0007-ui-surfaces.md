@@ -51,7 +51,8 @@ answers with `close_and_send`; each page documents this in a comment at its top.
 **Where pages go in `ui/`** (decided 2026-10-20, 0010):
 - Core surfaces are generic and replaceable: `ui/<surface>.html`, with the contract here.
 - A page only one module needs is opened with `api.dialog` and lives in `ui/modules/<module>/`.
-  `pakabl-list.html` moves there once a second module page appears.
+  `pakabl-list.html` moved there (`ui/modules/pakabl/list.html`, user, 2026-10-20); the
+  architecture test enforces it.
 - When a second module needs the same kind of page, it becomes a core surface.
 - Editing pages collect the changes and answer once; the extension applies them and reopens the
   page.

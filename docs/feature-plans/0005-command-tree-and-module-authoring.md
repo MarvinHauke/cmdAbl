@@ -340,7 +340,7 @@ command needs it.
 
 - A module does not import another module's folder, `src/extension`, `src/httpTrigger` or a
   platform dialog page (`interface`, `pick`, `feedback`). It may import its own page
-  `ui/<module>-*.html`. Only `src/modules/index.ts`, the manifest, imports module folders.
+  `ui/modules/<module>/` (until 2026-10-20: `ui/<module>-*.html`). Only `src/modules/index.ts`, the manifest, imports module folders.
 - `src/core/` does not import modules, `httpTrigger` or `extension`.
 - `src/ableton/` does not import modules, `core/ui` or `extension`.
 - Only `src/core/ui.ts` calls `showModalDialog`.

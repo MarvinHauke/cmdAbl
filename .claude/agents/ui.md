@@ -16,7 +16,7 @@ comes up:
 
 ## Your area
 
-`ui/` (`interface.html`, `pick.html`, `feedback.html`, `pakabl-list.html`, `shared.css`), the docs
+`ui/` (core surfaces `interface.html`, `pick.html`, `feedback.html`, `board.html`, `shared.css`; module pages in `ui/modules/<module>/`), the docs
 site theme (`docs/stylesheets/`), and the UI guide when one is written.
 
 ## Rules

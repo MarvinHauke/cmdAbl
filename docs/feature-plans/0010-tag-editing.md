@@ -43,8 +43,9 @@ changes, the extension applies them after the dialog closes, then reopens the pa
 6. **An "untagged" section** lists the tracks without any tag, read-only (chips without ×, no
    checkbox list) — ticking a track in a tag's list is how it leaves it. Contract: a section has
    `readonly?: true`.
-7. **Module pages stay where they are** for now (`ui/pakabl-list.html`); the `ui/modules/`
-   move is optional tidying, done only when a second module page appears.
+7. **Module pages move to `ui/modules/<module>/`** (user, 2026-10-20): `ui/pakabl-list.html`
+   becomes `ui/modules/pakabl/list.html`; the architecture test allows a module only its own
+   folder there (cmdabl-core).
 
 ## Design (draft)
 
@@ -151,7 +152,7 @@ board as the keyboard path (decision 5).
 2. cmdabl-ui: `ui/board.html` (chips with ×, expandable checkbox lists with a filter, New tag…,
    a live count on Apply, keyboard), checked in the browser.
 3. cmdabl-modules: `tag -l` on `board` (changes, created tags); `tag --edit` if kept.
-4. cmdabl-ui and cmdabl-modules: move `pakabl-list.html` to `ui/modules/pakabl/`.
+4. cmdabl-core: move `pakabl-list.html` to `ui/modules/pakabl/list.html`, architecture rule.
 5. cmdabl-docs: the Tags section of using.md and the reference.
 
 ## Verification
