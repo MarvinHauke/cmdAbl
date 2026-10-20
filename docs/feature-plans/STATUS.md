@@ -44,6 +44,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    `ui/board.html` built by cmdabl-ui (dark scheme; created names normalised by the module).
 3. `tag -l` on `board` — built `11815ba` (+ lowercase/merge of created names); Live test
    pending together with 1 and 2.
+5. Module pages moved to `ui/modules/<module>/` (`1b70581`) — Live check: `pakabl list` opens
+   and looks the same, Install/Repo answer.
 4. Docs: `tag --edit` and the board in using.md and README — done `4dbeee0` (image
    `tag-board.png` to come).
 
