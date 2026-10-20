@@ -86,7 +86,7 @@ Shows the last 50 lines of the log, newest at the bottom: what commands ran, wha
 | Option | Description |
 | --- | --- |
 | `-n, --count <n>` | show this many lines (default 50) (a whole number from 1 to 500) |
-| `--undo` | only the lines that contain "undo: " |
+| `--undo` | only the commands that undo a change (the part after "undo: ") |
 | `--debug` | turn debug lines on for this session |
 
 **Examples**
@@ -107,7 +107,7 @@ more lines
 cmdabl log --undo
 ```
 
-only the lines that say how to undo a change
+only the commands that undo a change, one per line
 
 ```
 cmdabl log --debug

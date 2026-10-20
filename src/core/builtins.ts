@@ -80,12 +80,12 @@ export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps =
         examples: [
           { line: "cmdabl log", note: "the last 50 lines" },
           { line: "cmdabl log -n 200", note: "more lines" },
-          { line: "cmdabl log --undo", note: "only the lines that say how to undo a change" },
+          { line: "cmdabl log --undo", note: "only the commands that undo a change, one per line" },
           { line: "cmdabl log --debug", note: "turn on debug lines for this session" },
         ],
         options: [
           { name: "count", short: "n", takesValue: true, number: { min: 1, max: 500, integer: true }, summary: "show this many lines (default 50)" },
-          { name: "undo", takesValue: false, summary: "only the lines that contain \"undo: \"" },
+          { name: "undo", takesValue: false, summary: "only the commands that undo a change (the part after \"undo: \")" },
           { name: "debug", takesValue: false, summary: "turn debug lines on for this session" },
         ],
         run: (invocation) => {
@@ -94,10 +94,18 @@ export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps =
           if (invocation.options.debug === true) log.setDebug(true);
           const count = invocation.options.count ? Number(invocation.options.count) : 50;
           const all = log.lines();
-          const wanted = invocation.options.undo === true ? all.filter((l) => l.includes("undo: ")) : all;
+          const undoOnly = invocation.options.undo === true;
+          // --undo: just the commands that undo a change, without prefix, level, indentation or "undo: "
+          const wanted = undoOnly
+            ? all.flatMap((l) => {
+                const m = /^cmdAbl \[[^\]]+\] info:\s+undo: (.+)$/.exec(l);
+                const command = m ? m[1].trim() : "";
+                return command === "" ? [] : [command];
+              })
+            : all;
           const shown = wanted.slice(-count);
           const note = turnedOn ? "debug lines are on for this session\n" : "";
-          if (shown.length === 0) return ok(`${note}${invocation.options.undo === true ? "no undo lines in the log" : "the log is empty"}`);
+          if (shown.length === 0) return ok(`${note}${invocation.options.undo === true ? "no undo commands logged yet" : "the log is empty"}`);
           return ok(`${note}${shown.join("\n")}`);
         },
       },

@@ -610,7 +610,11 @@ test("cmdabl log: last 50 lines, -n, --undo, --debug", async () => {
   assert.equal((await text("cmdabl log -n 5")).split("\n").length, 5);
   const undo = (await text("cmdabl log --undo")).split("\n");
   assert.equal(undo.length, 6);
-  assert.ok(undo.every((x) => x.includes("undo: ")));
+  assert.deepEqual(undo.slice(0, 2), ["tag back 0", "tag back 10"]);
+  assert.equal(undo[5], "tag back 50");
+  assert.ok(undo.every((x) => x.startsWith("tag back ")));
+  log.logger("run").info("start: tag undo: not a command");
+  assert.equal((await text("cmdabl log --undo")).split("\n").length, 6);
   assert.equal((await runLine("cmdabl log -n 0", deps as never)).result.code, ExitCode.USAGE);
   l.debug("hidden");
   assert.ok(!(await text("cmdabl log")).includes("hidden"));
@@ -621,5 +625,5 @@ test("cmdabl log: last 50 lines, -n, --undo, --debug", async () => {
   const r2 = new CommandRegistry();
   registerBuiltins(r2, { log: empty });
   assert.equal(String((await runLine("cmdabl log", { ...deps, registry: r2 } as never)).result.message), "the log is empty");
-  assert.equal(String((await runLine("cmdabl log --undo", { ...deps, registry: r2 } as never)).result.message), "no undo lines in the log");
+  assert.equal(String((await runLine("cmdabl log --undo", { ...deps, registry: r2 } as never)).result.message), "no undo commands logged yet");
 });
