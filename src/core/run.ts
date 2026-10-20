@@ -1,3 +1,4 @@
+import { appLog } from "./log.js";
 import { ExitCode, fail, ok, type CommandResult } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
@@ -28,7 +29,7 @@ export interface RunDeps {
   takeFill?: () => string | undefined;
   /** Longest wait for a command's `pickState.read` (default 600 ms: a bridge request times out at 500); beyond it the list opens without symbols. */
   stateCapMs?: number;
-  /** Log sink and clock; default console.log and Date.now. */
+  /** Log sink (receives finished `cmdAbl [source] level: …` lines) and clock; default the extension log and Date.now. */
   log?: (line: string) => void;
   now?: () => number;
   /** The current Live Set as a flat list of addressable objects. */
@@ -174,18 +175,24 @@ function previewFor(
  * ran right before the dialog hung".
  */
 export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome> {
-  const log = deps.log ?? ((line: string) => console.log(line));
+  const log = deps.log ?? ((line: string) => appLog.record(line));
   const now = deps.now ?? (() => Date.now());
   const started = now();
   // Logged at the start too: a handler that never returns must leave a trace.
-  log(`cmdAbl: run start: ${input.trim()}`);
+  log(`cmdAbl [run] info: start: ${input.trim()}`);
   let outcome: RunOutcome | undefined;
   try {
     outcome = await runLineInner(input, deps);
+    // The handler's own log lines, under the command's name (the first word of the line that ran).
+    const source = (outcome.line ?? input).trim().split(/\s+/)[0] ?? "";
+    for (const text of outcome.result.log ?? []) {
+      if (typeof text !== "string") continue;
+      for (const part of text.split("\n")) if (part.trim()) log(`cmdAbl [${source}] info: ${part}`);
+    }
     return outcome;
   } finally {
     const code = outcome ? (outcome.fill !== undefined ? "filled" : outcome.cancelled ? "cancelled" : String(outcome.result.code)) : "threw";
-    log(`cmdAbl: run: ${outcome?.line ?? input.trim()} -> ${code} (${now() - started} ms)`);
+    log(`cmdAbl [run] info: ${outcome?.line ?? input.trim()} -> ${code} (${now() - started} ms)`);
   }
 }
 

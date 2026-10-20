@@ -1,3 +1,4 @@
+import { appLog } from "./log.js";
 // One dialog at a time. The SDK's showModalDialog is not known to cope with a
 // second call while a modal is open (the promise may never settle), so every
 // dialog of the default UI goes through this queue: a dialog is opened only
@@ -33,7 +34,7 @@ interface Entry {
 }
 
 export function createDialogQueue(
-  sink: (line: string) => void = (line) => console.log(line),
+  sink: (line: string) => void = (line) => appLog.record(line),
   now: () => number = () => Date.now(),
 ): DialogQueue {
   // A throwing log sink must never leave a caller unsettled.
@@ -54,7 +55,7 @@ export function createDialogQueue(
       try {
         listener();
       } catch (e: unknown) {
-        log(`cmdAbl: dialog idle listener failed: ${e instanceof Error ? e.message : String(e)}`);
+        log(`cmdAbl [dialog] warn: idle listener failed: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
   }
@@ -93,28 +94,28 @@ export function createDialogQueue(
           entry.running = true;
           entry.openedAt = now();
           const gap = lastClosedAt === undefined ? "" : ` (${entry.openedAt - lastClosedAt} ms after the previous dialog closed)`;
-          log(`cmdAbl: dialog open: ${name}${gap}`);
+          log(`cmdAbl [dialog] info: open: ${name}${gap}`);
           try {
             const value = await task();
             const openFor = now() - entry.openedAt;
             if (settled) {
-              log(`cmdAbl: dialog closed after a reset: ${name} (${openFor} ms; result dropped)`);
+              log(`cmdAbl [dialog] info: closed after a reset: ${name} (${openFor} ms; result dropped)`);
               return;
             }
             settled = true;
             const answered = typeof value === "string" ? value !== "" : value !== null && value !== undefined;
-            log(`cmdAbl: dialog closed: ${name} (${answered ? "returned a value" : "no value"}, open for ${openFor} ms)`);
+            log(`cmdAbl [dialog] info: closed: ${name} (${answered ? "returned a value" : "no value"}, open for ${openFor} ms)`);
             finish(entry);
             resolve(value);
           } catch (e: unknown) {
             const openFor = now() - entry.openedAt;
             const reason = e instanceof Error ? e.message : String(e);
             if (settled) {
-              log(`cmdAbl: dialog failed after a reset: ${name} (${reason}; dropped)`);
+              log(`cmdAbl [dialog] warn: failed after a reset: ${name} (${reason}; dropped)`);
               return;
             }
             settled = true;
-            log(`cmdAbl: dialog failed: ${name} (${reason}, open for ${openFor} ms)`);
+            log(`cmdAbl [dialog] warn: failed: ${name} (${reason}, open for ${openFor} ms)`);
             finish(entry);
             reject(e);
           }
@@ -137,7 +138,7 @@ export function createDialogQueue(
       const running = entries.find((e) => e.running);
       const description = describe();
       const openForMs = running ? now() - running.openedAt : 0;
-      log(`cmdAbl: dialog queue reset (was: ${description}, open for ${Math.round(openForMs / 1000)} s)`);
+      log(`cmdAbl [dialog] warn: queue reset (was: ${description}, open for ${Math.round(openForMs / 1000)} s)`);
       const abandoned = entries;
       entries = [];
       lastClosedAt = undefined; // the gap to the next dialog would count from before the hang

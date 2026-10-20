@@ -107,6 +107,12 @@ export interface CommandResult {
    * the log shows. Plain JSON; the presenter caps sizes (see `capSections`).
    */
   sections?: ResultSection[];
+  /**
+   * Lines for the log, not for the user (plan 0011): the platform writes them at info under the
+   * command's name after the handler returns, and the presenter never shows them. A successful
+   * write returns these instead of a `message`: a result with code 0 and only `log` is silent.
+   */
+  log?: string[];
 }
 
 export interface ResultSection {

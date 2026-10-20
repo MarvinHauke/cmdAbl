@@ -88,7 +88,7 @@ test("run: Tab on a platform pick ends the command without running it — outcom
   assert.equal(out.cancelled, true);
   assert.equal(out.line, undefined); // nothing is remembered
   assert.deepEqual(ran, []);
-  assert.match(logs.at(-1)!, /^cmdAbl: run: goto kick -> filled \(/);
+  assert.match(logs.at(-1)!, /^cmdAbl \[run\] info: goto kick -> filled \(/);
 });
 
 test("run: a fill answered inside a handler's own pick ends the run the same way", async () => {

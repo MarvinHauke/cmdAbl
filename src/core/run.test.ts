@@ -5,6 +5,7 @@ import { assignPaths, flattenObjectTree, type ObjectNode } from "../ableton/obje
 import { uniquePath } from "../ableton/resolvePath.js";
 import { ExitCode, fail } from "./types.js";
 import { runLine, type RunDeps } from "./run.js";
+import { presentResult } from "./present.js";
 import { parse } from "./parse.js";
 import { pickNodes } from "./pick.js";
 import type { SelectRequest } from "./ui.js";
@@ -293,12 +294,12 @@ test("run: one log line per command with the canonical line, exit code and durat
   await runLine("mute nothing-like-this", deps);
   await runLine("nope", deps);
   assert.deepEqual(lines, [
-    "cmdAbl: run start: mute opal",
-    'cmdAbl: run: mute "/Opal Lead" -> 0 (12 ms)',
-    "cmdAbl: run start: mute nothing-like-this",
-    "cmdAbl: run: mute nothing-like-this -> 3 (12 ms)",
-    "cmdAbl: run start: nope",
-    "cmdAbl: run: nope -> 1 (12 ms)",
+    "cmdAbl [run] info: start: mute opal",
+    'cmdAbl [run] info: mute "/Opal Lead" -> 0 (12 ms)',
+    "cmdAbl [run] info: start: mute nothing-like-this",
+    "cmdAbl [run] info: mute nothing-like-this -> 3 (12 ms)",
+    "cmdAbl [run] info: start: nope",
+    "cmdAbl [run] info: nope -> 1 (12 ms)",
   ]);
 });
 
@@ -363,4 +364,20 @@ test("--help ends with 'more: man <path>' only when a man command exists", async
   registry.add({ name: "man", summary: "manual", run: () => {} });
   const withMan = await runLine("mute --help", deps);
   assert.match(String(withMan.result.message), /\nmore: man mute$/);
+});
+
+test("a result's log lines go to the log under the command name; code 0 with only log shows nothing", async () => {
+  const { deps, registry } = setup();
+  registry.add({ name: "quiet", summary: "q", run: () => ({ code: 0, log: ["a changed", "undo: quiet back\nsecond"] }) });
+  const lines: string[] = [];
+  deps.log = (l) => void lines.push(l);
+  const out = await runLine("quiet", deps);
+  assert.equal(out.result.code, 0);
+  assert.deepEqual(lines.filter((l) => l.includes("[quiet]")), ["cmdAbl [quiet] info: a changed", "cmdAbl [quiet] info: undo: quiet back", "cmdAbl [quiet] info: second"]);
+  const shown: string[] = [];
+  presentResult(out.result, (text) => void shown.push(text));
+  assert.equal(shown.length, 0);
+  const failed: string[] = [];
+  presentResult({ code: 1, message: "bad", log: ["secret detail"] }, (text) => void failed.push(text));
+  assert.ok(!failed[0]!.includes("secret detail"));
 });
