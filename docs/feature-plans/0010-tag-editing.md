@@ -79,7 +79,9 @@ untagged                                       4 tracks
 - **↑/↓** move through the suggestions while they show, otherwise to the previous or next tag's
   input. **Enter in an empty input** applies. **Esc** clears the input, then closes.
 - **`new tag…` input** at the bottom: Enter checks the name and adds an empty section with the
-  focus in its `add…` input. A tag with no track added is not kept.
+  focus in its `add…` input. A tag with no track added is not kept. A name that already exists (ignoring case
+  and a leading #) is refused on the page ("exists already"); the module's lowercase-and-merge stays
+  as a safety net.
 - **Apply (N changes)** sends the change set; Close or Esc discards it.
 - **Esc or Close with pending changes** warns once ("N changes not applied — Esc again to
   discard"); the second discards (architect, 2026-10-20).
