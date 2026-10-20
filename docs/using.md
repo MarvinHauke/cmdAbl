@@ -188,8 +188,9 @@ warns "N changes not applied — Esc again to discard". Any other key, or any cl
 
 **`tag --edit` (`-e`)** changes one tag on many tracks, from the keyboard. `tag -e fx` opens the pick list of all
 regular and return tracks, with a "tagged fx" button lit where a track has the tag. Mark tracks with `Tab` and press
-`Enter` to switch `fx` on or off for each marked track; `Esc` changes nothing. `tag -e #` asks for a tag first, or creates one
-in the new-tag row, and then opens the track list. `--edit` cannot be combined with a target, names, `--list` or
+`Enter` to switch `fx` on or off for each marked track; `Esc` changes nothing. A bare `tag -e` (or `tag --edit`)
+opens the tag list, the same as `tag -e #`. The tag list is single-select: `Enter` on a tag opens its track list at
+once, and typing a new name plus `Enter` creates the tag. `--edit` cannot be combined with a target, names, `--list` or
 `--set`. The pair to remember: `tag /Lead` picks the tags of one track, and `tag -e fx` picks the tracks of one tag.
 
 **Rename a tag.** `tag --rename fx effects` (or `tag -r fx effects`) renames the tag on every regular and return
