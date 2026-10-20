@@ -95,7 +95,7 @@ check that the Remote Script is installed and running
 
 find tracks, devices and chains whose path contains a pattern
 
-Looks through the Live Set for tracks, devices, rack chains and Drum Rack pads whose path contains every word of the pattern, in any order and ignoring case. One match is selected; several are shown in a pick list. next and prev then step through the matches. Needs the cmdAbl Remote Script. Unlike commands that act on a target, which need at least one word in the object's own name, find is a search: it lists everything whose path contains the words, including what sits below a matching parent. -L limits that: with -L n, an object is listed only if it, or an object at most n levels above it, has one of the words in its own name — so -L 0 lists only the objects named like the pattern, -L 1 adds their direct children, -L 2 their grandchildren. Without a pattern, find needs -L or one of -t, -d, -c and lists from the top of the Set: with -L n, n levels below the Set (1 = top-level tracks, 2 = tracks and their devices, and the tracks inside groups). The kind flags add up and narrow what is listed. find remembers its last list until the extension restarts.
+Looks through the Live Set for tracks, devices, rack chains and Drum Rack pads whose path contains every word of the pattern, in any order and ignoring case. One match is selected; several are shown in a pick list. next and prev then step through the matches. Needs the cmdAbl Remote Script. Unlike commands that act on a target, which need at least one word in the object's own name, find is a search: it lists everything whose path contains the words, including what sits below a matching parent. A word that is a tag name also finds the tracks tagged with it, and #drums restricts the search to the tracks tagged drums (find #drums lists them, find #drums kick searches inside them); !#drums means the regular tracks without that tag. -L limits that: with -L n, an object is listed only if it, or an object at most n levels above it, has one of the words in its own name — so -L 0 lists only the objects named like the pattern, -L 1 adds their direct children, -L 2 their grandchildren. Without a pattern, find needs -L or one of -t, -d, -c and lists from the top of the Set: with -L n, n levels below the Set (1 = top-level tracks, 2 = tracks and their devices, and the tracks inside groups). The kind flags add up and narrow what is listed. find remembers its last list until the extension restarts.
 
 **Usage:** `find [--level <n>] [--tracks] [--devices] [--chains] [--unfold] [<pattern>]`
 
@@ -132,6 +132,24 @@ find 808 -L 1
 ```
 
 those, plus their direct children
+
+```
+find #drums
+```
+
+every track tagged drums
+
+```
+find #drums kick
+```
+
+chains, pads and devices with "kick" in their path inside the tracks tagged drums
+
+```
+find !#drums -t
+```
+
+all regular tracks that are not tagged drums
 
 ```
 find -t
