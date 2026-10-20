@@ -120,7 +120,7 @@ The palette, `help`, `man`, the history of past commands and the track commands 
 
 - `mute`, `solo` and `arm` work on tracks. Return, main and group tracks cannot be armed.
 - Track selection does not work. `goto`, `find`, `next` and `prev` report that the Remote Script is not
-  running, not installed or outdated, and do not select anything.
+  running, and do not select anything.
 - Picking a Live object in the palette does not select it either. It reports the same message.
 - `mute` and `solo` on rack chains and Drum Rack pads also need the Remote Script, and they work on
   macOS only.

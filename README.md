@@ -1,63 +1,77 @@
 # cmdAbl
 
-A command palette for Ableton Live. Press `:` while Live is focused, type a command such as `mute /Bass`
-or `goto /Lead`, and cmdAbl runs it on the open Set. Commands take the names of tracks, devices, rack
-chains and Drum Rack pads, and a pick list asks when a name matches more than one object.
+**A command palette for Ableton Live.** Type a command and act on your Set: by name, by tag, or from a list.
 
-![Live's Session view with the cmdAbl palette open: the command prompt above a list of commands with one-line summaries](docs/assets/images/hero.png)
+[![Latest release](https://img.shields.io/github/v/release/MarvinHauke/cmdAbl)](https://github.com/MarvinHauke/cmdAbl/releases/latest)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://marvinhauke.github.io/cmdAbl/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![macOS · Live 12 (Extensions beta)](https://img.shields.io/badge/macOS%20%C2%B7%20Live%2012%20%28Extensions%20beta%29-lightgrey)](https://marvinhauke.github.io/cmdAbl/limits/)
 
-📖 **Documentation:** https://marvinhauke.github.io/cmdAbl/ — start with [Getting started](https://marvinhauke.github.io/cmdAbl/getting-started/).
+📖 **Documentation:** https://marvinhauke.github.io/cmdAbl/
 
-## In action
+🚀 **[Get started](https://marvinhauke.github.io/cmdAbl/getting-started/)**: install cmdAbl and run your first commands.
 
-![Screen recording: the command solo Bass, Audio, 808 bass is typed and runs; the tracks Bass and 1 Audio and the Bass Drum pad of the 808 kit turn solo; the palette is opened again, the command is taken from the top of the history with Tab and run again, and the solos switch off](docs/assets/images/demo.gif)
+![Screen recording: solo Bass, Audio, 808 bass is typed and runs in the palette; Bass, 1 Audio and the Bass Drum pad turn solo](docs/assets/images/demo.gif)
 
-Typing `solo Bass, Audio, 808 bass` solos the tracks Bass and 1 Audio, and the Bass Drum pad of the 808 kit. Opened
-again, the palette lists the same command at the top of its history, in its exact form; Tab and Enter run it again,
-and because `solo` toggles, the three solos switch off.
+## Why cmdAbl
 
-cmdAbl is built on the Ableton Extensions SDK, with a small Remote Script for what the SDK cannot do.
-It supports macOS only for now.
+<!-- GIF to come: docs/assets/images/picklist.gif -->
+
+### A pick list you control
+
+When a name fits more than one object, `mute`, `solo` and `arm` ask instead of guessing. Mark the rows you mean
+with `Tab`. Each row shows its state in Live's colours, a speaker for mute, `S` for solo or a record dot for arm,
+and marked rows are highlighted. A dashed ring marks each button that Enter would change, and Live does not change
+until you press Enter.
+
+<!-- GIF to come: docs/assets/images/tags.gif -->
+
+### Tags that group your tracks
+
+Tag tracks by what they are: `tag /Lead fx synth`. After that, `mute #fx` reaches every track tagged `fx` at once,
+`mute !#drums` every regular track without the tag, and `mute drums` works too when no track name matches it. Tags are saved
+with the Set, and they need the [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/).
+
+<!-- GIF to come: docs/assets/images/pakabl.gif -->
+
+### Community extensions, one list
+
+pakabl installs Ableton Live extensions from a curated list of community repositories. Run `pakabl update` once,
+then `pakabl list` shows each extension with an Install button. Restart Live after a change.
+
+![The pakabl extension index window: a scrollable list of extensions, each with its name, version and an Install button](docs/assets/images/pakabl-list.png)
 
 ## Install
 
 1. **Install the extension.** Download the latest `.ablx` from the
-   [Releases page](https://github.com/MarvinHauke/cmdAbl/releases/latest). In Live, open **Settings → Extensions**
-   and drag the file onto the box, or click **Choose file** and pick it. If an older cmdAbl is installed, remove
-   it first and restart Live.
-2. **Set up the `:` key.** The key needs [Karabiner-Elements](https://karabiner-elements.pqrs.org) and
-   cmdAbl's rule. Open the palette (right-click a clip, track, clip slot or scene and choose **: cmdAbl**),
-   type `cmdabl setup` and press Enter. Then enable the rule in Karabiner-Elements.
-3. **Turn on the Remote Script.** Restart Live. Then open **Settings → Tempo & MIDI → MIDI**, and under
-   **Control Surface** choose **cmdAbl**. Leave Input and Output at *None*.
+   [Releases page](https://github.com/MarvinHauke/cmdAbl/releases/latest). In Live, open **Settings → Extensions**,
+   and drag the file onto the box or click **Choose file**.
+2. **Run `cmdabl setup`.** Open the palette (right-click a clip, track, clip slot or scene and choose **: cmdAbl**),
+   type `cmdabl setup` and press Enter. Then enable cmdAbl's rule in Karabiner-Elements for the `:` key.
+3. **Turn on the Remote Script.** Restart Live. Then open **Settings → Tempo & MIDI → MIDI** and choose **cmdAbl**
+   under **Control Surface**.
 
-The [Getting started](https://marvinhauke.github.io/cmdAbl/getting-started/) page explains each step, the
-messages you may see, and what works without the Remote Script.
+[Getting started](https://marvinhauke.github.io/cmdAbl/getting-started/) explains each step, with screenshots.
 
 ## Develop
 
-The Ableton Extensions SDK is licensed for building extensions, not for redistribution, so it is not
-in this repository. Get the SDK and CLI packages from Ableton's Extensions beta and put
-`ableton-extensions-sdk-<version>.tgz` and `ableton-extensions-cli-<version>.tgz` into `vendor/`
-(the versions `package.json` names). CI reads them from a private repository.
+The Ableton Extensions SDK is licensed for building extensions, not for redistribution, so it is not in this
+repository. The [Architecture](https://marvinhauke.github.io/cmdAbl/architecture/) page explains the code, and
+`docs/feature-plans/` holds the design plans.
 
 ```sh
-npm install          # dependencies
-npm start            # type-check, build and run in Live's Extension Host (Developer Mode on)
-npm test             # unit tests
-npm run build        # type-check and production bundle
-npm run package      # build the .ablx
-npm run docs:reference   # regenerate the reference pages (commands, Remote Script, Live API) from the code
+npm install              # dependencies (the SDK tarballs go into vendor/, see the Architecture page)
+npm test                 # unit tests
+npm run build            # type-check and production bundle
+npm run package          # build the .ablx
+npm run docs:reference   # regenerate the reference pages from the code
 ```
-
-The architecture of cmdAbl is described on the [Architecture](https://marvinhauke.github.io/cmdAbl/architecture/)
-page. Design plans are in `docs/feature-plans/`. The team of agents that works on this repository, and the
-workflow they follow, is described in [CLAUDE.md](CLAUDE.md).
 
 ## Contributing
 
-- Writing a command or a module: [Writing a command](docs/guides/command-authoring.md).
-- Getting an extension onto pakabl's list of community extensions: [pakabl index](docs/guides/pakabl-index.md).
+- [Writing a command](docs/guides/command-authoring.md)
+- [pakabl index](docs/guides/pakabl-index.md): getting an extension onto the community list
+- [CLAUDE.md](CLAUDE.md): how the agents that work on this repository are organised
 
 ## License
 

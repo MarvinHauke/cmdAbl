@@ -36,15 +36,9 @@ Without the Remote Script the palette still opens and most commands run:
 Run `cmdabl setup` from the palette. It copies the Remote Script into Live's User Library, at
 `~/Music/Ableton/User Library/Remote Scripts/cmdAbl`. The command then tells you what to do next.
 
-Then turn it on in Live, once:
-
-1. **Restart Live.** After the restart, cmdAbl appears in the Control Surface list.
-2. Open **Settings → Tempo & MIDI → MIDI**. Under **Control Surface**, choose **cmdAbl**. Leave Input
-   and Output set to *None*. Choosing it starts the script; you do not need to restart Live again.
-
-![Live's Settings, Tempo & MIDI page, MIDI section: slot 1 has Control Surface set to cmdAbl and Input and Output set to None](assets/images/control-surface.png)
-
-*Settings → Tempo & MIDI → MIDI: Control Surface set to cmdAbl, Input and Output set to None.*
+Then restart Live, and choose **cmdAbl** under **Control Surface** in **Settings → Tempo & MIDI → MIDI**.
+Choosing it starts the script; you do not need to restart Live again. The
+[Getting started](getting-started.md) page has the steps with screenshots.
 
 ## Update it
 
