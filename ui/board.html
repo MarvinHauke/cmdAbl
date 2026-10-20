@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips; Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. ←/→ in an empty input (or at caret 0) put a chip cursor on the section's chips: Backspace/Delete/Space toggle the removal mark of the chip under it, typing/Esc/Tab return to the input, Enter does nothing. A readonly section shows chips only. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names] } on Apply: only real differences against the request; a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
+<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips (←/→/↑/↓ move the highlight while they show); Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. ←/→ in an empty input (or at caret 0) put a chip cursor on the section's chips: Backspace/Delete/Space toggle the removal mark of the chip under it, typing/Esc/Tab return to the input, Enter does nothing. A readonly section shows chips only. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names] } on Apply: only real differences against the request; a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -72,7 +72,7 @@
     <div id="create" hidden></div>
   </div>
   <div id="footer">
-    <span id="hint">type to add · Tab accept · Enter add · ←→ chips · ⌫ remove · ↑↓ move · Enter on empty = apply · Esc</span>
+    <span id="hint">type to add · ←→↑↓ pick · Tab accept · Enter add · ← chips · ⌫ remove · ↑↓ move · Enter on empty = apply · Esc</span>
     <button id="apply" disabled></button>
     <button id="close">Close</button>
   </div>
@@ -385,6 +385,15 @@
     function keyInSection(e, si) {
       const s = S[si];
       if (s.cc != null) { keyOnChip(e, si); return; }
+      // While suggestions show, plain ←/→ move the highlight (previous/next, no wrap) instead of the caret
+      // or the chips; Cmd/Alt/Ctrl+←/→, Home and End stay native.
+      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey
+          && s.inputEl.value && (s.sugList?.length ?? 0) > 0) {
+        e.preventDefault();
+        const next = Math.max(0, Math.min(s.sugList.length - 1, s.hi + (e.key === 'ArrowRight' ? 1 : -1)));
+        if (next !== s.hi) { s.hi = next; renderAdd(si); }
+        return;
+      }
       if (e.key === 'ArrowLeft' && !e.shiftKey && s.inputEl.selectionStart === 0 && s.inputEl.selectionEnd === 0) {
         const idx = chipIdx(s);
         if (idx.length) { e.preventDefault(); s.cc = idx[idx.length - 1]; renderChips(si); }
