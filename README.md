@@ -38,6 +38,7 @@ SDK, with a small Remote Script for what the SDK cannot do.
 Tag tracks by what they are: `tag /Lead fx synth`. After that, `mute #fx` reaches every track tagged `fx` at once,
 `mute !#drums` every regular track without the tag, and `mute drums` works too when no track name matches it. Tags
 are saved with the Set, and they need the [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/).
+`tag --list` opens a board where you add and remove the tags of every track.
 
 ### A pick list you control
 
@@ -67,7 +68,7 @@ These commands ship with cmdAbl. Each feature is a module that declares its comm
 - `find`, `next`, `prev`: find tracks, devices and chains whose path contains a pattern, and step through the matches.
 - `mute`, `solo`: toggle mute or solo on tracks, chains and drum pads.
 - `arm`: toggle record arm on tracks.
-- `tag`: tag tracks, or list the tags of the Set with `tag --list`.
+- `tag`: tag tracks, edit tags on a board (`tag --list`), or switch one tag on many tracks (`tag --edit`).
 - `history`: manage the list of recent commands.
 - `man`: show a command's full page in Live, or open the Live manual or the cmdAbl documentation.
 - `lom`: show the Live Object Model path of a track, device or chain.

@@ -127,8 +127,8 @@ changed. cmdAbl never folds the chains back. To fold them again, do it in Live.
 A tag marks what a track is, such as `fx` or `drums`. One command then reaches every track with that tag:
 `mute #fx` mutes all tracks tagged `fx`, at once and without a list.
 
-- `tag --list` (or `tag -l`) lists every tag as a block: its name, how many tracks carry it, and those tracks. A bare
-  `tag` is a usage error that shows the short usage.
+- `tag --list` (or `tag -l`) opens the tag board, described below. A bare `tag` is a usage error that shows the short
+  usage.
 - `tag /Lead` opens a list of tags, with buttons that show which ones Lead has. Mark the tags to switch with `Tab`,
   then press `Enter`.
 - `tag /Lead fx synth` switches `fx` and `synth` on for Lead, or off where they are on.
@@ -150,6 +150,28 @@ A tag marks what a track is, such as `fx` or `drums`. One command then reaches e
 - Tags you marked before still come along.
 
 In a Set without tags, the empty list says "type a new tag".
+
+**Edit tags on the board.** `tag -l` opens the tag board: one section per tag, with its tracks as chips.
+
+- Click a chip's **×** to mark that track for removal, and strike it through. A second click unmarks it.
+- Open a section with **▸** (or `→`). It shows a checkbox list of every regular and return track, never the main
+  track. Tick a track to add the tag, untick it to remove the tag. Typing filters the list.
+- **⊕ New tag…** adds a tag: type its name, then tick the tracks. Names are saved in lowercase, so "Perc" becomes
+  `perc`. A name that already exists adds to that tag. A new tag with no ticked track is not kept.
+- The untagged tracks are listed at the end, read-only.
+
+Live does not change until you press **Apply (N changes)**. The board then reopens with the new state. **Close**
+ends it and shows one summary of what was applied, with the commands that put it back. With nothing applied, Close
+shows nothing. Keys: `↑` and `↓` move, `→` and `←` open and close a section, `Space` toggles, `/` or typing filters,
+`Enter` applies, and `Esc` steps back: out of the filter first, then out of the board.
+
+<!-- image to come: docs/assets/images/tag-board.png -->
+
+**`tag --edit` (`-e`)** changes one tag on many tracks, from the keyboard. `tag -e fx` opens the pick list of all
+regular and return tracks, with a "tagged fx" button lit where a track has the tag. Mark tracks with `Tab` and press
+`Enter` to switch `fx` on or off for each marked track; `Esc` changes nothing. `tag -e #` asks for a tag first, or creates one
+in the new-tag row, and then opens the track list. `--edit` cannot be combined with a target, names, `--list` or
+`--set`. The pair to remember: `tag /Lead` picks the tags of one track, and `tag -e fx` picks the tracks of one tag.
 
 **Rules.**
 
