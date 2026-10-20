@@ -12,14 +12,8 @@ _Last updated: 2026-10-20._
 Built and Live-tested: tags on tracks, `#tag`, `!#tag`, bare tag word, `--pick`. README landing
 page, Requirements, Install, docs cleanup done (cmdabl-docs).
 
-1. Live test `man <command>` (`76cb3ea`): `man tag`, `man history clear`, `man cmdabl` (site),
-   `man cmdabl setup`, `man ableton warp modes`, `man tga` (did you mean), bare `man` (usage).
+1. ~~Live tests: `man <command>` with "Open in browser", short `--help`~~ — passed (user, 2026-10-20).
 2. ~~Live test the new-tag row~~ — passed (user, 2026-10-20).
-   Clickable link (user): "Open in browser" button on `man` pages (`2e2e41a`, `06267fa`,
-   `bd1cfbf`) — Live test: `man history clear` / `man tag` button opens the section; Tab+Enter
-   too; Esc/Enter/Close only close; `man tga` no button; `man cmdabl` opens the site.
-   Short `--help` (`e56fa9c`, docs `338fc90`) — Live test: `mute --help` usage + options incl.
-   `--pick` + `more: man mute`; `history --help` subcommands; `man mute` still full; `help` same.
 3. Recordings by the user (`.mov` in `/tmp/shots/`) → cmdabl-docs makes GIFs:
    `hero` (tags in action), `tags` (tag list), `pakabl` (`pakabl list`); optional: Karabiner
    rule screenshot for Getting started. Then drop unused images (`demo.gif`, old `pakabl-list.png`).
