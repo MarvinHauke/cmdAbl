@@ -49,7 +49,7 @@ changes, the extension applies them after the dialog closes.
 7. **Module pages move to `ui/modules/<module>/`** (user, 2026-10-20): `ui/pakabl-list.html`
    becomes `ui/modules/pakabl/list.html`; the architecture test allows a module only its own
    folder there (cmdabl-core).
-8. **`tag --rename <old> <new>` (`-r`)** (user, 2026-10-21) renames a tag on every track that carries it.
+8. **`tag --rename <old> <new>` (`-r`)** (user, 2026-10-21; built core `4033470`, modules `8134f55`) renames a tag on every track that carries it.
    - Both values come after the option, because the first positional is the resolved target path.
      This needs a core addition: an option that takes two values. That is a change to the command
      node format, approved by the user.

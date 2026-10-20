@@ -56,7 +56,11 @@ Done means:
    - The presenter never shows them.
    - A successful write returns no `message`, only `log`.
    - Partial failures still show the ✓/× dialog, as today.
-3. **Tag writes go quiet.** This covers board Apply, `tag /x fx`, `tag -e` and `tag --set`.
+3. **A write that changes nothing says so** (modules `8134f55`, after the Live test): "/Bass already
+   has #bass", "/Bass has no #fx", or "nothing changed" for several targets; a mix of changed and
+   unchanged targets stays quiet. "A successful write shows nothing" holds only for writes that
+   changed something.
+3b. **Tag writes go quiet.** This covers board Apply, `tag /x fx`, `tag -e` and `tag --set`.
    - The change lines and `undo:` lines go into `log`.
    - After an Apply with failures, the dialog shows only the failures.
 4. **A core logger, `src/core/log.ts`.**
