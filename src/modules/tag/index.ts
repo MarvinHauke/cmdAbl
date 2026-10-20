@@ -1,6 +1,7 @@
 import type { ModuleApi } from "../types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../../core/types.js";
+import { buildBoard, groupChanges } from "./board.js";
 import { changed, diffTags, normalizeTagNames, planTags, reverseLines, tagIndex, type TagChange, type TagMode } from "./plan.js";
 
 const hashed = (tags: string[]): string => (tags.length === 0 ? "no tags" : tags.map((t) => `#${t}`).join(" "));
@@ -17,7 +18,7 @@ export function changeLines(path: string, c: TagChange): string[] {
  */
 export function activate(api: ModuleApi): void {
   /** Writes `planFor(node, before)` to every target and builds the result: changed tracks with their undo lines. */
-  const applyPlans = async (targets: ObjectNode[], planFor: (node: ObjectNode, before: string[]) => TagChange): Promise<CommandResult> => {
+  const applyPlans = async (targets: ObjectNode[], planFor: (node: ObjectNode, before: string[]) => TagChange, stopOnFail = false): Promise<CommandResult> => {
     const lines: string[] = [];
     const outcomes: TargetOutcome[] = [];
     let unmarked = false;
@@ -32,6 +33,7 @@ export function activate(api: ModuleApi): void {
       const written = await api.tags.write(node, plan.after);
       if (!written.ok) {
         outcomes.push({ path: node.path, ok: false, code: written.code as never, message: written.text });
+        if (stopOnFail) break;
         continue;
       }
       if (!written.value.marked) unmarked = true;
@@ -47,6 +49,50 @@ export function activate(api: ModuleApi): void {
     const code =
       failed.length === outcomes.length && failed.every((o) => o.code === ExitCode.UNAVAILABLE) ? ExitCode.UNAVAILABLE : ExitCode.FAILURE;
     return fail(code, `tag: ${outcomes.length - failed.length} of ${outcomes.length} done`, outcomes);
+  };
+
+  /**
+   * `tag --list`: the board. Apply writes the changes per track, then the board reopens with fresh state;
+   * Close ends with one summary of everything applied (nothing applied: no message).
+   */
+  const tagBoard = async (): Promise<CommandResult | void> => {
+    const applied: string[] = [];
+    let cut = false;
+    /** An error after earlier rounds applied changes still names them (with their undo lines). */
+    const failed = (code: typeof ExitCode.FAILURE | typeof ExitCode.USAGE | typeof ExitCode.UNAVAILABLE, message: string): CommandResult =>
+      fail(code, applied.length > 0 ? `${[...new Set(applied)].join("\n")}\n${message}` : message);
+    const summary = (): CommandResult | void => {
+      if (applied.length === 0) return;
+      const text = [...new Set(applied)].join("\n") + (cut ? "\n(list cut: the board showed only part of the Set)" : "");
+      return ok(text);
+    };
+    for (;;) {
+      const fresh = await api.tags.refresh();
+      if (!fresh.ok) return failed(fresh.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
+      const nodes = api.liveSet.nodes().filter((n) => n.kind === "track" && n.scope !== "master");
+      const byId = new Map(nodes.map((n) => [n.handleId, n]));
+      const shown = await api.ui.board(buildBoard(nodes.map((n) => ({ id: n.handleId, label: n.path, tags: api.tags.of(n) }))));
+      cut = cut || shown.cut;
+      if (!shown.answer || shown.answer.changes.length === 0) return summary();
+
+      const { perTrack, bad } = groupChanges(shown.answer);
+      if (bad !== undefined) return failed(ExitCode.USAGE, `tag: "${bad}" is not a tag name — use lowercase letters, digits, - and _`);
+      const targets = [...perTrack.keys()].map((id) => byId.get(id)).filter((n): n is ObjectNode => n !== undefined);
+      const result = await applyPlans(
+        targets,
+        (node, before) => {
+          const change = perTrack.get(node.handleId)!;
+          const added = planTags(before, change.add, "add").after;
+          return diffTags(before, planTags(added, change.remove, "remove").after);
+        },
+        true,
+      );
+      if (result.code !== ExitCode.OK) {
+        const earlier = applied.length > 0 ? `${[...new Set(applied)].join("\n")}\n` : "";
+        return { ...result, message: `${earlier}${result.message ?? ""}` };
+      }
+      if (result.message) applied.push(...result.message.split("\n"));
+    }
   };
 
   /**
@@ -97,7 +143,7 @@ export function activate(api: ModuleApi): void {
       "Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx " +
       "reaches every track tagged fx. With --edit and a tag (tag --edit fx) every regular and return track is listed with a button " +
       "that is lit where it carries the tag: mark tracks with Tab and press Enter to switch the tag on or off on each of them; " +
-      "tag --edit # first asks which tag, and a name that is not in that list creates it. With --list, lists every tag and the tracks that carry it. " +
+      "tag --edit # first asks which tag, and a name that is not in that list creates it. With --list, opens an overview: a section per tag with the tracks that carry it as chips, a checkbox list of every regular and return track to add or remove the tag, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Apply writes the changes and reopens the overview; Close ends and names what was applied with the commands that undo it. " +
       "With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target " +
       "that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. " +
       "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +
@@ -105,7 +151,7 @@ export function activate(api: ModuleApi): void {
       "the command that puts every change back. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or " +
       "a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).",
     examples: [
-      { line: "tag --list", note: "all tags and their tracks" },
+      { line: "tag --list", note: "the tag overview: add or remove tags on many tracks, create a tag" },
       { line: "tag --edit fx", note: "pick the tracks to switch the tag fx on or off for" },
       { line: "tag -e #", note: "pick the tag (or type a new one), then the tracks" },
       { line: "tag /Lead", note: "pick the tags to switch on or off for the track Lead, or type a new one" },
@@ -122,7 +168,7 @@ export function activate(api: ModuleApi): void {
         takesValue: true,
         summary: "list the tracks with the tag lit and toggle the tag on the marked ones; # first asks which tag",
       },
-      { name: "list", short: "l", summary: "list every tag with its tracks instead of changing tags" },
+      { name: "list", short: "l", summary: "open the tag overview (add or remove tags on many tracks, create a tag) instead of changing tags" },
       {
         name: "set",
         short: "s",
@@ -162,18 +208,7 @@ export function activate(api: ModuleApi): void {
       const set = invocation.options.set;
       const mode: TagMode = set === "1" ? "add" : set === "0" ? "remove" : "toggle";
 
-      if (listing) {
-        const index = tagIndex(tracks.map((t) => ({ path: t.path, tags: api.tags.of(t) })));
-        if (index.length === 0) return ok("no tags in the Set");
-        return {
-          ...ok(index.map((e) => `#${e.tag}: ${e.paths.join(", ")}`).join("\n")),
-          sections: index.map((e) => ({
-            heading: `#${e.tag}`,
-            meta: `${e.paths.length} ${e.paths.length === 1 ? "track" : "tracks"}`,
-            items: e.paths,
-          })),
-        };
-      }
+      if (listing) return tagBoard();
 
       let pickedModes: Map<string, TagMode> | null = null;
       let pickedRows: Array<{ name: string; on: boolean }> | null = null;
