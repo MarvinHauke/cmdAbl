@@ -157,10 +157,10 @@ In a Set without tags, the empty list says "type a new tag".
   A second click unmarks it.
 - Each tag ends with an **add…** input. Type a track's name and the best match appears as ghost text. Up to six
   matching tracks show as chips below it: the tracks that do not carry the tag yet. `Tab` puts the highlighted track
-  in the field and `Enter` adds it; `Tab` in an empty field moves to the next one. A click on a suggestion adds it too. The new chip has a dashed ring. "no match" means
-  nothing was added.
-- Chips can also be reached from the keyboard. `←` in an empty **add…** field, or with the cursor at its start, moves
-  onto the tag's last chip. `←` and `→` step through the chips, and `→` past the last one returns to the field.
+  in the field and `Enter` adds it; `Tab` in an empty field moves to the next one. A click on a suggestion adds it too.
+  The new chip has a dashed ring. "no match" means nothing was added.
+- Chips can also be reached from the keyboard. In an empty field, or with no match and the cursor at the start,
+  `←` moves onto the tag's last chip. `←` and `→` step through the chips, and `→` past the last one returns to the field.
   `Backspace`, `Delete` or `Space` marks the chip under the cursor for removal, and a second press unmarks it. A chip
   you just added disappears instead. Typing a letter, `Tab` or `Esc` returns to the field, and `Enter` on a chip does
   nothing. `Backspace` in an empty field marks the last chip, as before.
@@ -173,7 +173,8 @@ Live does not change until you press **Apply (N changes)**. Then the board close
 change that was written, with the command that puts it back. **Close** with nothing applied changes nothing and
 shows no message.
 
-Keys: `↑` and `↓` move through the suggestions while they show, otherwise to the other tags. `Enter` in an
+Keys: while suggestions show, `↑`, `↓`, `←` and `→` move through them. With no match, `←` and `→` move the text
+cursor, and `↑` and `↓` go to the other tags. `Alt+←` and `Alt+→` move the cursor in the typed text. `Enter` in an
 empty input applies. `Esc` clears the input, then closes the board. With pending changes, the first `Esc` (or Close)
 warns "N changes not applied — Esc again to discard". Any other key, or any click except Close, cancels the warning.
 
