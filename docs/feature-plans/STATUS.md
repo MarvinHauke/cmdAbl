@@ -58,6 +58,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    write still shows ✓/×; the script line in Log.txt after `cmdabl setup`. Docs `e222996`.
    `--undo` shows bare commands (`ed07726`) — passed in Live (user, 2026-10-20): empty message, then
    two commands newest last.
+   Timestamps on every line (core `dc88afe`, docs `b45117f`) — Live check: `cmdabl log` lines start
+   with `HH:MM:SS [run] info:`; the terminal shows `HH:MM:SS.mmm cmdAbl [run]` (drop ours if the host stamps too).
 
 ## Next after 0.1.2 (user, 2026-10-20)
 
