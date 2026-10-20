@@ -122,7 +122,9 @@ null when closed. Only real differences are sent; a created section only matters
 - `ModuleApi.pick` gets the additive option `state: { label, values, change }`, passed to
   `pickNodes` (architect, 2026-10-20; until then only the platform's `--pick` flow had states).
 
-Without a tag, `tag --edit` first opens the tag list with the new-tag row. It ships with the
+`--edit` takes the tag as its value (`tag -e fx`, `tag -e #fx`), because the first positional
+is the target path and is resolved before the handler. `tag -e #` first opens the tag list
+with the new-tag row (bare `#` = the tag list, as elsewhere). Usage: `tag --edit <tag|#>`. It ships with the
 board as the keyboard path (decision 5).
 
 ## The UI pattern in `ui/`
