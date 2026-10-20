@@ -56,6 +56,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    `cmdAbl [<source>] <level>:`. Live test: `tag /Lead fx` opens no window, then `cmdabl log --undo`
    shows the undo line; `cmdabl log -n 5`; `arm /x`, then `cmdabl log` (no double prefix); a failed
    write still shows ✓/×; the script line in Log.txt after `cmdabl setup`. Docs `e222996`.
+   `--undo` shows bare commands (`ed07726`) — passed in Live (user, 2026-10-20): empty message, then
+   two commands newest last.
 
 ## Next after 0.1.2 (user, 2026-10-20)
 
