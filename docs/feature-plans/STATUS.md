@@ -53,6 +53,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    and looks the same, Install/Repo answer.
 4. Docs: `tag --edit` and the board in using.md and README — done `4dbeee0` (image
    `tag-board.png` to come).
+7. `tag --rename <old> <new>` (`-r`), plan 0010 decision 8 (user, 2026-10-21): core adds two-value
+   options (approved command-format change), then modules builds the rename (merge if the new name exists).
 6. Logging (plan 0011) — built: core `e7ff3e8` `9d2fda1` `c5ce946`, modules `6a958fe` `9e15cff`,
    bridge `94c1648`. Tag writes are quiet, `cmdabl log [-n] [--undo] [--debug]`, lines read
    `cmdAbl [<source>] <level>:`. Live test: `tag /Lead fx` opens no window, then `cmdabl log --undo`
