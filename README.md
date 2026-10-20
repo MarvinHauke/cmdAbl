@@ -38,8 +38,6 @@ Tag tracks by what they are: `tag /Lead fx synth`. After that, `mute #fx` reache
 `mute !#drums` every regular track without the tag, and `mute drums` works too when no track name matches it. Tags
 are saved with the Set, and they need the [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/).
 
-<!-- GIF to come: docs/assets/images/pakabl.gif -->
-
 <!-- GIF to come: docs/assets/images/picklist.gif -->
 
 ### A pick list you control
@@ -48,6 +46,8 @@ When a name fits more than one object, `mute`, `solo` and `arm` ask instead of g
 with `Tab`. Each row shows its state in Live's colours, a speaker for mute, `S` for solo or a record dot for arm,
 and marked rows are highlighted. A dashed ring marks each button that Enter would change, and Live does not change
 until you press Enter.
+
+<!-- GIF to come: docs/assets/images/pakabl.gif -->
 
 ### Community extensions, one list
 
