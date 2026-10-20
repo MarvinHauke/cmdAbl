@@ -87,6 +87,12 @@ export interface OptionDef {
    * Fewer than N: usage error "--rename needs <old> <new>".
    */
   values?: number;
+  /**
+   * The value used when the option is given without one (it is the last token, or another option
+   * follows): `tag -e` then acts like `tag -e #`. Needs `takesValue`; not with `values` above 1.
+   * Usage and help show `--edit [<tag|#>]` and "default #". An inline `--edit=` stays empty.
+   */
+  valueDefault?: string;
   /** Names of the values, one per value, shown as `--rename <old> <new>` (or `--edit <tag|#>` for one value); default "value". */
   valueLabels?: string[];
   summary: string;
@@ -244,6 +250,15 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
         if (optionShorts.has(opt.short)) problems.push(`${at}: duplicate short option "-${opt.short}"`);
         optionShorts.add(opt.short);
       }
+      if (opt.valueDefault !== undefined) {
+        if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" has a valueDefault but takes no value`);
+        if ((opt.values ?? 1) > 1) problems.push(`${at}: option "--${opt.name}" has a valueDefault with several values`);
+        if (opt.valueDefault === "") problems.push(`${at}: option "--${opt.name}" has an empty valueDefault`);
+        if (opt.choices && !opt.choices.some((c) => c.toLowerCase() === opt.valueDefault!.toLowerCase())) {
+          problems.push(`${at}: the valueDefault of option "--${opt.name}" is not one of its choices`);
+        }
+        if (opt.number) problems.push(`${at}: option "--${opt.name}" has a valueDefault with number (a following negative number would read as an option)`);
+      }
       if (opt.values !== undefined) {
         if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" has values but takes no value`);
         if (!Number.isInteger(opt.values) || opt.values < 1) problems.push(`${at}: option "--${opt.name}" needs values of at least 1`);
@@ -329,6 +344,17 @@ export function valueLabel(opt: OptionDef): string {
   return opt.number ? "n" : "value";
 }
 
+/** `-e, --edit [<tag|#>]` — how help and the reference write an option. */
+export function optionFlag(opt: OptionDef): string {
+  const label = opt.takesValue ? (opt.valueDefault !== undefined ? ` [<${valueLabel(opt)}>]` : ` <${valueLabel(opt)}>`) : "";
+  return `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${label}`;
+}
+
+/** What follows an option's summary in help: the numeric rule and the default. */
+export function optionNotes(opt: OptionDef): string {
+  return `${opt.number ? ` (${numberRule(opt.number)})` : ""}${opt.valueDefault !== undefined ? ` (default ${opt.valueDefault})` : ""}`;
+}
+
 /** A value option as the palette page needs it to hint what to type next. */
 export interface ValueOptionHint {
   /** Subcommand words below the top-level command (empty for a plain command). */
@@ -404,7 +430,11 @@ export function usage(node: CommandNode<any, any>, path: string[]): string {
     return parts.join(" ");
   }
   for (const opt of effectiveOptions(node)) {
-    parts.push(opt.takesValue ? `[--${opt.name} <${valueLabel(opt)}>]` : `[--${opt.name}]`);
+    parts.push(
+      opt.takesValue
+        ? opt.valueDefault !== undefined ? `[--${opt.name} [<${valueLabel(opt)}>]]` : `[--${opt.name} <${valueLabel(opt)}>]`
+        : `[--${opt.name}]`,
+    );
   }
   for (const arg of node.args ?? []) {
     const shown = arg.kind === "enum" && arg.choices?.length ? arg.choices.join("|") : arg.name;
@@ -429,8 +459,7 @@ function sections(node: CommandNode<any, any>): string[] {
   if (effectiveOptions(node).length) {
     lines.push("", "options:");
     for (const opt of effectiveOptions(node)) {
-      const flag = `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${opt.takesValue ? ` <${valueLabel(opt)}>` : ""}`;
-      lines.push(`  ${flag.padEnd(22)} ${opt.summary}${opt.number ? ` (${numberRule(opt.number)})` : ""}`);
+      lines.push(`  ${optionFlag(opt).padEnd(22)} ${opt.summary}${optionNotes(opt)}`);
     }
   }
   return lines;

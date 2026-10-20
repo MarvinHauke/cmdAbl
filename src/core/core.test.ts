@@ -744,3 +744,37 @@ test("match.ts ValueOptionSpec and commandTree.ts ValueOptionHint stay the same 
   const hints: import("./commandTree.js").ValueOptionHint[] = [{ path: [], name: "rename", labels: ["old", "new"] }];
   assert.equal(valueHint(hints, "--rename "), "<old>"); // fails to compile when the shapes drift apart
 });
+
+test("option with valueDefault: no value (last token, or an option follows) uses the default", () => {
+  const tree: CommandNode<void, string>[] = [
+    {
+      name: "tag",
+      summary: "tags",
+      args: [{ name: "target", kind: "path", required: false }],
+      options: [
+        { name: "edit", short: "e", takesValue: true, valueLabels: ["tag|#"], valueDefault: "#", summary: "edit tags" },
+        { name: "list", summary: "list" },
+      ],
+      run: () => {},
+    },
+  ];
+  const opt = (line: string) => {
+    const r = parse(line, tree);
+    return r.kind === "run" ? [r.invocation.options.edit, r.invocation.args[0]] : r.kind;
+  };
+  assert.deepEqual(opt("tag -e"), ["#", []]);
+  assert.deepEqual(opt("tag --edit --list"), ["#", []]);
+  assert.deepEqual(opt("tag -e fx"), ["fx", []]);
+  assert.deepEqual(opt("tag --edit=fx"), ["fx", []]);
+  assert.deepEqual(opt("tag --edit="), [""  , []]);
+  assert.match(usage(tree[0]!, ["tag"]), /\[--edit \[<tag\|#>\]\]/);
+  assert.match(helpText(tree[0]!, ["tag"]), /-e, --edit \[<tag\|#>\]\s+edit tags \(default #\)/);
+  assert.deepEqual(validateTree(tree), []);
+  const bad = (o: object): CommandNode<void, string>[] => [{ name: "x", summary: "s", options: [{ name: "o", summary: "s", ...o } as never], run: () => {} }];
+  assert.match(validateTree(bad({ takesValue: false, valueDefault: "a" })).join("\n"), /takes no value/);
+  assert.match(validateTree(bad({ takesValue: true, values: 2, valueDefault: "a" })).join("\n"), /several values/);
+  assert.match(validateTree(bad({ takesValue: true, valueDefault: "" })).join("\n"), /empty valueDefault/);
+  assert.match(validateTree(bad({ takesValue: true, choices: ["0", "1"], valueDefault: "2" })).join("\n"), /not one of its choices/);
+  assert.deepEqual(validateTree(bad({ takesValue: true, choices: ["0", "1"], valueDefault: "1" })), []);
+  assert.match(validateTree(bad({ takesValue: true, number: {}, valueDefault: "1" })).join("\n"), /negative number/);
+});

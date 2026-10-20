@@ -127,7 +127,10 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
       multi[def.name] = got;
       continue;
     }
-    const value = inlineValue ?? rest[++k]?.value;
+    // No value (last token, or an option follows): the option's default, when it has one.
+    const next = rest[k + 1];
+    const useDefault = def.valueDefault !== undefined && inlineValue === undefined && (next === undefined || startsOption(input, next));
+    const value = useDefault ? def.valueDefault : (inlineValue ?? rest[++k]?.value);
     if (value === undefined) return error(ExitCode.USAGE, `option "--${def.name}" needs a value`);
     if (def.number) {
       if (checkNumber(value, def.number) === null) {
