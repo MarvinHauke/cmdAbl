@@ -40,7 +40,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    create a tag, then tracks), `tag -e fx /Lead` / `--set 1` → exit 2, `tag -e` alone → usage,
    Esc changes nothing, script off → exit 5. Known: `tag -e #` uses a multi-select tag list
    (two marked → exit 2); single-select would need core — later.
-2. `board` surface — cmdabl-core (contract) and cmdabl-ui (`ui/board.html`), in work.
+2. `board` surface — core contract built `96e838a` (`api.ui.board` → `{ answer, cut }`);
+   `ui/board.html` by cmdabl-ui in work (core left a stub).
 3. `tag -l` on `board` (cmdabl-modules), after 2.
 4. Docs (cmdabl-docs): `tag --edit` and the board in using.md, one brief after 3.
 
