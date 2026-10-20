@@ -22,6 +22,7 @@ SDK, with a small Remote Script for what the SDK cannot do.
 
 - [Why cmdAbl](#why-cmdabl)
 - [Modules](#modules)
+- [Requirements](#requirements)
 - [Install](#install)
 - [Documentation](#documentation)
 - [Develop](#develop)
@@ -76,6 +77,17 @@ These commands ship with cmdAbl. Each feature is a module that declares its comm
 
 More: [Command reference](https://marvinhauke.github.io/cmdAbl/reference/commands/) for the usage of each command,
 and [Writing a command](https://marvinhauke.github.io/cmdAbl/guides/command-authoring/) to build a module.
+
+## Requirements
+
+- **macOS.** cmdAbl has been tested on macOS only.
+- **Ableton Live with Extensions support.** The Extensions SDK is in beta; cmdAbl is built against version 1.0.0-beta.1.
+- **[Karabiner-Elements](https://karabiner-elements.pqrs.org)** (free), for the `:` key. It is optional: the palette
+  also opens from Live's context menu.
+- **The cmdAbl Remote Script.** `cmdabl setup` installs it; then choose it as Control Surface in Live. Selecting
+  objects, mute and solo on rack chains and Drum Rack pads, and tags need it.
+
+More: [Getting started → What you need](https://marvinhauke.github.io/cmdAbl/getting-started/#what-you-need)
 
 ## Install
 
