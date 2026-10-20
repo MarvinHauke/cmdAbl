@@ -75,11 +75,11 @@ test("#fx: every tagged object at once, no list; also inside a comma list", asyn
   assert.deepEqual(t.calls, [["/Bass", "/SH-101 MIDI", "/Drums/Snare"]]);
 });
 
-test("#fx where nothing is tagged: exit 3 \"no track tagged #nope\"", async () => {
+test("#fx where nothing is tagged: exit 3 \"no track is tagged #nope\"", async () => {
   const s = setup();
   const out = await runLine("mute #nope", s.deps);
   assert.equal(out.result.code, ExitCode.NOT_FOUND);
-  assert.equal(out.result.message, "mute: no track tagged #nope");
+  assert.equal(out.result.message, "mute: no track is tagged #nope");
   assert.deepEqual(s.calls, []);
 });
 
@@ -446,4 +446,19 @@ test("pickTagNames: allowNew offers the create row and returns the created name 
   assert.deepEqual(requests[0]!.create, { label: "new tag" });
   assert.deepEqual(await pickTagNames(ui, { title: "t", tags, multi: true }), ["fx"]);
   assert.equal(requests[1]!.create, undefined);
+});
+
+test("!#x of a tag no track carries: exit 3, nothing runs (also with --pick and in a comma list)", async () => {
+  for (const line of ["mute !#nosuch", "mute --pick !#nosuch", "mute !#nosuch, /Bass", "mute /Bass, !#nosuch"]) {
+    const s = setup();
+    const out = await runLine(line, s.deps);
+    assert.equal(out.result.code, ExitCode.NOT_FOUND, line);
+    assert.equal(out.result.message, "mute: no track is tagged #nosuch", line);
+    assert.deepEqual(s.calls, [], line);
+    assert.equal(s.picks.length, 0, line);
+  }
+  // a known tag behaves as before
+  const known = setup();
+  assert.equal((await runLine("mute !#drum", known.deps)).result.code, 0);
+  assert.equal(known.calls.length, 1);
 });

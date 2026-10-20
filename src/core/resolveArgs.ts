@@ -259,9 +259,13 @@ export function resolveTargets(
         // `#fx`: every object with the tag, at once, for every argument that can take several
         // objects (whatever `multiple` says); a single-target argument (`rest`) still asks, and so does
         // a destructive command (one address never acts on several objects there, as for `multiple`).
+        // `!#x` of a tag nothing carries would hit every track (a typo); it fails like `#x` does.
+        if (tag.negate && nodesWithTag(nodes, tag.name).length === 0) {
+          return { kind: "error", result: fail(ExitCode.NOT_FOUND, `${command}: no track is tagged #${tag.name}`) };
+        }
         const tagged = nodesForTag(nodes, tag, def.kinds);
         if (tagged.length === 0) {
-          const why = tag.negate ? `every track is tagged #${tag.name}` : `no track tagged #${tag.name}`;
+          const why = tag.negate ? `every track is tagged #${tag.name}` : `no track is tagged #${tag.name}`;
           return { kind: "error", result: fail(ExitCode.NOT_FOUND, `${command}: ${why}`) };
         }
         if (!forced && (tagged.length === 1 || (def.rest !== true && !node.destructive))) resolved.push(...tagged);
