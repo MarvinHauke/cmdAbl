@@ -143,7 +143,8 @@ soloed or armed, so a toggle is not applied blindly. Commands without such a sta
   "toggle" | "on" | "off"` says what confirming does to a row's state; the node declares it
   through `pickState`, `mute`/`solo`/`arm` set "toggle" without `--set`, else "on"/"off".
   The rows confirming would act on — the marked ones in a multi-select list (nothing marked: none; `Enter` then runs nothing
-  and the hint asks for a mark), the cursor row in a single-select list — show the
+  and the hint asks for a mark; exception: the create row answers `Enter` when it is under the
+  cursor, marked or not, together with the marked rows — 0008), the cursor row in a single-select list — show the
   **resulting** state at once, with a dashed accent ring while it differs from Live ("pending,
   not applied"); tooltip "muted (on confirm)". With `change` present, marks lose the row tint
   (the button shows them) and keep the bold label; a marked row whose result equals its
