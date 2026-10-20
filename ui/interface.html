@@ -28,8 +28,20 @@
       user-select: none;
     }
 
+    #field { flex: 1; position: relative; display: flex; min-width: 0; }
+
+    /* Ghost hint for the next option value ("<old>"): a mirror of the typed text (invisible) with the hint after it. */
+    #ghost {
+      position: absolute; left: 0; top: 0; bottom: 0; right: 0;
+      display: flex; align-items: center; overflow: hidden;
+      white-space: pre; pointer-events: none;
+    }
+    #ghost .mirror { visibility: hidden; }
+    #ghost .hint { color: var(--dim); }
+
     #input {
-      flex: 1;
+      width: 100%;
+      padding: 0;
       background: transparent;
       border: none;
       outline: none;
@@ -62,7 +74,10 @@
 
   <div id="bar">
     <span id="colon">:</span>
-    <input id="input" type="text" autocomplete="off" spellcheck="false" />
+    <div id="field">
+      <input id="input" type="text" autocomplete="off" spellcheck="false" />
+      <div id="ghost" aria-hidden="true"><span class="mirror"></span><span class="hint"></span></div>
+    </div>
   </div>
 
   <div id="dropdown"></div>
@@ -80,6 +95,8 @@
 
     const input     = document.getElementById('input');
     const dropdown  = document.getElementById('dropdown');
+    const ghostMirror = document.querySelector('#ghost .mirror');
+    const ghostHint   = document.querySelector('#ghost .hint');
 
     const itemsById = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 
@@ -216,9 +233,26 @@
       return { type: 'command', id: sp === -1 ? raw : raw.slice(0, sp), line: raw };
     }
 
+    // ── ghost hint: the next missing option value, display only ────────────
+    // Shown in the args phase when the caret is at the end of the line and the text after
+    // "<command> " ends in whitespace (CmdMatch.valueHint decides). Never affects Enter/Tab.
+    function updateGhost() {
+      let hint = null;
+      const v = input.value;
+      const sp = v.indexOf(' ');
+      if (sp > 0 && (input.selectionStart ?? v.length) === v.length && input.selectionEnd === v.length) {
+        const cmd = itemsById[v.slice(0, sp)];
+        if (cmd?.type === 'command' && cmd.valueOptions && CmdMatch.valueHint) hint = CmdMatch.valueHint(cmd.valueOptions, v.slice(sp + 1));
+      }
+      ghostMirror.textContent = hint ? v : '';
+      ghostHint.textContent = hint ?? '';
+      ghostMirror.style.marginLeft = hint ? -input.scrollLeft + 'px' : '0';
+    }
+
     // ── render ─────────────────────────────────────────────────────────────
     function render() {
       items     = computeItems(input.value);
+      updateGhost();
       activeIdx = Math.min(activeIdx, Math.max(items.length - 1, 0));
 
       dropdown.innerHTML = '';
@@ -250,6 +284,8 @@
 
     // ── keyboard ───────────────────────────────────────────────────────────
     input.addEventListener('input', () => { activeIdx = 0; chosen = false; render(); });
+
+    input.addEventListener('click', updateGhost);   // a click moves the caret
 
     // Moving the caret can change which word is completed.
     input.addEventListener('keyup', e => {
