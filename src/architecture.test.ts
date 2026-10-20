@@ -13,8 +13,8 @@ import { builtinModules } from "node:module";
 // Rules (paths relative to the repository root, without extension):
 //   1. src/modules/<name>/…  does not import another module's folder,
 //      src/httpTrigger, src/extension or a dialog page under ui/ — except its
-//      own page, ui/<name>-*.html (a module's dialog is part of the module; the
-//      platform's pages — interface, pick, feedback — stay off limits).
+//      own pages, ui/modules/<name>/*.html (a module's dialog is part of the
+//      module; every other page under ui/ — the platform's surfaces — stays off limits).
 //      Helpers directly under src/modules/ are shared; they follow the same
 //      rules except that src/modules/index.ts (the manifest) may import every
 //      module folder.
@@ -40,7 +40,6 @@ import { builtinModules } from "node:module";
 // The repository root: two levels up from this file's folder is wrong for a
 // file directly in src/, so use the location of src/ itself.
 const ROOT = typeof __dirname === "string" ? path.resolve(__dirname, "..") : process.cwd();
-const PLATFORM_PAGES = new Set(["interface", "pick", "feedback"]);
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 interface Violation {
@@ -113,9 +112,8 @@ export function brokenRule(file: string, target: string): string | null {
     if (target.startsWith("node:") && !NODE_ALLOWED.has(target)) return `6: modules do not reach out through Node (${target}); ask the platform for a port`;
     if (target.startsWith("@ableton-extensions/")) return `5: modules reach Live through the ModuleApi ports, not the SDK (${target})`;
     if (target.startsWith("ui/")) {
-      const own = name !== undefined && !PLATFORM_PAGES.has(name)
-        && new RegExp(`^ui/${escapeRegExp(name)}(-[^/]*)?\\.html$`).test(target);
-      if (!own) return `1: a module does not import the platform's dialog pages${name ? ` (only ui/${name}-*.html)` : ""}`;
+      const own = name !== undefined && new RegExp(`^ui/modules/${escapeRegExp(name)}/[^/]+\\.html$`).test(target);
+      if (!own) return `1: a module does not import the platform's dialog pages${name ? ` (only ui/modules/${name}/*.html)` : ""}`;
     }
   }
   if (file.startsWith("src/core/")) {
@@ -220,13 +218,15 @@ test("architecture: the checker sees the imports and flags what it should", () =
   assert.match(brokenRule("src/modules/goto/index.ts", "src/modules/mute/index") ?? "", /^1:/);
   assert.match(brokenRule("src/modules/goto/index.ts", "src/extension") ?? "", /^1:/);
   assert.match(brokenRule("src/modules/goto/index.ts", "ui/pick.html") ?? "", /^1:/);
-  assert.equal(brokenRule("src/modules/pakabl/index.ts", "ui/pakabl-list.html"), null);
+  assert.equal(brokenRule("src/modules/pakabl/index.ts", "ui/modules/pakabl/list.html"), null);
   assert.equal(brokenRule("src/modules/mute/index.ts", "src/modules/trackSetCommand"), null);
   assert.match(brokenRule("src/modules/trackSetCommand.ts", "src/extension") ?? "", /^1:/);
   assert.match(brokenRule("src/modules/trackSetCommand.ts", "src/modules/goto/index") ?? "", /^1:/);
   assert.equal(brokenRule("src/modules/index.ts", "src/modules/goto/index"), null);
   assert.match(brokenRule("src/modules/pick/index.ts", "ui/pick.html") ?? "", /^1:/); // a module named like a platform page
-  assert.match(brokenRule("src/modules/pa/index.ts", "ui/pakabl-list.html") ?? "", /^1:/); // prefix is not a match
+  assert.match(brokenRule("src/modules/pa/index.ts", "ui/modules/pakabl/list.html") ?? "", /^1:/); // a prefix of the folder name is not a match
+  assert.match(brokenRule("src/modules/pakabl/index.ts", "ui/modules/pakabl/sub/x.html") ?? "", /^1:/); // only directly in the module's folder
+  assert.match(brokenRule("src/modules/pakabl/index.ts", "ui/pick.html") ?? "", /^1:/); // never a platform page
   assert.match(brokenRule("src/modules/goto/index.ts", "node:child_process") ?? "", /^6:/);
   assert.match(brokenRule("src/modules/goto/index.ts", "node:dgram") ?? "", /^6:/);
   assert.match(brokenRule("src/modules/goto/index.ts", "node:tls") ?? "", /^6:/); // anything not allowed
