@@ -74,7 +74,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    Bridge: chain nodes get their devices as children, recursively; `select` selects the ancestor
    chains top-down (script 0.1.6). Core: await the chain-name refresh before find/goto build the tree.
    `4992d32` (faster refresh while names are missing, "(N empty)" in the log) stays.
-   Built: bridge `b1b4e23` (script 0.1.6), core `27c3ae9`. Live test pending (`cmdabl setup` + restart).
+   Built: bridge `b1b4e23` (script 0.1.6), core `27c3ae9`. Live (user, 2026-10-21): `find kick` lists the
+   four Strutter Kit pads (chain + device each) — passed; goto/mute/solo on a nested pad still to test.
    Release notes: 0.1.5 shows as outdated → run `cmdabl setup`. Known: palette rows don't refresh the
    chain names first; pick lists and `find -d` list devices inside chains too (no filter yet).
 
