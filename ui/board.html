@@ -1,7 +1,5 @@
 <!DOCTYPE html>
-<!-- board surface (see src/core/ui.ts, plan 0010). MINIMAL STUB by cmdabl-core so the import and the build work; cmdabl-ui replaces it.
-     In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }.
-     Out: '' (closed) or JSON { changes: [{ section, item, on }], created: [names] } on Apply. -->
+<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal, another unmarks it) and, opened with ▸/▾, a checkbox list of all its items with a filter; chips and checkboxes always show the same pending state. A readonly section shows chips only. create adds an empty section (name checked against pattern, a regular expression the whole name must match) that opens at once; a created section with nothing ticked sends nothing. Out (close_and_send): '' when closed (Close, Esc), or JSON { changes: [{ section, item, on }], created: [names] } on Apply: only real differences against the request; a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -9,22 +7,381 @@
   <title>cmdAbl</title>
   <style>
     /*SHARED_CSS_PLACEHOLDER*/
-    body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    html, body { height: 100%; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
+
+    #title { padding: 8px 12px 6px; color: var(--dim); font-size: 11px; flex-shrink: 0; }
+    #scroll:focus { outline: none; }
+    #scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 12px 8px; }
+
+    /* One section: heading line (toggle, heading, meta right), chips, optional open panel. */
+    .sec + .sec { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .head { display: flex; align-items: baseline; gap: 8px; padding: 2px 4px; cursor: default; border-radius: 2px; }
+    .head .tog { flex: none; width: 1.2ch; color: var(--dim); user-select: none; }
+    .head .h { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+    .head .meta { margin-left: auto; flex: none; color: var(--dim); font-size: 11px; }
+    .sec.ro .head .h { color: var(--dim); }
+    .cursor { background: var(--bg-row); box-shadow: inset 2px 0 0 var(--accent); }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; padding-left: calc(4px + 1.2ch + 8px); }
+    .chip { display: inline-flex; align-items: baseline; gap: 6px; background: var(--bg-row); border: 1px solid var(--border);
+            border-radius: 2px; padding: 0 6px; line-height: 18px; overflow-wrap: anywhere; min-width: 0; cursor: default; }
+    .chip .x { color: var(--dim); font-size: 11px; user-select: none; }
+    .chip:hover .x { color: var(--text); }
+    .sec.ro .chip { cursor: default; }
+    /* Marked for removal: struck through with an accent outline. Added (not in Live yet): dashed accent ring. */
+    .chip.rm { text-decoration: line-through; color: var(--dim); outline: 1px solid var(--accent); outline-offset: 1px; }
+    .chip.add { outline: 1px dashed var(--accent); outline-offset: 1px; }
+    .none { color: var(--dim); font-size: 11px; line-height: 20px; }
+
+    /* Open panel: filter field + checkbox list in columns. */
+    .panel { margin: 6px 0 2px calc(4px + 1.2ch + 8px); border: 1px solid var(--border); border-radius: 2px; padding: 6px 8px 4px; }
+    .filter { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border); outline: none; color: var(--text);
+              font: inherit; font-size: 12px; padding: 0 0 4px; caret-color: var(--accent); }
+    .filter::placeholder { color: var(--dim); }
+    .list { column-width: 200px; column-gap: 12px; margin-top: 4px; }
+    .row { display: flex; align-items: baseline; gap: 8px; padding: 1px 4px; break-inside: avoid; cursor: default; border-radius: 2px; }
+    .row .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .box { flex: none; align-self: center; box-sizing: border-box; width: 13px; height: 13px; border: 1px solid var(--dim); border-radius: 2px;
+           display: inline-flex; align-items: center; justify-content: center; font-size: 10px; line-height: 1; color: var(--bg); font-weight: 700; }
+    .row.on .box { background: var(--accent); border-color: var(--accent); }
+    .row.changed .box { outline: 1px dashed var(--accent); outline-offset: 2px; }
+    .empty { color: var(--dim); font-size: 11px; padding: 2px 4px; }
+
+    /* The create entry at the bottom. */
+    #create { margin-top: 8px; padding: 2px 4px; display: flex; align-items: baseline; gap: 8px; color: var(--dim); border-radius: 2px; cursor: default; }
+    #create .plus { color: var(--accent); font-weight: 700; user-select: none; }
+    #create input { flex: 1; min-width: 0; background: transparent; border: none; border-bottom: 1px solid var(--dim); outline: none;
+                    color: var(--text); font: inherit; caret-color: var(--accent); }
+    #create .err { color: var(--accent); font-size: 11px; flex: none; }
+    #create[hidden], .err[hidden] { display: none; }
+
+    #footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 6px 12px; display: flex; align-items: center; gap: 8px; }
+    #hint { flex: 1; min-width: 0; color: var(--dim); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #apply { border-color: var(--accent); color: var(--accent); }
+    #apply:disabled { border-color: var(--dim); color: var(--dim); opacity: 0.5; cursor: default; }
   </style>
 </head>
 <body>
-  <div id="msg"></div>
-  <div><button id="close">Close</button></div>
+
+  <div id="title"></div>
+  <div id="scroll">
+    <div id="sections"></div>
+    <div id="create" hidden></div>
+  </div>
+  <div id="footer">
+    <span id="hint">↑↓ move · →← open · Space toggle · / filter · Enter apply</span>
+    <button id="apply" disabled></button>
+    <button id="close">Close</button>
+  </div>
+
   <script>
+    // Injected by the extension: see the contract at the top.
     const BOARD = /*BOARD_PLACEHOLDER*/null;
+
     function send(value) {
       const m = { method: 'close_and_send', params: [value] };
       if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
       else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
     }
-    document.getElementById('msg').textContent = BOARD ? BOARD.title : '';
-    document.getElementById('close').addEventListener('click', () => send(''));
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') send(''); });
+
+    const el = (tag, cls, text) => {
+      const e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text !== undefined) e.textContent = text;   // user data: textContent only
+      return e;
+    };
+
+    // ---- model ---------------------------------------------------------------------------
+    // orig = the state in the request; cur = the pending state. Chips and checkboxes both show cur.
+    const S = (BOARD?.sections ?? []).map(s => ({
+      id: s.id, heading: s.heading, meta: s.meta, readonly: !!s.readonly, created: false, open: false, filter: '',
+      items: (s.items ?? []).map(i => ({ id: i.id, label: i.label ?? i.id, orig: !!i.on, cur: !!i.on })),
+    }));
+    // A created section can carry any item the request names (first label wins), all off.
+    const candidates = [];
+    { const seen = new Set();
+      for (const s of S) for (const i of s.items) if (!seen.has(i.id)) { seen.add(i.id); candidates.push({ id: i.id, label: i.label }); } }
+
+    function changes() {
+      const out = [];
+      for (const s of S) {
+        if (s.readonly) continue;
+        for (const i of s.items) if (i.cur !== i.orig) out.push({ section: s.id, item: i.id, on: i.cur });
+      }
+      return out;
+    }
+    function createdNames() { return S.filter(s => s.created && s.items.some(i => i.cur)).map(s => s.id); }
+
+    function apply() {
+      const list = changes();
+      if (!list.length) return;
+      send(JSON.stringify({ changes: list, created: createdNames() }));
+    }
+
+    // ---- rendering -----------------------------------------------------------------------
+    const sectionsBox = document.getElementById('sections');
+    const scroll = document.getElementById('scroll');
+    const applyBtn = document.getElementById('apply');
+
+    function updateFooter() {
+      const n = changes().length;
+      applyBtn.textContent = (BOARD?.apply?.label || 'Apply') + ' (' + n + ' change' + (n === 1 ? '' : 's') + ')';
+      applyBtn.disabled = n === 0;
+    }
+
+    function words(s) { return s.toLowerCase().split(/\s+/).filter(Boolean); }
+    function visibleIdx(s) {
+      const w = words(s.filter);
+      const out = [];
+      s.items.forEach((i, ii) => { const l = i.label.toLowerCase(); if (w.every(x => l.includes(x))) out.push(ii); });
+      return out;
+    }
+
+    function renderChips(si) {
+      const s = S[si];
+      s.chipsEl.replaceChildren();
+      let any = false;
+      s.items.forEach((i, ii) => {
+        if (!i.orig && !i.cur) return;
+        any = true;
+        const chip = el('span', 'chip' + (i.orig && !i.cur ? ' rm' : '') + (!i.orig && i.cur ? ' add' : ''));
+        chip.append(el('span', 'l', i.label));
+        if (!s.readonly) {
+          chip.append(el('span', 'x', '×'));
+          chip.title = i.orig && !i.cur ? 'marked for removal (click to undo)' : !i.orig && i.cur ? 'to be added (click to undo)' : 'click to remove';
+          chip.addEventListener('mousedown', e => { e.preventDefault(); toggleItem(si, ii); });
+        }
+        s.chipsEl.append(chip);
+      });
+      if (!any) s.chipsEl.append(el('span', 'none', s.readonly ? 'none' : 'no items'));
+    }
+
+    function renderList(si) {
+      const s = S[si];
+      if (!s.listEl) return;
+      s.listEl.replaceChildren();
+      s.rowEls = new Map();
+      const vis = visibleIdx(s);
+      for (const ii of vis) {
+        const i = s.items[ii];
+        const row = el('div', 'row' + (i.cur ? ' on' : '') + (i.cur !== i.orig ? ' changed' : ''));
+        const box = el('span', 'box', i.cur ? '✓' : '');
+        row.append(box, el('span', 'label', i.label));
+        row.title = i.label;
+        row.addEventListener('mousedown', e => { e.preventDefault(); cursor = { si, kind: 'row', ii }; toggleItem(si, ii); });
+        s.rowEls.set(ii, row);
+        s.listEl.append(row);
+      }
+      if (!vis.length) s.listEl.append(el('div', 'empty', 'no match'));
+    }
+
+    function buildSection(si) {
+      const s = S[si];
+      if (!s.el) { s.el = el('div'); sectionsBox.append(s.el); }
+      s.el.className = 'sec' + (s.readonly ? ' ro' : '');
+      s.el.replaceChildren();
+      s.headEl = el('div', 'head');
+      s.headEl.append(el('span', 'tog', s.readonly ? '' : (s.open ? '▾' : '▸')), el('span', 'h', s.heading));
+      if (s.meta) s.headEl.append(el('span', 'meta', s.meta));
+      if (!s.readonly) s.headEl.addEventListener('mousedown', e => { e.preventDefault(); cursor = { si, kind: 'head' }; setOpen(si, !s.open); });
+      s.chipsEl = el('div', 'chips');
+      s.el.append(s.headEl, s.chipsEl);
+      s.listEl = s.filterEl = null;
+      s.rowEls = new Map();
+      if (s.open && !s.readonly) {
+        const panel = el('div', 'panel');
+        s.filterEl = el('input', 'filter');
+        s.filterEl.type = 'text';
+        s.filterEl.placeholder = 'filter';
+        s.filterEl.autocomplete = 'off';
+        s.filterEl.spellcheck = false;
+        s.filterEl.value = s.filter;
+        s.filterEl.addEventListener('input', () => {
+          s.filter = s.filterEl.value;
+          renderList(si);
+          if (cursor.si === si && cursor.kind === 'row' && !s.rowEls.has(cursor.ii)) cursor = { si, kind: 'row', ii: visibleIdx(s)[0] ?? -1 };
+          if (cursor.kind === 'row' && cursor.si === si && cursor.ii === -1) cursor = { si, kind: 'head' };
+          applyCursor();
+        });
+        s.listEl = el('div', 'list');
+        panel.append(s.filterEl, s.listEl);
+        s.el.append(panel);
+        renderList(si);
+      }
+      renderChips(si);
+    }
+
+    function setOpen(si, open) {
+      const s = S[si];
+      if (s.readonly || s.open === open) return;
+      s.open = open;
+      if (!open) { s.filter = ''; if (cursor.si === si && cursor.kind === 'row') cursor = { si, kind: 'head' }; }
+      buildSection(si);
+      applyCursor();
+    }
+
+    function toggleItem(si, ii) {
+      const s = S[si];
+      if (s.readonly) return;
+      s.items[ii].cur = !s.items[ii].cur;
+      renderChips(si);
+      renderList(si);
+      updateFooter();
+      applyCursor();
+    }
+
+    // ---- the cursor: one place that has the keys ------------------------------------------
+    // { si, kind: 'head' | 'row' | 'create', ii }
+    let cursor = { si: 0, kind: 'head' };
+    let shown = null;
+    function cursorEl() {
+      if (cursor.kind === 'create') return createEl;
+      const s = S[cursor.si];
+      if (!s) return null;
+      return cursor.kind === 'head' ? s.headEl : s.rowEls?.get(cursor.ii) ?? null;
+    }
+    function applyCursor() {
+      shown?.classList.remove('cursor');
+      shown = cursorEl();
+      if (shown) { shown.classList.add('cursor'); shown.scrollIntoView({ block: 'nearest' }); }
+    }
+
+    // Flat list of what ↑/↓ visit: each heading, the visible rows of an open section, the create entry.
+    function navList() {
+      const out = [];
+      S.forEach((s, si) => {
+        out.push({ si, kind: 'head' });
+        if (s.open && !s.readonly) for (const ii of visibleIdx(s)) out.push({ si, kind: 'row', ii });
+      });
+      if (BOARD?.create) out.push({ si: -1, kind: 'create' });
+      return out;
+    }
+    const same = (a, b) => a.kind === b.kind && a.si === b.si && a.ii === b.ii;
+    function move(delta) {
+      const nav = navList();
+      if (!nav.length) return;
+      let at = nav.findIndex(n => same(n, cursor));
+      if (at < 0) at = 0;
+      else at = Math.max(0, Math.min(nav.length - 1, at + delta));
+      cursor = nav[at];
+      applyCursor();
+    }
+
+    // ---- the create entry ------------------------------------------------------------------
+    const createEl = document.getElementById('create');
+    let createInput = null, createErr = null;
+    function buildCreate() {
+      if (!BOARD?.create) return;
+      createEl.hidden = false;
+      createEl.replaceChildren();
+      createEl.append(el('span', 'plus', '⊕'), el('span', 'lab', BOARD.create.label));
+      createEl.addEventListener('mousedown', e => { if (e.target !== createInput) { e.preventDefault(); cursor = { si: -1, kind: 'create' }; openCreate(); } });
+    }
+    function openCreate() {
+      if (createInput) { createInput.focus(); return; }
+      createEl.querySelector('.lab').hidden = true;
+      createInput = el('input');
+      createInput.type = 'text';
+      createInput.autocomplete = 'off';
+      createInput.spellcheck = false;
+      createErr = el('span', 'err');
+      createErr.hidden = true;
+      createEl.append(createInput, createErr);
+      createInput.addEventListener('input', () => { createErr.hidden = true; });
+      createInput.focus();
+      applyCursor();
+    }
+    function closeCreate() {
+      if (!createInput) return;
+      createInput.remove(); createErr.remove();
+      createInput = createErr = null;
+      createEl.querySelector('.lab').hidden = false;
+    }
+    // A name must fully match pattern (a regular expression); a bad name shows a hint and is not added.
+    function validName(name) {
+      const pattern = BOARD.create.pattern;
+      if (!pattern) return true;
+      try { return new RegExp('^(?:' + pattern + ')$').test(name); } catch { return false; }
+    }
+    function submitCreate() {
+      const name = createInput.value.trim();
+      if (!name) return;
+      // Same as an existing section: by id, or by heading ignoring case and a leading "#".
+      const norm = t => t.trim().replace(/^#/, '').toLowerCase();
+      if (S.some(s => s.id === name || norm(s.heading) === norm(name))) { createErr.textContent = 'exists already'; createErr.hidden = false; return; }
+      if (!validName(name)) { createErr.textContent = 'not a valid name'; createErr.hidden = false; return; }
+      S.push({ id: name, heading: name, meta: undefined, readonly: false, created: true, open: true, filter: '',
+               items: candidates.map(c => ({ id: c.id, label: c.label, orig: false, cur: false })) });
+      closeCreate();
+      const si = S.length - 1;
+      buildSection(si);
+      cursor = { si, kind: 'head' };
+      applyCursor();
+      S[si].filterEl?.focus();   // a new section opens at once: type to find a track
+    }
+
+    // ---- keys ------------------------------------------------------------------------------
+    document.addEventListener('keydown', e => {
+      if (e.repeat && e.key === 'Enter') return;   // a held Enter from the dialog before must not apply
+      const t = e.target;
+      const inCreate = createInput && t === createInput;
+      const inFilter = t instanceof HTMLInputElement && t.classList.contains('filter');
+      const plain = !e.ctrlKey && !e.metaKey && !e.altKey;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (inCreate) { closeCreate(); scroll.focus(); return; }
+        if (inFilter) {
+          if (t.value) { t.value = ''; t.dispatchEvent(new Event('input')); }
+          t.blur();
+          return;
+        }
+        send('');
+        return;
+      }
+      if (inCreate) {
+        if (e.key === 'Enter') { e.preventDefault(); submitCreate(); }
+        return;   // everything else types
+      }
+      if (e.key === 'Enter') { e.preventDefault(); apply(); return; }
+      if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n')) { e.preventDefault(); move(1); return; }
+      if (e.key === 'ArrowUp' || (e.ctrlKey && e.key === 'p')) { e.preventDefault(); move(-1); return; }
+      if (inFilter) {
+        if (e.key === 'Tab') {   // Tab toggles the row under the cursor without leaving the filter
+          e.preventDefault();
+          if (cursor.kind === 'row') toggleItem(cursor.si, cursor.ii);
+        }
+        return;   // typing, caret keys
+      }
+      const s = S[cursor.si];
+      if (e.key === 'ArrowRight') { e.preventDefault(); if (cursor.kind === 'create') openCreate(); else if (s) setOpen(cursor.si, true); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); if (s) setOpen(cursor.si, false); }
+      else if (e.key === ' ' && plain) {
+        e.preventDefault();
+        if (cursor.kind === 'create') openCreate();
+        else if (cursor.kind === 'row') toggleItem(cursor.si, cursor.ii);
+        else if (s) setOpen(cursor.si, !s.open);
+      } else if ((e.key === '/' || e.key.length === 1) && plain && s && s.open && !s.readonly) {
+        // `/` or a typed character: into the open section's filter (the character itself is typed there).
+        if (e.key === '/') e.preventDefault();
+        s.filterEl.focus();
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('title').textContent = BOARD?.title ?? '';
+      S.forEach((_, si) => buildSection(si));
+      buildCreate();
+      updateFooter();
+      applyCursor();
+      document.getElementById('apply').addEventListener('click', apply);
+      document.getElementById('close').addEventListener('click', () => send(''));
+      scroll.tabIndex = -1;
+      scroll.focus();
+    });
   </script>
+
 </body>
 </html>
