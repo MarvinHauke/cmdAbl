@@ -207,9 +207,15 @@
     // Scroll the container by the least amount that shows the focused section's input, the chip under
     // the cursor and the whole suggestion row (the highlighted one included). Too tall for the view:
     // the top stays visible. No animation. The footer is outside the container, so nothing hides under it.
+    // Touched by the first key or click: the focus on open never scrolls (the webview may still be
+    // sizing the dialog then), and until then a resize puts the page back at the top.
+    let touched = false;
+    for (const type of ['keydown', 'mousedown']) document.addEventListener(type, () => { touched = true; }, true);
+    window.addEventListener('resize', () => { if (!touched) scroll.scrollTop = 0; });
+    if (window.ResizeObserver) new ResizeObserver(() => { if (!touched) scroll.scrollTop = 0; }).observe(scroll);
     function reveal(si) {
       const s = S[si];
-      if (!s || !s.inputEl || document.activeElement !== s.inputEl) return;
+      if (!touched || !s || !s.inputEl || document.activeElement !== s.inputEl) return;
       const box = scroll.getBoundingClientRect();
       const rects = [s.addEl.getBoundingClientRect()];
       const cur = s.chipsEl.querySelector('.chip.cur');
@@ -483,6 +489,9 @@
       scroll.tabIndex = -1;
       const first = inputs()[0];
       if (first) first.input.focus({ preventScroll: true }); else scroll.focus();   // opens at the top, whatever the first section holds
+      scroll.scrollTop = 0;
+      requestAnimationFrame(() => { if (!touched) scroll.scrollTop = 0; });
+      window.addEventListener('load', () => { if (!touched) scroll.scrollTop = 0; });
     });
   </script>
 
