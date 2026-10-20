@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- notify surface (see src/core/ui.ts). In: MESSAGE_PLACEHOLDER = the message string; LINK_PLACEHOLDER = null or { label, url } (an accent button with the label next to Close, the url as its tooltip; the page never opens or returns the url). Out: '' (Close, Esc, Enter), or '{"open":true}' when the link button is clicked (core opens its own copy of the url). -->
+<!-- notify surface (see src/core/ui.ts). In: MESSAGE_PLACEHOLDER = the message string; SECTIONS_PLACEHOLDER = null or [{ heading, meta?, items: [string] }] (drawn instead of the message: accent heading, dim meta right-aligned, items as wrapping chips, a rule between sections; an item "…" means the list was cut); LINK_PLACEHOLDER = null or { label, url } (an accent button with the label next to Close, the url as its tooltip; the page never opens or returns the url). Out: '' (Close, Esc, Enter), or '{"open":true}' when the link button is clicked (core opens its own copy of the url). -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -24,6 +24,15 @@
     /* One block per line; a wrapped line hangs under its own text (see the script). */
     #msg .line { white-space: pre-wrap; overflow-wrap: anywhere; min-height: 18px; }
     #msg .group { margin-top: 9px; }   /* before each × group after the first */
+    /* Sections: heading line (accent, bold) with the dim meta at its right, then the items as
+       wrapping chips; a thin rule and spacing between sections. */
+    .sec + .sec { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .sec-head { display: flex; align-items: baseline; gap: 12px; }
+    .sec-head .h { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+    .sec-head .meta { margin-left: auto; flex: none; color: var(--dim); font-size: 11px; }
+    .sec-items { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 5px; padding-left: 2ch; }
+    .chip { background: var(--bg-row); border: 1px solid var(--border); border-radius: 2px; padding: 0 6px; line-height: 18px; overflow-wrap: anywhere; min-width: 0; }
+    .chip.cut { background: transparent; border-color: transparent; color: var(--dim); }
     #footer { flex-shrink: 0; display: flex; gap: 8px; }
     #link { border-color: var(--accent); color: var(--accent); }
     #link[hidden] { display: none; }
@@ -40,6 +49,9 @@
 
     // Injected at runtime — null or { label, url }.
     const LINK = /*LINK_PLACEHOLDER*/null;
+
+    // Injected at runtime — null or [{ heading, meta?, items }].
+    const SECTIONS = /*SECTIONS_PLACEHOLDER*/null;
 
     function send(value) {
       const m = { method: 'close_and_send', params: [value] };
@@ -70,8 +82,43 @@
       }
     }
 
+    // All text through textContent (headings and items are track names, user data).
+    function renderSections(box, sections) {
+      for (const s of sections) {
+        const sec = document.createElement('div');
+        sec.className = 'sec';
+        const head = document.createElement('div');
+        head.className = 'sec-head';
+        const h = document.createElement('span');
+        h.className = 'h';
+        h.textContent = String(s.heading ?? '');
+        head.appendChild(h);
+        if (s.meta) {
+          const meta = document.createElement('span');
+          meta.className = 'meta';
+          meta.textContent = String(s.meta);
+          head.appendChild(meta);
+        }
+        sec.appendChild(head);
+        const items = Array.isArray(s.items) ? s.items : [];
+        if (items.length) {
+          const wrap = document.createElement('div');
+          wrap.className = 'sec-items';
+          for (const item of items) {
+            const chip = document.createElement('span');
+            chip.className = 'chip' + (item === '…' ? ' cut' : '');
+            chip.textContent = String(item);
+            wrap.appendChild(chip);
+          }
+          sec.appendChild(wrap);
+        }
+        box.appendChild(sec);
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-      renderMessage(document.getElementById('msg'), MESSAGE ?? '');
+      if (Array.isArray(SECTIONS)) renderSections(document.getElementById('msg'), SECTIONS);
+      else renderMessage(document.getElementById('msg'), MESSAGE ?? '');
       const close = document.getElementById('close');
       close.addEventListener('click', () => send(''));
       // The link button answers {"open":true}; core opens its own copy of the url. Text via textContent.
