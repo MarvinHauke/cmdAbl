@@ -167,7 +167,7 @@ export function activate(api: ModuleApi): void {
       "Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx " +
       "reaches every track tagged fx. With --edit and a tag (tag --edit fx) every regular and return track is listed with a button " +
       "that is lit where it carries the tag: mark tracks with Tab and press Enter to switch the tag on or off on each of them; " +
-      "tag --edit # first asks which tag, and a name that is not in that list creates it. With --rename and two names (tag --rename fx effects) the tag changes its name on every regular and return track that carries it, and writes nothing else; if the new name exists already the two tags merge, a track with both keeps one, and the result says so because renaming back cannot split them again. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Apply writes the changes and shows nothing; Close changes nothing. " +
+      "tag --edit without a tag (or tag --edit #) first asks which tag, and a name that is not in that list creates it. With --rename and two names (tag --rename fx effects) the tag changes its name on every regular and return track that carries it, and writes nothing else; if the new name exists already the two tags merge, a track with both keeps one, and the result says so because renaming back cannot split them again. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Apply writes the changes and shows nothing; Close changes nothing. " +
       "With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target " +
       "that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. " +
       "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +
@@ -178,7 +178,7 @@ export function activate(api: ModuleApi): void {
       { line: "tag --rename fx effects", note: "every track tagged fx is tagged effects instead; an existing effects tag merges" },
       { line: "tag --list", note: "the tag overview: add or remove tags on many tracks, create a tag" },
       { line: "tag --edit fx", note: "pick the tracks to switch the tag fx on or off for" },
-      { line: "tag -e #", note: "pick the tag (or type a new one), then the tracks" },
+      { line: "tag -e", note: "pick the tag (or type a new one), then the tracks" },
       { line: "tag /Lead", note: "pick the tags to switch on or off for the track Lead, or type a new one" },
       { line: "tag /Lead fx synth", note: "switch fx and synth on, or off where they are on" },
       { line: "tag --set 1 /Bass fx", note: "make sure Bass is tagged fx" },
@@ -192,7 +192,8 @@ export function activate(api: ModuleApi): void {
         short: "e",
         takesValue: true,
         valueLabels: ["tag|#"],
-        summary: "list the tracks with the tag lit and toggle the tag on the marked ones; # first asks which tag",
+        valueDefault: "#",
+        summary: "list the tracks with the tag lit and toggle the tag on the marked ones; without a tag first asks which tag",
       },
       {
         name: "rename",

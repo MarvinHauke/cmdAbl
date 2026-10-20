@@ -86,3 +86,9 @@ test("--edit usage errors are exit 2 and write nothing; script down is exit 5", 
   down.fake.api.tags.refresh = async () => bridgeFail(5, "Remote Script not running");
   assert.equal((await down.run({ edit: "fx" }))?.code, ExitCode.UNAVAILABLE);
 });
+
+test("--edit declares # as its default, so a bare tag -e is tag -e #", () => {
+  const { fake } = setup({});
+  const edit = fake.commands[0]!.options?.find((o) => o.name === "edit");
+  assert.equal(edit?.valueDefault, "#");
+});
