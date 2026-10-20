@@ -30,8 +30,9 @@ changes, the extension applies them after the dialog closes, then reopens the pa
      `planTags` and `tags_set` (one write per track), then reopens the overview with the new state.
    - Close, or Esc, ends the loop.
    - The result message lists the changes and the `undo:` lines, as `tag` does today.
-2. **Assign in the same window, like Live's browser tag panel** (user, 2026-10-20): each tag in
-   the overview opens a checkbox list of every track; ticking adds the tag. No second dialog.
+2. **Assign in the same window, like the tag bar in Live's browser** (user, 2026-10-20): each tag
+   in the overview has an `add…` input that suggests tracks (first built as a checkbox list,
+   replaced after the first look in Live). No second dialog.
 3. **A generic core surface `board`, not a module page.**
    - The contract goes in `src/core/ui.ts`, the page is `ui/board.html` and uses `shared.css`.
    - It can be themed and replaced like the other surfaces (0007 §2).
@@ -41,7 +42,7 @@ changes, the extension applies them after the dialog closes, then reopens the pa
 5. **`tag --edit <tag>` (`-e`) ships with it** as the keyboard path (name decided by the
    architect: the user already calls it that).
 6. **An "untagged" section** lists the tracks without any tag, read-only (chips without ×, no
-   checkbox list) — ticking a track in a tag's list is how it leaves it. Contract: a section has
+   input) — adding a track to a tag is how it leaves it. Contract: a section has
    `readonly?: true`.
 7. **Module pages move to `ui/modules/<module>/`** (user, 2026-10-20): `ui/pakabl-list.html`
    becomes `ui/modules/pakabl/list.html`; the architecture test allows a module only its own
@@ -49,34 +50,38 @@ changes, the extension applies them after the dialog closes, then reopens the pa
 
 ## Design (draft)
 
-Modelled on the tag panel in Live's browser (user, 2026-10-20): per tag group a list of
-checkboxes with "Add Tag…", and for the selected item a bar of chips with × and "Add…".
+Modelled on the tag bar in Live's browser (user, 2026-10-20): chips with × and an "Add…" input.
 
 ### What the overview looks like
 
+Revised after the first look in Live (user, 2026-10-20): an inline input per tag instead of a
+checkbox list — like the "Add…" field of the tag bar in Live's browser; less clutter, the tracks
+are not listed until you type.
+
 ```
-#drums  ▾                                   5 tracks
-  [/Synth ×] [/Bass ×] [/Lead ×] [/Drums ×] [/Guitar ×]
-#lead   ▸                                   1 track
-  [/Lead ×]
-  ┌ ▾ open: every track with a checkbox ───────────────┐
-  │ [x] /Lead   [ ] /Synth   [ ] /Bass   [ ] /Guitar … │
-  └────────────────────────────────────────────────────┘
-⊕ New tag…
-                                   [Apply (3 changes)] [Close]
+#drums                                         5 tracks
+  [/Synth ×] [/Bass ×] [/Lead ×] [/Drums ×] [ add…      ]
+#lead                                          1 track
+  [/Lead ×] [ gu|itar          ]          ← ghost text
+            [/Guitar] [/Gun Synth]        ← up to 6 suggestions
+untagged                                       4 tracks
+  /Drums  /A-Delay  /B-Reverb  /C-Corpus
+[ new tag…  ]
+                                 [Apply (1 change)] [Close]
 ```
 
-- **Chips:** each tag lists its tracks as chips. A click on a chip, or on its ×, marks it for
-  removal (struck through; another click unmarks it).
-- **▸ / ▾ per tag:** opens a checkbox list of every track (regular tracks and return tracks, as
-  for `!#`), filterable by typing. Ticking adds the tag, unticking removes it. The chips and the
-  checkboxes show the same pending state.
-- **⊕ New tag…:** a text field that adds an empty tag section on the page (the name is checked
-  as in `tag`); its checkbox list opens at once. A tag with no ticked track is not kept, because
-  tags exist only on tracks.
+- **Chips:** each tag lists its tracks as chips; × (or a click) marks one for removal (struck
+  through; again unmarks).
+- **`add…` input** as the last chip: typing suggests the tracks that do not carry the tag
+  (substring, start of name first) — the best one as ghost text, up to 6 as suggestion chips.
+  Tab completes, Enter adds the best or highlighted suggestion (a chip with a dashed ring), a
+  click on a suggestion adds it. Backspace in an empty input marks the last chip for removal.
+- **↑/↓** move through the suggestions while they show, otherwise to the previous or next tag's
+  input. **Enter in an empty input** applies. **Esc** clears the input, then closes.
+- **`new tag…` input** at the bottom: Enter checks the name and adds an empty section with the
+  focus in its `add…` input. A tag with no track added is not kept.
 - **Apply (N changes)** sends the change set; Close or Esc discards it.
-- **Keyboard:** ↑/↓ moves through tags and rows, Space toggles, → / ← opens and closes a tag,
-  Enter applies.
+- The contract is unchanged; only `ui/board.html` changes.
 
 ### The `board` surface (contract addition, cmdabl-core)
 
@@ -90,14 +95,15 @@ interface BoardRequest {
     heading: string;
     meta?: string;
     items: { id: string; label: string; on: boolean }[]; // every candidate; on = carries it
-    readonly?: boolean; // only the on items, as chips without ×; no checkbox list
+    readonly?: boolean; // only the on items, as chips without ×; no add… input
   }[];
   create?: { label: string; pattern?: string };  // "New tag…"; pattern = allowed names
   apply: { label: string };
 }
 ```
 
-The page shows each section's `on` items as chips and all items in the expandable list.
+The page shows each section's `on` items as chips; the other items are the suggestions of its
+`add…` input.
 
 Answer: `{ changes: { section: string; item: string; on: boolean }[]; created: string[] }`, or
 null when closed. Only real differences are sent; a created section only matters through its
@@ -149,8 +155,8 @@ board as the keyboard path (decision 5).
 
 1. cmdabl-core: the `board` contract, `api.ui.board`, the presenter caps and tests; the
    0007 §1 row.
-2. cmdabl-ui: `ui/board.html` (chips with ×, expandable checkbox lists with a filter, New tag…,
-   a live count on Apply, keyboard), checked in the browser.
+2. cmdabl-ui: `ui/board.html` (chips with ×, an `add…` input with ghost text and suggestions,
+   new tag…, a live count on Apply, keyboard), checked in the browser.
 3. cmdabl-modules: `tag -l` on `board` (changes, created tags); `tag --edit` if kept.
 4. cmdabl-core: move `pakabl-list.html` to `ui/modules/pakabl/list.html`, architecture rule.
 5. cmdabl-docs: the Tags section of using.md and the reference.
