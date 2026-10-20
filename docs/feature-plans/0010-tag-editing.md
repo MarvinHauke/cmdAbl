@@ -28,16 +28,47 @@ changes, the extension applies them after the dialog closes, then reopens the pa
      `planTags` and `tags_set` (one write per track), then reopens the overview with the new state.
    - Close, or Esc, ends the loop.
    - The result message lists the changes and the `undo:` lines, as `tag` does today.
-2. **A generic core surface `board`, not a module page.**
+2. **Assign in the same window, like Live's browser tag panel** (user, 2026-10-20): each tag in
+   the overview opens a checkbox list of every track; ticking adds the tag. No second dialog.
+3. **A generic core surface `board`, not a module page.**
    - The contract goes in `src/core/ui.ts`, the page is `ui/board.html` and uses `shared.css`.
    - It can be themed and replaced like the other surfaces (0007 §2).
    - Later users: aliases, the history list, tags on chains and pads.
 
 ## Design (draft)
 
+Modelled on the tag panel in Live's browser (user, 2026-10-20): per tag group a list of
+checkboxes with "Add Tag…", and for the selected item a bar of chips with × and "Add…".
+
+### What the overview looks like
+
+```
+#drums  ▾                                   5 tracks
+  [/Synth ×] [/Bass ×] [/Lead ×] [/Drums ×] [/Guitar ×]
+#lead   ▸                                   1 track
+  [/Lead ×]
+  ┌ ▾ open: every track with a checkbox ───────────────┐
+  │ [x] /Lead   [ ] /Synth   [ ] /Bass   [ ] /Guitar … │
+  └────────────────────────────────────────────────────┘
+⊕ New tag…
+                                   [Apply (3 changes)] [Close]
+```
+
+- **Chips:** each tag lists its tracks as chips. A click on a chip, or on its ×, marks it for
+  removal (struck through; another click unmarks it).
+- **▸ / ▾ per tag:** opens a checkbox list of every track (regular tracks and return tracks, as
+  for `!#`), filterable by typing. Ticking adds the tag, unticking removes it. The chips and the
+  checkboxes show the same pending state.
+- **⊕ New tag…:** a text field that adds an empty tag section on the page (the name is checked
+  as in `tag`); its checkbox list opens at once. A tag with no ticked track is not kept, because
+  tags exist only on tracks.
+- **Apply (N changes)** sends the change set; Close or Esc discards it.
+- **Keyboard:** ↑/↓ moves through tags and rows, Space toggles, → / ← opens and closes a tag,
+  Enter applies.
+
 ### The `board` surface (contract addition, cmdabl-core)
 
-Request:
+A generic "groups × entries with on/off" editor:
 
 ```ts
 interface BoardRequest {
@@ -46,46 +77,40 @@ interface BoardRequest {
     id: string;
     heading: string;
     meta?: string;
-    items: { id: string; label: string; removable?: boolean }[];
-    actions?: { id: string; label: string }[]; // buttons next to the heading, e.g. "+ tracks"
+    items: { id: string; label: string; on: boolean }[]; // every candidate; on = carries it
   }[];
-  apply: { label: string };            // "Apply" → "Apply (2 changes)"
+  create?: { label: string; pattern?: string };  // "New tag…"; pattern = allowed names
+  apply: { label: string };
 }
 ```
 
-Answer: `{ removed: { section: string; item: string }[]; action?: { section: string; id: string } }`,
-or null when the page is closed.
+The page shows each section's `on` items as chips and all items in the expandable list.
 
-- An action button closes the page at once and carries the removals marked so far, so the module
-  applies them first, then handles the action.
-- `Ui.board(request)`; `ModuleApi` gets `api.ui.board`. The caps are the same as for `sections`
-  (40 × 200 × 300 characters), and the size comes from `notifySize`.
+Answer: `{ changes: { section: string; item: string; on: boolean }[]; created: string[] }`, or
+null when closed. Only real differences are sent; a created section only matters through its
+`on` changes.
+
+- `Ui.board(request)`, and `ModuleApi` gets `api.ui.board`.
+- Caps: 40 sections × 200 items × 300 characters, as for `sections`. The size comes from
+  `notifySize`, and the page scrolls.
 
 ### `tag -l` on `board` (cmdabl-modules)
 
-- One section per tag (`id` = the tag), with one item per track (`id` = the path, `removable`).
-- Each section has the action `+ tracks`.
-- The loop is: open → apply `removed` → handle the action → reopen, until the page is closed.
-  A failed write ends the loop with the ✓/× result.
-- The script being down gives exit 5, as today.
+- One section per tag, with every track as an item.
+- Apply → group the changes per track → `planTags` / `tags_set` (one write per track) → the
+  result with the `undo:` lines.
+- Reopen the overview after Apply, or end with the result? Open question below.
+- A failed write shows the ✓/× result. The script being down gives exit 5, as today.
 
-### One tag on many tracks: the tag-first pick list
+### Keyboard path: `tag --edit <tag>` (optional)
 
-`tag --edit fx` (the name is still open) opens the existing pick list:
+`tag --edit fx` opens the existing pick list:
 
-- every regular track (the same set as `!#`) and the return tracks;
-- `multi: true`, `state: { label: "tagged fx", change: "toggle" }`, and each row's `state` is
-  `on` when it carries `fx`;
-- Tab marks rows, the dashed ring shows what Enter changes, and Enter writes. This is the
-  mute pick-list pattern, so the `select` surface needs no change.
+- every track, `multi: true`, `state: { label: "tagged fx", change: "toggle" }`;
+- Tab marks and Enter writes, the mute pick-list pattern, so `select` needs no change.
 
-Further rules:
-
-- Without a tag, `tag --edit` first opens the single-select tag list with the new-tag row
-  (`api.pickTags(..., { allowNew: true })`).
-- The `+ tracks` action in the overview opens the same list, and the overview then reopens.
-- This gives two mirrored ways in: `tag /Lead` picks the tags of one track, and
-  `tag --edit fx` picks the tracks of one tag.
+Without a tag, `tag --edit` first opens the tag list with the new-tag row. Once the overview
+can do this, `--edit` only stays if a fast keyboard path is still wanted (open question).
 
 ## The UI pattern in `ui/`
 
@@ -100,9 +125,8 @@ Further rules:
 
 ## Open questions
 
-- The name of `--edit` (`--edit`, `--tracks`, `-e`).
-- Should `board` also offer chips for adding inside the overview, or is the `+ tracks` pick
-  list enough?
+- Keep `tag --edit <tag>` as a keyboard path next to the overview, and what to call it?
+- After Apply: reopen the overview, or close with the result?
 - Should the overview show an "untagged" section?
 - A large change set leaves one undo step per track written. Is a batched `tags_set`
   (script op) worth it?
@@ -111,9 +135,9 @@ Further rules:
 
 1. cmdabl-core: the `board` contract, `api.ui.board`, the presenter caps and tests; the
    0007 §1 row.
-2. cmdabl-ui: `ui/board.html` (click to strike, a live count on Apply, action buttons, Esc and
-   keyboard focus), checked in the browser.
-3. cmdabl-modules: `tag -l` on `board` with the loop; `tag --edit` with the pick list.
+2. cmdabl-ui: `ui/board.html` (chips with ×, expandable checkbox lists with a filter, New tag…,
+   a live count on Apply, keyboard), checked in the browser.
+3. cmdabl-modules: `tag -l` on `board` (changes, created tags); `tag --edit` if kept.
 4. cmdabl-ui and cmdabl-modules: move `pakabl-list.html` to `ui/modules/pakabl/`.
 5. cmdabl-docs: the Tags section of using.md and the reference.
 
@@ -124,7 +148,7 @@ Further rules:
   - In `tag -l`, mark two labels and press Apply: the tags are gone and the overview reopens
     with the new state.
   - Close with nothing marked changes nothing.
-  - `+ tracks` opens the pick list, then the overview reopens.
-  - `tag --edit fx` switches the tag on the marked rows.
-  - `tag --edit` with a new name creates the tag.
+  - Open a tag, tick two tracks, untick one, Apply: exactly those three changes are written.
+  - New tag… "perc", tick a track, Apply: the track is tagged `perc`.
+  - New tag with nothing ticked: nothing is written.
   - With the script off, the command gives exit 5.
