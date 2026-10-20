@@ -204,28 +204,38 @@
       applyBtn.disabled = n === 0;
     }
 
-    // Scroll the container by the least amount that shows the focused section's input, the chip under
-    // the cursor and the whole suggestion row (the highlighted one included). Too tall for the view:
-    // the top stays visible. No animation. The footer is outside the container, so nothing hides under it.
+    // Scroll the container by the least amount that shows the focused section as a whole (heading, chips,
+    // input, suggestion row); a section taller than the view shows the part being worked on instead. No animation. The footer is outside the container, so nothing hides under it.
     // Touched by the first key or click: the focus on open never scrolls (the webview may still be
     // sizing the dialog then), and until then a resize puts the page back at the top.
     let touched = false;
     for (const type of ['keydown', 'mousedown']) document.addEventListener(type, () => { touched = true; }, true);
     window.addEventListener('resize', () => { if (!touched) scroll.scrollTop = 0; });
     if (window.ResizeObserver) new ResizeObserver(() => { if (!touched) scroll.scrollTop = 0; }).observe(scroll);
+    // Scroll by the least amount that shows the block between `top` and `bottom` (viewport coordinates);
+    // too tall for the view: its top wins. `first` (the first section) scrolls to 0, so nothing above it hides.
+    function revealBlock(top, bottom, first) {
+      const box = scroll.getBoundingClientRect();
+      if (top < box.top || bottom - top > box.height) scroll.scrollTop = first ? 0 : scroll.scrollTop + top - box.top;
+      else if (bottom > box.bottom) scroll.scrollTop += bottom - box.bottom;
+    }
+    // The focused section as a whole: heading, chips, input and suggestion row.
     function reveal(si) {
       const s = S[si];
       if (!touched || !s || !s.inputEl || document.activeElement !== s.inputEl) return;
-      const box = scroll.getBoundingClientRect();
+      const r = s.el.getBoundingClientRect();
+      if (r.height <= scroll.clientHeight) { revealBlock(r.top, r.bottom, si === 0); return; }
+      // Taller than the view: the part being worked on (input, chip under the cursor, suggestion row).
       const rects = [s.addEl.getBoundingClientRect()];
       const cur = s.chipsEl.querySelector('.chip.cur');
       if (cur) rects.push(cur.getBoundingClientRect());
       if (s.sugEls.firstChild) rects.push(s.sugEls.getBoundingClientRect());
-      const top = Math.min(...rects.map(r => r.top)), bottom = Math.max(...rects.map(r => r.bottom));
-      const padTop = 4, padBottom = 4;
-      // One delta from the rects as measured: the top wins when the block is too tall for the view.
-      if (top < box.top + padTop || bottom - top > box.height - padTop - padBottom) scroll.scrollTop += top - (box.top + padTop);
-      else if (bottom > box.bottom - padBottom) scroll.scrollTop += bottom - (box.bottom - padBottom);
+      revealBlock(Math.min(...rects.map(x => x.top)), Math.max(...rects.map(x => x.bottom)), false);
+    }
+    function revealCreate() {
+      if (!touched || !createInput) return;
+      const r = createBox.getBoundingClientRect();
+      revealBlock(r.top, r.bottom, false);
     }
 
     function renderChips(si) {
@@ -337,7 +347,7 @@
       const list = inputs();
       const at = list.findIndex(x => x.si === from);
       const next = list[Math.max(0, Math.min(list.length - 1, at + delta))];
-      if (next) { next.input.focus(); if (next.si < 0) next.input.scrollIntoView({ block: 'nearest' }); }
+      if (next) next.input.focus();
     }
 
     // ---- the create entry ------------------------------------------------------------------
@@ -355,6 +365,7 @@
       createErr = el('span', 'nomatch');
       createErr.hidden = true;
       createBox.append(el('span', 'plus', '⊕'), wrap, createErr);
+      createInput.addEventListener('focus', revealCreate);
       createInput.addEventListener('input', () => {
         createErr.hidden = true;
         createInput.style.width = 'calc(' + Math.max(12, BOARD.create.label.length + 1, createInput.value.length + 1) + 'ch + 14px)';
