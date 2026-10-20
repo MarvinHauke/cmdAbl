@@ -5,7 +5,31 @@ what comes next. Maintained by the architect — update it whenever a task lands
 change. Design decisions live in the numbered plans; this file only tracks progress. Finished
 work is in the git history, not here.
 
-_Last updated: 2026-10-12._
+_Last updated: 2026-10-20._
+
+## Release 0.1.1 — open (branch `feat/tags-aliases`, version 0.1.1, not pushed)
+
+Built and Live-tested: tags on tracks, `#tag`, `!#tag`, bare tag word, `--pick`. README landing
+page, Requirements, Install, docs cleanup done (cmdabl-docs).
+
+1. Live test `man <command>` (`76cb3ea`): `man tag`, `man history clear`, `man cmdabl` (site),
+   `man cmdabl setup`, `man ableton warp modes`, `man tga` (did you mean), bare `man` (usage).
+2. Live test the new-tag row (`8e6e3bf`, `3313839`, `c522d0f`, `a2017ac`, `c76004d`) in
+   `tag /Lead`: type a new name + Enter; mark a tag + new name via ↓ + Enter; `perc` vs
+   `perc kit` (cursor on the match, ↓ to create); `Perc!` → exit 2; Set without tags shows
+   "type a new tag"; `mute #` never shows the row.
+3. Recordings by the user (`.mov` in `/tmp/shots/`) → cmdabl-docs makes GIFs:
+   `hero` (tags in action), `tags` (tag list), `pakabl` (`pakabl list`); optional: Karabiner
+   rule screenshot for Getting started. Then drop unused images (`demo.gif`, old `pakabl-list.png`).
+4. Installed-build test: `npm run package`, install the `.ablx`, `cmdabl setup`, restart Live,
+   `cmdabl bridge` shows 0.1.5, `tag` and `#fx` work.
+5. Secret scan of the branch (counts only), `ssh-add`, push, PR "Release 0.1.1: tags" — on the
+   user's go.
+6. CI green → squash-merge (user's go) → release `v0.1.1`; hand-written notes (tags, `#`/`!#`,
+   bare tag word, `--pick`, new-tag row, `man <command>`, run `cmdabl setup` once for script
+   0.1.5, Cmd+Z does not undo tags).
+7. pakabl index workflow → merge its PR; STATUS on `main`; delete the branch; 0.1.2 on a new branch.
+
 
 ## Where the code is
 
