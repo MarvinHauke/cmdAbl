@@ -18,7 +18,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    ~~Live test `tag --list` / `-l` overview and `find` with tags (`cc16aa3`)~~ — passed (user,
    2026-10-20).
    Fix: `!#x` with a tag no track carries → exit 3 "no track is tagged #x", nothing runs
-   (core `ad4c2e5`, find `e4354f6`) — Live test pending.
+   (core `ad4c2e5`, find `e4354f6`) — passed (user, 2026-10-20). Small 0.1.2 item: `find !#x`
+   says "no track without #x", `mute` says "every track is tagged #x" — one wording.
 3. Recordings by the user (`.mov` in `/tmp/shots/`) → cmdabl-docs makes GIFs:
    `hero` (tags in action), `tags` (tag list), `pakabl` (`pakabl list`); optional: Karabiner
    rule screenshot for Getting started. Then drop unused images (`demo.gif`, old `pakabl-list.png`).
