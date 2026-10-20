@@ -192,6 +192,7 @@ export function activate(api: ModuleApi): void {
         name: "edit",
         short: "e",
         takesValue: true,
+        valueLabels: ["tag|#"],
         summary: "list the tracks with the tag lit and toggle the tag on the marked ones; # first asks which tag",
       },
       {
