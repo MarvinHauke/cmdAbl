@@ -42,8 +42,9 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    (two marked → exit 2); single-select would need core — later.
 2. `board` surface — core contract built `96e838a` (`api.ui.board` → `{ answer, cut }`);
    `ui/board.html` built by cmdabl-ui (dark scheme; created names normalised by the module).
-3. `tag -l` on `board` (cmdabl-modules), after 2.
-4. Docs (cmdabl-docs): `tag --edit` and the board in using.md, one brief after 3.
+3. `tag -l` on `board` — built `11815ba` (+ lowercase/merge of created names); Live test
+   pending together with 1 and 2.
+4. Docs (cmdabl-docs): `tag --edit` and the board in using.md and README — briefed.
 
 ## Where the code is
 
