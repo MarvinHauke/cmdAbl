@@ -3,6 +3,7 @@
 // dialog — lives here so it can be unit-tested without the HTML templates.
 
 import { MAX_ITEMS, MAX_SECTIONS, MAX_TEXT } from "./present.js";
+import { logger } from "./log.js";
 import { notifySize } from "./notifySize.js";
 import type { BoardAnswer, BoardRequest, Ui } from "./ui.js";
 
@@ -76,22 +77,22 @@ export function capBoard(request: BoardRequest): { request: BoardRequest; cut: b
  * section and item the last wins. `created` entries must be non-empty, unique, not existing
  * section ids and match `create.pattern` completely (no `create` in the request: none are kept).
  */
-export function parseBoardAnswer(raw: string | null | undefined, request: BoardRequest, log: (line: string) => void = console.error): BoardAnswer | null {
+export function parseBoardAnswer(raw: string | null | undefined, request: BoardRequest, log: (line: string) => void = (line) => logger("board").warn(line)): BoardAnswer | null {
   if (!raw) return null;
   let value: unknown;
   try {
     value = JSON.parse(raw);
   } catch {
-    log(`cmdAbl: malformed board answer: ${raw.slice(0, 80)}`);
+    log(`malformed board answer: ${raw.slice(0, 80)}`);
     return null;
   }
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    log("cmdAbl: board answer is not an object");
+    log("board answer is not an object");
     return null;
   }
   const { changes: rawChanges, created: rawCreated } = value as { changes?: unknown; created?: unknown };
   if ((rawChanges !== undefined && !Array.isArray(rawChanges)) || (rawCreated !== undefined && !Array.isArray(rawCreated))) {
-    log("cmdAbl: board answer has changes or created that are not lists");
+    log("board answer has changes or created that are not lists");
     return null;
   }
 
@@ -104,7 +105,7 @@ export function parseBoardAnswer(raw: string | null | undefined, request: BoardR
     try {
       pattern = new RegExp(`^(?:${request.create.pattern})$`);
     } catch {
-      log("cmdAbl: board create.pattern is not a valid expression; no section can be created");
+      log("board create.pattern is not a valid expression; no section can be created");
       pattern = null;
     }
   }

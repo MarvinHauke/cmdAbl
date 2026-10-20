@@ -70,8 +70,14 @@ export interface ModuleApi {
   liveSet: LiveSetPort;
   /** Track writes through the SDK. */
   tracks: TracksPort;
-  /** One log line (the platform owns the sink; modules write their own "cmdAbl: …" prefix). */
+  /** One info line in the log, tagged with the module's name (`cmdAbl [name] info: …`); no prefix of your own. */
   log(line: string): void;
+  /**
+   * Leveled log lines tagged with the module's name (plan 0011). `debug` lines exist only after
+   * `cmdabl log --debug`. The last 500 lines are shown by `cmdabl log`. Never log a token, a
+   * secret or an environment value. Prefer `CommandResult.log` for what a command changed.
+   */
+  logger: { debug(text: string): void; info(text: string): void; warn(text: string): void; error(text: string): void };
   /**
    * Show a page of the module's own in a modal dialog; resolves with the one
    * string the page returns when it closes, or null if it was dismissed. Goes
@@ -157,5 +163,7 @@ export interface ModuleApi {
 }
 
 export interface Module {
+  /** The name log lines carry (`cmdAbl [name] …`); default: the module's first command. */
+  name?: string;
   activate(api: ModuleApi): void;
 }

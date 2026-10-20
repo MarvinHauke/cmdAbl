@@ -39,6 +39,8 @@ export interface FakeApi {
   boards: BoardRequest[];
   /** The `state` options `api.pick` was given, in order. */
   pickStates: Array<{ label: string; values: Array<boolean | null>; change?: StateChange }>;
+  /** Every line written through `api.logger`, with its level (`api.log` lines are in `logs` as well). */
+  logged: Array<{ level: "debug" | "info" | "warn" | "error"; text: string }>;
   /** The messages `api.confirm` was asked. */
   confirms: string[];
   /** The tag lists `api.pickTags` showed (title and rows). */
@@ -63,6 +65,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     providers: [],
     logs: [],
     feedback: [],
+    logged: [],
     boards: [],
     pickStates: [],
     confirms: [],
@@ -91,6 +94,12 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       },
     },
     log: (line) => void fake.logs.push(line),
+    logger: {
+      debug: (text) => void fake.logged.push({ level: "debug", text }),
+      info: (text) => void fake.logged.push({ level: "info", text }),
+      warn: (text) => void fake.logged.push({ level: "warn", text }),
+      error: (text) => void fake.logged.push({ level: "error", text }),
+    },
     dialog: async (html, width, height) => {
       fake.dialogs.push({ html, width, height });
       return options.dialogAnswer || null;

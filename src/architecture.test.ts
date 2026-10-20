@@ -197,6 +197,31 @@ test("architecture: only core/ui.ts opens dialogs (apart from the listed excepti
   );
 });
 
+// Rule 7 (plan 0011): every log line goes through src/core/log.ts, the one file that touches the console.
+// TODO(cmdabl-bridge): move these to the logger, then empty this list (the stale-entry test below
+// fails once a file no longer needs its exception).
+const CONSOLE_EXCEPTIONS: { file: string; why: string }[] = [
+  { file: "src/ableton/bridgeToken.ts", why: "default log sink; bridge moves it" },
+  { file: "src/ableton/tagCache.ts", why: "default log sink; bridge moves it" },
+  { file: "src/ableton/chainNames.ts", why: "default log sink; bridge moves it" },
+];
+
+function filesUsingConsole(): string[] {
+  return sourceFiles("src").filter(
+    (file) =>
+      !file.endsWith(".test.ts") &&
+      file !== "src/core/log.ts" &&
+      /\bconsole\.\w+/.test(fs.readFileSync(path.join(ROOT, file), "utf8")),
+  );
+}
+
+test("architecture: no console.* outside src/core/log.ts (apart from the listed exceptions)", () => {
+  const users = filesUsingConsole();
+  const listed = new Set(CONSOLE_EXCEPTIONS.map((e) => e.file));
+  assert.deepEqual(users.filter((f) => !listed.has(f)), [], "use the logger from src/core/log.ts (api.logger in a module)");
+  assert.deepEqual([...listed].filter((f) => !users.includes(f)), [], "this console exception no longer applies; remove it from CONSOLE_EXCEPTIONS");
+});
+
 test("architecture: the checker sees the imports and flags what it should", () => {
   assert.ok(sourceFiles("src").length > 30);
   const specifiers = importSpecifiers(

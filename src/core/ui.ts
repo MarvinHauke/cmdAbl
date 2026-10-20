@@ -4,6 +4,7 @@ import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsText } from "./notifySize.js";
 import { boardSize, parseBoardAnswer } from "./board.js";
 import { pickHeight, pickWidth } from "./pickSize.js";
+import { logger } from "./log.js";
 import { fillTemplate } from "./inlineJson.js";
 import { createDialogQueue, type DialogQueue } from "./dialogQueue.js";
 import promptTemplate from "../../ui/interface.html";
@@ -194,7 +195,7 @@ export function createDefaultUi(
       try {
         return JSON.parse(raw) as PaletteResult;
       } catch {
-        console.error(`cmdAbl: malformed palette result: ${raw}`);
+        logger("ui").error(`malformed palette result: ${raw}`);
         return null;
       }
     },

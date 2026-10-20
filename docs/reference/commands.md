@@ -57,7 +57,7 @@ Setup and status commands of cmdAbl itself.
 
 **Usage:** `cmdabl <command>`
 
-**Subcommands:** `setup`, `bridge`
+**Subcommands:** `setup`, `log`, `bridge`
 
 ### `cmdabl setup`
 
@@ -74,6 +74,46 @@ cmdabl setup
 ```
 
 run once after installing, and again after updating cmdAbl
+
+### `cmdabl log`
+
+show the last lines of cmdAbl's log
+
+Shows the last 50 lines of the log, newest at the bottom: what commands ran, what changed and the undo lines of tag writes (Cmd+Z does not undo tags). The log keeps the last 500 lines of this session. --debug turns detail lines on for the rest of the session.
+
+**Usage:** `cmdabl log [--count <n>] [--undo] [--debug]`
+
+| Option | Description |
+| --- | --- |
+| `-n, --count <n>` | show this many lines (default 50) (a whole number from 1 to 500) |
+| `--undo` | only the lines that contain "undo: " |
+| `--debug` | turn debug lines on for this session |
+
+**Examples**
+
+```
+cmdabl log
+```
+
+the last 50 lines
+
+```
+cmdabl log -n 200
+```
+
+more lines
+
+```
+cmdabl log --undo
+```
+
+only the lines that say how to undo a change
+
+```
+cmdabl log --debug
+```
+
+turn on debug lines for this session
 
 ### `cmdabl bridge`
 

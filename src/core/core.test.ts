@@ -295,7 +295,7 @@ test("cmdabl: a group on the tree — usage generated, unknown subcommand is a u
   const bad = await run("cmdabl nope");
   assert.equal(bad.result.code, ExitCode.USAGE);
   assert.match(bad.result.message ?? "", /unknown subcommand "nope"/);
-  assert.match(bad.result.message ?? "", /valid: setup, bridge/);
+  assert.match(bad.result.message ?? "", /valid: setup, log, bridge/);
   // the old flags are gone
   assert.equal((await run("cmdabl --setup")).result.code, ExitCode.USAGE);
   assert.equal((await run("cmdabl --bridge")).result.code, ExitCode.USAGE);
@@ -591,4 +591,35 @@ test("usageForPath is what --help prints: short, 'more: man' only with a man com
   const man = { name: "man", summary: "m", run: () => {} } as never;
   assert.match(usageForPath([a, man], ["a", "b"])!, /usage: a b\n\nmore: man a b$/);
   assert.equal(usageForPath([a], ["x"]), undefined);
+});
+
+test("cmdabl log: last 50 lines, -n, --undo, --debug", async () => {
+  const { CommandRegistry } = await import("./commandRegistry.js");
+  const { registerBuiltins } = await import("./builtins.js");
+  const { runLine } = await import("./run.js");
+  const { createLog } = await import("./log.js");
+  const log = createLog(() => {});
+  const l = log.logger("tag");
+  for (let i = 0; i < 60; i++) l.info(i % 10 === 0 ? `undo: tag back ${i}` : `changed ${i}`);
+  const registry = new CommandRegistry();
+  registerBuiltins(registry, { log });
+  const deps = { registry, liveNodes: () => [], pick: async () => null };
+  const text = async (line: string) => String((await runLine(line, deps as never)).result.message);
+  assert.equal((await text("cmdabl log")).split("\n").length, 50);
+  assert.ok((await text("cmdabl log")).endsWith("changed 59"));
+  assert.equal((await text("cmdabl log -n 5")).split("\n").length, 5);
+  const undo = (await text("cmdabl log --undo")).split("\n");
+  assert.equal(undo.length, 6);
+  assert.ok(undo.every((x) => x.includes("undo: ")));
+  assert.equal((await runLine("cmdabl log -n 0", deps as never)).result.code, ExitCode.USAGE);
+  l.debug("hidden");
+  assert.ok(!(await text("cmdabl log")).includes("hidden"));
+  assert.match(await text("cmdabl log --debug"), /^debug lines are on for this session/);
+  l.debug("shown");
+  assert.ok((await text("cmdabl log")).includes("debug: shown"));
+  const empty = createLog(() => {});
+  const r2 = new CommandRegistry();
+  registerBuiltins(r2, { log: empty });
+  assert.equal(String((await runLine("cmdabl log", { ...deps, registry: r2 } as never)).result.message), "the log is empty");
+  assert.equal(String((await runLine("cmdabl log --undo", { ...deps, registry: r2 } as never)).result.message), "no undo lines in the log");
 });

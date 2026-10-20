@@ -78,7 +78,7 @@ export const PORT_MAPPING: readonly PortMapping[] = [
 
   // dialog, log and the platform-only ports
   { port: "dialog", via: "sdk", call: "the SDK's modal dialog (`context.ui`, a data: URL page) through the dialog queue", lom: [] },
-  { port: "log", via: "platform", call: "`console.log` in the Extension Host", lom: [] },
+  { port: "log", via: "platform", call: "an info line in the log, tagged with the module (cmdabl log)", lom: [] },
   { port: "pick", via: "platform", call: "the platform's pick list", lom: [] },
   { port: "confirm", via: "platform", call: "the platform's pick list (Cancel / Confirm rows)", lom: [] },
   { port: "pickTags", via: "platform", call: "the platform's pick list of tags (state buttons)", lom: [] },
@@ -101,6 +101,10 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "showFeedback", via: "platform", call: "the platform's message dialog", lom: [] },
   { port: "registerProvider", via: "platform", call: "palette item provider", lom: [] },
   { port: "onCommandRun", via: "platform", call: "listener after a command finished", lom: [] },
+  { port: "logger.debug", via: "platform", call: "log line (debug), tagged with the module", lom: [] },
+  { port: "logger.info", via: "platform", call: "log line (info), tagged with the module", lom: [] },
+  { port: "logger.warn", via: "platform", call: "log line (warn), tagged with the module", lom: [] },
+  { port: "logger.error", via: "platform", call: "log line (error), tagged with the module", lom: [] },
   { port: "ui.board", via: "platform", call: "the board editor surface (sections of on/off items)", lom: [] },
   { port: "commands.roots", via: "platform", call: "reads the declared command tree", lom: [] },
   { port: "commands.usage", via: "platform", call: "renders the short --help text for a command path", lom: [] },
