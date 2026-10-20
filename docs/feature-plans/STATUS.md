@@ -235,7 +235,11 @@ Release:
   bundle (completion engine with ghost text and Telescope-style fuzzy finding, tags on chains
   and pads, pipes or refined aliases). Tags and aliases: plan 0008. 0.1.1 tags on tracks built on `feat/tags-aliases`
   (script 0.1.5 `c91a2c4`, core `2166db5`/`85ad442`, `tag` `9a77e00`; spike removed), waiting for
-  its Live test; then acting on tags without a list and `--pick` (`85ad442`).
+  its Live test; then acting on tags without a list and `--pick` (`85ad442`), `!#tag` (`bd2e3df`).
+  Live-tested (user, 2026-10-20): `tag` toggle and list, tag pick list, `#tag`, bare tag word,
+  `--pick`, `!#tag` (incl. comma/space lists, "every track is tagged", script off), history,
+  save prompt via the colour step. Still open: save + reopen, Cmd+D copy, return/main track,
+  rename, non-ASCII name, ~40 tracks (paged read).
   0.1.0 released 2026-10-19 (`a312c24`).
 - From an outside review (ChatGPT, 2026-10-19), checked against the code: nothing is released on
   deactivate (trigger server, listeners) → fix in 0.1.x; `extension.ts` holds palette state
