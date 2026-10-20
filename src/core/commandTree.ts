@@ -87,7 +87,7 @@ export interface OptionDef {
    * Fewer than N: usage error "--rename needs <old> <new>".
    */
   values?: number;
-  /** Names of the values, one per value, shown as `--rename <old> <new>`; default "value". */
+  /** Names of the values, one per value, shown as `--rename <old> <new>` (or `--edit <tag|#>` for one value); default "value". */
   valueLabels?: string[];
   summary: string;
 }
@@ -250,7 +250,8 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
         if (opt.choices !== undefined || opt.number !== undefined) problems.push(`${at}: option "--${opt.name}" has values together with choices or number`);
         if (opt.valueLabels !== undefined && opt.valueLabels.length !== opt.values) problems.push(`${at}: option "--${opt.name}" has ${opt.valueLabels.length} valueLabels for ${opt.values} values`);
       } else if (opt.valueLabels !== undefined) {
-        problems.push(`${at}: option "--${opt.name}" has valueLabels without values`);
+        if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" has valueLabels but takes no value`);
+        if (opt.valueLabels.length !== 1) problems.push(`${at}: option "--${opt.name}" has ${opt.valueLabels.length} valueLabels for one value`);
       }
       if (opt.number !== undefined) {
         if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" is numeric but takes no value`);
@@ -323,8 +324,33 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
 /** `value`, or `0|1` for an option with declared choices, or `old> <new` for a multi-value option. */
 export function valueLabel(opt: OptionDef): string {
   if (opt.values !== undefined) return valueNames(opt).join("> <");
+  if (opt.valueLabels?.length) return opt.valueLabels[0]!;
   if (opt.choices?.length) return opt.choices.join("|");
   return opt.number ? "n" : "value";
+}
+
+/** A value option as the palette page needs it to hint what to type next. */
+export interface ValueOptionHint {
+  /** Subcommand words below the top-level command (empty for a plain command). */
+  path: string[];
+  /** Long name without dashes. */
+  name: string;
+  short?: string;
+  /** One label per value, e.g. ["old", "new"]; shown as ghost text `<old>`. */
+  labels: string[];
+}
+
+/** Every value option of the leaves below (and including) `node`, for the palette. */
+export function valueOptionHints(node: CommandNode<any, any>, path: string[] = []): ValueOptionHint[] {
+  if (node.children?.length) return node.children.flatMap((c) => valueOptionHints(c, [...path, c.name]));
+  return (node.options ?? [])
+    .filter((o) => o.takesValue)
+    .map((o) => ({
+      path,
+      name: o.name,
+      ...(o.short ? { short: o.short } : {}),
+      labels: o.values !== undefined ? valueNames(o) : [valueLabel(o)],
+    }));
 }
 
 /** The names of a multi-value option's values (`valueLabels`, else "value" each). */
