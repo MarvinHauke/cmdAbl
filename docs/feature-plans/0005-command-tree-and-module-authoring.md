@@ -45,7 +45,9 @@ mute -d /vermona/kick /vermona/snare   command → option → positional (variad
 - **`-x` / `--long`** are options (modifiers). Actions are never flags: `cmdabl setup`, not
   `cmdabl --setup`.
 - **`--`** ends option parsing; everything after is positional.
-- **`--help` / `-h`** exists implicitly on every node and prints that node's usage.
+- **`--help` / `-h`** exists implicitly on every node and prints that node's short usage: the
+  usage line, subcommands/arguments/options one line each, and `more: man <path>` (user,
+  2026-10-20, `e56fa9c`). `man <path>` shows the full page (description, examples, link).
 
 ### 2. Node format (serializable data)
 
@@ -263,7 +265,7 @@ Cmd-clicking the buttons — and to be stated in the command reference.
 
 Three optional fields, confirmed by the user: `description` on a command or group (a sentence
 or two beyond `summary`), `examples: { line, note? }[]` on a command, and `summary` on an
-argument. They are the single source for `<cmd> --help` and for the generated command
+argument. They are the single source for `man <cmd>`, `<cmd> --help` (short form) and for the generated command
 reference (`npm run docs:reference`, checked in CI). Every runnable command has at least one
 example, and every example line must parse — both are tests. Write them for a user of Live.
 
