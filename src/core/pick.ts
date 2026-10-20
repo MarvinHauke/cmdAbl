@@ -68,7 +68,8 @@ export interface PickTagsOptions {
 
 /** The pick list of tags (a bare `#`, or a module's tag list): the chosen names, or null when cancelled. */
 export async function pickTagNames(ui: Ui, options: PickTagsOptions): Promise<string[] | null> {
-  const hasState = options.tags.some((t) => t.on !== undefined);
+  // A single-select list has nothing to mark, so no state buttons either.
+  const hasState = options.multi && options.tags.some((t) => t.on !== undefined);
   const indexes = await ui.select({
     title: options.title,
     multi: options.multi,
@@ -79,7 +80,7 @@ export async function pickTagNames(ui: Ui, options: PickTagsOptions): Promise<st
       label: `#${t.name}`,
       ...(t.count !== undefined ? { detail: `${t.count} ${t.count === 1 ? "track" : "tracks"}` } : {}),
       value: `#${t.name}`,
-      ...(t.on === true ? { state: "on" as const } : t.on === false ? { state: "off" as const } : {}),
+      ...(!options.multi ? {} : t.on === true ? { state: "on" as const } : t.on === false ? { state: "off" as const } : {}),
     })),
   });
   if (!indexes) return null;
@@ -88,5 +89,7 @@ export async function pickTagNames(ui: Ui, options: PickTagsOptions): Promise<st
   const picked = created ? created.picked : (indexes as number[]);
   const chosen = picked.map((i) => options.tags[i]?.name).filter((n): n is string => n !== undefined);
   if (created) chosen.push(created.created);
+  // A single-select list answers one name, whatever a page sends.
+  if (!options.multi && chosen.length > 1) return created ? [created.created] : chosen.slice(0, 1);
   return chosen.length ? chosen : null;
 }

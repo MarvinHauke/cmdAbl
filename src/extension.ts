@@ -122,7 +122,7 @@ export function activate(activation: ActivationContext) {
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
     ui: { board: (request) => runBoard(ui, request) },
-    pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, multi: true, ...options }),
+    pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, ...options, multi: options?.multi ?? true }),
     tags: {
       refresh: () => getTagCache().refreshNow(getBridge()),
       of: (node) => getTagCache().get(node.scope, node.route, node.name) ?? [],

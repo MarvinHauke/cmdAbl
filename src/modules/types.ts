@@ -138,8 +138,11 @@ export interface ModuleApi {
    * chosen tag names, or null when cancelled or nothing was marked. With `allowNew` the list
    * offers a create row for the filter text; choosing it adds that text (trimmed, as typed, NOT
    * validated — the module checks it) as the last name, next to the rows marked.
+   * With `multi: false` (default true) the list is single-select: Enter picks the cursor row, there are
+   * no marks and no state buttons (`on` and `change` are ignored); the create row still works. The result
+   * holds exactly one name.
    */
-  pickTags(title: string, rows: TagRow[], options?: { change?: StateChange; preview?: PickPreview; allowNew?: boolean }): Promise<string[] | null>;
+  pickTags(title: string, rows: TagRow[], options?: { change?: StateChange; preview?: PickPreview; allowNew?: boolean; multi?: boolean }): Promise<string[] | null>;
   /** Track tags (plan 0008). */
   tags: TagsPort;
   /** Notified whenever a pick list was shown, with what was offered and what was chosen. */
