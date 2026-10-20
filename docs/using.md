@@ -169,8 +169,8 @@ In a Set without tags, the empty list says "type a new tag".
   **add…** input instead. Then add tracks in the new tag's **add…** input. A new tag with no track is not kept.
 - The untagged tracks are listed at the end, read-only.
 
-Live does not change until you press **Apply (N changes)**. A successful Apply shows nothing: the board closes, and
-each change with its undo command goes to the log (see [Logs](#logs)). If some tracks could not be written, a window
+Live does not change until you press **Apply (N changes)**. An Apply that changes something shows nothing when it succeeds:
+the board closes, and each change with its undo command goes to the log (see [Logs](#logs)). If some tracks could not be written, a window
 lists only those. **Close** with nothing applied changes nothing and shows no message.
 
 Keys: while suggestions show, `↑`, `↓`, `←` and `→` move through them. With no match, `←` and `→` move the text
@@ -188,6 +188,11 @@ regular and return tracks, with a "tagged fx" button lit where a track has the t
 in the new-tag row, and then opens the track list. `--edit` cannot be combined with a target, names, `--list` or
 `--set`. The pair to remember: `tag /Lead` picks the tags of one track, and `tag -e fx` picks the tracks of one tag.
 
+**Rename a tag.** `tag --rename fx effects` (or `tag -r fx effects`) renames the tag on every regular and return
+track that carries it. A leading `#` is fine. The rename is quiet: `cmdabl log --undo` lists the undo command. If the
+new name already exists, the two tags merge, and the window says "merged #fx into #effects"; a track that has both
+keeps one. An old name that no track carries says "no track is tagged #old".
+
 **Rules.**
 
 - Tag names use lowercase letters, digits, `-` and `_`.
@@ -196,6 +201,8 @@ in the new-tag row, and then opens the track list. `--edit` cannot be combined w
 - Tags need the Remote Script 0.1.5. After you update cmdAbl, run `cmdabl setup` once, then restart Live.
 - Commands that act on one object, such as `goto`, and destructive commands still ask when a tag matches several
   tracks.
+- A write that changes nothing says so: "/Bass already has #bass", "/Bass has no #fx", or "nothing changed" for
+  several tracks.
 - Cmd+Z does not undo a tag change. Each change is logged with its reverse command, for example
   `undo: tag --set 0 /Lead fx`; `cmdabl log --undo` lists them. Each change also leaves an invisible step in Live's undo list, so Cmd+Z may need
   several presses, and Live asks you to save when you close the Set.
@@ -261,8 +268,8 @@ A name that matches more than one object does not produce an error: the pick lis
 
 ## Logs
 
-cmdAbl writes what it does to a log: what changed, the undo lines of tag writes, and diagnostics. A successful tag
-write shows nothing in the palette, so the log is where to look for it.
+cmdAbl writes what it does to a log: what changed, the undo lines of tag writes, and diagnostics. A tag write that
+changes something shows nothing in the palette when it succeeds, so the log is where to look for it.
 
 - `cmdabl log` shows the last 50 lines, newest at the bottom.
 - `cmdabl log -n <count>` shows up to 500 lines.

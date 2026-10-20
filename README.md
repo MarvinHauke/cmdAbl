@@ -68,7 +68,7 @@ These commands ship with cmdAbl. Each feature is a module that declares its comm
 - `find`, `next`, `prev`: find tracks, devices and chains whose path contains a pattern, and step through the matches.
 - `mute`, `solo`: toggle mute or solo on tracks, chains and drum pads.
 - `arm`: toggle record arm on tracks.
-- `tag`: tag tracks, edit tags on a board (`tag --list`), or switch one tag on many tracks (`tag --edit`).
+- `tag`: tag tracks, edit tags on a board (`tag --list`), switch one tag on many tracks (`tag --edit`), or rename a tag (`tag --rename`).
 - `history`: manage the list of recent commands.
 - `man`: show a command's full page in Live, or open the Live manual or the cmdAbl documentation.
 - `lom`: show the Live Object Model path of a track, device or chain.
