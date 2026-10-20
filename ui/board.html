@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal, another unmarks it) and, opened with ▸/▾, a checkbox list of all its items with a filter; chips and checkboxes always show the same pending state. A readonly section shows chips only. create adds an empty section (name checked against pattern, a regular expression the whole name must match) that opens at once; a created section with nothing ticked sends nothing. Out (close_and_send): '' when closed (Close, Esc), or JSON { changes: [{ section, item, on }], created: [names] } on Apply: only real differences against the request; a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). -->
+<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips; Tab completes, Enter adds the highlighted one as a chip with a dashed accent ring. A readonly section shows chips only. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. Out (close_and_send): '' when closed (Close, Esc), or JSON { changes: [{ section, item, on }], created: [names] } on Apply: only real differences against the request; a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -11,67 +11,65 @@
     html, body { height: 100%; overflow: hidden; }
     body { display: flex; flex-direction: column; }
 
-    #title { padding: 8px 12px 6px; color: var(--dim); font-size: 11px; flex-shrink: 0; }
+    #scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px 12px 8px; }
     #scroll:focus { outline: none; }
-    #scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 12px 8px; }
 
-    /* One section: heading line (toggle, heading, meta right), chips, optional open panel. */
+    /* One section: heading line (heading, meta right), then chips with the add input last. */
     .sec + .sec { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
-    .head { display: flex; align-items: baseline; gap: 8px; padding: 2px 4px; cursor: default; border-radius: 2px; }
-    .head .tog { flex: none; width: 1.2ch; color: var(--dim); user-select: none; }
+    .head { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
     .head .h { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
     .head .meta { margin-left: auto; flex: none; color: var(--dim); font-size: 11px; }
     .sec.ro .head .h { color: var(--dim); }
-    .cursor { background: var(--bg-row); box-shadow: inset 2px 0 0 var(--accent); }
 
-    .chips { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; padding-left: calc(4px + 1.2ch + 8px); }
+    .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 4px; }
     .chip { display: inline-flex; align-items: baseline; gap: 6px; background: var(--bg-row); border: 1px solid var(--border);
             border-radius: 2px; padding: 0 6px; line-height: 18px; overflow-wrap: anywhere; min-width: 0; cursor: default; }
     .chip .x { color: var(--dim); font-size: 11px; user-select: none; }
     .chip:hover .x { color: var(--text); }
-    .sec.ro .chip { cursor: default; }
     /* Marked for removal: struck through with an accent outline. Added (not in Live yet): dashed accent ring. */
     .chip.rm { text-decoration: line-through; color: var(--dim); outline: 1px solid var(--accent); outline-offset: 1px; }
     .chip.add { outline: 1px dashed var(--accent); outline-offset: 1px; }
     .none { color: var(--dim); font-size: 11px; line-height: 20px; }
 
-    /* Open panel: filter field + checkbox list in columns. */
-    .panel { margin: 6px 0 2px calc(4px + 1.2ch + 8px); border: 1px solid var(--border); border-radius: 2px; padding: 6px 8px 4px; }
-    .filter { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border); outline: none; color: var(--text);
-              font: inherit; font-size: 12px; padding: 0 0 4px; caret-color: var(--accent); }
-    .filter::placeholder { color: var(--dim); }
-    .list { column-width: 200px; column-gap: 12px; margin-top: 4px; }
-    .row { display: flex; align-items: baseline; gap: 8px; padding: 1px 4px; break-inside: avoid; cursor: default; border-radius: 2px; }
-    .row .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .box { flex: none; align-self: center; box-sizing: border-box; width: 13px; height: 13px; border: 1px solid var(--dim); border-radius: 2px;
-           display: inline-flex; align-items: center; justify-content: center; font-size: 10px; line-height: 1; color: var(--bg); font-weight: 700; }
-    .row.on .box { background: var(--accent); border-color: var(--accent); }
-    .row.changed .box { outline: 1px dashed var(--accent); outline-offset: 2px; }
-    .empty { color: var(--dim); font-size: 11px; padding: 2px 4px; }
+    /* The inline input is the last "chip": a dashed outline, ghost text behind the typed text. */
+    .addwrap { position: relative; display: inline-block; }
+    .addwrap input { position: relative; z-index: 1; box-sizing: border-box; background: transparent; border: 1px dashed var(--dim); border-radius: 2px;
+                     outline: none; color: var(--text); font: inherit; line-height: 16px; padding: 0 6px; caret-color: var(--accent); }
+    .addwrap input:focus { border-color: var(--accent); }
+    .addwrap input::placeholder { color: var(--dim); }
+    .ghost { position: absolute; left: 7px; top: 1px; line-height: 16px; white-space: pre; pointer-events: none; color: var(--dim); }
+    .ghost .typed { visibility: hidden; }
+    .nomatch { color: var(--accent); font-size: 11px; }
+    .shake { animation: shake 0.25s; }
+    @keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+    /* Suggestions under the chips (focused section only): the highlighted one has an accent border. */
+    .sugs { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 5px; }
+    .sugs:empty { display: none; }
+    .chip.sug { cursor: default; color: var(--text); }
+    .chip.sug.hi { border-color: var(--accent); color: var(--accent); }
+    .chip.sug .re { color: var(--dim); font-size: 11px; }
 
     /* The create entry at the bottom. */
-    #create { margin-top: 8px; padding: 2px 4px; display: flex; align-items: baseline; gap: 8px; color: var(--dim); border-radius: 2px; cursor: default; }
+    #create { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
     #create .plus { color: var(--accent); font-weight: 700; user-select: none; }
-    #create input { flex: 1; min-width: 0; background: transparent; border: none; border-bottom: 1px solid var(--dim); outline: none;
-                    color: var(--text); font: inherit; caret-color: var(--accent); }
-    #create .err { color: var(--accent); font-size: 11px; flex: none; }
-    #create[hidden], .err[hidden] { display: none; }
+    #create[hidden] { display: none; }
 
     #footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 6px 12px; display: flex; align-items: center; gap: 8px; }
-    #hint { flex: 1; min-width: 0; color: var(--dim); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #apply { border-color: var(--accent); color: var(--accent); }
+    #hint { flex: 1; min-width: 0; color: var(--dim); font-size: 10px; line-height: 13px; }
+    #apply { flex: none; border-color: var(--accent); color: var(--accent); }
     #apply:disabled { border-color: var(--dim); color: var(--dim); opacity: 0.5; cursor: default; }
+    #close { flex: none; }
   </style>
 </head>
 <body>
 
-  <div id="title"></div>
   <div id="scroll">
     <div id="sections"></div>
     <div id="create" hidden></div>
   </div>
   <div id="footer">
-    <span id="hint">↑↓ move · →← open · Space toggle · / filter · Enter apply</span>
+    <span id="hint">type to add · Tab complete · Enter add · ⌫ remove last · ↑↓ move · Enter on empty = apply · Esc</span>
     <button id="apply" disabled></button>
     <button id="close">Close</button>
   </div>
@@ -94,9 +92,10 @@
     };
 
     // ---- model ---------------------------------------------------------------------------
-    // orig = the state in the request; cur = the pending state. Chips and checkboxes both show cur.
+    // orig = the state in the request; cur = the pending state. `added` = item indexes turned on
+    // here, in the order added (their chips follow the section's own chips).
     const S = (BOARD?.sections ?? []).map(s => ({
-      id: s.id, heading: s.heading, meta: s.meta, readonly: !!s.readonly, created: false, open: false, filter: '',
+      id: s.id, heading: s.heading, meta: s.meta, readonly: !!s.readonly, created: false, q: '', hi: 0, added: [],
       items: (s.items ?? []).map(i => ({ id: i.id, label: i.label ?? i.id, orig: !!i.on, cur: !!i.on })),
     }));
     // A created section can carry any item the request names (first label wins), all off.
@@ -120,7 +119,51 @@
       send(JSON.stringify({ changes: list, created: createdNames() }));
     }
 
-    // ---- rendering -----------------------------------------------------------------------
+    // The chips of a section in display order: its own on items (marked ones stay, struck), then
+    // the ones added here in the order added.
+    function chipIdx(s) {
+      const out = [];
+      s.items.forEach((i, ii) => { if (i.orig) out.push(ii); });
+      for (const ii of s.added) if (s.items[ii].cur) out.push(ii);
+      return out;
+    }
+
+    function toggleItem(si, ii) {
+      const s = S[si];
+      if (s.readonly) return;
+      const i = s.items[ii];
+      i.cur = !i.cur;
+      if (!i.orig) { s.added = s.added.filter(x => x !== ii); if (i.cur) s.added.push(ii); }
+      refresh(si);
+    }
+
+    // ---- search ----------------------------------------------------------------------------
+    // Candidates: items not on now (so also those marked for removal). Start of name first
+    // (with or without the leading "/"), then start of the last path part, then anywhere.
+    function rank(label, q) {
+      const l = label.toLowerCase();
+      if (l.startsWith(q) || l.replace(/^\//, '').startsWith(q)) return 0;
+      if (l.slice(l.lastIndexOf('/') + 1).startsWith(q)) return 1;
+      return l.includes(q) ? 2 : -1;
+    }
+    function suggestions(s) {
+      const q = s.q.trim().toLowerCase();
+      if (!q) return [];
+      const out = [];
+      s.items.forEach((i, ii) => { if (!i.cur) { const r = rank(i.label, q); if (r >= 0) out.push({ ii, r }); } });
+      out.sort((a, b) => a.r - b.r || a.ii - b.ii);
+      return out.slice(0, 6).map(o => o.ii);
+    }
+    // The ghost: the rest of the highlighted label, only when what was typed is a prefix of it.
+    function ghostRest(label, q) {
+      if (!q) return '';
+      const l = label.toLowerCase(), lq = q.toLowerCase();
+      if (l.startsWith(lq)) return label.slice(q.length);
+      if (l.startsWith('/') && !lq.startsWith('/') && l.slice(1).startsWith(lq)) return label.slice(1 + q.length);
+      return '';
+    }
+
+    // ---- rendering -------------------------------------------------------------------------
     const sectionsBox = document.getElementById('sections');
     const scroll = document.getElementById('scroll');
     const applyBtn = document.getElementById('apply');
@@ -131,21 +174,12 @@
       applyBtn.disabled = n === 0;
     }
 
-    function words(s) { return s.toLowerCase().split(/\s+/).filter(Boolean); }
-    function visibleIdx(s) {
-      const w = words(s.filter);
-      const out = [];
-      s.items.forEach((i, ii) => { const l = i.label.toLowerCase(); if (w.every(x => l.includes(x))) out.push(ii); });
-      return out;
-    }
-
     function renderChips(si) {
       const s = S[si];
-      s.chipsEl.replaceChildren();
-      let any = false;
-      s.items.forEach((i, ii) => {
-        if (!i.orig && !i.cur) return;
-        any = true;
+      for (const c of [...s.chipsEl.querySelectorAll('.chip, .none')]) c.remove();
+      const idx = chipIdx(s);
+      for (const ii of idx) {
+        const i = s.items[ii];
         const chip = el('span', 'chip' + (i.orig && !i.cur ? ' rm' : '') + (!i.orig && i.cur ? ' add' : ''));
         chip.append(el('span', 'l', i.label));
         if (!s.readonly) {
@@ -153,151 +187,122 @@
           chip.title = i.orig && !i.cur ? 'marked for removal (click to undo)' : !i.orig && i.cur ? 'to be added (click to undo)' : 'click to remove';
           chip.addEventListener('mousedown', e => { e.preventDefault(); toggleItem(si, ii); });
         }
-        s.chipsEl.append(chip);
-      });
-      if (!any) s.chipsEl.append(el('span', 'none', s.readonly ? 'none' : 'no items'));
+        s.chipsEl.insertBefore(chip, s.addEl ?? null);
+      }
+      if (!idx.length && s.readonly) s.chipsEl.append(el('span', 'none', 'none'));
     }
 
-    function renderList(si) {
+    // Input width follows the typed text plus ghost; suggestions only for the focused section.
+    function renderAdd(si) {
       const s = S[si];
-      if (!s.listEl) return;
-      s.listEl.replaceChildren();
-      s.rowEls = new Map();
-      const vis = visibleIdx(s);
-      for (const ii of vis) {
+      if (s.readonly) return;
+      const sugs = suggestions(s);
+      s.hi = Math.min(s.hi, Math.max(sugs.length - 1, 0));
+      const focused = document.activeElement === s.inputEl;
+      const best = sugs.length ? s.items[sugs[s.hi]].label : '';
+      const rest = ghostRest(best, s.q);
+      s.ghostEl.replaceChildren(el('span', 'typed', s.q), document.createTextNode(rest));
+      s.inputEl.style.width = 'calc(' + Math.max(6, s.q.length + rest.length + 1) + 'ch + 14px)';
+      s.rest = rest;
+      s.sugEls.replaceChildren();
+      if (focused) sugs.forEach((ii, k) => {
         const i = s.items[ii];
-        const row = el('div', 'row' + (i.cur ? ' on' : '') + (i.cur !== i.orig ? ' changed' : ''));
-        const box = el('span', 'box', i.cur ? '✓' : '');
-        row.append(box, el('span', 'label', i.label));
-        row.title = i.label;
-        row.addEventListener('mousedown', e => { e.preventDefault(); cursor = { si, kind: 'row', ii }; toggleItem(si, ii); });
-        s.rowEls.set(ii, row);
-        s.listEl.append(row);
-      }
-      if (!vis.length) s.listEl.append(el('div', 'empty', 'no match'));
+        const chip = el('span', 'chip sug' + (k === s.hi ? ' hi' : ''));
+        chip.append(el('span', 'l', i.label));
+        if (i.orig) chip.append(el('span', 're', 're-add'));
+        chip.addEventListener('mousedown', e => { e.preventDefault(); addItem(si, ii); });
+        s.sugEls.append(chip);
+      });
+      s.sugList = sugs;
     }
+
+    function refresh(si) { renderChips(si); renderAdd(si); updateFooter(); }
+
+    function addItem(si, ii) {
+      const s = S[si];
+      s.items[ii].cur = true;
+      if (!s.items[ii].orig) { s.added = s.added.filter(x => x !== ii); s.added.push(ii); }
+      s.q = ''; s.hi = 0;
+      s.inputEl.value = '';
+      clearNoMatch(s);
+      refresh(si);
+      s.inputEl.scrollIntoView({ block: 'nearest' });
+    }
+
+    function noMatch(s) {
+      if (!s.noEl) { s.noEl = el('span', 'nomatch', 'no match'); s.addEl.after(s.noEl); }
+      s.inputEl.classList.remove('shake'); void s.inputEl.offsetWidth; s.inputEl.classList.add('shake');
+    }
+    function clearNoMatch(s) { s.noEl?.remove(); s.noEl = null; }
 
     function buildSection(si) {
       const s = S[si];
-      if (!s.el) { s.el = el('div'); sectionsBox.append(s.el); }
-      s.el.className = 'sec' + (s.readonly ? ' ro' : '');
-      s.el.replaceChildren();
-      s.headEl = el('div', 'head');
-      s.headEl.append(el('span', 'tog', s.readonly ? '' : (s.open ? '▾' : '▸')), el('span', 'h', s.heading));
-      if (s.meta) s.headEl.append(el('span', 'meta', s.meta));
-      if (!s.readonly) s.headEl.addEventListener('mousedown', e => { e.preventDefault(); cursor = { si, kind: 'head' }; setOpen(si, !s.open); });
+      s.el = el('div', 'sec' + (s.readonly ? ' ro' : ''));
+      const head = el('div', 'head');
+      head.append(el('span', 'h', s.heading));
+      if (s.meta) head.append(el('span', 'meta', s.meta));
       s.chipsEl = el('div', 'chips');
-      s.el.append(s.headEl, s.chipsEl);
-      s.listEl = s.filterEl = null;
-      s.rowEls = new Map();
-      if (s.open && !s.readonly) {
-        const panel = el('div', 'panel');
-        s.filterEl = el('input', 'filter');
-        s.filterEl.type = 'text';
-        s.filterEl.placeholder = 'filter';
-        s.filterEl.autocomplete = 'off';
-        s.filterEl.spellcheck = false;
-        s.filterEl.value = s.filter;
-        s.filterEl.addEventListener('input', () => {
-          s.filter = s.filterEl.value;
-          renderList(si);
-          if (cursor.si === si && cursor.kind === 'row' && !s.rowEls.has(cursor.ii)) cursor = { si, kind: 'row', ii: visibleIdx(s)[0] ?? -1 };
-          if (cursor.kind === 'row' && cursor.si === si && cursor.ii === -1) cursor = { si, kind: 'head' };
-          applyCursor();
-        });
-        s.listEl = el('div', 'list');
-        panel.append(s.filterEl, s.listEl);
-        s.el.append(panel);
-        renderList(si);
+      s.el.append(head, s.chipsEl);
+      if (!s.readonly) {
+        s.addEl = el('span', 'addwrap');
+        s.ghostEl = el('span', 'ghost');
+        s.inputEl = el('input');
+        s.inputEl.type = 'text';
+        s.inputEl.placeholder = 'add…';
+        s.inputEl.autocomplete = 'off';
+        s.inputEl.spellcheck = false;
+        s.addEl.append(s.ghostEl, s.inputEl);
+        s.chipsEl.append(s.addEl);
+        s.sugEls = el('div', 'sugs');
+        s.el.append(s.sugEls);
+        s.inputEl.addEventListener('input', () => { s.q = s.inputEl.value; s.hi = 0; clearNoMatch(s); renderAdd(si); });
+        s.inputEl.addEventListener('focus', () => renderAdd(si));
+        s.inputEl.addEventListener('blur', () => renderAdd(si));
+        s.inputEl.addEventListener('keydown', e => keyInSection(e, si));
+        // A click anywhere in the section (not on a chip) puts the caret in its input.
+        s.el.addEventListener('mousedown', e => { if (!e.target.closest('.chip') && e.target !== s.inputEl) { e.preventDefault(); s.inputEl.focus(); } });
       }
+      sectionsBox.append(s.el);
       renderChips(si);
+      if (!s.readonly) renderAdd(si);
     }
 
-    function setOpen(si, open) {
-      const s = S[si];
-      if (s.readonly || s.open === open) return;
-      s.open = open;
-      if (!open) { s.filter = ''; if (cursor.si === si && cursor.kind === 'row') cursor = { si, kind: 'head' }; }
-      buildSection(si);
-      applyCursor();
-    }
-
-    function toggleItem(si, ii) {
-      const s = S[si];
-      if (s.readonly) return;
-      s.items[ii].cur = !s.items[ii].cur;
-      renderChips(si);
-      renderList(si);
-      updateFooter();
-      applyCursor();
-    }
-
-    // ---- the cursor: one place that has the keys ------------------------------------------
-    // { si, kind: 'head' | 'row' | 'create', ii }
-    let cursor = { si: 0, kind: 'head' };
-    let shown = null;
-    function cursorEl() {
-      if (cursor.kind === 'create') return createEl;
-      const s = S[cursor.si];
-      if (!s) return null;
-      return cursor.kind === 'head' ? s.headEl : s.rowEls?.get(cursor.ii) ?? null;
-    }
-    function applyCursor() {
-      shown?.classList.remove('cursor');
-      shown = cursorEl();
-      if (shown) { shown.classList.add('cursor'); shown.scrollIntoView({ block: 'nearest' }); }
-    }
-
-    // Flat list of what ↑/↓ visit: each heading, the visible rows of an open section, the create entry.
-    function navList() {
+    // ---- focus order: the sections' inputs, then the create input ---------------------------
+    const createBox = document.getElementById('create');
+    let createInput = null, createErr = null;
+    function inputs() {
       const out = [];
-      S.forEach((s, si) => {
-        out.push({ si, kind: 'head' });
-        if (s.open && !s.readonly) for (const ii of visibleIdx(s)) out.push({ si, kind: 'row', ii });
-      });
-      if (BOARD?.create) out.push({ si: -1, kind: 'create' });
+      S.forEach((s, si) => { if (!s.readonly) out.push({ si, input: s.inputEl }); });
+      if (createInput) out.push({ si: -1, input: createInput });
       return out;
     }
-    const same = (a, b) => a.kind === b.kind && a.si === b.si && a.ii === b.ii;
-    function move(delta) {
-      const nav = navList();
-      if (!nav.length) return;
-      let at = nav.findIndex(n => same(n, cursor));
-      if (at < 0) at = 0;
-      else at = Math.max(0, Math.min(nav.length - 1, at + delta));
-      cursor = nav[at];
-      applyCursor();
+    function jump(from, delta) {
+      const list = inputs();
+      const at = list.findIndex(x => x.si === from);
+      const next = list[Math.max(0, Math.min(list.length - 1, at + delta))];
+      if (next) { next.input.focus(); next.input.scrollIntoView({ block: 'nearest' }); }
     }
 
     // ---- the create entry ------------------------------------------------------------------
-    const createEl = document.getElementById('create');
-    let createInput = null, createErr = null;
     function buildCreate() {
       if (!BOARD?.create) return;
-      createEl.hidden = false;
-      createEl.replaceChildren();
-      createEl.append(el('span', 'plus', '⊕'), el('span', 'lab', BOARD.create.label));
-      createEl.addEventListener('mousedown', e => { if (e.target !== createInput) { e.preventDefault(); cursor = { si: -1, kind: 'create' }; openCreate(); } });
-    }
-    function openCreate() {
-      if (createInput) { createInput.focus(); return; }
-      createEl.querySelector('.lab').hidden = true;
+      createBox.hidden = false;
       createInput = el('input');
       createInput.type = 'text';
+      createInput.placeholder = BOARD.create.label;
       createInput.autocomplete = 'off';
       createInput.spellcheck = false;
-      createErr = el('span', 'err');
+      const wrap = el('span', 'addwrap');
+      wrap.append(createInput);
+      createInput.style.width = 'calc(' + Math.max(12, BOARD.create.label.length + 1) + 'ch + 14px)';
+      createErr = el('span', 'nomatch');
       createErr.hidden = true;
-      createEl.append(createInput, createErr);
-      createInput.addEventListener('input', () => { createErr.hidden = true; });
-      createInput.focus();
-      applyCursor();
-    }
-    function closeCreate() {
-      if (!createInput) return;
-      createInput.remove(); createErr.remove();
-      createInput = createErr = null;
-      createEl.querySelector('.lab').hidden = false;
+      createBox.append(el('span', 'plus', '⊕'), wrap, createErr);
+      createInput.addEventListener('input', () => {
+        createErr.hidden = true;
+        createInput.style.width = 'calc(' + Math.max(12, BOARD.create.label.length + 1, createInput.value.length + 1) + 'ch + 14px)';
+      });
+      createInput.addEventListener('keydown', e => keyInCreate(e));
     }
     // A name must fully match pattern (a regular expression); a bad name shows a hint and is not added.
     function validName(name) {
@@ -310,76 +315,75 @@
       if (!name) return;
       // Same as an existing section: by id, or by heading ignoring case and a leading "#".
       const norm = t => t.trim().replace(/^#/, '').toLowerCase();
-      if (S.some(s => s.id === name || norm(s.heading) === norm(name))) { createErr.textContent = 'exists already'; createErr.hidden = false; return; }
-      if (!validName(name)) { createErr.textContent = 'not a valid name'; createErr.hidden = false; return; }
-      S.push({ id: name, heading: name, meta: undefined, readonly: false, created: true, open: true, filter: '',
+      const hint = text => { createErr.textContent = text; createErr.hidden = false; createInput.classList.remove('shake'); void createInput.offsetWidth; createInput.classList.add('shake'); };
+      if (S.some(s => s.id === name || norm(s.heading) === norm(name))) { hint('exists already'); return; }
+      if (!validName(name)) { hint('not a valid name'); return; }
+      S.push({ id: name, heading: name, meta: undefined, readonly: false, created: true, q: '', hi: 0, added: [],
                items: candidates.map(c => ({ id: c.id, label: c.label, orig: false, cur: false })) });
-      closeCreate();
+      createInput.value = '';
+      createInput.dispatchEvent(new Event('input'));
       const si = S.length - 1;
       buildSection(si);
-      cursor = { si, kind: 'head' };
-      applyCursor();
-      S[si].filterEl?.focus();   // a new section opens at once: type to find a track
+      S[si].inputEl.focus();   // a new section: type to add a track
+      S[si].inputEl.scrollIntoView({ block: 'nearest' });
     }
 
     // ---- keys ------------------------------------------------------------------------------
+    function keyInSection(e, si) {
+      const s = S[si];
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (e.repeat) return;   // a held Enter from the dialog before must not apply
+        if (!s.q.trim()) { apply(); return; }
+        const sugs = s.sugList ?? [];
+        if (sugs.length) addItem(si, sugs[s.hi]); else noMatch(s);
+      } else if (e.key === 'Tab') {
+        if (s.rest) { e.preventDefault(); s.q = s.inputEl.value = s.q + s.rest; s.hi = 0; renderAdd(si); }
+      } else if (e.key === 'Backspace' && !s.inputEl.value) {
+        e.preventDefault();
+        const idx = chipIdx(s);
+        if (idx.length) toggleItem(si, idx[idx.length - 1]);   // mark the last chip; again unmarks it; an added one disappears
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || (e.ctrlKey && (e.key === 'n' || e.key === 'p'))) {
+        e.preventDefault();
+        const delta = (e.key === 'ArrowDown' || e.key === 'n') ? 1 : -1;
+        const sugs = s.sugList ?? [];
+        if (sugs.length) { s.hi = (s.hi + delta + sugs.length) % sugs.length; renderAdd(si); }
+        else jump(si, delta);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        if (s.inputEl.value) { s.q = s.inputEl.value = ''; s.hi = 0; clearNoMatch(s); renderAdd(si); } else send('');
+      }
+    }
+    function keyInCreate(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (e.repeat) return;
+        if (createInput.value.trim()) submitCreate(); else apply();
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        jump(-1, e.key === 'ArrowDown' ? 1 : -1);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        if (createInput.value) { createInput.value = ''; createInput.dispatchEvent(new Event('input')); } else send('');
+      }
+    }
+    // Focus on nothing (after a click on a button): Esc closes, Enter applies.
     document.addEventListener('keydown', e => {
-      if (e.repeat && e.key === 'Enter') return;   // a held Enter from the dialog before must not apply
-      const t = e.target;
-      const inCreate = createInput && t === createInput;
-      const inFilter = t instanceof HTMLInputElement && t.classList.contains('filter');
-      const plain = !e.ctrlKey && !e.metaKey && !e.altKey;
-
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        if (inCreate) { closeCreate(); scroll.focus(); return; }
-        if (inFilter) {
-          if (t.value) { t.value = ''; t.dispatchEvent(new Event('input')); }
-          t.blur();
-          return;
-        }
-        send('');
-        return;
-      }
-      if (inCreate) {
-        if (e.key === 'Enter') { e.preventDefault(); submitCreate(); }
-        return;   // everything else types
-      }
-      if (e.key === 'Enter') { e.preventDefault(); apply(); return; }
-      if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n')) { e.preventDefault(); move(1); return; }
-      if (e.key === 'ArrowUp' || (e.ctrlKey && e.key === 'p')) { e.preventDefault(); move(-1); return; }
-      if (inFilter) {
-        if (e.key === 'Tab') {   // Tab toggles the row under the cursor without leaving the filter
-          e.preventDefault();
-          if (cursor.kind === 'row') toggleItem(cursor.si, cursor.ii);
-        }
-        return;   // typing, caret keys
-      }
-      const s = S[cursor.si];
-      if (e.key === 'ArrowRight') { e.preventDefault(); if (cursor.kind === 'create') openCreate(); else if (s) setOpen(cursor.si, true); }
-      else if (e.key === 'ArrowLeft') { e.preventDefault(); if (s) setOpen(cursor.si, false); }
-      else if (e.key === ' ' && plain) {
-        e.preventDefault();
-        if (cursor.kind === 'create') openCreate();
-        else if (cursor.kind === 'row') toggleItem(cursor.si, cursor.ii);
-        else if (s) setOpen(cursor.si, !s.open);
-      } else if ((e.key === '/' || e.key.length === 1) && plain && s && s.open && !s.readonly) {
-        // `/` or a typed character: into the open section's filter (the character itself is typed there).
-        if (e.key === '/') e.preventDefault();
-        s.filterEl.focus();
-      }
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement || e.repeat) return;
+      if (e.key === 'Escape') { e.preventDefault(); send(''); }
+      else if (e.key === 'Enter') { e.preventDefault(); apply(); }
+      else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) inputs()[0]?.input.focus();   // typing starts the first input
     });
 
     document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('title').textContent = BOARD?.title ?? '';
       S.forEach((_, si) => buildSection(si));
       buildCreate();
       updateFooter();
-      applyCursor();
       document.getElementById('apply').addEventListener('click', apply);
       document.getElementById('close').addEventListener('click', () => send(''));
       scroll.tabIndex = -1;
-      scroll.focus();
+      const first = inputs()[0];
+      if (first) first.input.focus({ preventScroll: true }); else scroll.focus();   // opens at the top, whatever the first section holds
     });
   </script>
 
