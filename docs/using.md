@@ -165,8 +165,9 @@ In a Set without tags, the empty list says "type a new tag".
   **add…** input instead. Then add tracks in the new tag's **add…** input. A new tag with no track is not kept.
 - The untagged tracks are listed at the end, read-only.
 
-Live does not change until you press **Apply (N changes)**. The board then reopens with the new state. **Close**
-ends it and shows one summary of what was applied, with the commands that put it back.
+Live does not change until you press **Apply (N changes)**. Then the board closes and shows the result: each
+change that was written, with the command that puts it back. **Close** with nothing applied changes nothing and
+shows no message.
 
 Keys: `↑` and `↓` move through the suggestions while they show, otherwise to the previous or next tag. `Enter` in an
 empty input applies. `Esc` clears the input, then closes the board. With pending changes, the first `Esc` (or Close)
