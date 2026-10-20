@@ -85,7 +85,7 @@ untagged                                       4 tracks
 - **←/→ and ↑/↓** move through the suggestions while they show (←/→ added after the Live test;
   Cmd/Alt+←/→ still move the caret), otherwise to the previous or next tag's
   input. **Enter applies whenever there is nothing to add**: in an empty input, an empty "new tag…" or on
-  the chip cursor (user, Live test 2026-10-20). **Esc** clears the input, then closes.
+  the chip cursor, if its field is empty (user, Live test 2026-10-20; `f8e4135`). **Esc** clears the input, then closes.
 - **`new tag…` input** at the bottom: Enter checks the name and adds an empty section with the
   focus in its `add…` input. A tag with no track added is not kept. A name that already exists (ignoring case
   and a leading #) is refused on the page ("exists already"); the module's lowercase-and-merge stays
