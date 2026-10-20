@@ -156,6 +156,11 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
   only by path. Works in every command (`tag --set 1 !#drums synth`, `mute !#drums, /Lead`) and
   with `--pick`; none → exit 3; script down → exit 5; history keeps it as typed. Intersections
   (`#fx&!#drums`) only if wanted later; a comma stays a union.
+  **A tag no track carries → exit 3** (user found it in Live, 2026-10-20): `solo !#synth` with no
+  track tagged `synth` soloed every track — almost always a typo. So `!#x` first checks that some
+  track in the Set has tag `x`; if none does, it fails with exit 3 "no track is tagged #synth"
+  and changes nothing, `--pick` included. Same in `find !#x`. A bare word is not affected: it only
+  becomes a tag when a track carries it.
 - **New tag from the tag list** (user, 2026-10-20, now in 0.1.1; `Ui` contract change, additive):
   `SelectRequest.create?: { label }` — when the filter text matches no row exactly, the list shows
   a row `+ <label> "<text>"` (e.g. `+ new tag "perc"`) after the matches; when nothing matches it
