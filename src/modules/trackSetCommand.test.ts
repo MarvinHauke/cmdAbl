@@ -135,7 +135,7 @@ test("arm: facts, then the write, then the script's verify — in that order", a
   assert.equal(code(await t.run([A])), ExitCode.OK);
   assert.equal(t.handle("A").arm, true);
   assert.deepEqual(t.fake.bridge.calls.map((c) => c.op), ["track_facts", "track_facts"]);
-  const kinds = t.fake.logs.map((l) => l.split(": ")[1]);
+  const kinds = t.fake.logs.map((l) => l.split(": ")[0]);
   assert.deepEqual(kinds.filter((k) => k === "arm facts" || k === "arm" || k === "arm verify"), ["arm facts", "arm", "arm verify"]);
 });
 
@@ -169,7 +169,7 @@ test("arm without the script: the SDK path as before, the log says why there are
   const t = armSetup([], { A: { arm: false } }, { running: false });
   assert.equal(code(await t.run([A])), ExitCode.OK);
   assert.equal(t.handle("A").arm, true);
-  assert.ok(t.fake.logs.some((l) => l.startsWith("cmdAbl: arm facts: none (")));
+  assert.ok(t.fake.logs.some((l) => l.startsWith("arm facts: none (")));
 });
 
 test("arm --set 0: sets off and is verified like arm", async () => {

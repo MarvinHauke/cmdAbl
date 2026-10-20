@@ -44,18 +44,18 @@ export async function loadArmFacts(
 /** Log lines for what `arm` learned: names and booleans only. */
 export function armFactsLines(nodes: Array<Pick<ObjectNode, "path">>, loaded: ArmFacts): string[] {
   const facts = loaded.facts;
-  if (!facts) return [`cmdAbl: arm facts: none (${loaded.reason})`];
+  if (!facts) return [`arm facts: none (${loaded.reason})`];
   return nodes.map((node, i) => {
     const entry = facts[i];
-    if (!entry) return `cmdAbl: arm facts: ${node.path} missing`;
-    if (!entry.ok) return `cmdAbl: arm facts: ${node.path} failed (code ${entry.code}: ${entry.text})`;
+    if (!entry) return `arm facts: ${node.path} missing`;
+    if (!entry.ok) return `arm facts: ${node.path} failed (code ${entry.code}: ${entry.text})`;
     const f = entry.value;
-    return `cmdAbl: arm facts: ${node.path} canBeArmed=${f.canBeArmed} isFoldable=${f.isFoldable} isGrouped=${f.isGrouped} arm=${f.arm}`;
+    return `arm facts: ${node.path} canBeArmed=${f.canBeArmed} isFoldable=${f.isFoldable} isGrouped=${f.isGrouped} arm=${f.arm}`;
   });
 }
 
 export function armReadBackLine(path: string, wrote: boolean, reads: unknown): string {
-  return `cmdAbl: arm: ${path} wrote ${wrote}, reads ${String(reads)}`;
+  return `arm: ${path} wrote ${wrote}, reads ${String(reads)}`;
 }
 
 // ── verify after the write ──────────────────────────────────────────────────
@@ -123,7 +123,7 @@ export async function verifyArmWrites(
 }
 
 export function armVerifyLine(path: string, wanted: boolean, verdict: ArmVerdict): string {
-  return `cmdAbl: arm verify: ${path} wanted ${wanted}, script reads ${verdict.actual ?? "?"} -> ${verdict.state}${verdict.secondLook ? " (first look mismatched, second look decided)" : ""}`;
+  return `arm verify: ${path} wanted ${wanted}, script reads ${verdict.actual ?? "?"} -> ${verdict.state}${verdict.secondLook ? " (first look mismatched, second look decided)" : ""}`;
 }
 
 export function armNotChangedText(wanted: boolean): string {

@@ -99,13 +99,13 @@ test("log lines: facts per track, none with a reason, read-back", async () => {
     ops: { track_facts: () => ({ ok: true, value: { tracks: [entry(true), entry(false)] } }) },
   });
   assert.deepEqual(armFactsLines(paths, await loadArmFacts(bridge, nodes)), [
-    "cmdAbl: arm facts: /Drums canBeArmed=true isFoldable=false isGrouped=false arm=false",
-    "cmdAbl: arm facts: /Keys canBeArmed=false isFoldable=false isGrouped=false arm=null",
+    "arm facts: /Drums canBeArmed=true isFoldable=false isGrouped=false arm=false",
+    "arm facts: /Keys canBeArmed=false isFoldable=false isGrouped=false arm=null",
   ]);
   const off = await loadArmFacts(createFakeBridge({ running: false }), nodes);
-  assert.deepEqual(armFactsLines(paths, off), [`cmdAbl: arm facts: none (${off.reason})`]);
+  assert.deepEqual(armFactsLines(paths, off), [`arm facts: none (${off.reason})`]);
   assert.match(off.reason, /bridge unavailable/);
-  assert.equal(armReadBackLine("/Drums", true, true), "cmdAbl: arm: /Drums wrote true, reads true");
+  assert.equal(armReadBackLine("/Drums", true, true), "arm: /Drums wrote true, reads true");
 });
 
 // ── verify ──────────────────────────────────────────────────────────────────
@@ -183,7 +183,7 @@ test("verify texts and log line", () => {
   assert.equal(armNotChangedText(false), "Live did not disarm it");
   assert.equal(
     armVerifyLine("/Sub 37 Midi", true, { state: "mismatch", actual: false }),
-    "cmdAbl: arm verify: /Sub 37 Midi wanted true, script reads false -> mismatch",
+    "arm verify: /Sub 37 Midi wanted true, script reads false -> mismatch",
   );
 });
 
