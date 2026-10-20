@@ -1,6 +1,9 @@
 import type { TrackScope } from "../core/types.js";
 import type { Bridge } from "./bridgeClient.js";
 import { chains as fetchChains } from "./bridgeOps.js";
+import { logger } from "../core/log.js";
+
+const chainLog = logger("bridge");
 
 // Chain names come from the Remote Script (the SDK's Chain has no name). The
 // object tree is built synchronously from the SDK on every command, so names
@@ -93,7 +96,7 @@ export class ChainNameCache {
       (t as { unref?: () => void }).unref?.();
       return t;
     },
-    private readonly log: (line: string) => void = (line) => console.log(line),
+    private readonly log: (line: string, level?: "info" | "warn") => void = (line, level) => chainLog[level ?? "info"](line),
   ) {}
 
   /**
@@ -121,7 +124,7 @@ export class ChainNameCache {
     try {
       const reply = await fetchChains(bridge, racks);
       if (!reply.ok) {
-        this.say(`cmdAbl: chains refresh: ${racks.length} racks asked, request failed (code ${reply.code}): ${reply.text}`);
+        this.say(`chains refresh: ${racks.length} racks asked, request failed (code ${reply.code}): ${reply.text}`, "warn");
         return;
       }
       const next = new Map<string, ChainEntry>();
@@ -140,7 +143,7 @@ export class ChainNameCache {
       });
       this.entries = next;
       this.say(
-        `cmdAbl: chains refresh: ${racks.length} racks asked, ${next.size} answered, ${names} chain names` +
+        `chains refresh: ${racks.length} racks asked, ${next.size} answered, ${names} chain names` +
           (skipped.length > 0 ? `; skipped: ${skipped.join("; ")}` : ""),
       );
     } catch {
@@ -148,11 +151,11 @@ export class ChainNameCache {
     }
   }
 
-  private say(line: string): void {
+  private say(line: string, level: "info" | "warn" = "info"): void {
     if (line === this.lastSummary) return;
     this.lastSummary = line;
     try {
-      this.log(line);
+      this.log(line, level);
     } catch {
       // logging must never fail a refresh
     }

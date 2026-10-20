@@ -151,10 +151,10 @@ test("the token source logs the reason once per change: the error code or 'wrong
   src.forget();
   src.get();
   assert.deepEqual(lines, [
-    "cmdAbl: bridge token: cannot read (EACCES)",
-    "cmdAbl: bridge token: cannot read (ENOENT)",
-    "cmdAbl: bridge token: cannot read (wrong shape)",
-    "cmdAbl: bridge token: cannot read (EACCES)",
+    "bridge token: cannot read (EACCES)",
+    "bridge token: cannot read (ENOENT)",
+    "bridge token: cannot read (wrong shape)",
+    "bridge token: cannot read (EACCES)",
   ]);
   assert.ok(lines.every((l) => !l.includes(secret) && !l.includes("/Users")));
 });
