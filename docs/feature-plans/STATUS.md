@@ -18,6 +18,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    Clickable link (user): "Open in browser" button on `man` pages (`2e2e41a`, `06267fa`,
    `bd1cfbf`) — Live test: `man history clear` / `man tag` button opens the section; Tab+Enter
    too; Esc/Enter/Close only close; `man tga` no button; `man cmdabl` opens the site.
+   Short `--help` (`e56fa9c`, docs `338fc90`) — Live test: `mute --help` usage + options incl.
+   `--pick` + `more: man mute`; `history --help` subcommands; `man mute` still full; `help` same.
 3. Recordings by the user (`.mov` in `/tmp/shots/`) → cmdabl-docs makes GIFs:
    `hero` (tags in action), `tags` (tag list), `pakabl` (`pakabl list`); optional: Karabiner
    rule screenshot for Getting started. Then drop unused images (`demo.gif`, old `pakabl-list.png`).
@@ -26,7 +28,7 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
 5. Secret scan of the branch (counts only), `ssh-add`, push, PR "Release 0.1.1: tags" — on the
    user's go.
 6. CI green → squash-merge (user's go) → release `v0.1.1`; hand-written notes (tags, `#`/`!#`,
-   bare tag word, `--pick`, new-tag row, `man <command>`, run `cmdabl setup` once for script
+   bare tag word, `--pick`, new-tag row, `man <command>` with link, short `--help`, run `cmdabl setup` once for script
    0.1.5, Cmd+Z does not undo tags).
 7. pakabl index workflow → merge its PR; STATUS on `main`; delete the branch; 0.1.2 on a new branch.
 
