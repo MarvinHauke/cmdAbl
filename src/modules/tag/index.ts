@@ -12,16 +12,92 @@ export function changeLines(path: string, c: TagChange): string[] {
 }
 
 /**
- * `tag [--list] [--set 1|0] <target> [name…]` — tags on tracks, kept in the Live Set
+ * `tag [--list] [--edit <tag|#>] [--set 1|0] <target> [name…]` — tags on tracks, kept in the Live Set
  * by the Remote Script. Toggles like mute; `--set` adds or removes.
  */
 export function activate(api: ModuleApi): void {
+  /** Writes `planFor(node, before)` to every target and builds the result: changed tracks with their undo lines. */
+  const applyPlans = async (targets: ObjectNode[], planFor: (node: ObjectNode, before: string[]) => TagChange): Promise<CommandResult> => {
+    const lines: string[] = [];
+    const outcomes: TargetOutcome[] = [];
+    let unmarked = false;
+    for (const node of targets) {
+      const before = api.tags.of(node);
+      const plan = planFor(node, before);
+      if (!changed(plan)) {
+        lines.push(`${node.path}: no change (${hashed(before)})`);
+        outcomes.push({ path: node.path, ok: true });
+        continue;
+      }
+      const written = await api.tags.write(node, plan.after);
+      if (!written.ok) {
+        outcomes.push({ path: node.path, ok: false, code: written.code as never, message: written.text });
+        continue;
+      }
+      if (!written.value.marked) unmarked = true;
+      const actual = diffTags(before, written.value.tags);
+      const text = changeLines(node.path, actual);
+      lines.push(...text);
+      outcomes.push({ path: node.path, ok: true, message: text.join("\n") });
+    }
+    if (unmarked) lines.push("Live was not told about the change: save the Set (Cmd+S) so the tags are kept.");
+
+    const failed = outcomes.filter((o) => !o.ok);
+    if (failed.length === 0) return ok(lines.join("\n"));
+    const code =
+      failed.length === outcomes.length && failed.every((o) => o.code === ExitCode.UNAVAILABLE) ? ExitCode.UNAVAILABLE : ExitCode.FAILURE;
+    return fail(code, `tag: ${outcomes.length - failed.length} of ${outcomes.length} done`, outcomes);
+  };
+
+  /**
+   * `tag --edit <tag|#>`: every regular and return track in the pick list, lit where it carries the tag;
+   * Tab marks, Enter toggles the tag on the marked tracks, one by one.
+   */
+  const editTag = async (value: string, conflicting: boolean): Promise<CommandResult | void> => {
+    if (conflicting) return fail(ExitCode.USAGE, "tag --edit takes only the tag: no target, names, --list or --set");
+    let name: string | undefined;
+    if (value !== "#") {
+      const checked = normalizeTagNames([value]);
+      if (!checked.ok || checked.names.length !== 1) {
+        return fail(ExitCode.USAGE, `tag: "${value}" is not a tag name — use lowercase letters, digits, - and _`);
+      }
+      name = checked.names[0];
+    }
+    const fresh = await api.tags.refresh();
+    if (!fresh.ok) return fail(fresh.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
+    const nodes = api.liveSet.nodes();
+    const tracks = nodes.filter((n) => n.kind === "track" && n.scope !== "master");
+
+    if (name === undefined) {
+      const rows = tagIndex(nodes.filter((n) => n.kind === "track").map((t) => ({ path: t.path, tags: api.tags.of(t) }))).map((e) => ({
+        name: e.tag,
+        count: e.paths.length,
+      }));
+      const chosen = await api.pickTags("tag --edit: which tag?", rows, { allowNew: true });
+      if (!chosen || chosen.length === 0) return;
+      if (chosen.length > 1) return fail(ExitCode.USAGE, "tag --edit works on one tag: mark only one");
+      const checked = normalizeTagNames(chosen);
+      if (!checked.ok || checked.names.length !== 1) {
+        return fail(ExitCode.USAGE, `tag: "${chosen[0]}" is not a tag name — use lowercase letters, digits, - and _`);
+      }
+      name = checked.names[0]!;
+    }
+    const tag = name!;
+    const picked = await api.pick(`tag --edit #${tag}`, tracks, true, {
+      state: { label: `tagged ${tag}`, values: tracks.map((t) => api.tags.of(t).includes(tag)), change: "toggle" },
+    });
+    if (!picked || picked.length === 0) return;
+    return applyPlans(picked, (_node, before) => planTags(before, [tag], "toggle"));
+  };
+
   api.commands.add({
     name: "tag",
     summary: "tag tracks, or list the tags of the Set",
     description:
       "Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx " +
-      "reaches every track tagged fx. With --list, lists every tag and the tracks that carry it. " +
+      "reaches every track tagged fx. With --edit and a tag (tag --edit fx) every regular and return track is listed with a button " +
+      "that is lit where it carries the tag: mark tracks with Tab and press Enter to switch the tag on or off on each of them; " +
+      "tag --edit # first asks which tag, and a name that is not in that list creates it. With --list, lists every tag and the tracks that carry it. " +
       "With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target " +
       "that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. " +
       "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +
@@ -30,6 +106,8 @@ export function activate(api: ModuleApi): void {
       "a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).",
     examples: [
       { line: "tag --list", note: "all tags and their tracks" },
+      { line: "tag --edit fx", note: "pick the tracks to switch the tag fx on or off for" },
+      { line: "tag -e #", note: "pick the tag (or type a new one), then the tracks" },
       { line: "tag /Lead", note: "pick the tags to switch on or off for the track Lead, or type a new one" },
       { line: "tag /Lead fx synth", note: "switch fx and synth on, or off where they are on" },
       { line: "tag --set 1 /Bass fx", note: "make sure Bass is tagged fx" },
@@ -38,6 +116,12 @@ export function activate(api: ModuleApi): void {
     ],
     requires: ["bridge"],
     options: [
+      {
+        name: "edit",
+        short: "e",
+        takesValue: true,
+        summary: "list the tracks with the tag lit and toggle the tag on the marked ones; # first asks which tag",
+      },
       { name: "list", short: "l", summary: "list every tag with its tracks instead of changing tags" },
       {
         name: "set",
@@ -62,6 +146,8 @@ export function activate(api: ModuleApi): void {
       const words = (invocation.args[1] ?? []) as string[];
 
       const listing = invocation.options.list === true;
+      const edit = typeof invocation.options.edit === "string" ? invocation.options.edit.trim() : undefined;
+      if (edit !== undefined) return editTag(edit, targets.length > 0 || words.length > 0 || listing || invocation.options.set !== undefined);
       if (listing && (targets.length > 0 || words.length > 0 || invocation.options.set !== undefined)) {
         return fail(ExitCode.USAGE, "tag --list takes no target, names or --set");
       }
@@ -121,12 +207,8 @@ export function activate(api: ModuleApi): void {
         pickedModes = new Map(names.names.map((n) => [n, rows.find((r) => r.name === n)?.on ? "remove" : "add"]));
       }
 
-      const lines: string[] = [];
-      const outcomes: TargetOutcome[] = [];
-      let unmarked = false;
-      for (const node of targets) {
-        const before = api.tags.of(node);
-        const plan = pickedModes
+      return applyPlans(targets, (_node, before) =>
+        pickedModes
           ? diffTags(
               before,
               planTags(
@@ -135,30 +217,8 @@ export function activate(api: ModuleApi): void {
                 "remove",
               ).after,
             )
-          : planTags(before, names.names, mode);
-        if (!changed(plan)) {
-          lines.push(`${node.path}: no change (${hashed(before)})`);
-          outcomes.push({ path: node.path, ok: true });
-          continue;
-        }
-        const written = await api.tags.write(node, plan.after);
-        if (!written.ok) {
-          outcomes.push({ path: node.path, ok: false, code: written.code as never, message: written.text });
-          continue;
-        }
-        if (!written.value.marked) unmarked = true;
-        const actual = diffTags(before, written.value.tags);
-        const text = changeLines(node.path, actual);
-        lines.push(...text);
-        outcomes.push({ path: node.path, ok: true, message: text.join("\n") });
-      }
-      if (unmarked) lines.push("Live was not told about the change: save the Set (Cmd+S) so the tags are kept.");
-
-      const failed = outcomes.filter((o) => !o.ok);
-      if (failed.length === 0) return ok(lines.join("\n"));
-      const code =
-        failed.length === outcomes.length && failed.every((o) => o.code === ExitCode.UNAVAILABLE) ? ExitCode.UNAVAILABLE : ExitCode.FAILURE;
-      return fail(code, `tag: ${outcomes.length - failed.length} of ${outcomes.length} done`, outcomes);
+          : planTags(before, names.names, mode),
+      );
     },
   });
 }

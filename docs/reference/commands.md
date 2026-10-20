@@ -658,9 +658,9 @@ words typed together name one object when they fit it (here the Bass Drum pad of
 
 tag tracks, or list the tags of the Set
 
-Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx reaches every track tagged fx. With --list, lists every tag and the tracks that carry it. With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, so the script has to run, and they are saved with the Set. Cmd+Z does not undo them: the result names the command that puts every change back. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).
+Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx reaches every track tagged fx. With --edit and a tag (tag --edit fx) every regular and return track is listed with a button that is lit where it carries the tag: mark tracks with Tab and press Enter to switch the tag on or off on each of them; tag --edit # first asks which tag, and a name that is not in that list creates it. With --list, lists every tag and the tracks that carry it. With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, so the script has to run, and they are saved with the Set. Cmd+Z does not undo them: the result names the command that puts every change back. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).
 
-**Usage:** `tag [--list] [--set <0|1>] [--pick] [<target>] [<name>…]`
+**Usage:** `tag [--edit <value>] [--list] [--set <0|1>] [--pick] [<target>] [<name>…]`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
@@ -669,6 +669,7 @@ Tags say what a track is, so one command can act on a group: after tag /Lead fx 
 
 | Option | Description |
 | --- | --- |
+| `-e, --edit <value>` | list the tracks with the tag lit and toggle the tag on the marked ones; # first asks which tag |
 | `-l, --list` | list every tag with its tracks instead of changing tags |
 | `-s, --set <0|1>` | make sure every target has the tags (1) or lacks them (0) instead of toggling |
 | `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
@@ -682,6 +683,18 @@ tag --list
 ```
 
 all tags and their tracks
+
+```
+tag --edit fx
+```
+
+pick the tracks to switch the tag fx on or off for
+
+```
+tag -e #
+```
+
+pick the tag (or type a new one), then the tracks
 
 ```
 tag /Lead
