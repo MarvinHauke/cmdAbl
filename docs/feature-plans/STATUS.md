@@ -25,6 +25,14 @@ Open from the releases:
   one same-named device shows twice in `find` (collapse proposed, undecided).
 - Not run (optional): a board section taller than the view; 64 tracks.
 
+## Docs upkeep (2026-10-21)
+
+- Per change: the docs change stays in the same task (CLAUDE.md).
+- Per release: a docs review pass before the release PR — cmdabl-docs reads the touched pages as a
+  whole, the reviewer checks facts against the code. First pass: 0.1.2, branch `docs/review-0.1.2`
+  (page by page: using → getting-started → index/README → remote-script/limits → architecture/
+  authoring guide → other guides).
+
 ## Next (user, 2026-10-20/21)
 
 1. **0013 `note`** — one Markdown note per Set, view first, `-e` to edit; with the settings store in
