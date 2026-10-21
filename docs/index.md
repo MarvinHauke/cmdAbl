@@ -30,15 +30,24 @@ tag -l                        open the tag board
 
 ## Pages
 
+For users:
+
 - [Getting started](getting-started.md): install cmdAbl, set up the key and the Remote Script, and run your first
   commands.
 - [Using cmdAbl](using.md): the palette, how names are written, the pick list, pads and chains, `find`, tags, the
   log and the history.
 - [Remote Script](remote-script.md): what it does, how to update and check it, and what its messages mean.
-- Reference:
-    - [Commands](reference/commands.md): every command, generated from the code.
-    - [Remote Script](reference/remote-script.md): the operations of the Remote Script.
-    - [Live API mapping](reference/live-api.md): how cmdAbl's paths map to the Live Object Model.
-- [Architecture](architecture.md): how cmdAbl is built, for people who want to extend it.
-- [Guides](guides/README.md): writing a command, releasing cmdAbl, the pakabl index and CI.
+- [Commands](reference/commands.md): every command, generated from the code.
 - [Known limits](limits.md): what cmdAbl cannot do, and macOS only for now.
+
+For extension authors:
+
+- [List your extension in pakabl](pakabl-listing.md): what your repository needs and how to get it on the list.
+
+For contributors:
+
+- [Develop](develop.md): get the SDK, build, test and send a pull request.
+- [Architecture](architecture.md): how cmdAbl is built.
+- [Writing a command](guides/command-authoring.md): how to add a command or a module.
+- [Remote Script protocol](reference/remote-script.md): the operations of the Remote Script.
+- [Live API mapping](reference/live-api.md): how cmdAbl's paths map to the Live Object Model.

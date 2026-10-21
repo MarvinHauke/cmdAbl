@@ -32,29 +32,30 @@ theme:
 extra_css:
   - stylesheets/cmdabl.css
 
-# Only the guides are published for now. Everything else under docs/ stays repo-only
-# (docs/sdk-tree.md summarizes Ableton's SDK and is not for a public site).
+# Pages that stay in the repository and are not part of the site: the SDK summary (not for a public
+# site), the plans, and the maintainer guides (releasing, CI and secrets, the pakabl index).
 exclude_docs: |
   sdk-tree.md
   feature-plans/
+  guides/README.md
+  guides/release-cmdabl.md
+  guides/ci.md
+  guides/pakabl-index.md
 
 nav:
   - Home: index.md
   - Getting started: getting-started.md
   - Using cmdAbl: using.md
   - Remote Script: remote-script.md
-  - Reference:
-      - Commands: reference/commands.md
-      - Remote Script: reference/remote-script.md
-      - Live API mapping: reference/live-api.md
-  - Architecture: architecture.md
-  - Guides:
-      - Overview: guides/README.md
-      - Writing a command: guides/command-authoring.md
-      - Releasing cmdAbl: guides/release-cmdabl.md
-      - pakabl index: guides/pakabl-index.md
-      - CI: guides/ci.md
+  - Commands: reference/commands.md
   - Known limits: limits.md
+  - List your extension in pakabl: pakabl-listing.md
+  - Develop:
+      - Overview: develop.md
+      - Architecture: architecture.md
+      - Writing a command: guides/command-authoring.md
+      - Remote Script protocol: reference/remote-script.md
+      - Live API mapping: reference/live-api.md
 
 markdown_extensions:
   - tables
