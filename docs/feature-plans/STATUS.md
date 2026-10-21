@@ -63,7 +63,7 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    options (approved command-format change), then modules builds the rename (merge if the new name exists).
    Built: core `4033470`, modules `8134f55` (also "already has / nothing changed" messages). Live test
    Live (user, 2026-10-21): `tag -r fx effect`, `tag -r perc percs` (quiet, undo lines logged), palette
-   hints `<old>`/`<new>`/`<tag|#>` (core `ec9c567`, ui `519be51`) — passed. Merge onto an existing tag not yet run.
+   hints `<old>`/`<new>`/`<tag|#>` (core `ec9c567`, ui `519be51`) — passed; `tag -r` alone → usage, script off → exit 5 — passed. Merge onto an existing tag not yet run.
 6. Logging (plan 0011) — built: core `e7ff3e8` `9d2fda1` `c5ce946`, modules `6a958fe` `9e15cff`,
    bridge `94c1648`. Tag writes are quiet, `cmdabl log [-n] [--undo] [--debug]`, lines read
    `cmdAbl [<source>] <level>:`. Live test: `tag /Lead fx` opens no window, then `cmdabl log --undo`
