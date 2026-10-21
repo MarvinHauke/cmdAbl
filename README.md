@@ -31,7 +31,7 @@ SDK, with a small Remote Script for what the SDK cannot do.
 
 ## Why cmdAbl
 
-<!-- GIF to come: docs/assets/images/tags.gif -->
+![Screen recording of the tag board: tag -l opens it; Guitar is typed and added to drums, B-Reverb and A-Delay to effect; the arrow keys move to the lead chip and mark it for removal; Enter applies the 3 changes; cmdabl log then lists each change with its undo command](docs/assets/images/tags.gif)
 
 ### Tags that group your tracks
 

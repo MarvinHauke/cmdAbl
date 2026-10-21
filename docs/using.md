@@ -186,6 +186,10 @@ whenever nothing is typed to add: on a chip under the chip cursor, in an empty *
 `Esc` clears the input, then closes the board. With pending changes, the first `Esc` (or Close)
 warns "N changes not applied — Esc again to discard". Any other key, or any click except Close, cancels the warning.
 
+![Screen recording of the tag board: tag -l opens it; Guitar is typed and added to drums, B-Reverb and A-Delay to effect; the arrow keys move to the lead chip and mark it for removal; Enter applies the 3 changes; cmdabl log then lists each change with its undo command](assets/images/tags.gif)
+
+*`tag -l`, then the board: add a tag's track, move with the arrows, mark a chip, apply. The log shows what changed.*
+
 ![The tag board: one section per tag, with its tracks as chips and an add field; the untagged tracks are listed at the bottom](assets/images/tag-board.png)
 
 *`tag -l` opens the tag board.*
