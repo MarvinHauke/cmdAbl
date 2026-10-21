@@ -19,6 +19,12 @@ export function formatDb(db: number): string {
   return text === "-0.0" ? "0.0" : text;
 }
 
+/** A level with its sign, for the question: `+3.0`, `-6.0`, `0.0`. */
+export const formatSigned = (db: number): string => {
+  const text = formatDb(db);
+  return /^\d/.test(text) && text !== "0.0" ? `+${text}` : text;
+};
+
 export interface FaderPlan {
   oldValue: number;
   oldDb: number;
@@ -26,6 +32,8 @@ export interface FaderPlan {
   newDb: number;
   /** The requested level was past the fader's end. */
   limit?: FaderLimit;
+  /** The level the step asked for before the fader's ends cut it (relative: old + step; absolute: the level). */
+  askedDb: number;
   /** The fader does not move. */
   same: boolean;
 }
@@ -37,9 +45,11 @@ export interface FaderPlan {
  */
 export function planFader(oldValue: number, db: number, absolute: boolean): FaderPlan {
   const oldDb = valueToDb(oldValue);
-  if (!absolute && db === 0) return { oldValue, oldDb, newValue: oldValue, newDb: oldDb, same: true };
-  const { value, limit } = dbToValue(absolute ? db : oldDb + db);
+  if (!absolute && db === 0) return { oldValue, oldDb, newValue: oldValue, newDb: oldDb, askedDb: oldDb, same: true };
+  const askedDb = absolute ? db : oldDb + db;
+  const { value, limit } = dbToValue(askedDb);
   return {
+    askedDb,
     oldValue,
     oldDb,
     newValue: value,

@@ -2,7 +2,7 @@ import type { ModuleApi } from "../types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { quoteIfNeeded } from "../../core/tokenize.js";
 import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../../core/types.js";
-import { formatDb, parseDb, planFader, type FaderPlan } from "./plan.js";
+import { formatDb, formatSigned, parseDb, planFader, type FaderPlan } from "./plan.js";
 
 /**
  * `vol [--set] <dB> <target>…` — the fader level of tracks: relative by default (`vol -6 #drums` moves every
@@ -19,8 +19,8 @@ export function activate(api: ModuleApi): void {
       "Moves the volume fader of each target track by the given number of dB: vol -6 /Bass lowers it by 6 dB from where it is, " +
       "vol 2 #drums raises every drums fader by 2 dB, so the balance between them stays. With --set the level is absolute: " +
       "vol --set -6 #drums puts every fader at -6 dB, vol --set -inf /Bass silences it. A fader stops at Live's maximum, +6 dB, and at " +
-      "-inf; the result names every fader that hit a limit, because the balance changed there. A fader at -inf stays there on a relative " +
-      "step, use --set to bring it back. This overwrites the fader and works against volume automation. It works on tracks " +
+      "-inf. When a relative step would push a fader past one of them, vol lists those tracks and asks first, because the balance " +
+      "changes there; Cancel writes nothing. A fader already at -inf stays there on a relative step, use --set to bring it back. This overwrites the fader and works against volume automation. It works on tracks " +
       "(including the return and main tracks, /Main), not yet on chains. A successful change shows nothing: the old and new level " +
       "and the command that puts it back go to the log, and Cmd+Z undoes the whole command in one step. Works without the Remote Script.",
     examples: [
@@ -52,6 +52,8 @@ export function activate(api: ModuleApi): void {
       const moves: Array<{ node: ObjectNode; plan: FaderPlan }> = [];
       const lines: string[] = [];
       const limits: string[] = [];
+      // A relative step that pushes a fader (not one already at -inf) past an end is asked about first.
+      const pushed: Array<{ node: ObjectNode; plan: FaderPlan }> = [];
       targets.forEach((node, i) => {
         const old = olds[i];
         if (old === null || old === undefined) {
@@ -59,7 +61,9 @@ export function activate(api: ModuleApi): void {
           return;
         }
         const plan = planFader(old, db, absolute);
-        if (plan.limit) limits.push(`${node.path} at ${plan.limit === "max" ? "+6 dB (the maximum)" : "-inf"}`);
+        const where = `${node.path} at ${plan.limit === "max" ? "+6 dB (the maximum)" : "-inf"}`;
+        if (plan.limit && !absolute && plan.oldDb !== -Infinity && !plan.same) pushed.push({ node, plan });
+        else if (plan.limit) limits.push(where);
         if (plan.same) {
           lines.push(`${node.path}: ${formatDb(plan.oldDb)} dB, no change`);
           outcomes.push({ path: node.path, ok: true });
@@ -67,6 +71,19 @@ export function activate(api: ModuleApi): void {
         }
         moves.push({ node, plan });
       });
+
+      if (pushed.length > 0) {
+        // The confirm title is one line in the pick list: a few tracks with where they end, the rest counted.
+        const shown = pushed.slice(0, 3).map(({ node, plan }) => `${node.path} → ${plan.newDb === -Infinity ? "-inf" : `${formatSigned(plan.newDb)} dB`}`);
+        const more = pushed.length > 3 ? `, +${pushed.length - 3} more` : "";
+        const title = `vol ${text}: ${pushed.length} ${pushed.length === 1 ? "fader" : "faders"} would hit a limit and lose ${pushed.length === 1 ? "its" : "their"} balance — ${shown.join(", ")}${more}`;
+        if (!(await api.confirm(title, "Apply anyway"))) return ok(); // cancelled: nothing written, quiet
+        // The user agreed: no "limit reached" dialog afterwards, the full lines go to the log.
+        for (const { node, plan } of pushed) {
+          const to = plan.newDb === -Infinity ? "-inf" : `${formatSigned(plan.newDb)} dB`;
+          lines.push(`limit reached: ${node.path}: ${formatSigned(plan.oldDb)} → ${to} (asked ${formatSigned(plan.askedDb)})`);
+        }
+      }
 
       let written: boolean[] = [];
       if (moves.length > 0) {
