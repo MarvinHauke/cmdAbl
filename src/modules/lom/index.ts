@@ -16,6 +16,7 @@ export function lomLines(node: ObjectNode): string[] {
 export function activate(api: ModuleApi): void {
   api.commands.add({
     name: "lom",
+    topic: "Look things up",
     summary: "show the Live Object Model path of a track, device or chain",
     description:
       "Shows the object's cmdAbl path, its Live Object Model path (the address used by Max for Live's " +

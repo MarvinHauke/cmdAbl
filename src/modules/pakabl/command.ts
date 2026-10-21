@@ -21,6 +21,7 @@ const firstArg = (inv: { args: unknown[][] }): string | undefined => inv.args[0]
 export function pakablCommand(h: PakablHandlers): Command {
   return {
     name: "pakabl",
+    topic: "Extensions",
     summary: "install and manage Ableton Live extensions",
     description:
       "Installs and manages community extensions for Ableton Live (.ablx files) from cmdAbl's curated list of " +

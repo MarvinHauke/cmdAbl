@@ -28,6 +28,7 @@ const COUNT = {
 export function historyCommand(h: HistoryHandlers): Command {
   return {
     name: "history",
+    topic: "Recent commands",
     summary: "manage the list of recent commands",
     description:
       "cmdAbl remembers the commands you ran and offers them as rows in the empty palette. " +
