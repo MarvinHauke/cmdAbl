@@ -9,6 +9,7 @@ runs) and requires `expectName`.
 """
 
 from .chains import chain_set, chains
+from .params import param_display
 from .select import select
 from .tags import tags_all, tags_set
 from .tracks import track_facts
@@ -16,6 +17,7 @@ from .tracks import track_facts
 OPS = {
     "chain_set": chain_set,
     "chains": chains,
+    "param_display": param_display,
     "select": select,
     "track_facts": track_facts,
     "tags_all": tags_all,

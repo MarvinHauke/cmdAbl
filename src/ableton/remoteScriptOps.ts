@@ -177,6 +177,22 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
     sdkAlternative: "none yet (the SDK's Chain has no mute or solo)",
   },
   {
+    name: "param_display",
+    summary: "Reads Live's own display text (\"-6.0 dB\", \"-inf dB\") for values of a track's volume, without moving the fader; at most 64 values per call.",
+    params: "{ scope, route, param: \"volume\", values: number[], expectName? }",
+    changesLive: false,
+    via: "script",
+    usesRoute: true,
+    lom: [
+      lom("Track", "track", "mixer_device", "get", "MixerDevice"),
+      lom("MixerDevice", "mixerdevice", "volume", "get", "DeviceParameter"),
+      lom("DeviceParameter", "deviceparameter", "min", "get", "float", "values outside min..max are refused"),
+      lom("DeviceParameter", "deviceparameter", "max", "get", "float"),
+      lom("DeviceParameter", "deviceparameter", "str_for_value", "call", "function(value)", "returns the display text for a value; does not change the parameter"),
+    ],
+    sdkAlternative: "none (the SDK's mixer.volume is a number 0..1 with no display text)",
+  },
+  {
     name: "tags_all",
     summary: "Reads the tags of every tagged track (regular, return, main); stored on the track with Track.get_data, so they live in the Set.",
     params: "{ offset? }",

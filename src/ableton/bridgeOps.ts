@@ -423,3 +423,36 @@ export async function writeTags(
   }
   return { ok: true, value: { name: v.name, tags: v.tags as string[], marked: v.marked } };
 }
+
+/** The mixer parameters `paramDisplay` knows (the script's table; "pan" and the sends can join later). */
+export type DisplayParam = "volume";
+/** The most values the script takes per request; `paramDisplay` sends longer lists in chunks. */
+export const PARAM_DISPLAY_MAX_VALUES = 64;
+
+/**
+ * Live's own display text for values of a track's mixer parameter ("-6.0 dB", "-inf dB"), as
+ * `DeviceParameter.str_for_value` reports it, without moving the fader. `values` are in the
+ * parameter's own units (volume: 0..1, as the SDK's `mixer.volume`). The answer has one string per
+ * value, in order; a longer list goes out in chunks of PARAM_DISPLAY_MAX_VALUES. A read: no token.
+ * Never throws; a script that is not running answers exit code 5, an older one (no such op) 5 too.
+ */
+export async function paramDisplay(
+  bridge: Bridge,
+  track: Pick<ObjectNode, "scope" | "route" | "name">,
+  param: DisplayParam,
+  values: number[],
+): Promise<BridgeResult<string[]>> {
+  const strings: string[] = [];
+  for (let i = 0; i < values.length || i === 0; i += PARAM_DISPLAY_MAX_VALUES) {
+    const chunk = values.slice(i, i + PARAM_DISPLAY_MAX_VALUES);
+    if (chunk.length === 0) return { ok: true, value: [] };
+    const reply = await bridge.request("param_display", { scope: track.scope, route: track.route, expectName: track.name, param, values: chunk });
+    if (!reply.ok) return reply;
+    const got = reply.value.strings;
+    if (!Array.isArray(got) || got.length !== chunk.length || !got.every((s) => typeof s === "string")) {
+      return fail(1, "bad reply from the Remote Script: param_display strings");
+    }
+    strings.push(...(got as string[]));
+  }
+  return { ok: true, value: strings };
+}
