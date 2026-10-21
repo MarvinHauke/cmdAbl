@@ -146,6 +146,12 @@ export interface CommandNode<P = unknown, V = string> {
   summary: string;
   aliases?: string[];
   /**
+   * Top-level commands only: the topic `help` and the command reference list it under, one of
+   * `TOPIC_ORDER` in src/core/topics.ts ("Mix", "Tags", …). Absent or unknown: "More commands".
+   * Within a topic commands follow registration order.
+   */
+  topic?: string;
+  /**
    * A sentence or two beyond `summary`: shown by `<command> --help` and in the
    * generated reference (docs/reference/commands.md): help and the docs read it
    * from here — one source.
@@ -207,6 +213,9 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
       if (!NAME_RE.test(alias)) problems.push(`${at}: invalid alias "${alias}"`);
     }
     if (!node.summary.trim()) problems.push(`${at}: missing summary`);
+    if (node.topic !== undefined && (typeof node.topic !== "string" || !node.topic.trim())) {
+      problems.push(`${at}: topic must be a non-empty string`);
+    }
     if (node.description !== undefined && (typeof node.description !== "string" || !node.description.trim())) {
       problems.push(`${at}: description must be a non-empty string`);
     }

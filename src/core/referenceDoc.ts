@@ -1,9 +1,10 @@
 import { effectiveOptions, optionFlag, optionNotes, usage, type ArgDef, type CommandNode } from "./commandTree.js";
 import { parse } from "./parse.js";
+import { groupByTopic } from "./topics.js";
 
 // The command reference page, rendered from the command tree — the same
 // source `--help` and the palette read. Pure and deterministic: the same tree
-// gives the same text (top-level commands sorted by name; children, options
+// gives the same text (top-level commands grouped by topic, src/core/topics.ts; children, options
 // and examples in declared order). scripts/gen-command-reference.ts feeds it
 // the registered tree and writes docs/reference/commands.md.
 
@@ -91,9 +92,10 @@ function renderNode(node: CommandNode<any, any>, path: string[], depth: number):
 }
 
 export function renderCommandReference(roots: CommandNode<any, any>[]): string {
-  const sorted = [...roots].sort((a, b) => a.name.localeCompare(b.name, "en"));
-  const body = sorted.flatMap((node) => renderNode(node, [node.name], 2));
-  return [HEADER, ...body, ""].join("\n");
+  const groups = groupByTopic(roots, (node) => node.name, (node) => node.topic);
+  const contents = ["", "**Contents**", "", ...groups.map((g) => `- ${g.title}: ${g.items.map((n) => `\`${n.name}\``).join(", ")}`)];
+  const body = groups.flatMap((g) => ["", `## ${g.title}`, ...g.items.flatMap((node) => renderNode(node, [node.name], 3))]);
+  return [HEADER, ...contents, ...body, ""].join("\n");
 }
 
 /**

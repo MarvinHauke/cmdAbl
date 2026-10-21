@@ -4,6 +4,7 @@ import type { ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
 import type { CommandRegistry } from "./commandRegistry.js";
 import { shortHelpIn, type CommandNode, type Invocation, type PickState } from "./commandTree.js";
+import { commandListText } from "./topics.js";
 import { parse } from "./parse.js";
 import { applyPick, lookupTarget, normalizeTargets, resolveTargets, tagTargetOf, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
@@ -288,8 +289,7 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   if (parsed.kind === "error") return { result: parsed.result };
   if (parsed.kind === "help") {
     if (parsed.node) return { result: ok(shortHelpIn(registry.roots(), parsed.node, parsed.path)) };
-    const lines = registry.list().map((def) => `${def.name.padEnd(12)} ${def.description}`).sort();
-    return { result: ok(lines.join("\n")) };
+    return { result: ok(commandListText(registry.list())) }; // by topic (src/core/topics.ts)
   }
 
   const { node, invocation, quoted } = parsed;

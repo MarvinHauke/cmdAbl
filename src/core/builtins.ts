@@ -5,6 +5,7 @@ import { REMOTE_SCRIPT_DOCS_URL, runSetup } from "./setup.js";
 import { ok, fail, ExitCode } from "./types.js";
 import { reportBridge, type BridgeProbe } from "./bridgeStatus.js";
 import { adviseRemoteScript } from "./setupAdvice.js";
+import { commandListText } from "./topics.js";
 import { appLog, clockText, dayText, type Log } from "./log.js";
 
 // The only commands baked into cmdAbl itself — what a first-time user needs
@@ -27,20 +28,18 @@ export interface BuiltinsDeps {
 export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps = {}): void {
   registry.add({
     name: "help",
+    topic: "Look things up",
     summary: "list the available commands",
     description: "Prints every command with its one-line summary. Typing a command followed by --help shows its short usage; man <command> shows the full page.",
     examples: [{ line: "help", note: "list the commands" }, { line: "cmdabl --help", note: "usage of the cmdabl commands" }],
     run: () => {
-      const lines = registry
-        .list()
-        .map((def) => `${def.name.padEnd(12)} ${def.description}`)
-        .sort();
-      return ok(lines.join("\n"));
+      return ok(commandListText(registry.list())); // by topic (src/core/topics.ts)
     },
   });
 
   registry.add({
     name: "cmdabl",
+    topic: "cmdAbl itself",
     summary: "configure cmdAbl",
     description: "Setup and status commands of cmdAbl itself.",
     children: [

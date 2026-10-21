@@ -11,6 +11,7 @@ const tree: CommandNode<void, string>[] = [
   },
   {
     name: "mute",
+    topic: "Mix",
     summary: "mute tracks (<id>@<version> & `<code>`)",
     description: "Toggles the mute state.",
     destructive: true,
@@ -30,8 +31,11 @@ const tree: CommandNode<void, string>[] = [
 test("renderCommandReference: deterministic, sorted, with usage, arguments, options, requirements and examples", () => {
   const text = renderCommandReference(tree);
   assert.equal(renderCommandReference([...tree].reverse()), text);
-  assert.ok(text.indexOf("## `grp`") < text.indexOf("## `mute`"));
-  assert.ok(text.indexOf("## `mute`") < text.indexOf("## `zeta`"));
+  // topics: mute under "Mix", the unknown ones (grp, zeta) under "More commands", sorted by name
+  assert.ok(text.indexOf("## Mix") < text.indexOf("## More commands"));
+  assert.ok(text.indexOf("### `mute`") > text.indexOf("## Mix"));
+  assert.ok(text.indexOf("### `grp`") < text.indexOf("### `zeta`"));
+  assert.match(text, /\*\*Contents\*\*\n\n- Mix: `mute`\n- More commands: `grp`, `zeta`/);
   assert.match(text, /\*\*Usage:\*\* `mute \[--all\] \[--set <0\|1>\] \[--pick\] <track>…`/);
   assert.match(text, /\| `<track>…` \| path \(track\) \| yes \| the tracks \|/);
   assert.match(text, /\| `-a, --all` \| every \\\| any match \|/);
