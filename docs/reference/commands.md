@@ -264,7 +264,7 @@ select a track and show its chains in the Session mixer
 
 list the available commands
 
-Prints every command with its one-line summary. Typing a command followed by --help shows that command in full.
+Prints every command with its one-line summary. Typing a command followed by --help shows its short usage; man &lt;command> shows the full page.
 
 **Usage:** `help`
 

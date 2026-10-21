@@ -29,33 +29,29 @@ SDK, with a small Remote Script for what the SDK cannot do.
 
 ## Why cmdAbl
 
-![Screen recording of the tag board: tag -l opens it; Guitar is typed and added to drums, B-Reverb and A-Delay to effect; the arrow keys move to the lead chip and mark it for removal; Enter applies the 3 changes; cmdabl log then lists each change with its undo command](docs/assets/images/tags.gif)
-
 ### Tags that group your tracks
 
 Tag tracks by what they are: `tag /Lead fx synth`. After that, `mute #fx` reaches every track tagged `fx` at once,
-`mute !#drums` every regular track without the tag, and `mute drums` works too when no track name matches it. Tags
-are saved with the Set, and they need the [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/).
-`tag --list` opens a board where you add and remove the tags of every track.
+`mute !#drums` every regular track without the tag, and `mute drums` works when no track name matches it. `tag -l`
+opens the tag board, where you add and remove the tags of every track. Tags are saved with the Set, and they need
+the [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/).
 
-![The tag board: one section per tag, with its tracks as chips and an add field; the untagged tracks are listed at the bottom](docs/assets/images/tag-board.png)
+![Screen recording of the tag board: tag -l opens it; Guitar is typed and added to drums, B-Reverb and A-Delay to effect; the arrow keys move to the lead chip and mark it for removal; Enter applies the 3 changes; cmdabl log then lists each change with its undo command](docs/assets/images/tags.gif)
 
 ### A pick list you control
 
-When a name fits more than one object, `mute`, `solo` and `arm` ask instead of guessing. Mark the rows you mean
-with `Tab`. Each row shows its state in Live's colours, a speaker for mute, `S` for solo or a record dot for arm,
-and marked rows are highlighted. A dashed ring marks each button that Enter would change, and Live does not change
-until you press Enter.
+When a name fits more than one object, cmdAbl asks instead of guessing. Mark the rows you mean with `Tab`. The
+buttons show the state that `Enter` would set: a speaker for `mute`, `S` for `solo`, a record dot for `arm` and a box
+for `tag -e`. A dashed ring marks each one that would change. Live does not change until you press `Enter`.
 
-![The pick list for mute --pick #drums: five tracks tagged drums; the speaker buttons of Drums and Synth are marked with a dashed ring, because Enter mutes them, and the cursor is on Lead](docs/assets/images/pick-list.png)
-
-![Screen recording of pakabl: the palette runs pakabl list, the extension index opens and scrolls (each entry with Install and Repo), Install is clicked on Chord Voicing Helper, and pakabl reports it installed and asks to restart Live](docs/assets/images/pakabl.gif)
+![The pick list for tag --edit #drums: all regular tracks; Synth and Lead (tagged drums) and Kick, Snare and Perc are marked, and the boxes show the result of Enter: drums off for Synth and Lead, on for Kick, Snare and Perc](docs/assets/images/tag-pick.png)
 
 ### Community extensions, one list
 
 pakabl installs Ableton Live extensions from a curated list of community repositories. Run `pakabl update` once,
 then `pakabl list` shows each extension with an Install button. Restart Live after a change.
 
+![Screen recording of pakabl: the palette runs pakabl list, the extension index opens and scrolls (each entry with Install and Repo), Install is clicked on Chord Voicing Helper, and pakabl reports it installed and asks to restart Live](docs/assets/images/pakabl.gif)
 
 More: [Using cmdAbl](https://marvinhauke.github.io/cmdAbl/using/)
 
@@ -67,12 +63,12 @@ These commands ship with cmdAbl. Each feature is a module that declares its comm
 - `find`, `next`, `prev`: find tracks, devices and chains whose path contains a pattern, and step through the matches.
 - `mute`, `solo`: toggle mute or solo on tracks, chains and drum pads.
 - `arm`: toggle record arm on tracks.
-- `tag`: tag tracks, edit tags on a board (`tag --list`), switch one tag on many tracks (`tag --edit`), or rename a tag (`tag --rename`).
+- `tag`: tag tracks; `tag -l` opens the tag board, `tag -e` switches one tag on many tracks, `tag -r` renames a tag.
 - `history`: manage the list of recent commands.
 - `man`: show a command's full page in Live, or open the Live manual or the cmdAbl documentation.
 - `lom`: show the Live Object Model path of a track, device or chain.
 - `pakabl`: install and manage Ableton Live extensions.
-- `cmdabl setup`, `cmdabl bridge`: install the key trigger and the Remote Script; show the Remote Script's status.
+- `cmdabl setup`, `cmdabl bridge`, `cmdabl log`: install the key trigger and the Remote Script; show the Remote Script's status; show cmdAbl's log.
 - `help`: list the available commands.
 
 More: [Command reference](https://marvinhauke.github.io/cmdAbl/reference/commands/) for the usage of each command,
@@ -84,8 +80,8 @@ and [Writing a command](https://marvinhauke.github.io/cmdAbl/guides/command-auth
 - **Ableton Live with Extensions support.** The Extensions SDK is in beta; cmdAbl is built against version 1.0.0-beta.1.
 - **[Karabiner-Elements](https://karabiner-elements.pqrs.org)** (free), for the `:` key. It is optional: the palette
   also opens from Live's context menu.
-- **The cmdAbl Remote Script.** `cmdabl setup` installs it; then choose it as Control Surface in Live. Selecting
-  objects, mute and solo on rack chains and Drum Rack pads, and tags need it.
+- **The cmdAbl Remote Script** (0.1.6, shipped with cmdAbl). `cmdabl setup` installs it; then choose it as Control
+  Surface in Live. Selecting objects, mute and solo on rack chains and Drum Rack pads, and tags need it.
 
 More: [Getting started → What you need](https://marvinhauke.github.io/cmdAbl/getting-started/#what-you-need)
 
@@ -98,7 +94,7 @@ You need a Mac and a Live with Extensions support (see [Requirements](#requireme
 2. **Install the extension.** Download the latest `.ablx` from the
    [Releases page](https://github.com/MarvinHauke/cmdAbl/releases/latest). In Live, open **Settings → Extensions**,
    and drag the file onto the box or click **Choose file**.
-3. **Run `cmdabl setup`.** Open the palette, type `cmdabl setup` and press Enter. It links the Karabiner rule and
+3. **Run `cmdabl setup`.** Open the palette from the context menu, type `cmdabl setup` and press Enter. It links the Karabiner rule and
    installs the Remote Script. Then in Karabiner-Elements, open **Complex Modifications → Add predefined rule**, choose **cmdAbl** and click **Enable**.
 4. **Restart Live**, then open **Settings → Tempo & MIDI → MIDI** and choose **cmdAbl** under **Control Surface**.
 
@@ -109,10 +105,10 @@ More: [Getting started](https://marvinhauke.github.io/cmdAbl/getting-started/) e
 The documentation site has:
 
 - [Getting started](https://marvinhauke.github.io/cmdAbl/getting-started/): install cmdAbl and try the first commands.
-- [Using cmdAbl](https://marvinhauke.github.io/cmdAbl/using/): names, the pick list, tags, pads and chains, history.
+- [Using cmdAbl](https://marvinhauke.github.io/cmdAbl/using/): names, the pick list, tags, `find`, the log, history.
 - [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/): install, update, check and its messages.
 - [Command reference](https://marvinhauke.github.io/cmdAbl/reference/commands/): every command, generated from the code.
-- [Known limits](https://marvinhauke.github.io/cmdAbl/limits/): what does not work yet.
+- [Known limits](https://marvinhauke.github.io/cmdAbl/limits/): what cmdAbl cannot do.
 
 ## Develop
 

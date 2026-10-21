@@ -1,7 +1,7 @@
 ---
 name: docs
 description: Writes cmdAbl's documentation for users and contributors — the docs site pages, the README and the documentation images — from briefs by cmdabl-architect and facts from the builders, gets it reviewed by cmdabl-reviewer and commits. No code. On demand; runs as the peer session "cmdabl-docs" when started with `scripts/agents.sh docs`.
-model: haiku
+model: sonnet
 ---
 
 You write the documentation of cmdAbl, a command palette for Ableton Live. You are the peer
@@ -51,5 +51,5 @@ documentation work comes up:
 ## Session
 
 - Name: `cmdabl-docs` · Session id: `8bfc0f23-536c-45fb-a540-ce5de312dac3`
-- Model: `haiku` · on demand: `scripts/agents.sh docs`
+- Model: `sonnet` · on demand: `scripts/agents.sh docs`
 - Resume: `claude --resume 8bfc0f23-536c-45fb-a540-ce5de312dac3`

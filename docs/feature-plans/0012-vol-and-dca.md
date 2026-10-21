@@ -41,6 +41,20 @@ mute groups (`mute #drums`).
    - Each DCA's Gain can be automated in Live.
 3. **`vol` covers absolute and relative changes.** The syntax is still open (see Open questions).
 
+4. **`dca` moves back and gets its own detailed plan** (user, 2026-10-21), because it adds devices.
+   Direction: one **"cmdAbl DCA" rack** per member track, with each Utility's Gain routed to a
+   **rack macro named after the tag**. A new tag on the track adds its Utility and macro; the user
+   can read every DCA routing in the device chain (deterministic, visible, automatable per macro).
+   Open for the detailed plan (spike first):
+   - the Utilities must sit **in series in one chain** (parallel chains would sum the audio);
+   - the LOM cannot create macro mappings or rename macros (only `has_macro_mappings`,
+     `add_macro`/`remove_macro`; `DeviceParameter.name` is read-only) — likely a shipped preset
+     (`.adg`, installed by `cmdabl setup` like the Remote Script, loaded with `browser.load_item`)
+     with Utilities pre-mapped to macros 1–16, so at most 16 DCAs per track;
+   - naming: `Device.name` is writable, so each Utility can be renamed `dca drums`; whether macro
+     labels can follow the tag needs the spike;
+   - removing a DCA from a track, and what the rack does with an unused macro.
+
 ## Design (draft)
 
 ### `vol`

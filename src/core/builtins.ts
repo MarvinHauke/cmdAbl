@@ -28,7 +28,7 @@ export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps =
   registry.add({
     name: "help",
     summary: "list the available commands",
-    description: "Prints every command with its one-line summary. Typing a command followed by --help shows that command in full.",
+    description: "Prints every command with its one-line summary. Typing a command followed by --help shows its short usage; man <command> shows the full page.",
     examples: [{ line: "help", note: "list the commands" }, { line: "cmdabl --help", note: "usage of the cmdabl commands" }],
     run: () => {
       const lines = registry
