@@ -13,6 +13,7 @@ import { closeMatches, findNode, manPage, webUrl } from "./page.js";
 export function activate(api: ModuleApi): void {
   api.commands.add({
     name: "man",
+    topic: "Look things up",
     summary: "show a command's page, or open a manual: ableton, cmdabl",
     description:
       "Shows the full page of a command inside Live, offline: summary, usage, subcommands, options, arguments and " +

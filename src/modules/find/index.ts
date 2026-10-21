@@ -34,6 +34,7 @@ export function activate(api: ModuleApi): void {
 
   api.commands.add({
     name: "find",
+    topic: "Find and select",
     summary: "find tracks, devices and chains whose path contains a pattern",
     description:
       "Looks through the Live Set for tracks, devices, rack chains and Drum Rack pads whose path contains " +
@@ -139,6 +140,7 @@ export function activate(api: ModuleApi): void {
   const stepCommand = (name: string, delta: 1 | -1, summary: string, description: string) =>
     api.commands.add({
       name,
+      topic: "Find and select",
       summary,
       description,
       examples: [{ line: name, note: summary }],

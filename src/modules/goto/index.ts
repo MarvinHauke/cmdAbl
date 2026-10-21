@@ -17,6 +17,7 @@ export function activate(api: ModuleApi): void {
   // answered by the platform (exit 5) before the path is resolved.
   api.commands.add({
     name: "goto",
+    topic: "Find and select",
     summary: "select a track, device, chain or drum pad by path",
     description:
       "Selects the object in Live: a track becomes the selected track; a device, chain or pad is selected in its track's device chain. Needs the cmdAbl Remote Script. " +

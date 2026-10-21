@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { CommandNode } from "./commandTree.js";
-import { checkExamples, renderCommandReference, renderLiveApiReference, renderRemoteScriptReference } from "./referenceDoc.js";
+import { checkExamples, checkTopics, renderCommandReference, renderLiveApiReference, renderRemoteScriptReference } from "./referenceDoc.js";
 
 const tree: CommandNode<void, string>[] = [
   {
@@ -11,6 +11,7 @@ const tree: CommandNode<void, string>[] = [
   },
   {
     name: "mute",
+    topic: "Mix",
     summary: "mute tracks (<id>@<version> & `<code>`)",
     description: "Toggles the mute state.",
     destructive: true,
@@ -30,8 +31,11 @@ const tree: CommandNode<void, string>[] = [
 test("renderCommandReference: deterministic, sorted, with usage, arguments, options, requirements and examples", () => {
   const text = renderCommandReference(tree);
   assert.equal(renderCommandReference([...tree].reverse()), text);
-  assert.ok(text.indexOf("## `grp`") < text.indexOf("## `mute`"));
-  assert.ok(text.indexOf("## `mute`") < text.indexOf("## `zeta`"));
+  // topics: mute under "Mix", the unknown ones (grp, zeta) under "More commands", sorted by name
+  assert.ok(text.indexOf("## Mix") < text.indexOf("## More commands"));
+  assert.ok(text.indexOf("### `mute`") > text.indexOf("## Mix"));
+  assert.ok(text.indexOf("### `grp`") < text.indexOf("### `zeta`"));
+  assert.match(text, /\*\*Contents\*\*\n\n- Mix: `mute`\n- More commands: `grp`, `zeta`/);
   assert.match(text, /\*\*Usage:\*\* `mute \[--all\] \[--set <0\|1>\] \[--pick\] <track>…`/);
   assert.match(text, /\| `<track>…` \| path \(track\) \| yes \| the tracks \|/);
   assert.match(text, /\| `-a, --all` \| every \\\| any match \|/);
@@ -106,4 +110,11 @@ test("renderLiveApiReference: scope table, path examples, port table, script tab
   assert.match(text, /\| \[`Song.tracks`\]\(https:\/\/example.test\/p\/song\) \(get; list of Track\) \|/);
   assert.match(text, /- `chain_set` — none yet &lt;x>/);
   assert.ok(!text.includes("- `hello`"));
+});
+
+test("checkTopics: a shipped command needs a topic from TOPIC_ORDER", () => {
+  const node = (topic?: string): CommandNode<void, string> => ({ name: "x", summary: "s", ...(topic ? { topic } : {}), run: () => {} });
+  assert.deepEqual(checkTopics([node("Mix")]), []);
+  assert.match(checkTopics([node()]).join("\n"), /x: no topic/);
+  assert.match(checkTopics([node("Mixx")]).join("\n"), /unknown topic "Mixx"/);
 });

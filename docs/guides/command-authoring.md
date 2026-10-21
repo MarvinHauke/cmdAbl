@@ -144,3 +144,4 @@ These texts are the single source for `<command> --help`, for `man <command>` an
 | `description` | command, group | A sentence or two beyond the summary: what it needs (the Remote Script, macOS), what it changes, what it refuses. Plain text; no markdown backticks, they show literally in `--help`. |
 | `examples` | runnable command | At least one `{ line, note? }`: the line exactly as typed, and a few words of note. Add one per form that differs (several targets, a quoted path, a flag). |
 | `summary` | each argument | What to type there. |
+| `topic` | top-level command | The heading `help` and the command reference list it under: "Find and select", "Mix", "Tags", "Look things up", "Recent commands" or "Extensions" (core sets the topic of `help` and `cmdabl`). The topics appear in that fixed order, and the commands of a topic in the order their modules are listed in `src/modules/index.ts`. A missing or unknown topic puts the command under "More commands". |

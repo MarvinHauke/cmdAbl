@@ -149,5 +149,6 @@ whole may then stop working. See [Known limits](limits.md).
 
 - [Using cmdAbl](using.md) explains names, the pick list, tags, `find`, the log and the history.
 - [Remote Script](remote-script.md) explains updating, checking and the messages.
-- [Architecture](architecture.md) explains how cmdAbl is built, for people who want to extend it.
-- [Guides](guides/README.md) cover writing a command, releasing cmdAbl and the pakabl index.
+- [Commands](reference/commands.md) lists every command.
+- Write extensions? [List your extension in pakabl](pakabl-listing.md). Want to change cmdAbl? See
+  [Develop](develop.md).

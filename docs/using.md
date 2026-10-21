@@ -128,6 +128,19 @@ Without a pattern, `find` needs `-L` or one of `-t`, `-d` and `-c`; a bare `find
 `-L` takes a whole number from 0 to 12 with a pattern, and from 1 without one. For finding tracks by tag, see
 [Tags](#use-tags-as-targets).
 
+## Toggles, and what they do not do
+
+- `mute`, `solo` and `arm` **toggle** each object they name: a muted track is unmuted, an unmuted one is muted.
+- `--set 1` makes every named object muted, soloed or armed, whatever its state. `--set 0` switches them off. An
+  object already in the wanted state counts as done. `mute --set 1 /Bass, /Lead` mutes both, and `solo --set 0 /Bass`
+  unsolos the Bass track. `--set=0` works too.
+- `mute` and `solo` work on tracks, rack chains and Drum Rack pads. Chains and pads need the Remote Script and macOS.
+- `arm` works on tracks only. Return, main and group tracks cannot be armed, and cmdAbl reports them as failed.
+
+**Exclusive arm and solo are not applied.** If Live's "Exclusive" setting is on for arm or solo, cmdAbl does not
+follow it. `arm /Bass /Lead` arms both tracks, and `arm /Bass` does not disarm other tracks. Name every track you
+want explicitly, like Cmd-clicking the buttons in Live.
+
 ## Tags
 
 A tag marks what a track is, such as `fx` or `drums`. After you tag a track, one command can reach every track
@@ -294,19 +307,6 @@ A write that changes something shows nothing when it succeeds. The changes and t
 - A write that changes nothing says so: "/Bass already has #bass" or "/Bass has no #fx" for one track with
   `--set`, and "nothing changed" for several.
 
-## Toggles, and what they do not do
-
-- `mute`, `solo` and `arm` **toggle** each object they name: a muted track is unmuted, an unmuted one is muted.
-- `--set 1` makes every named object muted, soloed or armed, whatever its state. `--set 0` switches them off. An
-  object already in the wanted state counts as done. `mute --set 1 /Bass, /Lead` mutes both, and `solo --set 0 /Bass`
-  unsolos the Bass track. `--set=0` works too.
-- `mute` and `solo` work on tracks, rack chains and Drum Rack pads. Chains and pads need the Remote Script and macOS.
-- `arm` works on tracks only. Return, main and group tracks cannot be armed, and cmdAbl reports them as failed.
-
-**Exclusive arm and solo are not applied.** If Live's "Exclusive" setting is on for arm or solo, cmdAbl does not
-follow it. `arm /Bass /Lead` arms both tracks, and `arm /Bass` does not disarm other tracks. Name every track you
-want explicitly, like Cmd-clicking the buttons in Live.
-
 ## Look up a Live Object Model path
 
 `lom <target>` shows the Live Object Model path of a track, device or chain, and links to the reference page for its
@@ -354,9 +354,6 @@ The log keeps the last 500 lines of the session. A line reads `HH:MM:SS [<source
 command or `dialog` for the dialogs. A line `YYYY-MM-DD` appears where the day changes.
 
 ![The cmdabl log window: timestamped lines of commands and dialogs, including a tag --rename and its undo commands](assets/images/cmdabl-log.png)
-
-The terminal of `npm start` shows the same lines with milliseconds: `HH:MM:SS.mmm cmdAbl [<source>] …`. Filter on
-`cmdAbl [` there.
 
 The Remote Script writes its own lines (`cmdAbl [script] …`). They are not in `cmdabl log`, only in Live's log file,
 `Log.txt` (see [Getting started](getting-started.md)). Search that file for `cmdAbl [script]`.

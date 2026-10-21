@@ -13,9 +13,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # Needs no SDK, so it also runs for pull requests from forks (which get no secrets).
+  script-tests:
     runs-on: ubuntu-24.04
     steps:
+      - uses: actions/checkout@v4
+      # -B: no __pycache__ files left behind in the working tree.
+      - name: Remote Script tests (Python, standard library only)
+        run: python3 -B -m unittest discover -s tests/remote-script
+
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      HAS_VENDOR_TOKEN: ${{ secrets.VENDOR_TOKEN != '' }}
+    steps:
+      # The Ableton SDK may not be published, so it comes from a private repo through a secret.
+      # GitHub gives pull requests from forks no secrets: say so plainly instead of failing later.
+      - name: SDK access
+        if: env.HAS_VENDOR_TOKEN != 'true'
+        run: |
+          echo "::error::This check needs the private Ableton SDK, which pull requests from forks cannot reach. A maintainer runs it from a branch in the main repository before merging (see docs/guides/ci.md)."
+          exit 1
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -46,9 +65,6 @@ jobs:
       - name: Reference pages are up to date
         run: npm run docs:reference -- --check
 
-      # -B: no __pycache__ files left behind in the working tree.
-      - name: Remote Script tests (Python, standard library only)
-        run: python3 -B -m unittest discover -s tests/remote-script
       - run: npm run package
 
       - uses: actions/upload-artifact@v4

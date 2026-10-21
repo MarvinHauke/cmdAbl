@@ -56,6 +56,7 @@ interface CommandNode {
   name: string;                 // one word, lowercase, [a-z0-9-]
   summary: string;              // one line; shown in the dropdown and in --help
   aliases?: string[];
+  topic?: string;               // top-level only: the topic heading in `help` and the reference; core fixes the topic order
   children?: CommandNode[];     // group node: not runnable on its own (prints its help)
   options?: OptionDef[];
   args?: ArgDef[];              // leaf node: positional arguments, in order

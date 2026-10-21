@@ -306,6 +306,7 @@ test("help stays a command and lists cmdabl", async () => {
   const out = await run("help");
   assert.equal(out.result.code, ExitCode.OK);
   assert.match(out.result.message ?? "", /cmdabl\s+configure cmdAbl/);
+  assert.match(out.result.message ?? "", /^Look things up\n  help .*\n\ncmdAbl itself\n  cmdabl /); // grouped by topic, the topic as a heading
 });
 
 test("cmdabl bridge: reports the bridge's answer", async () => {
@@ -777,4 +778,13 @@ test("option with valueDefault: no value (last token, or an option follows) uses
   assert.match(validateTree(bad({ takesValue: true, choices: ["0", "1"], valueDefault: "2" })).join("\n"), /not one of its choices/);
   assert.deepEqual(validateTree(bad({ takesValue: true, choices: ["0", "1"], valueDefault: "1" })), []);
   assert.match(validateTree(bad({ takesValue: true, number: {}, valueDefault: "1" })).join("\n"), /negative number/);
+});
+
+test("CommandNode.topic: a non-empty string; the registry lists it", async () => {
+  const { CommandRegistry } = await import("./commandRegistry.js");
+  assert.match(validateTree([{ name: "x", summary: "s", topic: " ", run: () => {} }]).join("\n"), /topic must be a non-empty string/);
+  const registry = new CommandRegistry();
+  registry.add({ name: "x", summary: "s", topic: "Mix", run: () => {} } as never);
+  registry.add({ name: "y", summary: "s", run: () => {} } as never);
+  assert.deepEqual(registry.list(), [{ name: "x", description: "s", topic: "Mix" }, { name: "y", description: "s" }]);
 });

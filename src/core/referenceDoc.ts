@@ -1,9 +1,10 @@
 import { effectiveOptions, optionFlag, optionNotes, usage, type ArgDef, type CommandNode } from "./commandTree.js";
 import { parse } from "./parse.js";
+import { groupByTopic, TOPIC_ORDER } from "./topics.js";
 
 // The command reference page, rendered from the command tree — the same
 // source `--help` and the palette read. Pure and deterministic: the same tree
-// gives the same text (top-level commands sorted by name; children, options
+// gives the same text (top-level commands grouped by topic, src/core/topics.ts; children, options
 // and examples in declared order). scripts/gen-command-reference.ts feeds it
 // the registered tree and writes docs/reference/commands.md.
 
@@ -91,9 +92,10 @@ function renderNode(node: CommandNode<any, any>, path: string[], depth: number):
 }
 
 export function renderCommandReference(roots: CommandNode<any, any>[]): string {
-  const sorted = [...roots].sort((a, b) => a.name.localeCompare(b.name, "en"));
-  const body = sorted.flatMap((node) => renderNode(node, [node.name], 2));
-  return [HEADER, ...body, ""].join("\n");
+  const groups = groupByTopic(roots, (node) => node.name, (node) => node.topic);
+  const contents = ["", "**Contents**", "", ...groups.map((g) => `- ${g.title}: ${g.items.map((n) => `\`${n.name}\``).join(", ")}`)];
+  const body = groups.flatMap((g) => ["", `## ${g.title}`, ...g.items.flatMap((node) => renderNode(node, [node.name], 3))]);
+  return [HEADER, ...contents, ...body, ""].join("\n");
 }
 
 /**
@@ -126,6 +128,19 @@ export function checkExamples(roots: CommandNode<any, any>[]): string[] {
   };
   for (const root of roots) walk(root, [root.name]);
   return problems;
+}
+
+/**
+ * Problems with the topics of the shipped commands (empty = fine): each has one that is in
+ * `TOPIC_ORDER`, so a typo does not silently land under "More commands". The runtime allows
+ * unknown topics (third-party modules); only the reference build is strict.
+ */
+export function checkTopics(roots: CommandNode<any, any>[]): string[] {
+  return roots.flatMap((node) =>
+    node.topic !== undefined && TOPIC_ORDER.includes(node.topic)
+      ? []
+      : [`${node.name}: ${node.topic === undefined ? "no topic" : `unknown topic "${node.topic}"`} (use one of: ${TOPIC_ORDER.join(", ")})`],
+  );
 }
 
 /** The Remote Script's operations, rendered for docs/reference/remote-script.md. */

@@ -6,11 +6,16 @@ publishes anything and never changes a version.
 **Runs on:** every pull request, every push to `features` or `main`, weekly (to catch
 dependency drift), and manually (Actions → CI → Run workflow).
 
-**Steps:** check that `package.json` and `manifest.json` have the same version → check out the Ableton SDK packages into `vendor/` → `npm ci` →
-`npm test` (unit tests for the command platform) → `npm run docs:reference -- --check` (the reference pages are
-up to date) → `python3 -B -m unittest discover -s tests/remote-script` (the Remote Script's protocol tests;
-standard library only; the tests live outside `remote-script/` so they are not packaged; run the same
-command locally) → `npm run package` → upload the built `.ablx` as the artifact `cmdabl-ablx`.
+**Jobs:**
+
+- `script-tests`: runs `python3 -B -m unittest discover -s tests/remote-script` (the Remote Script's protocol tests;
+  standard library only; the tests live outside `remote-script/` so they are not packaged; run the same command
+  locally). It needs no SDK, so it also runs for pull requests from forks.
+- `build`: checks that `package.json` and `manifest.json` have the same version → checks out the Ableton SDK
+  packages into `vendor/` → `npm ci` → `npm test` (unit tests for the command platform) →
+  `npm run docs:reference -- --check` (the reference pages are up to date) → `npm run package` → uploads the built
+  `.ablx` as the artifact `cmdabl-ablx`. Its first step fails with a clear message when the SDK token is not
+  available (see [Pull requests from forks](#pull-requests-from-forks)).
 
 ## Getting a built `.ablx` from CI
 
@@ -24,7 +29,8 @@ Open a green run in the Actions tab → **Artifacts** → `cmdabl-ablx`.
 | Red at "Check … versions match" | `package.json` and `manifest.json` differ — bump both to the same value |
 | Red at `npm test` | A unit test failed — see the test name in the log |
 | Red at "Reference pages are up to date" | A committed reference page differs from the code, a command has no example, or an example does not parse. Run `npm run docs:reference` and commit the result. |
-| Red at "Remote Script tests" | A Python test of `remote-script/` failed — see the test name in the log |
+| Red at `script-tests` | A Python test of `remote-script/` failed — see the test name in the log |
+| Red at "SDK access" | The run has no SDK token: it is a pull request from a fork. See below. |
 | Red at `npm run package` | A real build/type error — see the log |
 | `action_required` | GitHub holds runs triggered by bot-created PRs (e.g. the pakabl index PR) until someone clicks **Approve and run**. Optional for PRs that only change generated JSON. |
 
@@ -44,6 +50,16 @@ command tree and `src/ableton/remoteScriptOps.ts`). The `build` job runs `npm ru
 --check`: it fails when a committed page differs from what the code produces, when a runnable command
 has no example, or when an example does not parse. Fix it by running `npm run docs:reference` and
 committing the result.
+
+## Pull requests from forks
+
+GitHub gives a pull request from a fork no secrets, so the `build` job cannot check out the private SDK repository
+(see [The Ableton SDK in CI](#the-ableton-sdk-in-ci)). It fails on purpose at its first step, "SDK access", with a
+message that says so. The `script-tests` job still runs.
+
+A maintainer runs `build` before merging: push the pull request's head to a branch in the main repository, for example
+`git fetch origin pull/<number>/head:fork-pr-<number>` and `git push origin fork-pr-<number>`, and open or watch the run
+for that branch. Review the code first: the branch runs with the repository's secrets. Delete the branch afterwards.
 
 ## The docs site
 

@@ -9,6 +9,8 @@ export type Command = CommandNode<void, ArgValue>;
 export interface CommandDef {
   name: string;
   description: string;
+  /** The topic the command is listed under (see `CommandNode.topic`). */
+  topic?: string;
 }
 
 /**
@@ -40,6 +42,6 @@ export class CommandRegistry {
 
   /** Every top-level command. */
   list(): CommandDef[] {
-    return this.tree.map((node) => ({ name: node.name, description: node.summary }));
+    return this.tree.map((node) => ({ name: node.name, description: node.summary, ...(node.topic ? { topic: node.topic } : {}) }));
   }
 }

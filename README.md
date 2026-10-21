@@ -59,20 +59,21 @@ More: [Using cmdAbl](https://marvinhauke.github.io/cmdAbl/using/)
 
 These commands ship with cmdAbl. Each feature is a module that declares its commands:
 
+- `find`: find tracks, devices and chains whose path contains a pattern.
 - `goto`: select a track, device, chain or drum pad by path.
-- `find`, `next`, `prev`: find tracks, devices and chains whose path contains a pattern, and step through the matches.
+- `next`, `prev`: go to the next or previous match of the last `find`.
 - `mute`, `solo`: toggle mute or solo on tracks, chains and drum pads.
 - `arm`: toggle record arm on tracks.
 - `tag`: tag tracks; `tag -l` opens the tag board, `tag -e` switches one tag on many tracks, `tag -r` renames a tag.
+- `help`, `man`, `lom`: list the commands; show a command's full page in Live, or open the Live manual or the cmdAbl
+  documentation; show the Live Object Model path of a track, device or chain.
 - `history`: manage the list of recent commands.
-- `man`: show a command's full page in Live, or open the Live manual or the cmdAbl documentation.
-- `lom`: show the Live Object Model path of a track, device or chain.
 - `pakabl`: install and manage Ableton Live extensions.
-- `cmdabl setup`, `cmdabl bridge`, `cmdabl log`: install the key trigger and the Remote Script; show the Remote Script's status; show cmdAbl's log.
-- `help`: list the available commands.
+- `cmdabl setup`, `cmdabl bridge`, `cmdabl log`: install the key trigger and the Remote Script; show the Remote
+  Script's status; show cmdAbl's log.
 
-More: [Command reference](https://marvinhauke.github.io/cmdAbl/reference/commands/) for the usage of each command,
-and [Writing a command](https://marvinhauke.github.io/cmdAbl/guides/command-authoring/) to build a module.
+More: [Commands](https://marvinhauke.github.io/cmdAbl/reference/commands/) for the usage of each command, and
+[Writing a command](https://marvinhauke.github.io/cmdAbl/guides/command-authoring/) to build a module.
 
 ## Requirements
 
@@ -102,34 +103,35 @@ More: [Getting started](https://marvinhauke.github.io/cmdAbl/getting-started/) e
 
 ## [Documentation](https://marvinhauke.github.io/cmdAbl/)
 
-The documentation site has:
+For users:
 
 - [Getting started](https://marvinhauke.github.io/cmdAbl/getting-started/): install cmdAbl and try the first commands.
 - [Using cmdAbl](https://marvinhauke.github.io/cmdAbl/using/): names, the pick list, tags, `find`, the log, history.
 - [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/): install, update, check and its messages.
-- [Command reference](https://marvinhauke.github.io/cmdAbl/reference/commands/): every command, generated from the code.
+- [Commands](https://marvinhauke.github.io/cmdAbl/reference/commands/): every command, generated from the code.
 - [Known limits](https://marvinhauke.github.io/cmdAbl/limits/): what cmdAbl cannot do.
+
+For extension authors: [List your extension in pakabl](https://marvinhauke.github.io/cmdAbl/pakabl-listing/).
 
 ## Develop
 
-The Ableton Extensions SDK is licensed for building extensions, not for redistribution, so it is not in this
-repository. `docs/feature-plans/` holds the design plans.
-
-```sh
-npm install              # dependencies (the SDK tarballs go into vendor/, see the Architecture page)
-npm test                 # unit tests
-npm run build            # type-check and production bundle
-npm run package          # build the .ablx
-npm run docs:reference   # regenerate the reference pages from the code
-```
-
-More: [Architecture](https://marvinhauke.github.io/cmdAbl/architecture/) explains the code.
+The [Develop](https://marvinhauke.github.io/cmdAbl/develop/) page covers getting the Ableton Extensions SDK (it is not
+in this repository), building, testing and pull requests. The code is explained on the
+[Architecture](https://marvinhauke.github.io/cmdAbl/architecture/) page.
 
 ## Contributing
 
+- [Develop](https://marvinhauke.github.io/cmdAbl/develop/): build, test and send a pull request.
 - [Writing a command](docs/guides/command-authoring.md)
-- [pakabl index](docs/guides/pakabl-index.md): getting an extension onto the community list
+- [List your extension in pakabl](docs/pakabl-listing.md)
 - [CLAUDE.md](CLAUDE.md): how the agents that work on this repository are organised
+
+For maintainers (these pages are not on the site):
+
+- [Releasing cmdAbl](docs/guides/release-cmdabl.md)
+- [CI and secrets](docs/guides/ci.md)
+- [Running the pakabl index](docs/guides/pakabl-index.md)
+- [Guides overview](docs/guides/README.md)
 
 ## License
 

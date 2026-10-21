@@ -6,132 +6,64 @@
 Every command of cmdAbl, generated from the declarations the platform itself parses, resolves and
 shows as help. Type a command in the palette; `<command> --help` prints the same information.
 
-## `arm`
+**Contents**
 
-toggle record arm on tracks
+- Find and select: `goto`, `find`, `next`, `prev`
+- Mix: `mute`, `solo`, `arm`
+- Tags: `tag`
+- Look things up: `help`, `man`, `lom`
+- Recent commands: `history`
+- Extensions: `pakabl`
+- cmdAbl itself: `cmdabl`
 
-Switches record arm on for each track that is not armed and off for each that is, one by one. With --set 1 every track ends up armed, with --set 0 not armed, whatever it was before; a track that is already in that state counts as done. Return, main and group tracks cannot be armed and are reported as failed (disarming them is a no-op). With the cmdAbl Remote Script running, tracks Live refuses to arm (for example a MIDI track whose input device is not available) are reported as failed too. Live's Exclusive Arm setting is not applied: naming several tracks arms all of them.
+## Find and select
 
-**Usage:** `arm [--set <0|1>] [--pick] <track>…`
+### `goto`
+
+select a track, device, chain or drum pad by path
+
+Selects the object in Live: a track becomes the selected track; a device, chain or pad is selected in its track's device chain. Needs the cmdAbl Remote Script. Picking an object in the palette runs this command for you. When your words match several objects you are asked to choose one.
+
+**Usage:** `goto [--unfold] [--pick] <path>`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
-| `<track>…` | path (track) | yes | Tracks to arm; separate several with commas |
+| `<path>` | path (any object) | yes | Path of the track, device, chain or pad; spaces need no quotes (takes the rest of the line) |
 
 | Option | Description |
 | --- | --- |
-| <code>-s, --set &lt;0&#124;1&gt;</code> | make sure every target is armed (1) or not (0) instead of toggling |
+| `--unfold` | also show the track's chains in the Session mixer (never folds anything) |
 | `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
-**Examples**
-
-```
-arm /Bass
-```
-
-arm or disarm the track Bass
-
-```
-arm /Bass, /Lead
-```
-
-several tracks, separated by a comma
-
-```
-arm --set 1 /Bass
-```
-
-make sure Bass is armed
-
-```
-arm --set 0 /Bass, /Lead
-```
-
-disarm both
-
-## `cmdabl`
-
-configure cmdAbl
-
-Setup and status commands of cmdAbl itself.
-
-**Usage:** `cmdabl <command>`
-
-**Subcommands:** `setup`, `log`, `bridge`
-
-### `cmdabl setup`
-
-install trigger and Remote Script, then say what to do next
-
-Installs the keyboard trigger (Karabiner on macOS, AutoHotkey on Windows) and copies the Remote Script into Live's User Library, then compares the shipped, installed and running script versions and says what to do: restart Live, enable the control surface, or nothing.
-
-**Usage:** `cmdabl setup`
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
 
 **Examples**
 
 ```
-cmdabl setup
+goto /Lead
 ```
 
-run once after installing, and again after updating cmdAbl
-
-### `cmdabl log`
-
-show the last lines of cmdAbl's log
-
-Shows the last 50 lines of the log, newest at the bottom: what commands ran, what changed and the undo lines of tag writes (Cmd+Z does not undo tags). The log keeps the last 500 lines of this session. --debug turns detail lines on for the rest of the session.
-
-**Usage:** `cmdabl log [--count <n>] [--undo] [--debug]`
-
-| Option | Description |
-| --- | --- |
-| `-n, --count <n>` | show this many lines (default 50) (a whole number from 1 to 500) |
-| `--undo` | only the commands that undo a change (the part after "undo: ") |
-| `--debug` | turn debug lines on for this session |
-
-**Examples**
+select a track
 
 ```
-cmdabl log
+goto /2-808 Core Kit/808 Core Kit/Snare Drum
 ```
 
-the last 50 lines
+select a pad inside a Drum Rack
 
 ```
-cmdabl log -n 200
+goto snare
 ```
 
-more lines
+select the object with "snare" in its name (you choose when there are several)
 
 ```
-cmdabl log --undo
+goto --unfold /2-808 Core Kit
 ```
 
-only the commands that undo a change, one per line
+select a track and show its chains in the Session mixer
 
-```
-cmdabl log --debug
-```
-
-turn on debug lines for this session
-
-### `cmdabl bridge`
-
-show the Remote Script status (version, response time)
-
-Sends one fresh request to the Remote Script and reports its version, protocol, response time and operations.
-
-**Usage:** `cmdabl bridge`
-
-**Examples**
-
-```
-cmdabl bridge
-```
-
-check that the Remote Script is installed and running
-
-## `find`
+### `find`
 
 find tracks, devices and chains whose path contains a pattern
 
@@ -215,242 +147,45 @@ find --unfold snare
 
 also show the track's chains in the Session mixer
 
-## `goto`
+### `next`
 
-select a track, device, chain or drum pad by path
+go to the next match of the last find
 
-Selects the object in Live: a track becomes the selected track; a device, chain or pad is selected in its track's device chain. Needs the cmdAbl Remote Script. Picking an object in the palette runs this command for you. When your words match several objects you are asked to choose one.
+Selects the next object of the last find (or of the last pick list), wrapping around at the end. Keeps the find's --unfold choice (a list from another pick steps without it). Needs the cmdAbl Remote Script. Without an earlier find there is nothing to step through.
 
-**Usage:** `goto [--unfold] [--pick] <path>`
-
-| Argument | Kind | Required | Description |
-| --- | --- | --- | --- |
-| `<path>` | path (any object) | yes | Path of the track, device, chain or pad; spaces need no quotes (takes the rest of the line) |
-
-| Option | Description |
-| --- | --- |
-| `--unfold` | also show the track's chains in the Session mixer (never folds anything) |
-| `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
+**Usage:** `next`
 
 - Needs the Remote Script (reports "not running" / "outdated" otherwise).
 
 **Examples**
 
 ```
-goto /Lead
+next
 ```
 
-select a track
+go to the next match of the last find
 
-```
-goto /2-808 Core Kit/808 Core Kit/Snare Drum
-```
+### `prev`
 
-select a pad inside a Drum Rack
+go to the previous match of the last find
 
-```
-goto snare
-```
+Selects the previous object of the last find (or of the last pick list), wrapping around at the start. Keeps the find's --unfold choice (a list from another pick steps without it). Needs the cmdAbl Remote Script. Without an earlier find there is nothing to step through.
 
-select the object with "snare" in its name (you choose when there are several)
+**Usage:** `prev`
 
-```
-goto --unfold /2-808 Core Kit
-```
-
-select a track and show its chains in the Session mixer
-
-## `help`
-
-list the available commands
-
-Prints every command with its one-line summary. Typing a command followed by --help shows its short usage; man &lt;command> shows the full page.
-
-**Usage:** `help`
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
 
 **Examples**
 
 ```
-help
+prev
 ```
 
-list the commands
+go to the previous match of the last find
 
-```
-cmdabl --help
-```
+## Mix
 
-usage of the cmdabl commands
-
-## `history`
-
-manage the list of recent commands
-
-cmdAbl remembers the commands you ran and offers them as rows in the empty palette. These subcommands clear the list, drop the newest entries or bring removed ones back. The list and the removed entries live in memory and are gone when cmdAbl restarts.
-
-**Usage:** `history <command>`
-
-**Subcommands:** `clear`, `forget`, `restore`
-
-### `history clear`
-
-remove all entries (asks first)
-
-Removes every entry from the history after a question. Removed entries can be brought back with history restore until cmdAbl restarts. With --force there is no question and nothing can be restored.
-
-**Usage:** `history clear [--force]`
-
-| Option | Description |
-| --- | --- |
-| `-f, --force` | do not ask, and drop the removed entries too |
-
-**Examples**
-
-```
-history clear
-```
-
-ask, then move all entries aside
-
-```
-history clear --force
-```
-
-wipe the history for good, without asking
-
-### `history forget`
-
-remove the newest entries
-
-Removes the newest entry, or the newest N with -n, without asking. Useful after a mistyped command. history restore brings them back until cmdAbl restarts.
-
-**Usage:** `history forget [--count <n>]`
-
-| Option | Description |
-| --- | --- |
-| `-n, --count <n>` | how many of the newest entries to remove (default 1) (a whole number from 1 to 20) |
-
-**Examples**
-
-```
-history forget
-```
-
-drop the last command
-
-```
-history forget -n 3
-```
-
-drop the last three commands
-
-### `history restore`
-
-bring removed entries back
-
-Puts entries removed by history clear or history forget back, most recently removed first. Without -n it restores everything the last clear or forget removed. Entries keep their original order; one that is already in the history again is not added twice.
-
-**Usage:** `history restore [--count <n>]`
-
-| Option | Description |
-| --- | --- |
-| `-n, --count <n>` | how many removed entries to bring back (default: all of the last clear or forget) (a whole number from 1 to 20) |
-
-**Examples**
-
-```
-history restore
-```
-
-undo the last clear or forget
-
-```
-history restore -n 2
-```
-
-bring back the two most recently removed entries
-
-## `lom`
-
-show the Live Object Model path of a track, device or chain
-
-Shows the object's cmdAbl path, its Live Object Model path (the address used by Max for Live's live.path and in Remote Scripts) and the link to the LOM reference page that describes its kind. Only reads; it does not need the cmdAbl Remote Script. When your words match several objects you are asked to choose one.
-
-**Usage:** `lom [--pick] <target>`
-
-| Argument | Kind | Required | Description |
-| --- | --- | --- | --- |
-| `<target>` | path (track / device / chain) | yes | Track, device, chain or pad; spaces need no quotes (takes the rest of the line) |
-
-| Option | Description |
-| --- | --- |
-| `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
-
-**Examples**
-
-```
-lom /Bass
-```
-
-the LOM path of a track
-
-```
-lom /2-808 Core Kit/808 Core Kit/Snare Drum
-```
-
-the LOM path of a pad inside a Drum Rack
-
-```
-lom snare
-```
-
-the object with "snare" in its name
-
-## `man`
-
-show a command's page, or open a manual: ableton, cmdabl
-
-Shows the full page of a command inside Live, offline: summary, usage, subcommands, options, arguments and examples, as in the command reference, plus the web address of its section. Name a subcommand too: man history clear. man ableton opens the Live reference manual (words after it search the Live 12 manual through Ecosia), man cmdabl opens the cmdAbl documentation. The web manuals need an internet connection.
-
-**Usage:** `man <command>…`
-
-| Argument | Kind | Required | Description |
-| --- | --- | --- | --- |
-| `<command>…` | text | yes | A command, with its subcommand if it has one (man history clear); ableton [words] or cmdabl alone open the web manuals |
-
-**Examples**
-
-```
-man tag
-```
-
-show the page of the tag command
-
-```
-man history clear
-```
-
-show the page of a subcommand
-
-```
-man cmdabl setup
-```
-
-show the page of cmdabl setup
-
-```
-man ableton warp modes
-```
-
-search the Live manual for "warp modes"
-
-```
-man cmdabl
-```
-
-open the cmdAbl documentation
-
-## `mute`
+### `mute`
 
 toggle mute on tracks, chains and drum pads
 
@@ -499,153 +234,7 @@ mute 808 snare
 
 words typed together name one object when they fit it (here the Snare Drum pad of the 808 Core Kit); if several fit you are asked, if none fits together each word is its own target
 
-## `next`
-
-go to the next match of the last find
-
-Selects the next object of the last find (or of the last pick list), wrapping around at the end. Keeps the find's --unfold choice (a list from another pick steps without it). Needs the cmdAbl Remote Script. Without an earlier find there is nothing to step through.
-
-**Usage:** `next`
-
-- Needs the Remote Script (reports "not running" / "outdated" otherwise).
-
-**Examples**
-
-```
-next
-```
-
-go to the next match of the last find
-
-## `pakabl`
-
-install and manage Ableton Live extensions
-
-Installs and manages community extensions for Ableton Live (.ablx files) from cmdAbl's curated list of community repositories. Run pakabl update once to fetch the list, then pakabl list to browse it. Restart Live after installing, upgrading or removing an extension.
-
-**Usage:** `pakabl <command>`
-
-**Subcommands:** `install`, `uninstall`, `update`, `upgrade`, `list`
-
-### `pakabl install`
-
-download and install an extension from the curated index
-
-Downloads one Ableton Live extension from the curated list and unpacks it into Live's Extensions folder. Restart Live to load it. Run pakabl update first to fetch the list.
-
-**Usage:** `pakabl install <id>`
-
-| Argument | Kind | Required | Description |
-| --- | --- | --- | --- |
-| `<id>` | text | yes | Extension id as shown by pakabl list: author.name |
-
-**Examples**
-
-```
-pakabl install federico-pepe.snake
-```
-
-install the extension with that id
-
-### `pakabl uninstall`
-
-remove an installed extension
-
-Deletes an installed extension from Live's Extensions folder. Restart Live to unload it.
-
-**Usage:** `pakabl uninstall <id>`
-
-| Argument | Kind | Required | Description |
-| --- | --- | --- | --- |
-| `<id>` | text | yes | Extension id as shown by pakabl list: author.name |
-
-- Removes or irreversibly changes something; takes one target per address, never every match.
-
-**Examples**
-
-```
-pakabl uninstall federico-pepe.snake
-```
-
-remove that extension
-
-### `pakabl update`
-
-refresh the curated index
-
-Fetches the current curated list of extensions. Needed once before install, upgrade and list, and again whenever you want to see new versions.
-
-**Usage:** `pakabl update`
-
-**Examples**
-
-```
-pakabl update
-```
-
-fetch the list
-
-### `pakabl upgrade`
-
-install a newer index version of an extension (&lt;id>@&lt;version> installs that one even if not newer)
-
-Installs the version the curated list holds, but only when it is newer than the installed one; otherwise nothing changes. Name the version after an @ to install it anyway, also an older or the same one: the command stops when the list holds another version. Restart Live to reload it.
-
-**Usage:** `pakabl upgrade <ref>`
-
-| Argument | Kind | Required | Description |
-| --- | --- | --- | --- |
-| `<ref>` | text | yes | Extension id, optionally followed by @ and the version the list holds, to install it even if it is not newer |
-
-**Examples**
-
-```
-pakabl upgrade federico-pepe.snake
-```
-
-install the list's version if it is newer
-
-```
-pakabl upgrade federico-pepe.snake@1.2.0
-```
-
-install the list's version 1.2.0, newer or not
-
-### `pakabl list`
-
-browse the curated extensions and install or remove them
-
-Opens a window with the curated extensions. Each row has buttons to install, update or uninstall it and to open its repository. Run pakabl update first to fetch the list.
-
-**Usage:** `pakabl list`
-
-**Examples**
-
-```
-pakabl list
-```
-
-browse the extensions
-
-## `prev`
-
-go to the previous match of the last find
-
-Selects the previous object of the last find (or of the last pick list), wrapping around at the start. Keeps the find's --unfold choice (a list from another pick steps without it). Needs the cmdAbl Remote Script. Without an earlier find there is nothing to step through.
-
-**Usage:** `prev`
-
-- Needs the Remote Script (reports "not running" / "outdated" otherwise).
-
-**Examples**
-
-```
-prev
-```
-
-go to the previous match of the last find
-
-## `solo`
+### `solo`
 
 toggle solo on tracks, chains and drum pads
 
@@ -694,7 +283,52 @@ solo 808 bass
 
 words typed together name one object when they fit it (here the Bass Drum pad of the 808 Core Kit); if several fit you are asked, if none fits together each word is its own target
 
-## `tag`
+### `arm`
+
+toggle record arm on tracks
+
+Switches record arm on for each track that is not armed and off for each that is, one by one. With --set 1 every track ends up armed, with --set 0 not armed, whatever it was before; a track that is already in that state counts as done. Return, main and group tracks cannot be armed and are reported as failed (disarming them is a no-op). With the cmdAbl Remote Script running, tracks Live refuses to arm (for example a MIDI track whose input device is not available) are reported as failed too. Live's Exclusive Arm setting is not applied: naming several tracks arms all of them.
+
+**Usage:** `arm [--set <0|1>] [--pick] <track>…`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<track>…` | path (track) | yes | Tracks to arm; separate several with commas |
+
+| Option | Description |
+| --- | --- |
+| <code>-s, --set &lt;0&#124;1&gt;</code> | make sure every target is armed (1) or not (0) instead of toggling |
+| `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
+
+**Examples**
+
+```
+arm /Bass
+```
+
+arm or disarm the track Bass
+
+```
+arm /Bass, /Lead
+```
+
+several tracks, separated by a comma
+
+```
+arm --set 1 /Bass
+```
+
+make sure Bass is armed
+
+```
+arm --set 0 /Bass, /Lead
+```
+
+disarm both
+
+## Tags
+
+### `tag`
 
 tag tracks, or list the tags of the Set
 
@@ -772,3 +406,393 @@ tag --set 1 !#drums synth
 ```
 
 tag every track that is not a drums track as synth
+
+## Look things up
+
+### `help`
+
+list the available commands
+
+Prints every command with its one-line summary. Typing a command followed by --help shows its short usage; man &lt;command> shows the full page.
+
+**Usage:** `help`
+
+**Examples**
+
+```
+help
+```
+
+list the commands
+
+```
+cmdabl --help
+```
+
+usage of the cmdabl commands
+
+### `man`
+
+show a command's page, or open a manual: ableton, cmdabl
+
+Shows the full page of a command inside Live, offline: summary, usage, subcommands, options, arguments and examples, as in the command reference, plus the web address of its section. Name a subcommand too: man history clear. man ableton opens the Live reference manual (words after it search the Live 12 manual through Ecosia), man cmdabl opens the cmdAbl documentation. The web manuals need an internet connection.
+
+**Usage:** `man <command>…`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<command>…` | text | yes | A command, with its subcommand if it has one (man history clear); ableton [words] or cmdabl alone open the web manuals |
+
+**Examples**
+
+```
+man tag
+```
+
+show the page of the tag command
+
+```
+man history clear
+```
+
+show the page of a subcommand
+
+```
+man cmdabl setup
+```
+
+show the page of cmdabl setup
+
+```
+man ableton warp modes
+```
+
+search the Live manual for "warp modes"
+
+```
+man cmdabl
+```
+
+open the cmdAbl documentation
+
+### `lom`
+
+show the Live Object Model path of a track, device or chain
+
+Shows the object's cmdAbl path, its Live Object Model path (the address used by Max for Live's live.path and in Remote Scripts) and the link to the LOM reference page that describes its kind. Only reads; it does not need the cmdAbl Remote Script. When your words match several objects you are asked to choose one.
+
+**Usage:** `lom [--pick] <target>`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<target>` | path (track / device / chain) | yes | Track, device, chain or pad; spaces need no quotes (takes the rest of the line) |
+
+| Option | Description |
+| --- | --- |
+| `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
+
+**Examples**
+
+```
+lom /Bass
+```
+
+the LOM path of a track
+
+```
+lom /2-808 Core Kit/808 Core Kit/Snare Drum
+```
+
+the LOM path of a pad inside a Drum Rack
+
+```
+lom snare
+```
+
+the object with "snare" in its name
+
+## Recent commands
+
+### `history`
+
+manage the list of recent commands
+
+cmdAbl remembers the commands you ran and offers them as rows in the empty palette. These subcommands clear the list, drop the newest entries or bring removed ones back. The list and the removed entries live in memory and are gone when cmdAbl restarts.
+
+**Usage:** `history <command>`
+
+**Subcommands:** `clear`, `forget`, `restore`
+
+#### `history clear`
+
+remove all entries (asks first)
+
+Removes every entry from the history after a question. Removed entries can be brought back with history restore until cmdAbl restarts. With --force there is no question and nothing can be restored.
+
+**Usage:** `history clear [--force]`
+
+| Option | Description |
+| --- | --- |
+| `-f, --force` | do not ask, and drop the removed entries too |
+
+**Examples**
+
+```
+history clear
+```
+
+ask, then move all entries aside
+
+```
+history clear --force
+```
+
+wipe the history for good, without asking
+
+#### `history forget`
+
+remove the newest entries
+
+Removes the newest entry, or the newest N with -n, without asking. Useful after a mistyped command. history restore brings them back until cmdAbl restarts.
+
+**Usage:** `history forget [--count <n>]`
+
+| Option | Description |
+| --- | --- |
+| `-n, --count <n>` | how many of the newest entries to remove (default 1) (a whole number from 1 to 20) |
+
+**Examples**
+
+```
+history forget
+```
+
+drop the last command
+
+```
+history forget -n 3
+```
+
+drop the last three commands
+
+#### `history restore`
+
+bring removed entries back
+
+Puts entries removed by history clear or history forget back, most recently removed first. Without -n it restores everything the last clear or forget removed. Entries keep their original order; one that is already in the history again is not added twice.
+
+**Usage:** `history restore [--count <n>]`
+
+| Option | Description |
+| --- | --- |
+| `-n, --count <n>` | how many removed entries to bring back (default: all of the last clear or forget) (a whole number from 1 to 20) |
+
+**Examples**
+
+```
+history restore
+```
+
+undo the last clear or forget
+
+```
+history restore -n 2
+```
+
+bring back the two most recently removed entries
+
+## Extensions
+
+### `pakabl`
+
+install and manage Ableton Live extensions
+
+Installs and manages community extensions for Ableton Live (.ablx files) from cmdAbl's curated list of community repositories. Run pakabl update once to fetch the list, then pakabl list to browse it. Restart Live after installing, upgrading or removing an extension.
+
+**Usage:** `pakabl <command>`
+
+**Subcommands:** `install`, `uninstall`, `update`, `upgrade`, `list`
+
+#### `pakabl install`
+
+download and install an extension from the curated index
+
+Downloads one Ableton Live extension from the curated list and unpacks it into Live's Extensions folder. Restart Live to load it. Run pakabl update first to fetch the list.
+
+**Usage:** `pakabl install <id>`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<id>` | text | yes | Extension id as shown by pakabl list: author.name |
+
+**Examples**
+
+```
+pakabl install federico-pepe.snake
+```
+
+install the extension with that id
+
+#### `pakabl uninstall`
+
+remove an installed extension
+
+Deletes an installed extension from Live's Extensions folder. Restart Live to unload it.
+
+**Usage:** `pakabl uninstall <id>`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<id>` | text | yes | Extension id as shown by pakabl list: author.name |
+
+- Removes or irreversibly changes something; takes one target per address, never every match.
+
+**Examples**
+
+```
+pakabl uninstall federico-pepe.snake
+```
+
+remove that extension
+
+#### `pakabl update`
+
+refresh the curated index
+
+Fetches the current curated list of extensions. Needed once before install, upgrade and list, and again whenever you want to see new versions.
+
+**Usage:** `pakabl update`
+
+**Examples**
+
+```
+pakabl update
+```
+
+fetch the list
+
+#### `pakabl upgrade`
+
+install a newer index version of an extension (&lt;id>@&lt;version> installs that one even if not newer)
+
+Installs the version the curated list holds, but only when it is newer than the installed one; otherwise nothing changes. Name the version after an @ to install it anyway, also an older or the same one: the command stops when the list holds another version. Restart Live to reload it.
+
+**Usage:** `pakabl upgrade <ref>`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<ref>` | text | yes | Extension id, optionally followed by @ and the version the list holds, to install it even if it is not newer |
+
+**Examples**
+
+```
+pakabl upgrade federico-pepe.snake
+```
+
+install the list's version if it is newer
+
+```
+pakabl upgrade federico-pepe.snake@1.2.0
+```
+
+install the list's version 1.2.0, newer or not
+
+#### `pakabl list`
+
+browse the curated extensions and install or remove them
+
+Opens a window with the curated extensions. Each row has buttons to install, update or uninstall it and to open its repository. Run pakabl update first to fetch the list.
+
+**Usage:** `pakabl list`
+
+**Examples**
+
+```
+pakabl list
+```
+
+browse the extensions
+
+## cmdAbl itself
+
+### `cmdabl`
+
+configure cmdAbl
+
+Setup and status commands of cmdAbl itself.
+
+**Usage:** `cmdabl <command>`
+
+**Subcommands:** `setup`, `log`, `bridge`
+
+#### `cmdabl setup`
+
+install trigger and Remote Script, then say what to do next
+
+Installs the keyboard trigger (Karabiner on macOS, AutoHotkey on Windows) and copies the Remote Script into Live's User Library, then compares the shipped, installed and running script versions and says what to do: restart Live, enable the control surface, or nothing.
+
+**Usage:** `cmdabl setup`
+
+**Examples**
+
+```
+cmdabl setup
+```
+
+run once after installing, and again after updating cmdAbl
+
+#### `cmdabl log`
+
+show the last lines of cmdAbl's log
+
+Shows the last 50 lines of the log, newest at the bottom: what commands ran, what changed and the undo lines of tag writes (Cmd+Z does not undo tags). The log keeps the last 500 lines of this session. --debug turns detail lines on for the rest of the session.
+
+**Usage:** `cmdabl log [--count <n>] [--undo] [--debug]`
+
+| Option | Description |
+| --- | --- |
+| `-n, --count <n>` | show this many lines (default 50) (a whole number from 1 to 500) |
+| `--undo` | only the commands that undo a change (the part after "undo: ") |
+| `--debug` | turn debug lines on for this session |
+
+**Examples**
+
+```
+cmdabl log
+```
+
+the last 50 lines
+
+```
+cmdabl log -n 200
+```
+
+more lines
+
+```
+cmdabl log --undo
+```
+
+only the commands that undo a change, one per line
+
+```
+cmdabl log --debug
+```
+
+turn on debug lines for this session
+
+#### `cmdabl bridge`
+
+show the Remote Script status (version, response time)
+
+Sends one fresh request to the Remote Script and reports its version, protocol, response time and operations.
+
+**Usage:** `cmdabl bridge`
+
+**Examples**
+
+```
+cmdabl bridge
+```
+
+check that the Remote Script is installed and running

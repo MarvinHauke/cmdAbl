@@ -162,6 +162,7 @@ export function activate(api: ModuleApi): void {
 
   api.commands.add({
     name: "tag",
+    topic: "Tags",
     summary: "tag tracks, or list the tags of the Set",
     description:
       "Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx " +

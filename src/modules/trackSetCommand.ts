@@ -59,6 +59,7 @@ export function registerTrackSetCommand(
 ): void {
   api.commands.add({
     name,
+    topic: "Mix",
     summary,
     description: docs.description,
     examples: docs.examples,
