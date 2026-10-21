@@ -27,11 +27,11 @@ Run these from the repository root:
 | `npm run package` | Builds the `.ablx` into the project root. |
 | `npm run docs:reference` | Regenerates the reference pages (`reference/commands.md`, `reference/remote-script.md`, `reference/live-api.md`) from the code. Never edit those pages by hand. |
 
-A development run (`npm start`) is not sandboxed, and an installed build is. The installed extension may read only
-Live's Extensions and Extensions Data folders and its temp folder, so a file access that works in development can fail
-once installed. In a development run, cmdAbl can also see the User Library, so it can say "Remote Script not
-installed" or "installed Remote Script is outdated". The installed extension cannot, and says "not running" instead.
-Install the `.ablx` and test it before you rely on a file access.
+An installed build is sandboxed: it may read only Live's Extensions and Extensions Data folders and its temp folder.
+A development run (`npm start`) is presumably not sandboxed (not verified), so a file access that works in development
+can fail once installed. Test file access with the installed `.ablx`. A development run can see the User Library, so
+it can say "Remote Script not installed" or "installed Remote Script is outdated" about the copy there. The installed
+build cannot, and says "not running" instead.
 
 The terminal of `npm start` shows the extension's log lines with milliseconds: `HH:MM:SS.mmm cmdAbl [<source>] …`.
 Filter on `cmdAbl [` there. The log lines of the Remote Script are not in that terminal; they are in Live's `Log.txt`
