@@ -49,14 +49,13 @@ until you press Enter.
 
 ![The pick list for mute --pick #drums: five tracks tagged drums; the speaker buttons of Drums and Synth are marked with a dashed ring, because Enter mutes them, and the cursor is on Lead](docs/assets/images/pick-list.png)
 
-<!-- GIF to come: docs/assets/images/pakabl.gif -->
+![Screen recording of pakabl: the palette runs pakabl list, the extension index opens and scrolls (each entry with Install and Repo), Install is clicked on Chord Voicing Helper, and pakabl reports it installed and asks to restart Live](docs/assets/images/pakabl.gif)
 
 ### Community extensions, one list
 
 pakabl installs Ableton Live extensions from a curated list of community repositories. Run `pakabl update` once,
 then `pakabl list` shows each extension with an Install button. Restart Live after a change.
 
-![The pakabl extension index window: a scrollable list of extensions, each with its name, version and an Install button](docs/assets/images/pakabl-list.png)
 
 More: [Using cmdAbl](https://marvinhauke.github.io/cmdAbl/using/)
 
