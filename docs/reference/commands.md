@@ -9,7 +9,7 @@ shows as help. Type a command in the palette; `<command> --help` prints the same
 **Contents**
 
 - Find and select: `goto`, `find`, `next`, `prev`
-- Mix: `mute`, `solo`, `arm`
+- Mix: `mute`, `solo`, `arm`, `vol`
 - Tags: `tag`
 - Look things up: `help`, `man`, `lom`
 - Recent commands: `history`
@@ -325,6 +325,56 @@ arm --set 0 /Bass, /Lead
 ```
 
 disarm both
+
+### `vol`
+
+change the fader level of tracks, in dB
+
+Moves the volume fader of each target track by the given number of dB: vol -6 /Bass lowers it by 6 dB from where it is, vol 2 #drums raises every drums fader by 2 dB, so the balance between them stays. With --set the level is absolute: vol --set -6 #drums puts every fader at -6 dB, vol --set -inf /Bass silences it. A fader stops at Live's maximum, +6 dB, and at -inf; the result names every fader that hit a limit, because the balance changed there. A fader at -inf stays there on a relative step, use --set to bring it back. This overwrites the fader and works against volume automation. It works on tracks (including the return and main tracks, /Main), not yet on chains. A successful change shows nothing: the old and new level and the command that puts it back go to the log, and Cmd+Z undoes the whole command in one step. Works without the Remote Script.
+
+**Usage:** `vol [--set] [--pick] <dB> <target>…`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<dB>` | text | yes | Level or step in dB: -6, +2, 0.5, or -inf (with --set) |
+| `<target>…` | path (track / chain) | yes | Tracks to change; separate several with commas, or use #tag |
+
+| Option | Description |
+| --- | --- |
+| `-s, --set` | treat the number as the level to set, not a step from where the fader is |
+| `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
+
+**Examples**
+
+```
+vol -6 /Bass
+```
+
+lower the Bass fader by 6 dB
+
+```
+vol 2 #drums
+```
+
+raise every drums fader by 2 dB
+
+```
+vol --set -6 #drums
+```
+
+put every drums fader at -6 dB
+
+```
+vol --set 0 /Bass, /Lead
+```
+
+both faders to 0 dB
+
+```
+vol --set -inf /Lead
+```
+
+silence the fader
 
 ## Tags
 

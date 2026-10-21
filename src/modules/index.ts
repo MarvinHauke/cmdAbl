@@ -5,6 +5,7 @@ import * as gotoModule from "./goto/index.js";
 import * as muteModule from "./mute/index.js";
 import * as soloModule from "./solo/index.js";
 import * as armModule from "./arm/index.js";
+import * as volModule from "./vol/index.js";
 import * as findModule from "./find/index.js";
 import * as manModule from "./man/index.js";
 import * as lomModule from "./lom/index.js";
@@ -24,6 +25,7 @@ export const MODULES: Module[] = [
   muteModule,
   soloModule,
   armModule,
+  volModule,
   manModule,
   lomModule,
   pakablModule,
