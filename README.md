@@ -14,9 +14,7 @@ SDK, with a small Remote Script for what the SDK cannot do.
 
 📖 [Read the documentation](https://marvinhauke.github.io/cmdAbl/) · 🚀 [Get started](https://marvinhauke.github.io/cmdAbl/getting-started/)
 
-![Screen recording: solo Bass, Audio, 808 bass is typed and runs in the palette; Bass, 1 Audio and the Bass Drum pad turn solo](docs/assets/images/demo.gif)
-
-<!-- GIF to come: docs/assets/images/hero.gif, tags in action (tag --set 1, mute drums, solo !#drums, mute --pick drums) -->
+![Screen recording of the palette: mute drums mutes the drum tracks, solo !#drums solos the other tracks, and mute --pick #drums opens a pick list where rows are marked and Enter applies](docs/assets/images/hero.gif)
 
 ## Contents
 
