@@ -27,9 +27,18 @@ function findChild<P>(nodes: CommandNode<P, any>[], word: string): CommandNode<P
   return nodes.find((n) => n.name === word || n.aliases?.includes(word));
 }
 
-/** An option starts with an unquoted dash; quotes later in the token (`--to="a b"`) are fine. */
-function startsOption(input: string, token: Token): boolean {
-  return input[token.start] === "-" && token.value.startsWith("-");
+/** `-6`, `-0.5`, `+2`, `.5`, `inf`, `-inf`, `+inf`: a number, which is a value and never an option. */
+const NUMBERISH = /^(?:[+-]?(?:\d+\.?\d*|\.\d+)|[+-]?inf)$/i;
+
+/**
+ * An option starts with an unquoted dash; quotes later in the token (`--to="a b"`) are fine. A
+ * number (`-6`, `-inf`) is a value, not an option, unless it is exactly a declared short option of
+ * the node (`shorts`, e.g. a command with `-1`); the command words before the node is known have none.
+ */
+function startsOption(input: string, token: Token, shorts: readonly string[] = []): boolean {
+  if (input[token.start] !== "-" || !token.value.startsWith("-")) return false;
+  if (NUMBERISH.test(token.value) && !(token.value.length === 2 && shorts.includes(token.value.slice(1)))) return false;
+  return true;
 }
 
 export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]): ParseOutcome<P> {
@@ -79,12 +88,13 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
   const positionals: string[] = [];
   const positionalQuoted: boolean[] = [];
   const defs = effectiveOptions(node);
+  const shorts = defs.flatMap((d) => (d.short ? [d.short] : []));
   let optionsEnded = false;
 
   for (let k = 0; k < rest.length; k++) {
     const token = rest[k]!;
     const text = token.value;
-    if (optionsEnded || !startsOption(input, token) || text === "-") {
+    if (optionsEnded || !startsOption(input, token, shorts) || text === "-") {
       positionals.push(text);
       positionalQuoted.push(token.quoted);
       continue;
@@ -129,7 +139,7 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
     }
     // No value (last token, or an option follows): the option's default, when it has one.
     const next = rest[k + 1];
-    const useDefault = def.valueDefault !== undefined && inlineValue === undefined && (next === undefined || startsOption(input, next));
+    const useDefault = def.valueDefault !== undefined && inlineValue === undefined && (next === undefined || startsOption(input, next, shorts));
     const value = useDefault ? def.valueDefault : (inlineValue ?? rest[++k]?.value);
     if (value === undefined) return error(ExitCode.USAGE, `option "--${def.name}" needs a value`);
     if (def.number) {

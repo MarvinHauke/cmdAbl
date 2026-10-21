@@ -50,6 +50,8 @@ export interface FakeApi {
   dialogs: Array<{ html: string; width: number; height: number }>;
   /** Track state by handle id; writes land here. */
   tracks: Map<string, TrackHandle>;
+  /** Volumes (0..1) written through the fake's `tracks.setVolume`, by handle id; unset reads 0.85. */
+  volumes: Map<string, number>;
   /** How many transactions were opened. */
   transactions: number;
 }
@@ -73,6 +75,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     tagStore: new Map(Object.entries(options.tags ?? {})),
     dialogs: [],
     tracks: new Map(),
+    volumes: new Map(),
     transactions: 0,
   };
   fake.api = {
@@ -81,7 +84,14 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     tracks: {
       transaction: (fn) => {
         fake.transactions++;
-        fn();
+        const pending = fn();
+        return pending ? Promise.resolve(pending).then(() => undefined, () => undefined) : undefined;
+      },
+      volume: async (node) => (node.kind === "track" ? (fake.volumes.get(node.handleId) ?? 0.85) : null),
+      setVolume: async (node, value) => {
+        if (node.kind !== "track" || !Number.isFinite(value)) return false;
+        fake.volumes.set(node.handleId, Math.min(1, Math.max(0, value)));
+        return true;
       },
       track: (node) => {
         if (node.kind !== "track") return null; // like the real port: never the containing track

@@ -23,12 +23,14 @@ export interface TrackHandle {
 /** The SDK-backed track port — works without the Remote Script. */
 export interface TracksPort {
   /**
-   * One transaction = one undo step for everything `fn` writes. `fn` must be
-   * synchronous (an async callback would write outside the transaction). A
-   * write can throw — it is the SDK track — so catch inside `fn`: nothing may
-   * throw at a user action.
+   * One transaction = one undo step for everything `fn` writes. `fn` itself must be
+   * synchronous (an async callback would write outside the transaction), but it may RETURN a
+   * promise — `Promise.all([api.tracks.setVolume(a, 0.5), …])` — to group async writes into the
+   * step. A write can throw — it is the SDK track — so catch inside `fn`: nothing may throw at
+   * a user action. With a returned promise the call answers a promise that never rejects
+   * (resolves when the writes are done); with a plain `void` fn it answers at once.
    */
-  transaction(fn: () => void): void;
+  transaction(fn: () => void | Promise<unknown>): Promise<void> | void;
   /**
    * The track at the node's position, or null when there is none or the node
    * is not a track (a device, chain or pad never answers with its containing
@@ -36,6 +38,17 @@ export interface TracksPort {
    * name when it matters.
    */
   track(node: ObjectNode): TrackHandle | null;
+  /**
+   * The track's volume as 0..1 (`mixer.volume`; 0.85 is 0 dB), for regular, return, group and main
+   * tracks; null when the node is no track or the read fails. Not a dB value: the curve is Live's own.
+   */
+  volume(node: ObjectNode): Promise<number | null>;
+  /**
+   * Set the track's volume, 0..1 (clamped). The write starts at once, so inside `transaction(() =>
+   * setVolume(…))` it joins that undo step. Resolves true when written, false for no track, a
+   * non-finite value or a failed write; never rejects.
+   */
+  setVolume(node: ObjectNode, value: number): Promise<boolean>;
 }
 
 /** One row of a tag list (`ModuleApi.pickTags`). */

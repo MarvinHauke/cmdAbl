@@ -54,3 +54,19 @@ test("fake api.pick records a state option", async () => {
   await api.pick("t", [], true, { state: { label: "tagged fx", values: [true], change: "toggle" } });
   assert.deepEqual(pickStates, [{ label: "tagged fx", values: [true], change: "toggle" }]);
 });
+
+test("fake tracks.volume and setVolume: 0.85 by default, clamped writes, only track nodes, transaction passes a promise on", async () => {
+  const fake = createFakeApi({ nodes: [] });
+  const api = fake.api;
+  const track = { handleId: "t1", kind: "track" } as never;
+  const device = { handleId: "d1", kind: "device" } as never;
+  assert.equal(await api.tracks.volume(track), 0.85);
+  assert.equal(await api.tracks.setVolume(track, 3), true);
+  assert.equal(await api.tracks.volume(track), 1);
+  assert.equal(await api.tracks.volume(device), null);
+  assert.equal(await api.tracks.setVolume(device, 0.5), false);
+  const done = api.tracks.transaction(() => api.tracks.setVolume(track, 0.5));
+  assert.ok(done instanceof Promise);
+  await done;
+  assert.equal(fake.volumes.get("t1"), 0.5);
+});

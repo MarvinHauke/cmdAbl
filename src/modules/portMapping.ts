@@ -69,6 +69,20 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "tracks.track().mute", via: "sdk", call: "`track.mute`", lom: ["Track.mute"] },
   { port: "tracks.track().solo", via: "sdk", call: "`track.solo`", lom: ["Track.solo"] },
   {
+    port: "tracks.volume",
+    via: "sdk",
+    call: "`track.mixer.volume.getValue()`",
+    lom: ["MixerDevice.volume"],
+    note: "0..1 (0.85 is 0 dB), regular, return, group and main tracks. Live's display text for a value comes from the script (operation `param_display`).",
+  },
+  {
+    port: "tracks.setVolume",
+    via: "sdk",
+    call: "`track.mixer.volume.setValue(v)`",
+    lom: ["MixerDevice.volume"],
+    note: "Clamped to 0..1; inside `tracks.transaction` it joins the undo step.",
+  },
+  {
     port: "tracks.track().arm",
     via: "sdk",
     call: "`track.arm`",

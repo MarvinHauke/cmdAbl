@@ -44,6 +44,8 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `tracks.track` | sdk | `application.song.tracks[i]` / `returnTracks[i]` / `[mainTrack]` by the node's scope and route | [`Song.tracks`](https://docs.cycling74.com/apiref/lom/song/), [`Song.return_tracks`](https://docs.cycling74.com/apiref/lom/song/), [`Song.master_track`](https://docs.cycling74.com/apiref/lom/song/) | Position-based: after a Set change the index may hold another track. |
 | `tracks.track().mute` | sdk | `track.mute` | [`Track.mute`](https://docs.cycling74.com/apiref/lom/track/) |  |
 | `tracks.track().solo` | sdk | `track.solo` | [`Track.solo`](https://docs.cycling74.com/apiref/lom/track/) |  |
+| `tracks.volume` | sdk | `track.mixer.volume.getValue()` | [`MixerDevice.volume`](https://docs.cycling74.com/apiref/lom/mixerdevice/) | 0..1 (0.85 is 0 dB), regular, return, group and main tracks. Live's display text for a value comes from the script (operation `param_display`). |
+| `tracks.setVolume` | sdk | `track.mixer.volume.setValue(v)` | [`MixerDevice.volume`](https://docs.cycling74.com/apiref/lom/mixerdevice/) | Clamped to 0..1; inside `tracks.transaction` it joins the undo step. |
 | `tracks.track().arm` | sdk | `track.arm` | [`Track.arm`](https://docs.cycling74.com/apiref/lom/track/) | Live refuses some tracks silently; `can_be_armed` and the verification come from the script (operation `track_facts`). |
 | `dialog` | sdk | the SDK's modal dialog (`context.ui`, a data: URL page) through the dialog queue | – |  |
 | `log` | platform | an info line in the log, tagged with the module (cmdabl log) | – |  |

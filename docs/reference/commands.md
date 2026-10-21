@@ -723,7 +723,7 @@ Setup and status commands of cmdAbl itself.
 
 **Usage:** `cmdabl <command>`
 
-**Subcommands:** `setup`, `log`, `bridge`
+**Subcommands:** `setup`, `log`, `curve`, `bridge`
 
 #### `cmdabl setup`
 
@@ -780,6 +780,24 @@ cmdabl log --debug
 ```
 
 turn on debug lines for this session
+
+#### `cmdabl curve`
+
+measure Live's volume curve for developers
+
+Reads Live's own display text for 1001 volume values (0, 0.001 … 1) of the first regular track through the Remote Script, without moving any fader. The table goes to the log, ten points to a line (source curve; see cmdabl log -n 120); the result shows the points measured, the value at 0 dB and the dB at value 1.0. Writes nothing.
+
+**Usage:** `cmdabl curve`
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+cmdabl curve
+```
+
+measure the curve once and read the table from the log
 
 #### `cmdabl bridge`
 

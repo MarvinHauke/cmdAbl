@@ -12,6 +12,7 @@ import { registerBuiltins } from "./core/builtins.js";
 import { reportBridge } from "./core/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { getTagCache } from "./ableton/tagCache.js";
+import { paramDisplay } from "./ableton/bridgeOps.js";
 import { findRacks, getChainNameCache } from "./ableton/chainNames.js";
 import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
@@ -23,6 +24,7 @@ import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/ui.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
+import { readVolume, writeVolume, type VolumeTrack } from "./core/volume.js";
 import { trackFor } from "./ableton/trackLookup.js";
 import { MODULES } from "./modules/index.js";
 
@@ -97,7 +99,18 @@ export function activate(activation: ActivationContext) {
   }
 
   // ── core: the only commands baked in (see src/core/builtins.ts) ───────────
-  registerBuiltins(registry, { bridge: () => getBridge() });
+  // `cmdabl curve` measures the first regular track (plan 0012): no fader moves, nothing is written.
+  const firstTrack = () => liveNodes().find((n) => n.kind === "track" && n.scope === "regular");
+  registerBuiltins(registry, {
+    bridge: () => getBridge(),
+    curve: {
+      hasTrack: () => firstTrack() !== undefined,
+      display: async (values) => {
+        const track = firstTrack();
+        return track ? paramDisplay(getBridge(), track, "volume", values) : { ok: false, code: ExitCode.NOT_FOUND, text: "curve: no regular track" };
+      },
+    },
+  });
 
   // ── default modules ──────────────────────────────────────────────────────
   const moduleApi: ModuleApi = {
@@ -106,7 +119,16 @@ export function activate(activation: ActivationContext) {
     },
     liveSet: { nodes: liveNodes },
     tracks: {
-      transaction: (fn) => context.withinTransaction(fn),
+      transaction: (fn) => {
+        const result = context.withinTransaction(fn);
+        // A returned promise (async writes grouped into the step): answer one that never rejects.
+        return result && typeof (result as Promise<unknown>).then === "function"
+          ? Promise.resolve(result).then(() => undefined, (e: unknown) => void logger("host").warn(`transaction: ${e instanceof Error ? e.message : String(e)}`))
+          : undefined;
+      },
+      // Only a track node has a volume; a device or chain would give its CONTAINING track.
+      volume: (node) => readVolume(node.kind === "track" ? (trackFor(context, node) as unknown as VolumeTrack | null) : null),
+      setVolume: (node, value) => writeVolume(node.kind === "track" ? (trackFor(context, node) as unknown as VolumeTrack | null) : null, value),
       // Only a track node has a track; a device or chain would give its CONTAINING track.
       track: (node) => (node.kind === "track" ? trackFor(context, node) : null),
     },
