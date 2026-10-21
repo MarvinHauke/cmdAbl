@@ -74,6 +74,10 @@ Two rules hold across the platform:
   result with exit code 1.
 - **One presenter renders every result.** Messages, error text and per-target details all go through
   one function. A module returns a result and does not show anything itself.
+- **A result goes to one of three places.** A dialog shows a failure and output the user asked for (`man`,
+  `help`, `cmdabl bridge`). A successful write is silent: it has no message. Everything else goes to the log:
+  the lines in `CommandResult.log` are written at info under the command's name and are never shown. A write
+  that changes nothing says so.
 
 **Modules never parse and never guess.** A module does not read the typed text, does not decide
 which of several objects a name means, and does not show a pick list on its own. It declares what
@@ -87,46 +91,57 @@ reads the import statements of every file under `src/` and fails when a rule is 
 | Layer | What it is | What it may not import |
 | ----- | ---------- | ---------------------- |
 | `src/core/` | The platform: tokenizer, parser, command tree, resolver, pick flow, the UI contract, the result presenter. Minimal on purpose. | `src/modules/`, `src/httpTrigger.ts`, `src/extension.ts` |
-| `src/modules/` | One folder per feature, listed in `src/modules/index.ts`. Each module declares commands and reaches Live through ports. | another module's folder, `src/extension.ts`, `src/httpTrigger.ts`, the platform's dialog pages, `src/ableton/bridge.ts`, `src/ableton/trackLookup.ts`, the SDK (`@ableton-extensions/*`) |
-| `src/ableton/` | The Live Set as an object tree, path resolution, and the bridge client that talks to the Remote Script. | `src/modules/`, `src/core/ui.ts`, `src/extension.ts` |
+| `src/modules/` | One folder per feature, listed in `src/modules/index.ts`. Each module declares commands and reaches Live through ports. | another module's folder, `src/extension.ts`, `src/httpTrigger.ts`, the platform's dialog pages, `src/ableton/bridge.ts`, `src/ableton/trackLookup.ts`, `src/ableton/tagCache.ts`, the SDK (`@ableton-extensions/*`), Node built-ins other than `path` and `url` |
+| `src/ableton/` | The Live Set as an object tree, path resolution, and the bridge client that talks to the Remote Script. | `src/modules/`, `src/extension.ts`, and `src/core/` except its shared types and the logger |
 | `remote-script/cmdAbl/` | The Remote Script, in Python. It runs inside Live and talks to the extension only over the UDP socket. | (Python; the rules above do not apply) |
 | `ui/` | The dialog pages. The core pages are the palette, the pick list, the message page and the tag board. A module's own pages live in `ui/modules/<module>/`. They are HTML, CSS and JavaScript, inlined into the bundle at build time. | (HTML; no imports) |
 
-The test states five rules:
+The test states seven rules:
 
 1. A module does not import another module's folder, `src/extension.ts`, `src/httpTrigger.ts`, or
    the platform's pages `interface`, `pick`, `feedback` and `board`. A module may import its own dialog
    page only from its own folder, `ui/modules/<its own name>/`. Helpers placed directly under
    `src/modules/` are shared and follow the same rules. Only `src/modules/index.ts`, the manifest, may import every module folder.
 2. `src/core/` does not import `src/modules/`, `src/httpTrigger.ts` or `src/extension.ts`.
-3. `src/ableton/` does not import `src/modules/`, `src/core/ui.ts` or `src/extension.ts`. It knows the platform
-   only through its shared types and the logger (`src/core/log.ts`).
+3. `src/ableton/` does not import `src/modules/` or `src/extension.ts`. Of `src/core/` it imports only the
+   shared types (`src/core/types.ts`) and the logger (`src/core/log.ts`).
 4. Only `src/core/ui.ts` opens a dialog with `showModalDialog`. A module hands its page to the UI
    surfaces instead. The list of exceptions is empty.
 5. A module reaches Live through the ports on `ModuleApi`. It does not import `src/ableton/bridge.ts`,
-   `src/ableton/trackLookup.ts` or the SDK (`@ableton-extensions/*`). So a command's `run` can be
-   tested with fake ports.
+   `src/ableton/trackLookup.ts`, `src/ableton/tagCache.ts` or the SDK (`@ableton-extensions/*`). So a
+   command's `run` can be tested with fake ports.
+6. A module does not reach out through Node itself. Of the Node built-ins it may import `path` and `url`.
+   What needs a process, a socket or a file belongs to the platform or the Live layer.
+7. Every log line goes through `src/core/log.ts`, the one file that calls `console.`.
 
 A known violation can be listed with a reason. An entry that no longer applies fails the test, so
 the list cannot grow stale.
 
-**How modules reach Live.** Modules reach Live only through ports on `ModuleApi`. The SDK's context
-is no longer part of `ModuleApi`. The ports are:
+**How modules reach Live.** Modules reach Live only through ports on `ModuleApi`. The SDK's context is not part
+of `ModuleApi`. The main ports are:
 
 - `bridge`: the typed client of the Remote Script. Its operations are the functions in
   `src/ableton/bridgeOps.ts`.
 - `liveSet.nodes()`: the flattened object tree of the current Set.
-- `tracks`: `transaction(fn)` groups changes into one undo step, and `track(node)` gives a track's
-  SDK object. It works without the Remote Script. `track` returns nothing for a node that is not a
-  track.
-- `log(line)`: writes one line to the extension's log.
-- `dialog(html, width, height, name?)`: opens a page through the dialog queue. It returns the
-  string the page sends back, or nothing when the dialog was dismissed.
+- `tracks`: `transaction(fn)` groups changes into one undo step, and `track(node)` gives a track's SDK object.
+  It works without the Remote Script.
+- `tags`: the track tags, read through a cache that `refresh()` fills from the Remote Script.
+- `pick`, `pickTags`, `confirm` and `ui.board`: the questions a command can ask (a pick list, a list of tags, a
+  yes/no question and the tag board). A module never opens a dialog by itself.
+- `dialog(html, width, height, name?)`: a page of the module's own, through the dialog queue.
+- `log(line)` and `logger`: the log (see below).
+- `commands`, `registerProvider`, `onPick`, `onCommandRun` and `showFeedback`: declare commands, add palette
+  rows, and listen to picks and finished commands.
 
-Modules keep `commands.add`, `pick`, `onPick`, `registerProvider`, `onCommandRun` and
-`showFeedback`. The mapping of each port and script operation to the Live Object Model is in the
-[Live API mapping](reference/live-api.md). Tests give a module fake ports with `createFakeApi` (`src/modules/testPorts.ts`), so
-no test needs Live.
+Every call and its shape is in [Writing a command](guides/command-authoring.md). The mapping of each port and
+script operation to the Live Object Model is in the [Live API mapping](reference/live-api.md). Tests give a module
+fake ports with `createFakeApi` (`src/modules/testPorts.ts`), so no test needs Live.
+
+**Logging.** Every log line goes through `src/core/log.ts` and reads `cmdAbl [<source>] <level>: …`, with the
+levels `debug`, `info`, `warn` and `error`. A module logs with `api.log(line)` (info, tagged with the module's
+name) or `api.logger.{debug,info,warn,error}`. Core and the Live layer use `logger("<source>")`. The last 500
+lines are kept in memory for `cmdabl log`, and `debug` lines exist only after `cmdabl log --debug`. A log line
+never holds a token, a secret or an environment value.
 
 ## The path of one command
 
@@ -144,9 +159,11 @@ Take `mute 808 snare` as an example. Here is what happens, step by step.
    bridge whether the Remote Script is ready. If it is not, the command answers exit code 5 and the
    handler is not called. The check runs before any pick, so nobody is asked to choose for a command
    that cannot run. `mute` does not declare it, because it works without the Remote Script.
-5. **Target resolution.** `src/core/resolveArgs.ts` reads the path words. The rule is forgiving but
-   never silent:
-   - A comma separates targets, and a word that starts with `/` is a whole path.
+5. **Target resolution.** For a command with a path argument, the platform first waits up to 1.5 seconds
+   for the Set's structure, such as the chain names of racks, to refresh. Then `src/core/resolveArgs.ts` reads the
+   path words. The rule is forgiving but never silent:
+   - A comma separates targets, and a word that starts with `/` is a whole path. `#fx` means every track
+     tagged `fx`, and `!#fx` every regular track without that tag.
    - A full path is a target of its own, and `#2` picks the second of two same-named siblings. Otherwise
      the typed words must all occur in the object's path, and at least one of them in the object's
      own name. So `mute lead` names the track Lead, and `mute 808 snare` names the Snare Drum pad
@@ -165,10 +182,10 @@ Take `mute 808 snare` as an example. Here is what happens, step by step.
    set through the Remote Script: the handler calls a typed operation of the bridge, which sends a
    request and reads the reply.
 9. **Result.** The platform gives the result to the presenter, which shows it through the message
-   surface. A successful result with no message shows nothing.
+   surface. A successful result with no message shows nothing. The lines in `log` go to the log.
 10. **History.** On exit code 0 the platform records the invocation in its resolved form, with
     every path written out in full. After you pick from the list, the chosen objects are what is
-    remembered, each by its unique path. A re-run never asks again. Only lines with an argument are
+    remembered, each by its unique path. A re-run never asks again. Tag targets and `--pick` are kept as typed. Only lines with an argument are
     recorded. A module that keeps the history listens for these records; it does not read the
     palette itself.
 
@@ -182,18 +199,20 @@ Every dialog is a modal dialog that the SDK opens with `showModalDialog`. Three 
 - **One dialog at a time.** The SDK does not handle a second modal while one is open. So every
   dialog goes through one queue in `src/core/dialogQueue.ts`. A dialog opens only after the one
   before it has closed. A dialog that fails to open counts as dismissed.
-- **Four surfaces.** The platform talks to four surfaces, defined only by their data
+- **Five surfaces.** The platform talks to five surfaces, defined only by their data
   (`src/core/ui.ts`):
   - `prompt`: the palette. It takes the items and returns what was typed or picked, or nothing.
-  - `select`: the pick list. It takes a title, the rows and an optional preview of the command line,
-    and returns the indexes of the rows the user chose, or nothing when cancelled.
+  - `select`: the pick list. It takes a title, the rows, an optional preview of the command line, optional
+    state buttons and an optional create row. It returns the indexes of the rows the user chose, or nothing when
+    cancelled.
   - `notify`: a message. It takes a text and the exit code it belongs to, and returns nothing.
+  - `board`: the tag board. It takes sections of items that are on or off and returns the changes the user made.
+    The page applies nothing; the module writes the changes.
   - `page`: a dialog page of its own, given by name, HTML and size. It returns the string the page
     sends back, or nothing when it was dismissed. The `dialog` port of a module is built on it.
 
 Because the surfaces are only data in and a value out, a page can be replaced without the core
-noticing. The default pages are the files in `ui/`. The plan is in `0007-ui-surfaces` in the
-feature plans.
+noticing. The default pages are the files in `ui/`, and a module's own pages are in `ui/modules/<module>/`.
 
 ## The Remote Script bridge
 
@@ -214,8 +233,10 @@ both. It uses the Live Object Model (LOM), which only runs inside Live's Python.
 - **Operations.** Each operation has one handler in the script's `ops/` folder and one typed function
   in `src/ableton/bridgeOps.ts`. Modules call the typed functions only. Reads and selection need no
   token. The operations are listed in the [Remote Script reference](reference/remote-script.md),
-  which is generated from the code.
-- **Access token.** An operation that changes something needs a token. The script creates a random
+  which is generated from the code. Tags are stored on the tracks by the script, with `Track.get_data` and
+  `Track.set_data`, so they live in the Set. The extension keeps a cache of them, which a tag command refreshes
+  first.
+- **Access token.** An operation that changes something (`chain_set`, `tags_set`) needs a token. The script creates a random
   token each time Live starts and writes it to a file in the extension's data folder under Application Support. The
   extension reads that file and sends the token with each writing request. A wrong or missing token
   is refused before any handler runs. The token protects against other local processes and stray
@@ -230,8 +251,7 @@ an `id` gets exactly one reply. An unreadable datagram is logged and dropped.
 ## Limits that shape the design
 
 - **A dialog's size is fixed when it opens.** The SDK has no call to resize a dialog, so cmdAbl sizes each dialog
-  from its content before opening it (`src/core/notifySize.ts`, `src/core/pickSize.ts`). A resize handle is a
-  candidate for a feature request to Ableton.
+  from its content before opening it (`src/core/notifySize.ts`, `src/core/pickSize.ts`).
 - **Extensions cannot call each other.** `context.commands.executeCommand()` only reaches commands
   that the calling extension registered itself. cmdAbl cannot run another extension's command.
 - **Only built-in Live devices can be inserted.** `insertDevice()` takes Live's own devices. A

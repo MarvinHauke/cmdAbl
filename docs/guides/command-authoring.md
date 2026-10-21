@@ -1,58 +1,146 @@
 # Writing a command
 
-A command is one declaration; the platform parses the line, resolves paths to Live objects and
-generates `--help`. Design background: [0005](https://github.com/MarvinHauke/cmdAbl/blob/main/docs/feature-plans/0005-command-tree-and-module-authoring.md).
+A command is one declaration. The platform parses the line, resolves paths to Live objects, asks when a name is
+ambiguous and generates `--help`. Design background:
+[0005](https://github.com/MarvinHauke/cmdAbl/blob/main/docs/feature-plans/0005-command-tree-and-module-authoring.md).
+How the layers fit together is on the [Architecture](../architecture.md) page.
+
+## A module with one command
+
+A module is a folder under `src/modules/<name>/` with an `index.ts` that exports `activate(api)`. Add it to `MODULES`
+in `src/modules/index.ts`; nothing else in the platform changes.
 
 ```ts
-api.commands.add({
-  name: "mute",
-  summary: "toggle mute on tracks",
-  description: "Switches mute on for each target that is not muted and off for each that is.",
-  examples: [{ line: "mute /Kick, /Snare", note: "several targets, separated by a comma" }],
-  args: [{ name: "track", kind: "path", kinds: ["track"], variadic: true, summary: "Tracks to mute" }],
-  run: (invocation) => { /* … return ok() or fail(ExitCode.…, message, details) */ },
-});
+import type { ModuleApi } from "../types.js";
+import type { ObjectNode } from "../../ableton/objectTree.js";
+import { ok } from "../../core/types.js";
+
+export function activate(api: ModuleApi): void {
+  api.commands.add({
+    name: "flip",
+    summary: "toggle mute on tracks",
+    description: "Switches mute on for each track that is not muted and off for each that is.",
+    examples: [{ line: "flip /Kick, /Snare", note: "two tracks, separated by a comma" }],
+    args: [{ name: "track", kind: "path", kinds: ["track"], variadic: true, summary: "Tracks to flip" }],
+    run: (invocation) => {
+      const nodes = (invocation.args[0] ?? []) as ObjectNode[];
+      api.tracks.transaction(() => {
+        for (const node of nodes) {
+          const track = api.tracks.track(node);
+          if (track) track.mute = !track.mute;
+        }
+      });
+      return ok();
+    },
+  });
+}
 ```
+
+`run` gets the parsed invocation. `invocation.args[0]` holds the Live objects of the first argument, each already
+resolved to exactly one object. A successful write returns `ok()` with no message, and the palette stays silent.
 
 ## Rules
 
-- A command does one thing. Words are commands and subcommands; `--flags` are options; an action
-  is never a flag.
-- The handler never parses raw input, never resolves paths, never reaches the SDK or the socket directly and never shows a dialog for an error:
-  it returns a `CommandResult` (`ok()`, `fail(ExitCode.…, message, details)`).
-- Prefer setting over toggling where a re-run from history should mean the same thing; write
-  several targets in one `withinTransaction` (its callback must be synchronous — await before it, not inside).
+- A command does one thing. Words are commands and subcommands; `--flags` are options; an action is never a flag.
+- The handler never parses raw input, never resolves paths, never reaches the SDK or the socket directly and never
+  shows a dialog for an error. It returns a `CommandResult`: `ok()`, or `fail(ExitCode.…, message, details)`.
+- Nothing throws at a user action. An uncaught error stops the whole Extension Host. The platform turns a throw
+  from a handler into exit code 1, but catch what you can and return a result.
+- Write several targets in one `api.tracks.transaction`. Its callback must be synchronous: `await` before it, not
+  inside.
+- Prefer setting over toggling where a re-run from history should mean the same thing (`mute --set 1`).
 - Declare `kinds` on `path` arguments unless the command really means every kind.
+
+## Options and arguments
+
+An `ArgDef` has a `kind` (`path`, `enum`, `text` or `number`), and `required`, `variadic` (takes all remaining
+tokens), `rest` (takes the rest of the line as one value) and `kinds` (which objects a `path` matches).
+An `OptionDef` has a `name`, a `short` form and a `summary`. For an option with a value:
+
+| Field | What it does |
+|---|---|
+| `takesValue` | The option takes a value: `--set 1` or `--set=1`. |
+| `choices` | The allowed values. The parser rejects anything else with a usage error that lists them. |
+| `number` | `{ min, max, integer }`: the value must be a number in that range. The handler gets the text. |
+| `values` + `valueLabels` | The option takes N values, as in `--rename <old> <new>`. The handler reads them from `invocation.values[name]`; `invocation.options[name]` is `true`. |
+| `valueDefault` | The value when the option is given without one: `tag -e` acts like `tag -e #`. |
+
+`--help` and `--pick` are reserved option names, and `-h` is the reserved short form.
+
+Two more fields on a command help it behave like the others:
+
+- `requires: ["bridge"]` says the command cannot work without the Remote Script. The platform checks it before it
+  resolves anything or asks the user to pick, and answers exit code 5 when the script is missing.
+- `pickState` makes the pick list show a state button on each row: `read(nodes, invocation)` gives the state per
+  row, and `change(invocation)` says what `Enter` would do (`"toggle"`, `"on"` or `"off"`).
+
+## What a command shows
+
+A result goes to one of three places:
+
+- **A dialog** for a failure and for output the user asked for. `fail(…)` shows its message; `ok("text")` shows the
+  text.
+- **Silence** for a successful write: `ok()` with no message.
+- **The log** for everything else. `CommandResult.log` holds lines that the platform writes to the log at info under
+  the command's name. The presenter never shows them. A successful write that has something to report returns only
+  `log`. Put what changed there, and the commands that undo it if Cmd+Z cannot.
+
+A write that changes nothing should say so with a message ("/Bass already has #bass"), because a silent result
+would look like success. A failure that touches several targets returns one `details` entry per target.
 
 ## Reaching Live: the ports
 
-A module never touches the SDK or the socket; it uses the ports on `api`, so a command's `run` can
-be tested with fakes (`createFakeApi` in `src/modules/testPorts.ts`).
+A module never touches the SDK or the socket. It uses the ports on `api`, so a command's `run` can be tested with
+fakes (`createFakeApi` in `src/modules/testPorts.ts`).
 
 | Port | Use it for |
 |---|---|
-| `api.bridge` | Calls to the Remote Script (`select`, `trackFacts`, `chainSet`, …) through the typed functions in `src/ableton/bridgeOps.ts`. It never throws; a failure is a result with the bridge's exit code and text, which you pass on unchanged. Declare `requires: ["bridge"]` when the command cannot work without it. |
+| `api.bridge` | Calls to the Remote Script (`select`, `trackFacts`, `chainSet`, …) through the typed functions in `src/ableton/bridgeOps.ts`. It never throws; a failure is a result with the bridge's exit code and text, which you pass on unchanged. |
 | `api.liveSet.nodes()` | The Set's objects (tracks, devices, chains and pads), flattened, for find-like commands and the palette rows. |
-| `api.tracks` | `transaction(fn)` (one undo step; `fn` is synchronous and catches its own writes) and `track(node)` → `{ mute, solo, arm }` or null. SDK-backed, so it works without the Remote Script. |
-| `api.log(line)` | One log line at `info`, tagged with the module's name: `cmdAbl [<module>] info: …`. The platform adds the prefix; write the text only. |
+| `api.tracks` | `transaction(fn)` (one undo step; `fn` is synchronous) and `track(node)` → `{ mute, solo, arm }` or null. SDK-backed, so it works without the Remote Script. |
+| `api.tags` | Track tags: `refresh()` reads them from the script, `of(node)` returns a track's tags, `write(node, tags)` replaces them. Names must be normalised by the caller. |
+| `api.pick(title, candidates, multi?, options?)` | The pick list, when a command has to ask. `options.state` gives each row a state button: `{ label, values, change? }` with `values[i]` true, false or null. |
+| `api.pickTags(title, rows, options?)` | A list of tags. `rows` are `{ name, count?, on? }`. `options.multi: false` makes it single-select, `options.allowNew` adds a row that creates a new name, `options.change` previews what `Enter` does. It resolves with the chosen names, or null. |
+| `api.ui.board(request)` | The tag board: sections whose items are on or off. It resolves with the changes; the page applies nothing, so the module writes them. |
+| `api.confirm(message, confirmLabel)` | A yes/no question. `Cancel` is the first row, so a reflex `Enter` never acts. |
+| `api.dialog(html, width, height, name?)` | A page of the module's own, through the dialog queue; resolves with the string the page returns, or null when dismissed. |
+| `api.log(line)` | One log line at info: `cmdAbl [<module>] info: …`. The platform adds the prefix; write the text only. |
 | `api.logger.{debug,info,warn,error}(text)` | The same, at the level you name. `debug` lines show only after `cmdabl log --debug`. |
-| `api.dialog(html, width, height, name)` | A page of the module's own, through the dialog queue; resolves with the string the page returns, or null when dismissed. |
-| `api.pick(title, candidates, multi)` | The pick list, when a command has to ask. |
+| `api.commands` | `add`, plus `roots()`, `help(path)` and `usage(path)` for commands such as `man`. |
+| `api.registerProvider`, `api.onPick`, `api.onCommandRun`, `api.showFeedback` | Palette rows, a listener for picks, a listener for finished commands, and a small message. |
 
-Test a command by building the fake with `createFakeApi({ nodes, bridge })`, activating the module
-on `fake.api`, and calling the declared command's `run` with an invocation.
+A module that has its own page puts the HTML in `ui/modules/<module>/`. A module may import a page only from its own
+folder.
+
+## Logging
+
+Never call `console.` in a module; the architecture test fails on it. Log through `api.log` or `api.logger`. Never
+put a token, a secret or an environment value in a log line.
+
+## Test it
+
+Build the fake with `createFakeApi({ nodes, bridge })`, activate the module on `fake.api`, and call the declared
+command's `run` with an invocation. Add a `docs.test.ts` that runs `assertDocumented`, so every example line must
+parse:
+
+```ts
+import { test } from "node:test";
+import { assertDocumented, declaredBy } from "../docs.testkit.js";
+import { activate } from "./index.js";
+
+test("flip: the command is documented and its examples parse", () => {
+  assertDocumented(declaredBy((api) => activate(api)), ["flip"]);
+});
+```
 
 ## Documentation fields
 
-These texts are the single source for `<command> --help` and for the generated command reference
+These texts are the single source for `<command> --help`, for `man <command>` and for the generated command reference
 (`npm run docs:reference`). Write them for someone using Live, not for a developer.
 
 | Field | On | What goes in |
 |---|---|---|
 | `summary` | command, option | One line: what it does. |
-| `description` | command, group | A sentence or two beyond the summary: what it needs (the Remote Script, macOS), what it changes, what it refuses. Plain text — no markdown backticks, they show literally in `--help`. |
-| `examples` | runnable command | At least one `{ line, note? }`: the line exactly as typed, a few words of note. Add one per form that differs (several targets, a quoted path, a flag). |
+| `description` | command, group | A sentence or two beyond the summary: what it needs (the Remote Script, macOS), what it changes, what it refuses. Plain text; no markdown backticks, they show literally in `--help`. |
+| `examples` | runnable command | At least one `{ line, note? }`: the line exactly as typed, and a few words of note. Add one per form that differs (several targets, a quoted path, a flag). |
 | `summary` | each argument | What to type there. |
-
-Every example line is parsed by the test `assertDocumented` (`src/modules/docs.testkit.ts`); a
-module's `docs.test.ts` calls it, so an example that does not parse fails `npm test`.
