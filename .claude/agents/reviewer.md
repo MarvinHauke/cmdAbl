@@ -29,6 +29,8 @@ You run in two ways. As an in-process subagent, you return your report. As the p
 
 ## What to check
 
+- Use subagents when they make the work faster or better (a wide search, independent checks in
+  parallel); your call.
 **Contracts**
 - Modules declare, the platform parses and resolves: no module reads raw input, splits arguments,
   resolves a path or handles ambiguity itself.

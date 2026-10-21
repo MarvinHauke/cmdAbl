@@ -3,7 +3,7 @@
 This page is for daily use, after [Getting started](getting-started.md). It covers how to type a command,
 how to name the objects of your Set, what the pick list asks, and what the palette remembers. The exact
 usage of every command is in the [command reference](reference/commands.md). Type `<command> --help` in the
-palette for the same text.
+palette for a short usage line, and `man <command>` for the full page.
 
 ## Open the palette
 
@@ -112,9 +112,69 @@ Use `find` to list everything that matches a pattern:
 - `find -t bass` lists only tracks, and `find -d 808` only devices.
 - `next` and `prev` step through the last `find` list.
 
+**Tags in `find`.** `find #drums` lists the tracks tagged `drums`, and `next` and `prev` step through them.
+`find !#drums` lists the regular tracks without the tag. `find drums` lists what the path matches, and also the
+tracks tagged `drums`; their rows show their tags. `find #drums kick` searches inside the tagged tracks. The kind
+flags and `-L` apply as usual, for example `find #drums -c` lists the chains and pads of the tagged tracks. Without
+the Remote Script, `#` answers that the Remote Script is not running; plain words work as before.
+
 Selecting a pad or a chain does not change how the track is shown. Add `--unfold` to `goto` or `find` to show the
 track's chains as columns in the Session mixer. Live stores this view state with the Set, so the Set counts as
 changed. cmdAbl never folds the chains back. To fold them again, do it in Live.
+
+## Tags
+
+A tag marks what a track is, such as `fx` or `drums`. One command then reaches every track with that tag:
+`mute #fx` mutes all tracks tagged `fx`, at once and without a list.
+
+- `tag --list` (or `tag -l`) lists every tag as a block: its name, how many tracks carry it, and those tracks. A bare
+  `tag` is a usage error that shows the short usage.
+- `tag /Lead` opens a list of tags, with buttons that show which ones Lead has. Mark the tags to switch with `Tab`,
+  then press `Enter`.
+- `tag /Lead fx synth` switches `fx` and `synth` on for Lead, or off where they are on.
+- `tag --set 1 /Bass fx` makes sure Bass has `fx`. `tag --set 0 /Bass fx` removes it.
+- `mute #fx, #drums` acts on the tracks tagged `fx` and the tracks tagged `drums`, together.
+- `mute !#drums` acts on every regular track without the tag `drums`, untagged ones included. It never acts on the
+  main track, and return tracks only when you name them by path.
+- `mute drums` acts like `#drums` when `drums` is a tag and no track name matches it. A track such as "Drums Bus"
+  brings up a list instead, with the tagged tracks first.
+- `mute #` opens a list of the Set's tags. Mark the tags to act on.
+- `find #fx` lists the tracks tagged `fx`, and `find !#drums` the regular tracks without the tag `drums`.
+- `mute --pick drums` shows every match in a list, and only the marked rows run.
+
+**Adding a tag.** In the tag list of `tag <target>`, type a name that no tag matches exactly. The list then shows
+`+ new tag "<name>"` as its last row.
+
+- If that row is the only one, type the name and press `Enter` to add it.
+- Otherwise press `↓` to reach the row, then `Enter`.
+- Tags you marked before still come along.
+
+In a Set without tags, the empty list says "type a new tag".
+
+**Rules.**
+
+- Tag names use lowercase letters, digits, `-` and `_`.
+- Tags are stored in the Live Set. They are saved with the Set, copied by Cmd+D, and kept when a track is renamed.
+  Regular, return and main tracks can carry tags.
+- Tags need the Remote Script 0.1.5. After you update cmdAbl, run `cmdabl setup` once, then restart Live.
+- Commands that act on one object, such as `goto`, and destructive commands still ask when a tag matches several
+  tracks.
+- Cmd+Z does not undo a tag change. The result prints the reverse command, for example
+  `undo: tag --set 0 /Lead fx`. Each change also leaves an invisible step in Live's undo list, so Cmd+Z may need
+  several presses, and Live asks you to save when you close the Set.
+- A comma list before tag names is not supported yet: `tag /Lead, /Bass fx` fails. Use `#tag`, `!#tag` or `--pick`.
+
+## Read a command's page
+
+`<command> --help` shows a short usage: the usage line, and each subcommand, option and argument on one line. It also says
+`more: man <command>` when a full page exists. `man <command>` shows the full page inside Live, offline: summary,
+usage, options, arguments and examples. It has an **Open in browser** button for the command's section on the web.
+It finds a command by its words, so you can name a subcommand too: `man history clear` or `man cmdabl setup`.
+
+- `man ableton` opens the Live manual; `man ableton <words>` searches it for the words.
+- `man cmdabl` opens the cmdAbl documentation.
+- The web manuals need an internet connection. The command page does not.
+- An unknown command answers with close matches under "Did you mean".
 
 ## Look up a Live Object Model path
 
@@ -164,14 +224,22 @@ A name that matches more than one object does not produce an error: the pick lis
 
 ## History
 
-cmdAbl remembers the last 20 commands that worked and that had arguments. They appear at the top of the palette,
-newest first, so you can run one again.
+cmdAbl remembers the last 20 commands that worked and that had arguments. They appear at the top of the empty
+palette, newest first.
 
-- A remembered line holds the exact objects, each by its full path. A rerun therefore never asks again, even if
-  a later track has the same name.
-- The history is kept in memory. It is cleared when the extension reloads, for example when Live restarts.
+- `↑` and `↓` choose a remembered line, and `Enter` runs it again.
+- `Tab` puts the line into the prompt, so you can edit it first.
 
-Use `↑` and `↓` to choose a remembered line and `Enter` to run it again.
+**What a remembered line keeps.**
+
+- An object target (a track, a device, a chain or a pad) is kept by its full path. A rerun therefore never asks
+  again, even if a later track has the same name.
+- A tag target (`#fx`, `!#drums` or a bare tag word such as `mute drums`) and `--pick` are kept as you typed them.
+  A rerun resolves them again: a track tagged since then is included, and `--pick` opens the list again.
+- A `#` that you picked from the tag list is kept as the `#name` tags you chose.
+
+**In memory only.** The history is kept in memory. It is gone when cmdAbl restarts. A history that survives
+restarts is planned for 0.1.2.
 
 ### Clear, forget and restore
 

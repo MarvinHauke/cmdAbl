@@ -41,6 +41,11 @@ maintainers already know about each one.
   makes cmdAbl forget the stuck dialog, and Live may still not open a new one. If that does not help, try disabling and
   re-enabling the extension. Restarting Live is the safe last step.
 
+- **Tags are on tracks only.** Rack chains and Drum Rack pads cannot carry tags yet.
+- **Cmd+Z does not undo a tag change.** The result prints the reverse command, for example
+  `undo: tag --set 0 /Lead fx`. Each change also leaves an invisible step in Live's undo list.
+- **A comma list before tag names is not supported.** `tag /Lead, /Bass fx` fails. Use `#tag`, `!#tag` or `--pick`.
+
 ## Pads, chains and racks
 
 - **The first palette open after a start may not list chains.** When Live has just started cmdAbl, the palette

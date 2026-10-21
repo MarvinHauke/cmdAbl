@@ -55,6 +55,6 @@ test("installed script check: missing, old, current, unknown", () => {
 });
 
 // Pins the reset value; update it together with VERSION in protocol.py on the next script change (0001 §3).
-test("the script version is 0.1.2 (0001 §3 versioning rule)", () => {
-  assert.equal(SCRIPT_VERSION, "0.1.2");
+test("the script version is 0.1.5 (0001 §3 versioning rule)", () => {
+  assert.equal(SCRIPT_VERSION, "0.1.5");
 });

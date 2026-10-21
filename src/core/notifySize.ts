@@ -45,3 +45,10 @@ export function notifySize(text: string): { width: number; height: number } {
   const height = Math.min(Math.max(NOTIFY_FIXED_HEIGHT + NOTIFY_LINE_HEIGHT * rows, NOTIFY_MIN_HEIGHT), NOTIFY_MAX_HEIGHT);
   return { width, height };
 }
+
+/** The lines a sections view takes (heading with meta, indented items, a blank line between), for sizing the dialog. */
+export function sectionsText(sections: Array<{ heading: string; meta?: string; items: string[] }>): string {
+  return sections
+    .map((s) => [s.meta ? `${s.heading}  ${s.meta}` : s.heading, ...s.items.map((i) => `  ${i}`)].join("\n"))
+    .join("\n\n");
+}

@@ -91,7 +91,7 @@ In the palette:
 Start with these three. Type each one in the palette and press `Enter`.
 
 **`help`** lists every command with a one-line summary. Type a command followed by `--help`, for example
-`mute --help`, to see its full usage. This works without the Remote Script.
+`mute --help`, to see its usage: the usage line, and each option and argument on one line. This works without the Remote Script.
 
 **`goto <track>`** selects a track in Live. A full path such as `goto /Lead` selects one track. Partial names work
 too, and `goto` needs the Remote Script.
@@ -103,9 +103,9 @@ When a name matches more than one object, cmdAbl shows a **pick list** instead o
 filter, press `↑` and `↓` to move, `Enter` to choose and `Esc` to cancel. Commands that take several
 tracks, such as `mute`, let you mark more than one row with `Tab`.
 
-![The pick list for mute midi, with two matching tracks, 2-MIDI and 3-MIDI, and the command line above the filter](assets/images/pick-list.png)
+![The pick list for mute --pick #drums, with five tracks: Drums, Bass, Synth, Lead and FX Sound, each with its tags; the speaker buttons of Drums and Synth are marked with a dashed ring](assets/images/pick-list.png)
 
-*A name that matches two tracks opens the pick list. The line above the filter shows the command that Enter will run.*
+*A name that matches several tracks opens the pick list. The line above the filter shows the command that Enter will run, and the buttons show the state that Enter would set.*
 
 ## Check the Remote Script
 
@@ -120,7 +120,7 @@ The palette, `help`, `man`, the history of past commands and the track commands 
 
 - `mute`, `solo` and `arm` work on tracks. Return, main and group tracks cannot be armed.
 - Track selection does not work. `goto`, `find`, `next` and `prev` report that the Remote Script is not
-  running, not installed or outdated, and do not select anything.
+  running, and do not select anything.
 - Picking a Live object in the palette does not select it either. It reports the same message.
 - `mute` and `solo` on rack chains and Drum Rack pads also need the Remote Script, and they work on
   macOS only.

@@ -44,7 +44,7 @@ mute /Bass, /Lead                  a command, then several path arguments
 
 - Bare words name a command or a subcommand.
 - `-x` and `--long` are options. They change how a command runs.
-- `--help` prints the usage of any node.
+- `--help` prints the short usage of any node. `man <command>` prints the full page.
 
 A module declares a command. It gives the command a name, options, arguments, a one-line `summary`,
 a longer `description`, and `examples` that must parse. The platform does the rest:

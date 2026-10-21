@@ -1,0 +1,164 @@
+import type { ModuleApi } from "../types.js";
+import type { ObjectNode } from "../../ableton/objectTree.js";
+import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../../core/types.js";
+import { changed, diffTags, normalizeTagNames, planTags, reverseLines, tagIndex, type TagChange, type TagMode } from "./plan.js";
+
+const hashed = (tags: string[]): string => (tags.length === 0 ? "no tags" : tags.map((t) => `#${t}`).join(" "));
+
+/** The lines for one changed track: what changed, then the commands that put it back. */
+export function changeLines(path: string, c: TagChange): string[] {
+  const parts = [...c.added.map((t) => `+${t}`), ...c.removed.map((t) => `-${t}`)];
+  return [`${path}: ${parts.join(" ")} (now ${hashed(c.after)})`, ...reverseLines(path, c).map((l) => `  undo: ${l}`)];
+}
+
+/**
+ * `tag [--list] [--set 1|0] <target> [name…]` — tags on tracks, kept in the Live Set
+ * by the Remote Script. Toggles like mute; `--set` adds or removes.
+ */
+export function activate(api: ModuleApi): void {
+  api.commands.add({
+    name: "tag",
+    summary: "tag tracks, or list the tags of the Set",
+    description:
+      "Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx " +
+      "reaches every track tagged fx. With --list, lists every tag and the tracks that carry it. " +
+      "With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target " +
+      "that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. " +
+      "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +
+      "so the script has to run, and they are saved with the Set. Cmd+Z does not undo them: the result names " +
+      "the command that puts every change back. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or " +
+      "a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).",
+    examples: [
+      { line: "tag --list", note: "all tags and their tracks" },
+      { line: "tag /Lead", note: "pick the tags to switch on or off for the track Lead, or type a new one" },
+      { line: "tag /Lead fx synth", note: "switch fx and synth on, or off where they are on" },
+      { line: "tag --set 1 /Bass fx", note: "make sure Bass is tagged fx" },
+      { line: "tag --set 0 #drum fx", note: "remove fx from every track tagged drum" },
+      { line: "tag --set 1 !#drums synth", note: "tag every track that is not a drums track as synth" },
+    ],
+    requires: ["bridge"],
+    options: [
+      { name: "list", short: "l", summary: "list every tag with its tracks instead of changing tags" },
+      {
+        name: "set",
+        short: "s",
+        takesValue: true,
+        choices: ["0", "1"],
+        summary: "make sure every target has the tags (1) or lacks them (0) instead of toggling",
+      },
+    ],
+    args: [
+      {
+        name: "target",
+        kind: "path",
+        kinds: ["track"],
+        required: false, // not required by the parser: --list takes none; the handler answers a missing one like the parser would
+        summary: "A track (quote a name with spaces) or #tag for every track with that tag; without names a list of tags opens",
+      },
+      { name: "name", kind: "text", required: false, variadic: true, summary: "Tag names: lowercase letters, digits, - and _" },
+    ],
+    run: async (invocation): Promise<CommandResult | void> => {
+      const targets = (invocation.args[0] ?? []) as ObjectNode[];
+      const words = (invocation.args[1] ?? []) as string[];
+
+      const listing = invocation.options.list === true;
+      if (listing && (targets.length > 0 || words.length > 0 || invocation.options.set !== undefined)) {
+        return fail(ExitCode.USAGE, "tag --list takes no target, names or --set");
+      }
+      if (!listing && targets.length === 0) {
+        // Same answer as the platform gives for a missing argument: exit 2 with the usage.
+        return fail(ExitCode.USAGE, `missing argument <target>\n${api.commands.usage(["tag"]) ?? "usage: tag [--set <0|1>] <target> [<name>…]"}`);
+      }
+
+      const fresh = await api.tags.refresh();
+      if (!fresh.ok) return fail(fresh.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
+      const tracks = api.liveSet.nodes().filter((n) => n.kind === "track");
+      const set = invocation.options.set;
+      const mode: TagMode = set === "1" ? "add" : set === "0" ? "remove" : "toggle";
+
+      if (listing) {
+        const index = tagIndex(tracks.map((t) => ({ path: t.path, tags: api.tags.of(t) })));
+        if (index.length === 0) return ok("no tags in the Set");
+        return {
+          ...ok(index.map((e) => `#${e.tag}: ${e.paths.join(", ")}`).join("\n")),
+          sections: index.map((e) => ({
+            heading: `#${e.tag}`,
+            meta: `${e.paths.length} ${e.paths.length === 1 ? "track" : "tracks"}`,
+            items: e.paths,
+          })),
+        };
+      }
+
+      let pickedModes: Map<string, TagMode> | null = null;
+      let pickedRows: Array<{ name: string; on: boolean }> | null = null;
+      if (words.length === 0) {
+        // The Set's tags as a list; the state buttons show what the target(s) have, Enter applies the marked ones.
+        const index = tagIndex(tracks.map((t) => ({ path: t.path, tags: api.tags.of(t) })));
+        const rows = index.map((e) => ({
+          name: e.tag,
+          count: e.paths.length,
+          on: targets.every((t) => api.tags.of(t).includes(e.tag)),
+        }));
+        const title = `tag ${targets.length === 1 ? targets[0]!.path : `${targets.length} tracks`}`;
+        const chosen = await api.pickTags(title, rows, {
+          change: mode === "add" ? "on" : mode === "remove" ? "off" : "toggle",
+          allowNew: true,
+        });
+        // The created name, if any, comes last as typed; it is checked below like a typed one.
+        if (!chosen || chosen.length === 0) return;
+        words.push(...chosen);
+        pickedRows = rows;
+      }
+
+      const names = normalizeTagNames(words);
+      if (!names.ok) {
+        return fail(ExitCode.USAGE, `tag: "${names.bad}" is not a tag name — use lowercase letters, digits, - and _`);
+      }
+      // The list promised one result per row: a lit row is removed from every target, any other (a created
+      // name included) added to every target (a per-track toggle would flip tracks that disagree the wrong way round).
+      if (pickedRows && mode === "toggle") {
+        const rows = pickedRows;
+        pickedModes = new Map(names.names.map((n) => [n, rows.find((r) => r.name === n)?.on ? "remove" : "add"]));
+      }
+
+      const lines: string[] = [];
+      const outcomes: TargetOutcome[] = [];
+      let unmarked = false;
+      for (const node of targets) {
+        const before = api.tags.of(node);
+        const plan = pickedModes
+          ? diffTags(
+              before,
+              planTags(
+                planTags(before, names.names.filter((n) => pickedModes!.get(n) === "add"), "add").after,
+                names.names.filter((n) => pickedModes!.get(n) === "remove"),
+                "remove",
+              ).after,
+            )
+          : planTags(before, names.names, mode);
+        if (!changed(plan)) {
+          lines.push(`${node.path}: no change (${hashed(before)})`);
+          outcomes.push({ path: node.path, ok: true });
+          continue;
+        }
+        const written = await api.tags.write(node, plan.after);
+        if (!written.ok) {
+          outcomes.push({ path: node.path, ok: false, code: written.code as never, message: written.text });
+          continue;
+        }
+        if (!written.value.marked) unmarked = true;
+        const actual = diffTags(before, written.value.tags);
+        const text = changeLines(node.path, actual);
+        lines.push(...text);
+        outcomes.push({ path: node.path, ok: true, message: text.join("\n") });
+      }
+      if (unmarked) lines.push("Live was not told about the change: save the Set (Cmd+S) so the tags are kept.");
+
+      const failed = outcomes.filter((o) => !o.ok);
+      if (failed.length === 0) return ok(lines.join("\n"));
+      const code =
+        failed.length === outcomes.length && failed.every((o) => o.code === ExitCode.UNAVAILABLE) ? ExitCode.UNAVAILABLE : ExitCode.FAILURE;
+      return fail(code, `tag: ${outcomes.length - failed.length} of ${outcomes.length} done`, outcomes);
+    },
+  });
+}

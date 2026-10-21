@@ -620,6 +620,23 @@ addition if the chain's switch turns out not to match the visible button.
   `chainSet(bridge, [{…node, mute?, solo?}])` → `{name, mute, solo}` per chain read back. The
   caller (cmdabl-modules) computes the toggle from `chainSwitches` and writes with `chainSet`.
 
+**Operations for tags on tracks** (script 0.1.5; the plan is `0008`)
+- Storage: `Track.set_data("cmdabl.tags", <JSON list as a string>)`. `get_data`/`set_data` are in the
+  Python API (Song and Track only), not in the Cycling '74 reference. Live-verified (0008 spike): saved
+  with the Set, copied by a duplicated track, **not undoable, and does not mark the Set modified**.
+- `tags_all` `{offset?}` → `{total, offset, tracks: [{scope, route: [i], name, tags}], next?}` for the
+  tracks that carry tags (regular, return, main), paged under the reply cap (`next` = the offset to ask
+  for again). A stored value that is not a JSON list of strings counts as no tags.
+- `tags_set` `{scope, route, expectName, tags}` (writing op: access token; track routes of length 1;
+  at most 40 tags of 1–40 characters, duplicates dropped) → `{name, tags, marked}`, `tags` read back.
+  After the write the script toggles the track's `color_index` and puts it back inside one
+  `begin_undo_step`/`end_undo_step` pair: the only candidate of the spike that makes Live ask to save
+  (one invisible "Custom Action" undo step; Cmd+Z keeps the colour). `marked: false` = that toggle failed.
+- Extension: `readTags(bridge)` / `writeTags(bridge, track, tags)` in `bridgeOps.ts`, and `TagCache`
+  (`tagCache.ts`, like `chainNames.ts`) which fills `ObjectNode.tags` on track nodes from a background
+  `tags_all` refresh. A cached list counts only while the track at that route still has the name it had
+  when the tags were read; `TagCache.write` updates the cache at once.
+
 **Access token** (mandatory before the first operation that changes something — built with the
 first one, `chain_set`)
 - *Threat model.* Any local process can send UDP to 127.0.0.1:27185. The same user can already

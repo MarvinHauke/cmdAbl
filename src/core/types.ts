@@ -96,6 +96,29 @@ export interface CommandResult {
   details?: TargetOutcome[];
   /** AMBIGUOUS only: the paths that matched (candidates are not outcomes). */
   candidates?: string[];
+  /**
+   * A web page the message offers as a button next to Close (a plain `https://` URL; anything
+   * else is dropped). The user's click makes the platform open it in the browser.
+   */
+  link?: ResultLink;
+  /**
+   * A structured overview the message page draws instead of the plain text (headings, a
+   * small meta text, one line per item). `message` stays the plain-text fallback and what
+   * the log shows. Plain JSON; the presenter caps sizes (see `capSections`).
+   */
+  sections?: ResultSection[];
+}
+
+export interface ResultSection {
+  heading: string;
+  /** Short text next to the heading, e.g. a count. */
+  meta?: string;
+  items: string[];
+}
+
+export interface ResultLink {
+  label: string;
+  url: string;
 }
 
 export const ok = (message?: string, details?: TargetOutcome[]): CommandResult => ({

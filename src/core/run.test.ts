@@ -132,7 +132,7 @@ test("run: not found, usage, handler failures and exceptions become results", as
 test("run: --help", async () => {
   const { deps } = setup();
   const help = await runLine("mute --help", deps);
-  assert.match(help.result.message ?? "", /usage: mute <track>…/);
+  assert.match(help.result.message ?? "", /usage: mute \[--pick\] <track>…/);
 });
 
 test("registry.add rejects an invalid or duplicate command without throwing", () => {
@@ -353,4 +353,13 @@ test("run: a bridge that throws becomes exit 5, not an exception", async () => {
   const out = await runLine("needs2", deps);
   assert.equal(out.result.code, ExitCode.UNAVAILABLE);
   assert.match(out.result.message ?? "", /socket exploded/);
+});
+
+test("--help ends with 'more: man <path>' only when a man command exists", async () => {
+  const { deps, registry } = setup();
+  const without = await runLine("mute --help", deps);
+  assert.ok(!String(without.result.message).includes("more:"));
+  registry.add({ name: "man", summary: "manual", run: () => {} });
+  const withMan = await runLine("mute --help", deps);
+  assert.match(String(withMan.result.message), /\nmore: man mute$/);
 });

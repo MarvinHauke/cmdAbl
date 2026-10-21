@@ -1,4 +1,4 @@
-import { numberRule, usage, valueLabel, type ArgDef, type CommandNode } from "./commandTree.js";
+import { effectiveOptions, numberRule, usage, valueLabel, type ArgDef, type CommandNode } from "./commandTree.js";
 import { parse } from "./parse.js";
 
 // The command reference page, rendered from the command tree — the same
@@ -59,9 +59,9 @@ function renderNode(node: CommandNode<any, any>, path: string[], depth: number):
     out.push("", "**Subcommands:** " + node.children.map((c) => `\`${c.name}\``).join(", "));
   }
   if (node.args?.length) out.push("", ...argTable(node.args));
-  if (node.options?.length) {
+  if (effectiveOptions(node).length) {
     out.push("", "| Option | Description |", "| --- | --- |");
-    for (const opt of node.options) {
+    for (const opt of effectiveOptions(node)) {
       const flag = `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${opt.takesValue ? ` <${valueLabel(opt)}>` : ""}`;
       out.push(`| \`${flag}\` | ${cell(opt.summary + (opt.number ? ` (${numberRule(opt.number)})` : ""))} |`);
     }

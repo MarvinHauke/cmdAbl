@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chains, chunkTargets, select, trackFacts, REQUEST_BYTES_BUDGET, TRACK_FACTS_PER_REQUEST } from "./bridgeOps.js";
+import { chains, chunkTargets, select, readTags, writeTags, trackFacts, REQUEST_BYTES_BUDGET, TRACK_FACTS_PER_REQUEST } from "./bridgeOps.js";
 import { createFakeBridge } from "./bridgeFake.js";
-import { fail } from "./bridgeProtocol.js";
+import { fail, TEXT_OUTDATED } from "./bridgeProtocol.js";
 
 const node = { scope: "regular" as const, route: [2, 1], name: "EQ Eight" };
 
@@ -214,4 +214,38 @@ test("a 0.1.0 script's old field names are 'outdated' (exit 5), not null or no n
     assert.equal(first.ok, false);
     if (!first.ok) assert.equal(first.code, 5);
   }
+});
+
+test("readTags collects the pages and validates every entry", async () => {
+  const pages: Array<Record<string, unknown>> = [
+    { total: 3, offset: 0, tracks: [{ scope: "regular", route: [0], name: "Bass", tags: ["fx"] }], next: 1 },
+    { total: 3, offset: 1, tracks: [{ scope: "return", route: [0], name: "Verb", tags: ["send", "wet"] }] },
+  ];
+  const bridge = createFakeBridge({ ops: { tags_all: (a) => ({ ok: true, value: pages[a.offset === undefined ? 0 : 1]! }) } });
+  assert.deepEqual(await readTags(bridge), { ok: true, value: [
+    { scope: "regular", route: [0], name: "Bass", tags: ["fx"] },
+    { scope: "return", route: [0], name: "Verb", tags: ["send", "wet"] },
+  ] });
+  assert.deepEqual(bridge.calls.map((c) => c.args), [{}, { offset: 1 }]);
+  assert.equal(bridge.calls.every((c) => c.changes === false && c.token === undefined), true);
+});
+
+test("readTags rejects odd replies, a paging loop, and passes failures through", async () => {
+  const odd = (value: Record<string, unknown>) => createFakeBridge({ ops: { tags_all: () => ({ ok: true, value }) } });
+  assert.equal((await readTags(odd({ total: 1 }))).ok, false);
+  assert.equal((await readTags(odd({ tracks: [{ scope: "regular", route: [0, 1], name: "B", tags: [] }] }))).ok, false);
+  assert.equal((await readTags(odd({ tracks: [{ scope: "regular", route: [0], name: "B", tags: [1] }] }))).ok, false);
+  assert.equal((await readTags(odd({ tracks: [], next: 0 }))).ok, false); // no progress
+  assert.deepEqual(await readTags(createFakeBridge({ running: false })), { ok: false, code: 5, text: "Remote Script not running" });
+  assert.deepEqual(await readTags(createFakeBridge({})), { ok: false, code: 5, text: TEXT_OUTDATED });
+});
+
+test("writeTags is a writing request with the token and the track's name", async () => {
+  const bridge = createFakeBridge({ ops: { tags_set: () => ({ ok: true, value: { name: "Bass", tags: ["fx"], marked: true } }) } });
+  assert.deepEqual(await writeTags(bridge, node, ["fx"]), { ok: true, value: { name: "Bass", tags: ["fx"], marked: true } });
+  assert.deepEqual(bridge.calls, [{ op: "tags_set", args: { scope: "regular", route: [2, 1], expectName: "EQ Eight", tags: ["fx"] }, changes: true, token: true }]);
+  const odd = createFakeBridge({ ops: { tags_set: () => ({ ok: true, value: { name: "Bass", tags: ["fx"] } }) } });
+  assert.equal((await writeTags(odd, node, ["fx"])).ok, false);
+  const stale = createFakeBridge({ ops: { tags_set: () => fail(1, "the Live Set changed; run the command again") } });
+  assert.deepEqual(await writeTags(stale, node, []), { ok: false, code: 1, text: "the Live Set changed; run the command again" });
 });

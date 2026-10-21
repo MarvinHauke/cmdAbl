@@ -2,12 +2,13 @@ import { ExitCode, fail, ok, type CommandResult } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
 import type { CommandRegistry } from "./commandRegistry.js";
-import { helpText, type CommandNode, type Invocation, type PickState } from "./commandTree.js";
+import { shortHelpIn, type CommandNode, type Invocation, type PickState } from "./commandTree.js";
 import { parse } from "./parse.js";
-import { applyPick, lookupTarget, normalizeTargets, resolveTargets, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
+import { applyPick, lookupTarget, normalizeTargets, resolveTargets, tagTargetOf, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
 import { quoteIfNeeded, tokenize } from "./tokenize.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { PickPreview, StateChange } from "./ui.js";
+import { isTagWord, nodesForTag, nodesWithTag, parseTagTarget, type TagCount } from "./tags.js";
 
 // The one path every typed line takes: parse → resolve (asking the user to
 // pick when an address is ambiguous) → run → result. Everything it needs from
@@ -46,6 +47,14 @@ export interface RunDeps {
     /** The command's `pickState`, read for the candidates: shown as symbols (see SelectRequest.state). */
     state?: { label: string; values: Array<boolean | null>; change?: StateChange };
   }) => Promise<ObjectNode[] | null>;
+  /**
+   * Before a `#…` target is resolved: read the tags from the script now (awaited,
+   * so "no such tag" is told apart from "script not running"). A failing result
+   * (exit 5, the script's text) ends the run. Absent: the bridge check alone.
+   */
+  refreshTags?: () => Promise<CommandResult | null>;
+  /** Ask the user to choose among the Set's tags (a bare `#` target); null = cancelled. Absent: `#` answers exit 5. */
+  pickTags?: (request: { title: string; tags: TagCount[]; multi: boolean; preview: PickPreview }) => Promise<string[] | null>;
 }
 
 export interface RunOutcome {
@@ -82,8 +91,39 @@ function targetWord(value: Target, nodes: ObjectNode[]): string {
  * (the handler's own resolved arguments, in order); text arguments and options
  * as typed. A re-run never asks again and keeps its meaning when the Set grows.
  */
-function canonicalLine(invocation: Invocation<string>, args: ArgValue[][], nodes: ObjectNode[]): string {
-  return [...headWords(invocation), ...args.flat().map((v) => targetWord(v, nodes))].join(" ");
+function canonicalLine(
+  invocation: Invocation<string>,
+  args: ArgValue[][],
+  nodes: ObjectNode[],
+  node?: CommandNode<any, any>,
+  targets: Target[][] = [],
+  typed: Target[][] = [],
+): string {
+  const words: string[] = [];
+  args.forEach((values, argIndex) => {
+    const def = node?.args?.[argIndex];
+    // `--pick`: the line is remembered as typed, so a re-run opens the list again.
+    if (invocation.options.pick === true && def?.kind === "path") {
+      for (const t of typed[argIndex] ?? []) words.push(targetWord(t, nodes));
+      return;
+    }
+    // `#fx` is remembered as typed (a re-run hits the tracks tagged then), not as the paths it hit.
+    const covered = new Set<string>();
+    if (def?.kind === "path" && def.rest !== true) {
+      for (const t of targets[argIndex] ?? []) {
+        const tag = typeof t === "string" ? tagTargetOf(nodes, t, def.kinds) : null;
+        if (tag && tag !== "list") {
+          words.push(tag.typed);
+          for (const n of nodesForTag(nodes, tag, def.kinds)) covered.add(n.handleId);
+        }
+      }
+    }
+    for (const v of values) {
+      if (typeof v !== "string" && covered.has(v.handleId)) continue;
+      words.push(targetWord(v, nodes));
+    }
+  });
+  return [...headWords(invocation), ...words].join(" ");
 }
 
 /**
@@ -98,7 +138,7 @@ function previewFor(
   node: CommandNode<any, any>,
   invocation: Invocation<string>,
   targets: Target[][],
-  request: PickRequest,
+  request: { argIndex: number; valueIndex: number; texts: Array<{ valueIndex: number }> },
   nodes: ObjectNode[],
 ): PickPreview {
   const before = headWords(invocation);
@@ -212,7 +252,7 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   const parsed = parse<void>(line, registry.roots());
   if (parsed.kind === "error") return { result: parsed.result };
   if (parsed.kind === "help") {
-    if (parsed.node) return { result: ok(helpText(parsed.node, parsed.path)) };
+    if (parsed.node) return { result: ok(shortHelpIn(registry.roots(), parsed.node, parsed.path)) };
     const lines = registry.list().map((def) => `${def.name.padEnd(12)} ${def.description}`).sort();
     return { result: ok(lines.join("\n")) };
   }
@@ -228,13 +268,72 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   }
 
   const needsLive = (node.args ?? []).some((def) => def.kind === "path");
-  const nodes = needsLive ? deps.liveNodes() : [];
+  let nodes = needsLive ? deps.liveNodes() : [];
   let targets = normalizeTargets(node, invocation, nodes, quoted);
+  const typedTargets = targets.map((values) => [...values]);
+
+  // Tags live in the Set and are read by the Remote Script: `#…` cannot be answered without it.
+  const usesTags = targets.some(
+    (values, i) => node.args?.[i]?.kind === "path" && values.some((t) => typeof t === "string" && parseTagTarget(t) !== null),
+  );
+  if (usesTags) {
+    let unavailable: CommandResult | null;
+    try {
+      unavailable = deps.refreshTags ? await deps.refreshTags() : await bridgeUnavailable(deps);
+    } catch (e: unknown) {
+      unavailable = fail(ExitCode.UNAVAILABLE, `tags unavailable: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    if (unavailable) return { result: unavailable };
+    nodes = deps.liveNodes(); // the tree now carries the fresh tags
+  } else if (deps.refreshTags) {
+    // A bare word may act as a tag (`mute synth`): that must not rest on cached tags — the cache can
+    // be stale (another Set opened, a tag just written) or not loaded yet (cold start). So a bare
+    // word that the cache says is a tag, or that names nothing, reads the tags first. If the read
+    // fails the cached tags are not trusted: bare words then work on names only, as without a script.
+    const asTagWord = targets.some(
+      (values, i) =>
+        node.args?.[i]?.kind === "path" &&
+        values.some((t) => {
+          if (typeof t !== "string" || !isTagWord(t.trim())) return false;
+          const kinds = node.args?.[i]?.kinds;
+          return lookupTarget(nodes, t, kinds).length === 0 || nodesWithTag(nodes, t, kinds).length > 0;
+        }),
+    );
+    if (asTagWord) {
+      let failed = false;
+      try {
+        failed = (await deps.refreshTags()) !== null;
+      } catch {
+        failed = true;
+      }
+      // (Shallow copies: `children` still point at the originals, so resolution must not read tags through them.)
+      nodes = failed ? nodes.map((n) => ({ ...n, tags: undefined })) : deps.liveNodes();
+    }
+  }
 
   // Resolve; every ambiguous address costs the user one pick.
   for (;;) {
     const step = resolveTargets(node, invocation, targets, nodes);
     if (step.kind === "error") return { result: step.result };
+    if (step.kind === "tags") {
+      const { request } = step;
+      if (!deps.pickTags) return { result: fail(ExitCode.UNAVAILABLE, "the tag list is not available in this build") };
+      const command = invocation.path.join(" ");
+      const names = await deps.pickTags({
+        title: `${command}: which tags?`,
+        tags: request.tags,
+        multi: request.multi,
+        preview: previewFor(node, invocation, targets, { ...request, texts: [{ valueIndex: request.valueIndex }] }, nodes),
+      });
+      if (!names || names.length === 0) return { result: ok(), cancelled: true };
+      // The `#` becomes the chosen `#name` targets, resolved on the next round.
+      targets = targets.map((values, i) =>
+        i === request.argIndex
+          ? values.flatMap((v, k) => (k === request.valueIndex ? names.slice(0, request.multi ? undefined : 1).map((n) => `#${n}`) : [v]))
+          : values,
+      );
+      continue;
+    }
     if (step.kind === "pick") {
       const { request } = step;
       const quotedTexts = request.texts.map((t) => `"${t.query}"`).join(", ");
@@ -277,6 +376,6 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
     // A failing handler keeps its failure (the fill is dropped): nothing fails silently.
     const filled = deps.takeFill?.();
     if (filled !== undefined && result.code === ExitCode.OK) return { result: ok(), cancelled: true, fill: filled };
-    return { result, line: canonicalLine(invocation, step.invocation.args, nodes) };
+    return { result, line: canonicalLine(invocation, step.invocation.args, nodes, node, targets, typedTargets) };
   }
 }

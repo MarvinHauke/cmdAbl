@@ -1,4 +1,5 @@
-import { ExitCode, type CommandResult } from "./types.js";
+import { isHttpsUrl } from "./openUrl.js";
+import { ExitCode, type CommandResult, type ResultLink, type ResultSection } from "./types.js";
 
 /**
  * The one place a CommandResult becomes user-visible feedback.
@@ -25,8 +26,9 @@ import { ExitCode, type CommandResult } from "./types.js";
  * starts a new line, which is the only break rule — the page wraps the rest.
  * A successful result lists nothing when every target succeeded.
  */
-export function presentResult(result: CommandResult, show: (text: string) => void): void {
+export function presentResult(result: CommandResult, show: (text: string, link?: ResultLink, sections?: ResultSection[]) => void): void {
   if (result.code === ExitCode.OK && !result.message) return;
+  const link = result.link && result.link.label.trim() && isHttpsUrl(result.link.url) ? result.link : undefined;
 
   const lines: string[] = [];
   if (result.message) lines.push(result.code === ExitCode.OK ? result.message : `cmdAbl: ${result.message}`);
@@ -49,7 +51,10 @@ export function presentResult(result: CommandResult, show: (text: string) => voi
       for (const reason of reasonLines(key.startsWith("\0") ? undefined : key)) lines.push(`      ${reason}`);
     }
   }
-  show(lines.join("\n"));
+  // Sections replace the text on the page, and the text holds the failures: show them only for a clean result.
+  const clean = result.code === ExitCode.OK && !failed.length;
+  const sections = clean ? capSections(result.sections) : [];
+  show(lines.join("\n"), link, sections.length ? sections : undefined);
 }
 
 /**
@@ -67,4 +72,32 @@ function reasonLines(message: string | undefined): string[] {
   }
   lines.push(text.slice(start));
   return lines;
+}
+
+export const MAX_SECTIONS = 40;
+export const MAX_ITEMS = 200;
+export const MAX_TEXT = 300;
+
+const clip = (text: unknown): string => {
+  const value = typeof text === "string" ? text : "";
+  return value.length > MAX_TEXT ? `${value.slice(0, MAX_TEXT - 1)}…` : value;
+};
+
+/**
+ * Sections as the page gets them: plain strings only, empty headings dropped, at most
+ * MAX_SECTIONS sections of MAX_ITEMS items of MAX_TEXT characters; a cut list ends with "…".
+ */
+export function capSections(sections: ResultSection[] | undefined): ResultSection[] {
+  if (!Array.isArray(sections)) return [];
+  const out: ResultSection[] = [];
+  for (const section of sections.slice(0, MAX_SECTIONS)) {
+    const heading = clip(section?.heading).trim();
+    if (!heading) continue;
+    const items = (Array.isArray(section.items) ? section.items : []).filter((i) => typeof i === "string");
+    const shown = items.slice(0, MAX_ITEMS).map(clip);
+    if (items.length > MAX_ITEMS) shown.push("…");
+    const meta = clip(section.meta).trim();
+    out.push({ heading, ...(meta ? { meta } : {}), items: shown });
+  }
+  return out;
 }

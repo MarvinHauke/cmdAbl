@@ -9,3 +9,14 @@ export function inlineJson(value: unknown): string {
     .replace(/\u2028/g, "\\u2028")
     .replace(/\u2029/g, "\\u2029");
 }
+
+/**
+ * Fill a page's `/*KEY_PLACEHOLDER*\/null` slots in ONE pass over the template, so a value that
+ * happens to contain a placeholder text (a track named like one) is never substituted itself.
+ * A key without a value is left as it is.
+ */
+export function fillTemplate(template: string, values: Record<string, unknown>): string {
+  return template.replace(/\/\*([A-Z_]+)_PLACEHOLDER\*\/null/g, (whole, key: string) =>
+    Object.prototype.hasOwnProperty.call(values, key) ? inlineJson(values[key]) : whole,
+  );
+}

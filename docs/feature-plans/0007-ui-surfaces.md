@@ -40,11 +40,21 @@ own page, without touching the core or any module.
 | Surface | In | Out |
 |---|---|---|
 | `prompt` — the palette | `{ items: PaletteItem[], initial? }` (later also the command tree and keymap, see 0006) | a `PaletteResult`, or null when dismissed |
-| `select` — the pick list | `{ title, multi, items: [{ label, detail?, value?, state? }], preview?, fill?, state? }` (`preview`/`value`/`fill`/`state`: see section 4) | indexes of the chosen items, `{ fill: index }`, or null when cancelled |
-| `notify` — a message | `{ text, code }` (`code` = the exit code it belongs to) | nothing |
+| `select` — the pick list | `{ title, multi, items: [{ label, detail?, value?, state? }], preview?, fill?, state?, create? }` (`preview`/`value`/`fill`/`state`: see section 4; `create: { label }` offers a row `+ <label> "<trimmed filter text>"` after the matches while the filter is non-empty and matches no row exactly; when nothing matches it is the only row and has the cursor, as in 0008) | indexes of the chosen items, `{ fill: index }`, `{ created: "<trimmed filter text>", picked: [indexes of the rows marked] }` (only when `create` was sent; `picked` is empty in a single-select list), or null when cancelled |
+| `notify` — a message | `{ text, code, link?, sections? }` (`sections: [{ heading, meta?, items: string[] }]` from `CommandResult.sections` = a structured overview the page draws instead of `text`, which stays the plain fallback; capped by the presenter to 40 sections × 200 items × 300 characters; the page gets it through `/*SECTIONS_PLACEHOLDER*/null`; `code` = the exit code it belongs to; `link: { label, url }` = a button next to Close, a plain https URL, from `CommandResult.link`; the page gets it through `/*LINK_PLACEHOLDER*/null`) | nothing, or `{"open":true}` when the link button was clicked (the platform then opens the request's own `url` with `openUrl`; a failure opening it is shown as a message) |
+
+| `board` — an editable overview (planned, [0010](0010-tag-editing.md)) | `{ title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }`: the `on` items are chips with ×, and each section expands to a checkbox list of all items (like the tag panel in Live's browser) | `{ changes: [{ section, item, on }], created: [ids] }`, or null when closed |
 
 Everything is plain JSON. A page receives its request through a build-time placeholder and
 answers with `close_and_send`; each page documents this in a comment at its top.
+
+**Where pages go in `ui/`** (decided 2026-10-20, 0010):
+- Core surfaces are generic and replaceable: `ui/<surface>.html`, with the contract here.
+- A page only one module needs is opened with `api.dialog` and lives in `ui/modules/<module>/`.
+  `pakabl-list.html` moves there once a second module page appears.
+- When a second module needs the same kind of page, it becomes a core surface.
+- Editing pages collect the changes and answer once; the extension applies them and reopens the
+  page.
 
 ### 2. Three levels of customization
 
@@ -143,7 +153,8 @@ soloed or armed, so a toggle is not applied blindly. Commands without such a sta
   "toggle" | "on" | "off"` says what confirming does to a row's state; the node declares it
   through `pickState`, `mute`/`solo`/`arm` set "toggle" without `--set`, else "on"/"off".
   The rows confirming would act on — the marked ones in a multi-select list (nothing marked: none; `Enter` then runs nothing
-  and the hint asks for a mark), the cursor row in a single-select list — show the
+  and the hint asks for a mark; exception: the create row answers `Enter` when it is under the
+  cursor, marked or not, together with the marked rows — 0008), the cursor row in a single-select list — show the
   **resulting** state at once, with a dashed accent ring while it differs from Live ("pending,
   not applied"); tooltip "muted (on confirm)". With `change` present, marks lose the row tint
   (the button shows them) and keep the bold label; a marked row whose result equals its

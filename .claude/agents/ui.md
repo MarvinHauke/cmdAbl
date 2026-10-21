@@ -21,6 +21,8 @@ site theme (`docs/stylesheets/`), and the UI guide when one is written.
 
 ## Rules
 
+- Use subagents when they make the work faster or better (a wide search, independent checks in
+  parallel); your call.
 - Read first: `docs/feature-plans/0007-ui-surfaces.md` (the three surfaces and their contracts),
   `0006-completion-engine.md` (completion, keymap, navigation mode), `ui/shared.css` (tokens).
 - A page is defined by **data in, one value out**: it gets its request through a build-time

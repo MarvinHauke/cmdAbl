@@ -404,7 +404,7 @@ test("description, examples and argument summaries: validated, shown by help, ca
   ];
   assert.deepEqual(validateTree(doc), []);
   const text = helpText(doc[0]!, ["mute"]);
-  assert.match(text, /^mute tracks\n\nToggles the mute state of every named track\.\n\nusage: mute <track>…/);
+  assert.match(text, /^mute tracks\n\nToggles the mute state of every named track\.\n\nusage: mute \[--pick\] <track>…/);
   assert.match(text, /arguments:\n  <track>\s+the tracks to mute/);
   assert.match(text, /examples:\n  mute \/Kick, \/Snare\n      mute both\n  mute vermona$/);
   const serialized = serializeTree(doc)[0]!;
@@ -435,7 +435,7 @@ test("option choices: the parser lists them on a bad value, usage shows <0|1>, t
     },
   ];
   assert.deepEqual(validateTree(tree2), []);
-  assert.equal(usage(tree2[0]!, ["mute"]), "mute [--set <0|1>] <track>…");
+  assert.equal(usage(tree2[0]!, ["mute"]), "mute [--set <0|1>] [--pick] <track>…");
   assert.match(helpText(tree2[0]!, ["mute"]), /-s, --set <0\|1>/);
   const good = parse("mute --set 0 /a", tree2);
   assert.equal(good.kind, "run");
@@ -475,4 +475,120 @@ test("numeric option: whole numbers within a range, usage shows <n>, handler get
   assert.match(broken({ number: {} }), /numeric but takes no value/);
   assert.match(broken({ takesValue: true, number: { min: 5, max: 1 } }), /min above max/);
   assert.match(broken({ takesValue: true, number: {}, choices: ["1"] }), /both choices and number/);
+});
+
+test("helpForPath finds a command or subcommand by path", async () => {
+  const { helpForPath } = await import("./commandTree.js");
+  const roots = [{ name: "a", summary: "A", children: [{ name: "b", summary: "B", run: () => {} }] }] as any;
+  assert.match(helpForPath(roots, ["a"])!, /^A/);
+  assert.match(helpForPath(roots, ["a", "b"])!, /^B/);
+  assert.equal(helpForPath(roots, ["x"]), undefined);
+  assert.equal(helpForPath(roots, []), undefined);
+});
+
+test("presentResult: a link goes to the message only when it is a plain https URL with a label", () => {
+  const seen: Array<{ text: string; link?: unknown }> = [];
+  const show = (text: string, link?: unknown) => void seen.push({ text, link });
+  const good = { label: "Open in browser", url: "https://example.com/a" };
+  presentResult({ ...ok("man tag"), link: good }, show);
+  presentResult({ ...ok("x"), link: { label: "Open", url: "javascript:alert(1)" } }, show);
+  presentResult({ ...ok("y"), link: { label: " ", url: "https://example.com" } }, show);
+  assert.deepEqual(seen[0]!.link, good);
+  assert.equal(seen[1]!.link, undefined);
+  assert.equal(seen[2]!.link, undefined);
+});
+
+test("wantsOpen: only {open:true} counts", async () => {
+  const { wantsOpen } = await import("./pickResult.js");
+  assert.equal(wantsOpen('{"open":true}'), true);
+  for (const raw of [null, "", "{}", '{"open":"yes"}', "nope", "null"]) assert.equal(wantsOpen(raw), false, String(raw));
+});
+
+test("shortHelpText: usage, sections one line each, no prose, no examples, a pointer to man", async () => {
+  const { shortHelpText, PICK_OPTION } = await import("./commandTree.js");
+  const leaf: CommandNode<any, any> = {
+    name: "mute",
+    summary: "mute tracks",
+    description: "A long paragraph that --help no longer prints.",
+    examples: [{ line: "mute bass", note: "mute Bass" }],
+    options: [{ name: "set", short: "s", takesValue: true, choices: ["0", "1"], summary: "set instead of toggle" }],
+    args: [{ name: "target", kind: "path", kinds: ["track"], summary: "the track" }],
+    run: () => {},
+  } as never;
+  assert.equal(
+    shortHelpText(leaf, ["mute"], "man mute"),
+    [
+      "usage: mute [--set <0|1>] [--pick] <target>",
+      "",
+      "arguments:",
+      "  <target>     the track",
+      "",
+      "options:",
+      "  -s, --set <0|1>        set instead of toggle",
+      `  --pick                 ${PICK_OPTION.summary}`,
+      "",
+      "more: man mute",
+    ].join("\n"),
+  );
+});
+
+test("shortHelpText: a group lists its subcommands; more points at the full path", async () => {
+  const { shortHelpText } = await import("./commandTree.js");
+  const group = {
+    name: "history",
+    summary: "past commands",
+    description: "Long prose.",
+    children: [{ name: "clear", summary: "forget everything", run: () => {} }, { name: "list", summary: "show them", run: () => {} }],
+  } as never;
+  assert.equal(
+    shortHelpText(group, ["history"], "man history"),
+    "usage: history <command>\n\ncommands:\n  clear        forget everything\n  list         show them\n\nmore: man history",
+  );
+  assert.match(shortHelpText((group as { children: never[] }).children[0]!, ["history", "clear"], "man history clear"), /more: man history clear$/);
+});
+
+test("shortHelpText: no 'more' line without a hint", async () => {
+  const { shortHelpText } = await import("./commandTree.js");
+  const node = { name: "x", summary: "s", run: () => {} } as never;
+  assert.equal(shortHelpText(node, ["x"]), "usage: x");
+});
+
+test("presentResult: sections pass through capped; junk is dropped", async () => {
+  const { capSections, MAX_ITEMS, MAX_TEXT } = await import("./present.js");
+  const seen: unknown[] = [];
+  presentResult(
+    { ...ok("#fx: Lead"), sections: [{ heading: "#fx", meta: "1 track", items: ["/Lead"] }, { heading: "  ", items: ["x"] }] },
+    (_t, _l, sections) => void seen.push(sections),
+  );
+  assert.deepEqual(seen[0], [{ heading: "#fx", meta: "1 track", items: ["/Lead"] }]);
+  presentResult(ok("plain"), (_t, _l, sections) => void seen.push(sections));
+  assert.equal(seen[1], undefined);
+  const big = capSections([{ heading: "h", items: Array.from({ length: MAX_ITEMS + 5 }, () => "y".repeat(MAX_TEXT + 10)) }]);
+  assert.equal(big[0]!.items.length, MAX_ITEMS + 1);
+  assert.equal(big[0]!.items[0]!.length, MAX_TEXT);
+  assert.equal(big[0]!.items.at(-1), "…");
+  assert.deepEqual(capSections(undefined), []);
+  assert.deepEqual(capSections([{ heading: "h", items: [1 as never, "a"] }]), [{ heading: "h", items: ["a"] }]);
+});
+
+test("sectionsText sizes the dialog from the sections", async () => {
+  const { sectionsText } = await import("./notifySize.js");
+  assert.equal(sectionsText([{ heading: "#fx", meta: "2 tracks", items: ["/A", "/B"] }, { heading: "#x", items: [] }]), "#fx  2 tracks\n  /A\n  /B\n\n#x");
+});
+
+test("presentResult: sections never hide failures", () => {
+  const seen: unknown[] = [];
+  const sections = [{ heading: "h", items: ["a"] }];
+  presentResult({ ...fail(ExitCode.FAILURE, "mute: 0 of 1 done", [{ path: "/A", ok: false, message: "no" }]), sections }, (_t, _l, s) => void seen.push(s));
+  presentResult({ ...ok("x", [{ path: "/A", ok: false, message: "no" }]), sections }, (_t, _l, s) => void seen.push(s));
+  assert.deepEqual(seen, [undefined, undefined]);
+});
+
+test("usageForPath is what --help prints: short, 'more: man' only with a man command", async () => {
+  const { usageForPath } = await import("./commandTree.js");
+  const a = { name: "a", summary: "A", description: "prose", children: [{ name: "b", summary: "B", run: () => {} }] } as never;
+  assert.equal(usageForPath([a], ["a"]), "usage: a <command>\n\ncommands:\n  b            B");
+  const man = { name: "man", summary: "m", run: () => {} } as never;
+  assert.match(usageForPath([a, man], ["a", "b"])!, /usage: a b\n\nmore: man a b$/);
+  assert.equal(usageForPath([a], ["x"]), undefined);
 });

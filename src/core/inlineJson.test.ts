@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { inlineJson } from "./inlineJson.js";
+import { inlineJson, fillTemplate } from "./inlineJson.js";
 
 test("inlineJson: </script> and <!-- cannot appear in the output and round-trip", () => {
   const value = { a: "x</script><script>alert(1)</script>", b: ["<!--", "<", "\u2028 \u2029"], n: 1 };
@@ -18,4 +18,10 @@ test("inlineJson: plain values are unchanged JSON", () => {
 
 test("inlineJson: undefined (which JSON.stringify cannot encode) becomes null", () => {
   assert.equal(inlineJson(undefined), "null");
+});
+
+test("fillTemplate: one pass, so a value containing a placeholder is not substituted", () => {
+  const tpl = "const A = /*MESSAGE_PLACEHOLDER*/null; const B = /*LINK_PLACEHOLDER*/null; const C = /*OTHER_PLACEHOLDER*/null;";
+  const out = fillTemplate(tpl, { MESSAGE: "x /*LINK_PLACEHOLDER*/null y", LINK: { label: "l" } });
+  assert.equal(out, 'const A = "x /*LINK_PLACEHOLDER*/null y"; const B = {"label":"l"}; const C = /*OTHER_PLACEHOLDER*/null;');
 });

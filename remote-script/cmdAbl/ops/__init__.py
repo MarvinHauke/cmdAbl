@@ -10,6 +10,7 @@ runs) and requires `expectName`.
 
 from .chains import chain_set, chains
 from .select import select
+from .tags import tags_all, tags_set
 from .tracks import track_facts
 
 OPS = {
@@ -17,7 +18,9 @@ OPS = {
     "chains": chains,
     "select": select,
     "track_facts": track_facts,
+    "tags_all": tags_all,
+    "tags_set": tags_set,
 }
 
 # Ops that change something: refused without the access token (protocol.handle_request).
-WRITES = frozenset(["chain_set"])
+WRITES = frozenset(["chain_set", "tags_set"])

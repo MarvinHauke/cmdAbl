@@ -20,6 +20,8 @@ in a team (see `CLAUDE.md`, "Agent team"):
 
 ## Rules
 
+- Use subagents when they make the work faster or better (a wide search, independent checks in
+  parallel); your call.
 - Read first: `docs/sdk-tree.md` (what the Extensions SDK can and cannot do),
   `docs/feature-plans/0001-path-addressed-objects-and-commands.md` (tree, bridge, chains),
   `0004` (bridge decisions). Use the `ableton-extension` skill for SDK questions and the

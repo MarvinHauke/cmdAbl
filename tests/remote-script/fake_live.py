@@ -108,6 +108,17 @@ class FakeTrack(object):
         self._arm = arm
         self.can_show_chains = any(hasattr(d, "chains") for d in self.devices)
         self.is_showing_chains = False
+        self.data = {}
+        self.color_index = 5
+        self.set_data_raises = False
+
+    def get_data(self, key, default):
+        return self.data.get(key, default)
+
+    def set_data(self, key, value):
+        if self.set_data_raises:
+            raise RuntimeError("set_data refused")
+        self.data[key] = value
 
     @property
     def is_grouped(self):
@@ -145,6 +156,15 @@ class FakeSongView(object):
 
 class FakeSong(object):
     undo_steps = None  # set to [] to record begin/end calls
+    can_undo = False
+    data = None
+
+    def get_data(self, key, default):
+        return (self.data or {}).get(key, default)
+
+    def set_data(self, key, value):
+        self.data = dict(self.data or {})
+        self.data[key] = value
 
     def begin_undo_step(self):
         if self.undo_steps is not None:

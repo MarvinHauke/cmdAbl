@@ -23,7 +23,8 @@ import { builtinModules } from "node:module";
 //   3. src/ableton/…         does not import src/modules/, src/extension or
 //      anything in src/core/ but the shared types (src/core/types).
 //   5. src/modules/…         reaches Live through the ModuleApi ports: it does
-//      not import src/ableton/bridge, src/ableton/trackLookup or the SDK
+//      not import src/ableton/bridge, src/ableton/trackLookup,
+//      src/ableton/tagCache or the SDK
 //      (`@ableton-extensions/*`), so a command's `run` is testable with fakes.
 //   6. src/modules/…         does not reach out through Node itself: of the Node
 //      built-ins a module may import `path`, `url` (pure) and, in tests,
@@ -106,7 +107,7 @@ export function brokenRule(file: string, target: string): string | null {
       return `1: ${name ? "a module" : "a shared helper"} does not import a module folder (${other[1]})`;
     }
     if (target === "src/httpTrigger" || target === "src/extension") return `1: modules do not import ${target}`;
-    if (target === "src/ableton/bridge" || target === "src/ableton/trackLookup") {
+    if (target === "src/ableton/bridge" || target === "src/ableton/trackLookup" || target === "src/ableton/tagCache") {
       return `5: modules reach Live through the ModuleApi ports, not ${target}`;
     }
     if (target.startsWith("node:") && !NODE_ALLOWED.has(target)) return `6: modules do not reach out through Node (${target}); ask the platform for a port`;
@@ -237,6 +238,7 @@ test("architecture: the checker sees the imports and flags what it should", () =
   assert.equal(brokenRule("src/core/openUrl.ts", "node:child_process"), null); // core and ableton are not under rule 6
   assert.match(brokenRule("src/modules/goto/index.ts", "src/ableton/bridge") ?? "", /^5:/);
   assert.match(brokenRule("src/modules/trackSetCommand.ts", "src/ableton/trackLookup") ?? "", /^5:/);
+  assert.match(brokenRule("src/modules/tag/index.ts", "src/ableton/tagCache") ?? "", /^5:/);
   assert.match(brokenRule("src/modules/goto/snapshot.ts", "@ableton-extensions/sdk") ?? "", /^5:/);
   assert.equal(brokenRule("src/modules/goto/index.ts", "src/ableton/bridgeClient"), null); // the Bridge type is fine
   assert.equal(brokenRule("src/extension.ts", "src/ableton/bridge"), null);

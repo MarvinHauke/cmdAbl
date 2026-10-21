@@ -9,6 +9,9 @@ import type { Command } from "../core/commandRegistry.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { Provider } from "../core/types.js";
+import type { PickPreview, StateChange } from "../core/ui.js";
+import type { BridgeResult } from "../ableton/bridgeProtocol.js";
+import type { TagsWritten } from "../ableton/bridgeOps.js";
 
 /** What a track write needs: the three booleans of an SDK track. */
 export interface TrackHandle {
@@ -33,6 +36,26 @@ export interface TracksPort {
    * name when it matters.
    */
   track(node: ObjectNode): TrackHandle | null;
+}
+
+/** One row of a tag list (`ModuleApi.pickTags`). */
+export interface TagRow {
+  /** Lower-case tag name, without the `#`. */
+  name: string;
+  /** How many tracks carry it (shown next to the name). */
+  count?: number;
+  /** The target has the tag: the row's state button is lit. Absent: no state button. */
+  on?: boolean;
+}
+
+/** Track tags (plan 0008): stored in the Live Set by the Remote Script, read through a cache. Never throw. */
+export interface TagsPort {
+  /** Read the tags from the script now (awaited); fails with exit 5 when the script is not running. */
+  refresh(): Promise<BridgeResult<void>>;
+  /** The tags of a track as last read or written (empty: none known). Call `refresh` first when freshness matters. */
+  of(node: ObjectNode): string[];
+  /** Replace the track's whole tag list (empty removes the tags); the cache follows at once. Names must be normalised by the caller. */
+  write(node: ObjectNode, tags: string[]): Promise<BridgeResult<TagsWritten>>;
 }
 
 export interface LiveSetPort {
@@ -61,7 +84,15 @@ export interface ModuleApi {
    * arguments to Live objects (asking the user to pick when ambiguous) and
    * only then calls `run` — see docs/feature-plans/0005.
    */
-  commands: { add(command: Command): void };
+  commands: {
+    add(command: Command): void;
+    /** The declared tree, read-only (for `man` and the like). Read the documentation fields only; never call a node's `run` from here — that would bypass parsing, resolution and the result presenter. */
+    roots(): readonly Command[];
+    /** The `--help` text of a command or subcommand by path (`["tag"]`, `["history", "clear"]`); undefined when unknown. */
+    help(path: string[]): string | undefined;
+    /** Exactly what `<command> --help` prints (usage, sections, and `more: man …` when `man` exists); undefined when unknown. For a handler that answers exit 2 with the usage. */
+    usage(path: string[]): string | undefined;
+  };
   /**
    * Show the pick list; resolves with the chosen objects, or null if cancelled.
    * `options.fill` (single-select only) lets Tab put the object into the
@@ -82,6 +113,17 @@ export interface ModuleApi {
    * Never rejects.
    */
   confirm(message: string, confirmLabel: string): Promise<boolean>;
+  /**
+   * The tag list (the same one the platform shows for a bare `#`): a
+   * multi-select list of tags with their state buttons (`TagRow.on`), `options.change`
+   * previewing what confirming does ("toggle" flips every marked row). Resolves with the
+   * chosen tag names, or null when cancelled or nothing was marked. With `allowNew` the list
+   * offers a create row for the filter text; choosing it adds that text (trimmed, as typed, NOT
+   * validated — the module checks it) as the last name, next to the rows marked.
+   */
+  pickTags(title: string, rows: TagRow[], options?: { change?: StateChange; preview?: PickPreview; allowNew?: boolean }): Promise<string[] | null>;
+  /** Track tags (plan 0008). */
+  tags: TagsPort;
   /** Notified whenever a pick list was shown, with what was offered and what was chosen. */
   onPick(listener: (candidates: ObjectNode[], chosen: ObjectNode[] | null) => void): void;
   /**

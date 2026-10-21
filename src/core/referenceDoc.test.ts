@@ -32,7 +32,7 @@ test("renderCommandReference: deterministic, sorted, with usage, arguments, opti
   assert.equal(renderCommandReference([...tree].reverse()), text);
   assert.ok(text.indexOf("## `grp`") < text.indexOf("## `mute`"));
   assert.ok(text.indexOf("## `mute`") < text.indexOf("## `zeta`"));
-  assert.match(text, /\*\*Usage:\*\* `mute \[--all\] \[--set <0\|1>\] <track>…`/);
+  assert.match(text, /\*\*Usage:\*\* `mute \[--all\] \[--set <0\|1>\] \[--pick\] <track>…`/);
   assert.match(text, /\| `<track>…` \| path \(track\) \| yes \| the tracks \|/);
   assert.match(text, /\| `-a, --all` \| every \\\| any match \|/);
   assert.match(text, /mute tracks \(&lt;id>@&lt;version> &amp; `<code>`\)/);

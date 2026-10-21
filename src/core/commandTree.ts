@@ -35,6 +35,8 @@ export interface ArgDef {
    * match is passed on. Different from `variadic`, which is about tokens.
    */
   multiple?: "one" | "all";
+  // Note: a `#tag` target (plan 0008) fans out to every tagged object for EVERY path argument
+  // except `rest` ones and those of `destructive` commands, whatever `multiple` says.
   /**
    * `enum` arguments: the allowed values, fixed at declaration time (a
    * dynamic set is an `enum` with a `complete` source and no `choices`: the
@@ -159,7 +161,7 @@ export interface CommandNode<P = unknown, V = string> {
 }
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
-const RESERVED_OPTIONS = new Set(["help"]);
+const RESERVED_OPTIONS = new Set(["help", "pick"]);
 const RESERVED_SHORTS = new Set(["h"]);
 
 /**
@@ -324,6 +326,24 @@ export function checkNumber(text: string, spec: NonNullable<OptionDef["number"]>
   return value;
 }
 
+/**
+ * The platform's own option on every command with path arguments: lists every
+ * match of each target (single matches and tagged tracks included) and lets
+ * the user mark the ones to use. Added here, never declared by a module.
+ */
+export const PICK_OPTION: OptionDef = {
+  name: "pick",
+  takesValue: false,
+  summary: "show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run",
+};
+
+/** A node's declared options plus the platform's (`--pick` on runnable nodes with path arguments). */
+export function effectiveOptions(node: CommandNode<any, any>): OptionDef[] {
+  const own = node.options ?? [];
+  const takesPaths = !(node.children?.length) && (node.args ?? []).some((a) => a.kind === "path");
+  return takesPaths ? [...own, PICK_OPTION] : own;
+}
+
 /** `pakabl install <id> [--force]` — the one-line usage of a node. */
 export function usage(node: CommandNode<any, any>, path: string[]): string {
   const parts = [...path];
@@ -331,7 +351,7 @@ export function usage(node: CommandNode<any, any>, path: string[]): string {
     parts.push("<command>");
     return parts.join(" ");
   }
-  for (const opt of node.options ?? []) {
+  for (const opt of effectiveOptions(node)) {
     parts.push(opt.takesValue ? `[--${opt.name} <${valueLabel(opt)}>]` : `[--${opt.name}]`);
   }
   for (const arg of node.args ?? []) {
@@ -342,14 +362,9 @@ export function usage(node: CommandNode<any, any>, path: string[]): string {
   return parts.join(" ");
 }
 
-/**
- * Multi-line help for a node: summary, description, usage, then its arguments,
- * subcommands, options and examples.
- */
-export function helpText(node: CommandNode<any, any>, path: string[]): string {
-  const lines = [node.summary];
-  if (node.description) lines.push("", node.description);
-  lines.push("", `usage: ${usage(node, path)}`);
+/** The lines of the `commands:`, `arguments:` and `options:` sections (shared by the short and the full help). */
+function sections(node: CommandNode<any, any>): string[] {
+  const lines: string[] = [];
   if (node.children?.length) {
     lines.push("", "commands:");
     for (const child of node.children) lines.push(`  ${child.name.padEnd(12)} ${child.summary}`);
@@ -359,13 +374,24 @@ export function helpText(node: CommandNode<any, any>, path: string[]): string {
     lines.push("", "arguments:");
     for (const arg of described) lines.push(`  ${`<${arg.name}>`.padEnd(12)} ${arg.summary}`);
   }
-  if (node.options?.length) {
+  if (effectiveOptions(node).length) {
     lines.push("", "options:");
-    for (const opt of node.options) {
+    for (const opt of effectiveOptions(node)) {
       const flag = `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${opt.takesValue ? ` <${valueLabel(opt)}>` : ""}`;
       lines.push(`  ${flag.padEnd(22)} ${opt.summary}${opt.number ? ` (${numberRule(opt.number)})` : ""}`);
     }
   }
+  return lines;
+}
+
+/**
+ * The full help of a node, for `man` and the reference: summary, description, usage, then its
+ * subcommands, arguments, options and examples.
+ */
+export function helpText(node: CommandNode<any, any>, path: string[]): string {
+  const lines = [node.summary];
+  if (node.description) lines.push("", node.description);
+  lines.push("", `usage: ${usage(node, path)}`, ...sections(node));
   if (node.examples?.length) {
     lines.push("", "examples:");
     for (const example of node.examples) {
@@ -376,11 +402,51 @@ export function helpText(node: CommandNode<any, any>, path: string[]): string {
   return lines.join("\n");
 }
 
+/**
+ * What `<command> --help` shows: how to use it, no prose — usage, subcommands, arguments and
+ * options one line each, then `more: <more>` when the caller names where the full page is.
+ * (Core does not know which module offers it: `run.ts` passes `man <path>` only when a `man` command exists.)
+ */
+export function shortHelpText(node: CommandNode<any, any>, path: string[], more?: string): string {
+  return [`usage: ${usage(node, path)}`, ...sections(node), ...(more ? ["", `more: ${more}`] : [])].join("\n");
+}
+
 /** The tree without handlers — plain JSON for the palette webview. */
 export type SerializedNode = Omit<CommandNode<never, never>, "run" | "children" | "pickState"> & {
   children?: SerializedNode[];
   runnable: boolean;
 };
+
+/**
+ * Exactly what `<command> --help` prints for `node`: the short help, with the `more: man <path>`
+ * line only when the tree has a command named `man`.
+ */
+export function shortHelpIn(roots: readonly CommandNode<any, any>[], node: CommandNode<any, any>, path: string[]): string {
+  return shortHelpText(node, path, roots.some((n) => n.name === "man") ? `man ${path.join(" ")}` : undefined);
+}
+
+function nodeAt(roots: readonly CommandNode<any, any>[], path: string[]): CommandNode<any, any> | undefined {
+  let level: readonly CommandNode<any, any>[] = roots;
+  let node: CommandNode<any, any> | undefined;
+  for (const word of path) {
+    node = level.find((n) => n.name === word);
+    if (!node) return undefined;
+    level = node.children ?? [];
+  }
+  return node;
+}
+
+/** What `<command> --help` prints for the node at `path`, or undefined when there is none. */
+export function usageForPath(roots: readonly CommandNode<any, any>[], path: string[]): string | undefined {
+  const node = nodeAt(roots, path);
+  return node ? shortHelpIn(roots, node, path) : undefined;
+}
+
+/** The full help text of the node at `path` (command, then subcommands), or undefined when there is none. */
+export function helpForPath(roots: readonly CommandNode<any, any>[], path: string[]): string | undefined {
+  const node = nodeAt(roots, path);
+  return node ? helpText(node, path) : undefined;
+}
 
 export function serializeTree(roots: CommandNode<any, any>[]): SerializedNode[] {
   return roots.map(({ run, children, pickState: _pickState, ...rest }) => ({

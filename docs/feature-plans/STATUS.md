@@ -5,7 +5,33 @@ what comes next. Maintained by the architect — update it whenever a task lands
 change. Design decisions live in the numbered plans; this file only tracks progress. Finished
 work is in the git history, not here.
 
-_Last updated: 2026-10-12._
+_Last updated: 2026-10-20._
+
+## Release 0.1.1 — open (branch `feat/tags-aliases`, version 0.1.1, not pushed)
+
+Built and Live-tested: tags on tracks, `#tag`, `!#tag`, bare tag word, `--pick`, new-tag row,
+`tag -l` overview, `find` with tags, `man <command>`, short `--help`. README landing
+page, Requirements, Install, docs cleanup done (cmdabl-docs).
+
+1. ~~Live tests: `man <command>` with "Open in browser", short `--help`~~ — passed (user, 2026-10-20).
+2. ~~Live test the new-tag row~~ — passed (user, 2026-10-20).
+   ~~Live test `tag --list` / `-l` overview and `find` with tags (`cc16aa3`)~~ — passed (user,
+   2026-10-20).
+   Fix: `!#x` with a tag no track carries → exit 3 "no track is tagged #x", nothing runs
+   (core `ad4c2e5`, find `e4354f6`) — passed (user, 2026-10-20). Small 0.1.2 item: `find !#x`
+   says "no track without #x", `mute` says "every track is tagged #x" — one wording.
+3. Recordings by the user (`.mov` in `/tmp/shots/`) → cmdabl-docs makes GIFs:
+   `hero` (tags in action), `tags` (tag list), `pakabl` (`pakabl list`); optional: Karabiner
+   rule screenshot for Getting started. Then drop unused images (`demo.gif`, old `pakabl-list.png`).
+4. Installed-build test: `npm run package`, install the `.ablx`, `cmdabl setup`, restart Live,
+   `cmdabl bridge` shows 0.1.5, `tag` and `#fx` work.
+5. Secret scan of the branch (counts only), `ssh-add`, push, PR "Release 0.1.1: tags" — on the
+   user's go.
+6. CI green → squash-merge (user's go) → release `v0.1.1`; hand-written notes (tags, `#`/`!#`,
+   bare tag word, `--pick`, new-tag row, `man <command>` with link, short `--help`, `tag -l` overview (bare `tag` no longer lists), `find` with tags, run `cmdabl setup` once for script
+   0.1.5, Cmd+Z does not undo tags).
+7. pakabl index workflow → merge its PR; STATUS on `main`; delete the branch; 0.1.2 (tag editing, 0010) continues on `feat/tag-board`.
+
 
 ## Where the code is
 
@@ -230,6 +256,33 @@ Release:
 
 ### After 0.1.0 (order to be set then)
 
+- **Versions (user, 2026-10-19, conservative):** 0.1.1 tags on tracks · 0.1.2 tag editing
+  (plan 0010: board, `tag --edit`; user, 2026-10-20) · 0.1.3 the store + aliases, history
+  survives restarts · 0.1.4 small items · more 0.1.x as needed · 0.2.0 a refined
+  bundle (completion engine with ghost text and Telescope-style fuzzy finding, tags on chains
+  and pads, pipes or refined aliases). Tags and aliases: plan 0008. 0.1.1 tags on tracks built on `feat/tags-aliases`
+  (script 0.1.5 `c91a2c4`, core `2166db5`/`85ad442`, `tag` `9a77e00`; spike removed), waiting for
+  its Live test; then acting on tags without a list and `--pick` (`85ad442`), `!#tag` (`bd2e3df`).
+  Live-tested (user, 2026-10-20): `tag` toggle and list, tag pick list, `#tag`, bare tag word,
+  `--pick`, `!#tag` (incl. comma/space lists, "every track is tagged", script off), history,
+  save prompt via the colour step, save + reopen, Cmd+D copy (`/Lead#2`), return and main track,
+  rename (tags stay with the track), non-ASCII name ("Drüms"), 64 tagged tracks (paged read).
+  **0.1.1 fully Live-tested.**
+  0.1.0 released 2026-10-19 (`a312c24`).
+- From an outside review (ChatGPT, 2026-10-19), checked against the code: nothing is released on
+  deactivate (trigger server, listeners) → fix in 0.1.x; `extension.ts` holds palette state
+  next to the wiring → split later; a short note on what modules may rely on in `ModuleApi`.
+  Done from it: the SDK packages left the public repo (license; private `cmdabl-vendor`, PR #11)
+  and the unused Vite was removed.
+
+- Tag editing (user, 2026-10-20): plan 0010 — `tag -l` as an editable overview on a new
+  `board` surface like Live's browser tag panel (chips with ×, a checkbox list of all tracks per
+  tag, New tag…, Apply). 0.1.2, in work on `feat/tag-board`.
+
+- Ideas from ClyphX (2026-10-20): plan 0009 — `;` action lists with aliases (0.1.3); `.`,
+  index, range and `all` targets, `vol`/`pan`/`send` (0.1.x); snapshots (0.2.x); triggers from
+  clip, locator and pad names (spike after 0.2.0).
+
 - `pakabl list --old-versions` (user, 2026-10-19): per extension a version choice from its
   GitHub releases; without the flag the newest release is offered. Needs the releases per
   extension (GitHub API via a child process, rate limits) or older versions in the index.
@@ -241,8 +294,6 @@ Release:
   build (read the installed version through a child process, e.g. `cat`; deferred 2026-10-19 —
   ddc2866 gives one honest text for both).
 
-- 0.2.0: the completion engine (0006) — ghost text, level-by-level paths; builds on the tree
-  from step 2.
 - Keymap (0006): UI keys as named actions, a user `keymap.json`, keys bindable to command lines.
 - Dialog-channel spike (the four checks in 0006), then follow mode for the pick list (0007 §4)
   and navigation mode. Open: do `next`/`prev` stay once follow mode exists? Kept until the spike.

@@ -2,6 +2,7 @@ import type { ExtensionContext, Track } from "@ableton-extensions/sdk";
 import type { PaletteItemType, TrackScope } from "../core/types.js";
 import { getBridge } from "./bridge.js";
 import { findRacks, getChainNameCache, type ChainNameCache } from "./chainNames.js";
+import { getTagCache, type TagCache } from "./tagCache.js";
 
 // Generalizes the Phase 1 track-only snapshot into a tree of every addressable
 // object with a stable place in Live's hierarchy: tracks (incl. group-track
@@ -38,11 +39,18 @@ export interface ObjectNode extends LiveRef {
   name: string;
   path: string;
   children: ObjectNode[];
+  /**
+   * The tags of a track (plan 0008), from the Remote Script through a cache. Set only on tracks that
+   * carry tags and only while the cached name still matches; absent means "none known".
+   */
+  tags?: string[];
 }
 
 export interface BuildOptions {
   /** Where chain names come from. Default: the shared cache (refreshed in the background). `null` = no chain nodes. */
   chainNames?: ChainNameCache | null;
+  /** Where track tags come from. Default: the shared cache (refreshed in the background) when `chainNames` is also the default, else none. `null` = no tags. */
+  tags?: TagCache | null;
 }
 
 /**
@@ -63,6 +71,18 @@ export function buildObjectTree(context: ExtensionContext<"1.0.0">, options: Bui
     }
   }
 
+  // Default: the shared cache, unless the caller passed its own chain-name cache (a test), which then also
+  // means "no background requests through the real bridge".
+  const useShared = options.tags === undefined && options.chainNames === undefined;
+  const tagCache = options.tags !== undefined ? options.tags : useShared ? getTagCache() : null;
+  if (tagCache && useShared) {
+    try {
+      void tagCache.scheduleRefresh(getBridge());
+    } catch {
+      // never fail a tree build because of the bridge
+    }
+  }
+
   interface Entry {
     track: Track<"1.0.0">;
     node: ObjectNode;
@@ -73,7 +93,7 @@ export function buildObjectTree(context: ExtensionContext<"1.0.0">, options: Bui
   // Pass 1: a node per regular track with its devices as children. Sub-tracks
   // are nested in pass 2 once every node exists to nest them under.
   tracks.forEach((track, index) => {
-    const node = buildTrackNode(track, index, "regular", cache);
+    const node = buildTrackNode(track, index, "regular", cache, tagCache);
     entries.set(node.handleId, { track, subTracks: [], node });
   });
 
@@ -95,15 +115,16 @@ export function buildObjectTree(context: ExtensionContext<"1.0.0">, options: Bui
   // Return tracks and the main ("Master") track live in their own collections
   // entirely outside song.tracks — they're always top-level and can't be
   // grouped, so they need no pass-2 nesting.
-  const returnRoots = song.returnTracks.map((track, index) => buildTrackNode(track, index, "return", cache));
-  const mainRoot = buildTrackNode(song.mainTrack, 0, "master", cache);
+  const returnRoots = song.returnTracks.map((track, index) => buildTrackNode(track, index, "return", cache, tagCache));
+  const mainRoot = buildTrackNode(song.mainTrack, 0, "master", cache, tagCache);
 
   const allRoots = [...roots, ...returnRoots, mainRoot];
   assignPaths(allRoots, "");
   return allRoots;
 }
 
-function buildTrackNode(track: Track<"1.0.0">, trackIndex: number, scope: TrackScope, cache: ChainNameCache | null): ObjectNode {
+function buildTrackNode(track: Track<"1.0.0">, trackIndex: number, scope: TrackScope, cache: ChainNameCache | null, tagCache: TagCache | null): ObjectNode {
+  const tags = tagCache?.get(scope, [trackIndex], track.name);
   return {
     handleId: track.handle.id.toString(),
     route: [trackIndex],
@@ -111,6 +132,7 @@ function buildTrackNode(track: Track<"1.0.0">, trackIndex: number, scope: TrackS
     scope,
     name: track.name,
     path: "",
+    ...(tags ? { tags: tags.slice() } : {}),
     children: track.devices.map((device, deviceIndex) => {
       const route = [trackIndex, deviceIndex];
       const handleId = device.handle.id.toString();

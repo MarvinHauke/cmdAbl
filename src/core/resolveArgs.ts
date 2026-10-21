@@ -4,6 +4,7 @@ import { resolveStructural } from "../ableton/resolvePath.js";
 import type { NodeKind } from "../ableton/objectTree.js";
 import { matchesNode, suggest } from "./match.js";
 import type { CommandNode, Invocation } from "./commandTree.js";
+import { isTagWord, nodesForTag, nodesWithTag, parseTagTarget, tagCounts, type TagCount } from "./tags.js";
 
 // "Resolve before the handler": turns the raw strings of `path` arguments into
 // the Live objects they name, so no command ever has to deal with ambiguity.
@@ -53,8 +54,17 @@ export interface PickRequest {
   suggestion?: { onCancel: CommandResult };
 }
 
+/** A bare `#`: the user picks tags; the chosen ones replace the `#` as `#name` targets. */
+export interface TagPickRequest {
+  argIndex: number;
+  valueIndex: number;
+  multi: boolean;
+  tags: TagCount[];
+}
+
 export type ResolveStep =
   | { kind: "resolved"; invocation: Invocation<ArgValue> }
+  | { kind: "tags"; request: TagPickRequest }
   | { kind: "pick"; request: PickRequest }
   | { kind: "error"; result: CommandResult };
 
@@ -77,7 +87,30 @@ export function lookupTarget(nodes: ObjectNode[], text: string, kinds?: NodeKind
   const structural = resolveStructural(nodes, text, kinds);
   if (structural.length > 0) return structural;
   if (!text.trim()) return [];
-  return nodes.filter((n) => (!kinds || kinds.includes(n.kind)) && matchesNode(n, text));
+  const named = nodes.filter((n) => (!kinds || kinds.includes(n.kind)) && matchesNode(n, text));
+  // A bare word that is also a tag name puts the objects tagged with it first in the same list.
+  const word = text.trim();
+  if (!isTagWord(word)) return named;
+  const tagged = nodesWithTag(nodes, word, kinds);
+  return tagged.length ? [...tagged, ...named.filter((n) => !tagged.includes(n))] : named;
+}
+
+/**
+ * What a typed target means as a tag, or null: `#fx` / a bare `#`, or a bare
+ * word that is exactly a tag name and names no object (a word that also
+ * matches names stays an ordinary, ambiguous target: the user picks).
+ * `typed` is the text as the user wrote it (history keeps it).
+ */
+export function tagTargetOf(nodes: ObjectNode[], text: string, kinds?: NodeKind[]): "list" | { name: string; typed: string; negate?: true } | null {
+  const tag = parseTagTarget(text);
+  if (tag === "list") return "list";
+  if (tag) return { name: tag.name, typed: `${tag.negate ? "!" : ""}#${tag.name}`, ...(tag.negate ? { negate: true as const } : {}) };
+  const word = text.trim();
+  if (!isTagWord(word) || nodesWithTag(nodes, word, kinds).length === 0) return null;
+  const structural = resolveStructural(nodes, text, kinds);
+  if (structural.length > 0) return null;
+  if (nodes.some((n) => (!kinds || kinds.includes(n.kind)) && matchesNode(n, text))) return null;
+  return { name: word.toLowerCase(), typed: word };
 }
 
 /**
@@ -147,7 +180,8 @@ export function normalizeTargets(
       }
     }
 
-    const own = (k: number) => isQuoted(k) || values[k]!.startsWith("/");
+    // A tag target (`#fx`, `#`) is its own target like a `/` word.
+    const own = (k: number) => isQuoted(k) || values[k]!.startsWith("/") || parseTagTarget(values[k]!) !== null;
     const targets: Target[] = [];
     let k = 0;
     while (k < values.length) {
@@ -192,6 +226,8 @@ export function resolveTargets(
   nodes: ObjectNode[],
 ): ResolveStep {
   const command = invocation.path.join(" ");
+  // `--pick`: every match of each target goes into the list, single matches and tag hits included.
+  const forced = invocation.options.pick === true;
   const args: ArgValue[][] = [];
   const missing: TargetOutcome[] = [];
   // Where each missing text sits, for the "did you mean" list (step: nothing is ambiguous any more).
@@ -206,16 +242,41 @@ export function resolveTargets(
 
     const resolved: ObjectNode[] = [];
     const ambiguous: PickText[] = [];
+    // May the list mark several rows? `--pick` always (unless the argument takes one object); else per token list.
+    const listMulti = forced ? def.rest !== true && !node.destructive : def.variadic === true;
     for (const [valueIndex, target] of values.entries()) {
       if (typeof target !== "string") {
         resolved.push(target);
+        continue;
+      }
+      const tag = tagTargetOf(nodes, target, def.kinds);
+      if (tag === "list") {
+        const tags = tagCounts(nodes, def.kinds);
+        if (tags.length === 0) return { kind: "error", result: fail(ExitCode.NOT_FOUND, `${command}: no tags in the Set`) };
+        return { kind: "tags", request: { argIndex, valueIndex, multi: def.rest !== true && !node.destructive, tags } };
+      }
+      if (tag) {
+        // `#fx`: every object with the tag, at once, for every argument that can take several
+        // objects (whatever `multiple` says); a single-target argument (`rest`) still asks, and so does
+        // a destructive command (one address never acts on several objects there, as for `multiple`).
+        // `!#x` of a tag nothing carries would hit every track (a typo); it fails like `#x` does.
+        if (tag.negate && nodesWithTag(nodes, tag.name).length === 0) {
+          return { kind: "error", result: fail(ExitCode.NOT_FOUND, `${command}: no track is tagged #${tag.name}`) };
+        }
+        const tagged = nodesForTag(nodes, tag, def.kinds);
+        if (tagged.length === 0) {
+          const why = tag.negate ? `every track is tagged #${tag.name}` : `no track is tagged #${tag.name}`;
+          return { kind: "error", result: fail(ExitCode.NOT_FOUND, `${command}: ${why}`) };
+        }
+        if (!forced && (tagged.length === 1 || (def.rest !== true && !node.destructive))) resolved.push(...tagged);
+        else ambiguous.push({ valueIndex, query: target, candidates: tagged });
         continue;
       }
       const found = lookupTarget(nodes, target, def.kinds);
       if (found.length === 0) {
         missing.push({ path: target, ok: false, code: ExitCode.NOT_FOUND, message: "nothing matches" });
         missingAt.push({ argIndex, def, valueIndex, text: target });
-      } else if (found.length === 1 || def.multiple === "all") {
+      } else if (!forced && (found.length === 1 || def.multiple === "all")) {
         resolved.push(...found);
       } else {
         ambiguous.push({ valueIndex, query: target, candidates: found });
@@ -226,7 +287,7 @@ export function resolveTargets(
       // Texts of this argument that match nothing join the same list as "did you
       // mean" rows (only what the user marks runs); one nothing fits ends the run.
       const lost = missingAt.filter((m) => m.argIndex === argIndex);
-      if (lost.length === 0) return { kind: "pick", request: pickRequest(argIndex, def.variadic === true, ambiguous) };
+      if (lost.length === 0) return { kind: "pick", request: pickRequest(argIndex, listMulti, ambiguous) };
       const suggested = suggestionsFor(lost, nodes);
       if (suggested.some((m) => m.candidates.length === 0)) return { kind: "error", result: missingFailure(command, missing) };
       const texts: PickText[] = [
@@ -235,7 +296,7 @@ export function resolveTargets(
       ].sort((a, b) => a.valueIndex - b.valueIndex);
       return {
         kind: "pick",
-        request: { ...pickRequest(argIndex, def.variadic === true, texts), suggestion: { onCancel: missingFailure(command, missing) } },
+        request: { ...pickRequest(argIndex, listMulti, texts), suggestion: { onCancel: missingFailure(command, missing) } },
       };
     }
     // The same object named twice (e.g. picked and typed) is still one target.

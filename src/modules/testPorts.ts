@@ -1,8 +1,9 @@
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { createFakeBridge, type FakeBridge, type FakeBridgeOptions } from "../ableton/bridgeFake.js";
 import type { Command } from "../core/commandRegistry.js";
+import { helpForPath, usageForPath } from "../core/commandTree.js";
 import type { Provider } from "../core/types.js";
-import type { ModuleApi, TrackHandle } from "./types.js";
+import type { ModuleApi, TagRow, TrackHandle } from "./types.js";
 
 // A ModuleApi made of fakes, so a module's `activate` and its commands' `run`
 // can be tested without Live: an in-memory bridge, a scripted object tree,
@@ -17,6 +18,10 @@ export interface FakeApiOptions {
   pickAnswer?: (candidates: ObjectNode[], multi: boolean) => ObjectNode[] | null;
   /** What `api.confirm` answers (default: false, i.e. cancelled). */
   confirmAnswer?: boolean;
+  /** What `api.pickTags` answers (default: cancelled). */
+  pickTagsAnswer?: (rows: TagRow[]) => string[] | null;
+  /** Tags per node (by `handleId`) the fake `api.tags` starts with; writes land in `fake.tagStore`. */
+  tags?: Record<string, string[]>;
 }
 
 export interface FakeApi {
@@ -29,6 +34,10 @@ export interface FakeApi {
   feedback: string[];
   /** The messages `api.confirm` was asked. */
   confirms: string[];
+  /** The tag lists `api.pickTags` showed (title and rows). */
+  tagLists: Array<{ title: string; rows: TagRow[]; allowNew?: boolean }>;
+  /** Tags by node `handleId`; `api.tags.write` replaces the entry (empty removes it). */
+  tagStore: Map<string, string[]>;
   dialogs: Array<{ html: string; width: number; height: number }>;
   /** Track state by handle id; writes land here. */
   tracks: Map<string, TrackHandle>;
@@ -48,6 +57,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     logs: [],
     feedback: [],
     confirms: [],
+    tagLists: [],
+    tagStore: new Map(Object.entries(options.tags ?? {})),
     dialogs: [],
     tracks: new Map(),
     transactions: 0,
@@ -75,7 +86,12 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       fake.dialogs.push({ html, width, height });
       return options.dialogAnswer || null;
     },
-    commands: { add: (command) => void fake.commands.push(command) },
+    commands: {
+      add: (command) => void fake.commands.push(command),
+      roots: () => fake.commands,
+      help: (path) => helpForPath(fake.commands, path),
+      usage: (path) => usageForPath(fake.commands, path),
+    },
     pick: async (_title, candidates, multi = false) => {
       const chosen = options.pickAnswer?.(candidates, multi) ?? null;
       for (const listener of pickListeners) listener(candidates, chosen);
@@ -84,6 +100,19 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     confirm: async (message) => {
       fake.confirms.push(message);
       return options.confirmAnswer ?? false;
+    },
+    pickTags: async (title, rows, listOptions) => {
+      fake.tagLists.push({ title, rows, ...(listOptions?.allowNew ? { allowNew: true } : {}) });
+      return options.pickTagsAnswer?.(rows) ?? null;
+    },
+    tags: {
+      refresh: async () => ({ ok: true, value: undefined }),
+      of: (node) => fake.tagStore.get(node.handleId) ?? [],
+      write: async (node, tags) => {
+        if (tags.length) fake.tagStore.set(node.handleId, [...tags]);
+        else fake.tagStore.delete(node.handleId);
+        return { ok: true, value: { name: node.name, tags: [...tags], marked: true } };
+      },
     },
     onPick: (listener) => void pickListeners.push(listener),
     registerProvider: (provider) => void fake.providers.push(provider),

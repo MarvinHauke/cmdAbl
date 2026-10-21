@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, fill?: boolean, state?: { label, change?: 'toggle'|'on'|'off' }, items: [{ label, detail?, value?, state?: 'on'|'off' }] }. state.label picks the right-hand button (muted: speaker, lit when audible = 'off'; soloed: S; armed: record dot; other: neutral square), no state = no button. With state.change the buttons of the acted-on rows (multi-select: the marked rows only, none: no ring; single-select: the cursor row) show the resulting state with a pending ring, and marks lose their tint (bold label stays). Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes, or '' when cancelled (a multi-select answers only marked rows; Enter with none marked answers nothing and stays open); with fill (single-select only) Tab answers {"fill": index} instead. -->
+<!-- select surface (see src/core/ui.ts). In: PICK_PLACEHOLDER = { title, multi, preview?: { before, after }, fill?: boolean, create?: { label } (extra last row `+ label "text"` when the filter text, trimmed, is non-empty and matches no row label exactly, ignoring case and a leading "#"; no state button), state?: { label, change?: 'toggle'|'on'|'off' }, items: [{ label, detail?, value?, state?: 'on'|'off' }] }. state.label picks the right-hand button (muted: speaker, lit when audible = 'off'; soloed: S; armed: record dot; other: neutral square), no state = no button. With state.change the buttons of the acted-on rows (multi-select: the marked rows only, none: no ring; single-select: the cursor row) show the resulting state with a pending ring, and marks lose their tint (bold label stays). Ctrl+Shift+D toggles a key-event diagnostic in the hint line (off on open). Out (close_and_send): JSON array of chosen item indexes (with the create row: {"created": text, "picked": [marked indexes]}; Enter on the create row under the cursor chooses it even unmarked), or '' when cancelled (a multi-select answers only marked rows; Enter with none marked answers nothing and stays open); with fill (single-select only) Tab answers {"fill": index} instead. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -73,6 +73,11 @@
     body.change .row.marked.active { background: var(--bg-row); }
     body.change.zone-list .row.marked.active { background: var(--border); }
     /* One line per row: the label keeps its width up to the row, the detail gives way first. */
+    /* Create row (PICK.create): styled like a hint, accent "+", no state button. */
+    .row.empty { color: var(--dim); }
+    .row.create .label { color: var(--dim); }
+    .row.create .plus { color: var(--accent); font-weight: 700; }
+    .row.create.active .label { color: var(--accent); }
     .label { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .detail { flex: 1 1 0; min-width: 0; text-align: right; color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -100,7 +105,7 @@
   <script>/*MATCH_PLACEHOLDER*/</script>
 
   <script>
-    // Injected by the extension: { title, multi, preview?, fill?, state?: { label }, items: [{ label, detail?, value?, state?: 'on' | 'off' }] }
+    // Injected by the extension: { title, multi, preview?, fill?, create?: { label }, state?: { label }, items: [{ label, detail?, value?, state?: 'on' | 'off' }] }
     const PICK = /*PICK_PLACEHOLDER*/null;
 
     const filter = document.getElementById('filter');
@@ -128,9 +133,27 @@
     // `fill` (single-select only): Tab puts the active row into the prompt instead of running it.
     const canFill = !!PICK.fill && !PICK.multi;
 
+    // `create` (PICK.create = { label }): a filter text that matches no row exactly offers a row
+    // `+ <label>: <text>` after the matches. It is a virtual row, index CREATE in `visible`/`marked`.
+    const CREATE = -1;
+    const createText = () => {
+      if (!PICK.create) return '';
+      const text = filter.value.trim();
+      if (!text) return '';
+      // Exact match ignores case and a leading "#" (tags); the text itself is returned untouched.
+      const norm = t => t.trim().replace(/^#/, '').toLowerCase();
+      const same = norm(text);
+      return PICK.items.some(item => norm(item.label) === same) ? '' : text;
+    };
+
+    // The answer. With the create row chosen: { created: text, picked: [indexes of the other chosen rows] }
+    // (the shape is core's, see src/core/ui.ts); otherwise the plain indexes array.
     function send(indexes, fillIndex) {
+      const created = indexes && indexes.includes(CREATE) ? createText() : '';
+      const rows = indexes ? indexes.filter(i => i !== CREATE) : indexes;
       const payload = fillIndex !== undefined ? JSON.stringify({ fill: fillIndex })
-        : indexes && indexes.length ? JSON.stringify(indexes) : '';
+        : created ? JSON.stringify({ created, picked: rows })
+        : rows && rows.length ? JSON.stringify(rows) : '';
       const msg = { method: 'close_and_send', params: [payload] };
       if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(msg);
       else if (window.chrome?.webview) window.chrome.webview.postMessage(msg);
@@ -138,11 +161,16 @@
 
     function render() {
       visible = filterIndexes(filter.value);
+      const created = createText();
+      if (created) visible.push(CREATE);
+      // A mark belongs to the text it was set on: another text (or none) drops it.
+      if (!created || created !== createdMarked) marked.delete(CREATE);
       active = Math.min(active, Math.max(visible.length - 1, 0));
 
       const actedOn = rowsActedOn();
       list.innerHTML = '';
       visible.forEach((index, pos) => {
+        if (index === CREATE) { list.appendChild(createRow(pos, created)); return; }
         const item = PICK.items[index];
         const row = document.createElement('div');
         row.className = 'row' + (pos === active ? ' active' : '') + (marked.has(index) ? ' marked' : '');
@@ -165,23 +193,59 @@
         });
         list.appendChild(row);
       });
+      if (!visible.length && PICK.create) {   // nothing to pick yet (no rows, no text): say what to do
+        const empty = document.createElement('div');
+        empty.className = 'row empty';
+        empty.textContent = 'type a ' + PICK.create.label;
+        list.appendChild(empty);
+      }
       list.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
       renderPreview();
       renderZone();
+    }
+
+    let createdMarked = '';   // the text the create row was marked for
+    // What Enter answers in a multi-select: the marked rows, plus the create row when the cursor is on
+    // it (marked or not); the create row sorts last. The preview line shows exactly this.
+    function multiChosen() {
+      const chosen = new Set(marked);
+      if (visible[active] === CREATE) chosen.add(CREATE);
+      return [...chosen].sort((a, b) => (a === CREATE) - (b === CREATE) || a - b);
+    }
+
+    function createRow(pos, text) {
+      const row = document.createElement('div');
+      row.className = 'row create' + (pos === active ? ' active' : '') + (marked.has(CREATE) ? ' marked' : '');
+      const label = document.createElement('span');
+      label.className = 'label';
+      const plus = document.createElement('span');
+      plus.className = 'plus';
+      plus.textContent = '+';
+      // user data: textContent only
+      label.append(plus, ' ' + PICK.create.label + ' "' + text + '"');
+      label.title = label.textContent;
+      row.append(label);
+      row.addEventListener('mousedown', e => {
+        e.preventDefault();
+        if (PICK.multi) { toggle(CREATE); active = pos; zone = 'list'; render(); }
+        else send([CREATE]);
+      });
+      return row;
     }
 
     // The line Enter will run: before, the chosen values (ascending index order, as
     // returned), after. Multi-select: the marked rows only (none marked: no target); single-select: the cursor row.
     function renderPreview() {
       if (!PICK.preview) return;
-      // Multi-select: the targets are exactly the marked rows (none marked = no target).
+      // Multi-select: the targets are what Enter answers (marked rows, and the create row under the cursor).
       // Single-select: the cursor row.
       const chosen = PICK.multi
-        ? [...marked].sort((a, b) => a - b)
+        ? multiChosen()
         : (visible.length ? [visible[active]] : []);
+      const valueOf = i => i === CREATE ? createText() : (PICK.items[i].value ?? PICK.items[i].label);
       const parts = [
         PICK.preview.before,
-        ...chosen.map(i => PICK.items[i].value ?? PICK.items[i].label),
+        ...chosen.map(valueOf),
         PICK.preview.after,
       ].filter(part => part);
       const text = '> ' + parts.join(' ');
@@ -271,6 +335,7 @@
     function toggle(index) {
       notice = '';
       if (marked.has(index)) marked.delete(index); else marked.add(index);
+      if (index === CREATE) createdMarked = createText();
     }
 
     // Space in the list zone of a multi-select: mark the active row and move on.
@@ -349,7 +414,7 @@
       } else if (e.key === 'Tab') {
         e.preventDefault();
         if (!visible.length) return;
-        if (canFill) { send(null, visible[active]); return; }
+        if (canFill) { if (visible[active] !== CREATE) send(null, visible[active]); return; }
         if (!PICK.multi) return;
         toggle(visible[active]);
         move(1);
@@ -357,7 +422,9 @@
         e.preventDefault();
         if (PICK.multi) {
           // Multi-select: only marked rows are targets; Enter with none runs nothing.
-          if (marked.size) send([...marked].sort((a, b) => a - b));
+          // The create row under the cursor is chosen by Enter itself (marked or not), with the marked rows.
+          const chosen = multiChosen();
+          if (chosen.length) send(chosen);
           else { notice = 'Nothing marked: mark rows with Tab/Space first'; renderZone(); }
         } else if (visible.length) send([visible[active]]);
       } else if (zone === 'list' && !e.ctrlKey && !e.metaKey && !e.altKey

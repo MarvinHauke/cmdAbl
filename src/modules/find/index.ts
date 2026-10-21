@@ -5,6 +5,7 @@ import { ExitCode, fail, type CommandResult } from "../../core/types.js";
 import { MatchList } from "./matches.js";
 import { findKinds } from "./kinds.js";
 import { findNodes } from "./select.js";
+import { addTagMatches, describeTags, findTagged, splitPattern, unknownTags } from "./tagged.js";
 
 /**
  * `find [pattern] [-L <n>] [-t] [-d] [-c]` — grep for the Live Set: every track/device/chain
@@ -40,6 +41,9 @@ export function activate(api: ModuleApi): void {
       "in a pick list. next and prev then step through the matches. Needs the cmdAbl Remote Script. " +
       "Unlike commands that act on a target, which need at least one word in the object's own name, find is a " +
       "search: it lists everything whose path contains the words, including what sits below a matching parent. " +
+      "A word that is a tag name also finds the tracks tagged with it, and #drums restricts the search to the tracks " +
+      "tagged drums (find #drums lists them, find #drums kick searches inside them); !#drums means the regular tracks " +
+      "without that tag. " +
       "-L limits that: with -L n, an object is listed only if it, or an object at most n levels above it, has " +
       "one of the words in its own name — so -L 0 lists only the objects named like the pattern, -L 1 adds " +
       "their direct children, -L 2 their grandchildren. Without a pattern, find needs -L or one of -t, -d, -c " +
@@ -50,6 +54,9 @@ export function activate(api: ModuleApi): void {
       { line: "find 808", note: "everything with \"808\" in its path" },
       { line: "find 808 -L 0", note: "only objects with \"808\" in their own name" },
       { line: "find 808 -L 1", note: "those, plus their direct children" },
+      { line: "find #drums", note: "every track tagged drums" },
+      { line: "find #drums kick", note: "chains, pads and devices with \"kick\" in their path inside the tracks tagged drums" },
+      { line: "find !#drums -t", note: "all regular tracks that are not tagged drums" },
       { line: "find -t", note: "all tracks" },
       { line: "find -c snare", note: "only chains and drum pads with \"snare\" in their path" },
       { line: "find -L 2 -c snare", note: "chains and pads named like snare, at most two levels below a match" },
@@ -91,9 +98,27 @@ export function activate(api: ModuleApi): void {
       }
       const kinds = findKinds(invocation.options);
       const wantsUnfold = invocation.options.unfold === true;
+      const { plain, tags } = splitPattern(pattern);
+
+      // A `#tag` in the pattern reads the tags fresh from the Remote Script (and needs it); plain words
+      // only add tracks from the cached tags, so they never wait for the script.
+      if (tags.length > 0) {
+        const fresh = await api.tags.refresh();
+        if (!fresh.ok) return fail(fresh.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `find: ${fresh.text}`);
+      }
       const all = liveNodes();
-      const hits = findNodes(all, { pattern, level, kinds });
+      const tagsOf = (n: (typeof all)[number]) => api.tags.of(n);
       const what = pattern === "" ? "" : ` "${pattern}"`;
+      let hits;
+      if (tags.length > 0) {
+        const unknown = unknownTags(all, tags, tagsOf);
+        if (unknown.length > 0) return fail(ExitCode.NOT_FOUND, `find: no track is tagged ${unknown.map((t) => `#${t.name}`).join(" ")}`);
+        const tagged = findTagged(all, { plain, tags, level, kinds, kindFlag: Boolean(kindFlag), tagsOf });
+        if (tagged.scope.length === 0) return fail(ExitCode.NOT_FOUND, `find: ${describeTags(tags)}`);
+        hits = tagged.hits;
+      } else {
+        hits = addTagMatches(all, findNodes(all, { pattern, level, kinds }), plain, kinds, tagsOf);
+      }
       if (hits.length === 0) return fail(ExitCode.NOT_FOUND, `find: nothing matches${what}`);
 
       if (hits.length === 1) {

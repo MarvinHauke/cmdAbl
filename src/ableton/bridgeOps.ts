@@ -338,3 +338,88 @@ function parseSwitches(entry: unknown): BridgeResult<ChainSwitches> {
   }
   return { ok: true, value: { name: e.name, mute: e.mute, solo: e.solo } };
 }
+
+// ---- Tags on tracks (plan 0008) ---------------------------------------------------------------
+// Stored by the Remote Script with Track.set_data (saved with the Set). Reads cover the whole Set in
+// one go (the tree needs them for every track); a write changes one track.
+
+/** A track that carries tags, as the script reports it. Untagged tracks are not listed. */
+export interface TagEntry {
+  scope: ObjectNode["scope"];
+  /** Route of the track: [index in its collection]. */
+  route: number[];
+  /** The track's name when the tags were read: tags belong to a track only while the name still matches. */
+  name: string;
+  tags: string[];
+}
+
+function parseTagEntry(e: unknown): TagEntry | null {
+  const o = e as Record<string, unknown> | null;
+  if (typeof o !== "object" || o === null) return null;
+  const route = o.route;
+  if (
+    (o.scope !== "regular" && o.scope !== "return" && o.scope !== "master") ||
+    !Array.isArray(route) || route.length !== 1 || typeof route[0] !== "number" ||
+    typeof o.name !== "string" ||
+    !Array.isArray(o.tags) || !o.tags.every((t) => typeof t === "string")
+  ) {
+    return null;
+  }
+  return { scope: o.scope, route: [route[0]], name: o.name, tags: o.tags as string[] };
+}
+
+/**
+ * The tags of every tagged track (regular, return, main), in the script's order. The script pages its
+ * reply under the 4 KB cap; this asks again until it is complete. A script without the op answers
+ * exit code 5 (outdated); a script that is not running, 5 as well. Never throws.
+ */
+export async function readTags(bridge: Bridge): Promise<BridgeResult<TagEntry[]>> {
+  const entries: TagEntry[] = [];
+  let offset = 0;
+  for (let round = 0; round < 64; round++) {
+    const reply = await bridge.request("tags_all", offset === 0 ? {} : { offset });
+    if (!reply.ok) return reply;
+    const list = reply.value.tracks;
+    if (!Array.isArray(list)) return fail(1, "bad reply from the Remote Script: tags_all without tracks");
+    for (const raw of list) {
+      const entry = parseTagEntry(raw);
+      if (!entry) return fail(1, "bad reply from the Remote Script: tags_all entry");
+      entries.push(entry);
+    }
+    const next = reply.value.next;
+    if (next === undefined) return { ok: true, value: entries };
+    if (typeof next !== "number" || next <= offset) return fail(1, "bad reply from the Remote Script: tags_all paging");
+    offset = next;
+  }
+  return fail(1, "bad reply from the Remote Script: tags_all did not finish");
+}
+
+/** What a tag write reports back. */
+export interface TagsWritten {
+  /** The track's name in Live right now. */
+  name: string;
+  /** The tags as Live stored them (read back). */
+  tags: string[];
+  /** False when the colour toggle that makes Live ask to save did not work: the tags are stored regardless. */
+  marked: boolean;
+}
+
+/**
+ * Replace the tags of one track (an empty list removes them). A writing operation: it carries the
+ * access token and the track's current name; a track whose name changed answers exit code 1
+ * ("the Live Set changed; run the command again"). Tags are stored as given: normalising them is the
+ * caller's job. Never throws; a script that is not running answers exit code 5.
+ */
+export async function writeTags(
+  bridge: Bridge,
+  track: Pick<ObjectNode, "scope" | "route" | "name">,
+  tags: string[],
+): Promise<BridgeResult<TagsWritten>> {
+  const reply = await bridge.request("tags_set", { scope: track.scope, route: track.route, expectName: track.name, tags }, { changes: true, token: true });
+  if (!reply.ok) return reply;
+  const v = reply.value;
+  if (typeof v.name !== "string" || !Array.isArray(v.tags) || !v.tags.every((t) => typeof t === "string") || typeof v.marked !== "boolean") {
+    return fail(1, "bad reply from the Remote Script: tags_set");
+  }
+  return { ok: true, value: { name: v.name, tags: v.tags as string[], marked: v.marked } };
+}

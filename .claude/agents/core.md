@@ -21,6 +21,8 @@ cmdabl-bridge).
 
 ## Rules
 
+- Use subagents when they make the work faster or better (a wide search, independent checks in
+  parallel); your call.
 - Read first: `docs/feature-plans/0004-command-platform.md` (what the core is, decisions),
   `0005-command-tree-and-module-authoring.md` (node format, parsing, resolve-before-handler),
   `0002-command-feedback-pattern.md` (exit codes), `0006` and `0007` when touching completion or UI.

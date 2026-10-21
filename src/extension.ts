@@ -1,5 +1,6 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./core/commandRegistry.js";
+import { helpForPath, usageForPath } from "./core/commandTree.js";
 import { createCommandProvider } from "./core/commandProvider.js";
 import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail } from "./core/types.js";
 import type { Module, ModuleApi } from "./modules/types.js";
@@ -8,11 +9,12 @@ import { isSetupDone, setKarabinerPaletteOpen } from "./core/setup.js";
 import { registerBuiltins } from "./core/builtins.js";
 import { reportBridge } from "./core/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
+import { getTagCache } from "./ableton/tagCache.js";
 import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
 import { objectRowLine } from "./core/objectRow.js";
 import { confirm } from "./core/confirm.js";
-import { pickNodes } from "./core/pick.js";
+import { pickNodes, pickTagNames } from "./core/pick.js";
 import { quoteIfNeeded } from "./core/tokenize.js";
 import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
@@ -107,9 +109,20 @@ export function activate(activation: ActivationContext) {
     },
     log: (line) => console.log(line),
     dialog: (html, width, height, name = "module page") => ui.page(name, html, width, height),
-    commands: { add: (command) => void registry.add(command) },
+    commands: {
+      add: (command) => void registry.add(command),
+      roots: () => registry.roots(),
+      help: (path) => helpForPath(registry.roots(), path),
+      usage: (path) => usageForPath(registry.roots(), path),
+    },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
+    pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, multi: true, ...options }),
+    tags: {
+      refresh: () => getTagCache().refreshNow(getBridge()),
+      of: (node) => getTagCache().get(node.scope, node.route, node.name) ?? [],
+      write: (node, tags) => getTagCache().write(getBridge(), node, tags),
+    },
     onPick: (listener) => pickListeners.push(listener),
     registerProvider: (provider, priority = 0) => providers.push({ provider, priority }),
     onCommandRun: (listener) => commandRunListeners.push(listener),
@@ -169,6 +182,11 @@ export function activate(activation: ActivationContext) {
       // The platform's own lists: Tab may put a single-select row into the prompt.
       pick: ({ title, candidates, multi, nodes, preview, details, state }) =>
         pick(title, candidates, multi, { nodes, preview, details, state, fill: true }),
+      refreshTags: async () => {
+        const read = await getTagCache().refreshNow(getBridge());
+        return read.ok ? null : fail(read.code, read.text);
+      },
+      pickTags: (request) => pickTagNames(ui, request),
     });
     if (outcome.fill !== undefined) return outcome.fill;
     if (outcome.cancelled) return;
@@ -184,7 +202,9 @@ export function activate(activation: ActivationContext) {
 
   /** The single place results become user-visible (see src/core/present.ts). */
   function present(outcome: CommandResult): void {
-    presentResult(outcome, (text) => ui.notify({ text, code: outcome.code }));
+    presentResult(outcome, (text, link, sections) =>
+      ui.notify({ text, code: outcome.code, ...(link ? { link } : {}), ...(sections ? { sections } : {}) }),
+    );
   }
 
   async function openPalette(): Promise<void> {
