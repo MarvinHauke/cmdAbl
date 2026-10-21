@@ -29,3 +29,6 @@ vendor/
 
 # Private plans — never pushed
 docs/feature-plans/private/
+
+# Screen recordings (sources for GIFs; large, never committed)
+*.mov
