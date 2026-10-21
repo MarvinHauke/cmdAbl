@@ -39,7 +39,10 @@ mute groups (`mute #drums`).
    - The Utility's Gain is that DCA's offset and its Mute is that DCA's mute. Several DCAs add up
      because the Utilities are in series, so no summing code is needed.
    - Each DCA's Gain can be automated in Live.
-3. **`vol` covers absolute and relative changes.** The syntax is still open (see Open questions).
+3. **`vol` is relative by default** (user, 2026-10-21): `vol -6 #drums` moves every drums fader by
+   -6 dB from where it is (Kick at -6 → -12, Perc at -3 → -9), so the balance stays.
+   **`--set` makes it absolute:** `vol --set -6 #drums` puts every fader at -6 dB (the same flag
+   name as `mute --set`).
 
 4. **`dca` moves back and gets its own detailed plan** (user, 2026-10-21), because it adds devices.
    Direction: one **"cmdAbl DCA" rack** per member track, with each Utility's Gain routed to a
@@ -62,7 +65,10 @@ mute groups (`mute #drums`).
 | | |
 |---|---|
 | What it changes | The track's `mixer.volume`, a DeviceParameter in the SDK (`docs/sdk-tree.md`), so no Remote Script is needed |
-| Targets | Paths, names and tags, as for `mute`: `vol /Bass -6`, `vol #drums -3` |
+| Targets | Paths, names and tags, as for `mute`: `vol -6 /Bass`, `vol 2 #drums` |
+| Relative (default) | `vol <dB> <target>…` adds `<dB>` to each fader's current level: Kick -6 → -12, Perc -3 → -9 with `vol -6 #drums` |
+| Absolute | `vol --set <dB> <target>…` sets each fader to `<dB>`; `-inf` is allowed |
+| Limits | A fader stops at Live's maximum (+6 dB) and at -inf; the result names any fader that hit a limit, because the balance changed there |
 | Behaviour | Destructive: it overwrites the fader values and works against volume automation. The result says so when the track has automation, if that can be read. |
 | Undo | Inside `withinTransaction`, one undo step |
 | Output | A successful write is quiet; the old and new values go to the log ([0011](0011-logging.md)) |
@@ -127,8 +133,9 @@ No large vendor offers an SDK for "DCA from a DAW". What can be used are the des
 
 ## Open questions
 
-- **`vol` syntax.** Recommended: calc operators. `vol #drums -6` sets the value; `vol #drums +=2` and
-  `vol #drums -=2` change it. The alternative is a flag, `vol #drums --by -2`.
+- ~~`vol` syntax~~ — decided (user, 2026-10-21): relative by default, `--set` for absolute.
+- Relative steps in dB do not reverse exactly near -inf or a fader limit (`vol -40` then `vol 40`);
+  the log's undo line therefore restores the old values with `vol --set`.
 - Can the automation state of the volume parameter be read, so `vol` can warn?
 - **Rack building through the LOM:** does `insert_device("Audio Effect Rack")` work, can chains be
   inserted, and does Utility's gain range cover what a DCA needs (about ±35 dB)?
@@ -151,8 +158,10 @@ No large vendor offers an SDK for "DCA from a DAW". What can be used are the des
 
 - Every phase: `npm test` and `npm run build`.
 - Live:
-  - `vol #drums -6` sets every drums fader to -6 dB, and Cmd+Z undoes it in one step.
-  - `vol /Bass +=2` raises the fader by 2 dB.
+  - `vol -6 #drums` lowers every drums fader by 6 dB (Kick -6 → -12, Perc -3 → -9); Cmd+Z undoes it
+    in one step.
+  - `vol --set -6 #drums` puts every drums fader at -6 dB.
+  - `vol 2 /Bass` raises the fader by 2 dB.
   - `dca drums -3` inserts the rack with a "dca drums" Utility at -3 dB on every drums track; the
     faders are unchanged.
   - A second DCA on one track adds a second Utility, and both offsets are heard.
