@@ -69,7 +69,7 @@ mute groups (`mute #drums`).
 | Targets | Paths, names and tags, as for `mute`: `vol -6 /Bass`, `vol 2 #drums` |
 | Relative (default) | `vol <dB> <target>…` adds `<dB>` to each fader's current level: Kick -6 → -12, Perc -3 → -9 with `vol -6 #drums` |
 | Absolute | `vol --set <dB> <target>…` sets each fader to `<dB>`; `-inf` is allowed |
-| Limits | A fader stops at Live's maximum (+6 dB) and at -inf; the result names any fader that hit a limit, because the balance changed there |
+| Limits | A fader stops at Live's maximum (+6 dB) and at -inf. **A relative step that would cross a limit asks first** (user, 2026-10-22): the question lists only the affected tracks (`/Snare: +3.0 → +6.0 dB (asked +9.0)`), because their balance can't be restored relatively; Cancel writes nothing, "Apply anyway" writes all and logs the limits. `--set` never asks. |
 | Behaviour | It overwrites the fader values. No automation warning for now (decided 2026-10-22); the command's description says it overwrites the fader. It is not marked `destructive` (the one-target confirmation), because a tag reaches all its members on purpose. |
 | Undo | All faders are read first, then written in one transaction: one Cmd+Z step, exact. The log's `undo: vol --set <old> <path>` lines restore to 0.1 dB. |
 | Output | A successful write is quiet; `/Kick: -6.0 → -12.0 dB` and the undo line go to the log ([0011](0011-logging.md)). A fader at +6 or -inf is named in a message; a relative step on a -inf fader stays at -inf (only `--set` lifts it). Below -69.6 dB the fader goes to -inf. Chains: exit 2 for now. |
