@@ -61,7 +61,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    a failed write during a dialog (Live's UI is blocked while a cmdAbl dialog is open) — covered by unit
    tests. Optional, not run: a section taller than the view; 64 tracks. 0.1.2 Live tests done. Version
    0.1.2 (`4d0675c`); installed `.ablx` passed (user, 2026-10-21: bridge 0.1.6, board, `tag -e`, `tag -r`,
-   find, `cmdabl log`, man). Stills taken; recordings (hero/tags/pakabl .mov) still to do.
+   find, `cmdabl log`, man). Images done (stills `d3701ba`, tags.gif `9846a14`, hero.gif `9131f9b`,
+   pakabl.gif `b3558c1`). PR #14 "Release 0.1.2: tag editing" open, CI green (2026-10-21).
 3. `tag -l` on `board` — built `11815ba` (+ lowercase/merge of created names); Live test
    pending together with 1 and 2.
 5. Module pages moved to `ui/modules/<module>/` (`1b70581`) — Live check: `pakabl list` opens
