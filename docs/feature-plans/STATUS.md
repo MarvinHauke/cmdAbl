@@ -59,8 +59,9 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    → tagged); autoscroll of input/suggestions (`4b45416`), open at the top (`3e1a0da`), whole section
    revealed on ↑/↓ (`a74f079`); a new tag with no track leaves Apply greyed out. Not testable by hand:
    a failed write during a dialog (Live's UI is blocked while a cmdAbl dialog is open) — covered by unit
-   tests. Optional, not run: a section taller than the view; 64 tracks. 0.1.2 Live tests done; next: the
-   installed build (`.ablx`).
+   tests. Optional, not run: a section taller than the view; 64 tracks. 0.1.2 Live tests done. Version
+   0.1.2 (`4d0675c`); installed `.ablx` passed (user, 2026-10-21: bridge 0.1.6, board, `tag -e`, `tag -r`,
+   find, `cmdabl log`, man). Stills taken; recordings (hero/tags/pakabl .mov) still to do.
 3. `tag -l` on `board` — built `11815ba` (+ lowercase/merge of created names); Live test
    pending together with 1 and 2.
 5. Module pages moved to `ui/modules/<module>/` (`1b70581`) — Live check: `pakabl list` opens
