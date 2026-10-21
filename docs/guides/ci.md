@@ -7,8 +7,8 @@ publishes anything and never changes a version.
 dependency drift), and manually (Actions → CI → Run workflow).
 
 **Steps:** check that `package.json` and `manifest.json` have the same version → check out the Ableton SDK packages into `vendor/` → `npm ci` →
-`npm test` (unit tests for the command platform) →
-`python3 -B -m unittest discover -s tests/remote-script` (the Remote Script's protocol tests;
+`npm test` (unit tests for the command platform) → `npm run docs:reference -- --check` (the reference pages are
+up to date) → `python3 -B -m unittest discover -s tests/remote-script` (the Remote Script's protocol tests;
 standard library only; the tests live outside `remote-script/` so they are not packaged; run the same
 command locally) → `npm run package` → upload the built `.ablx` as the artifact `cmdabl-ablx`.
 
@@ -23,6 +23,7 @@ Open a green run in the Actions tab → **Artifacts** → `cmdabl-ablx`.
 | Green | Type-check, bundle and packaging all worked |
 | Red at "Check … versions match" | `package.json` and `manifest.json` differ — bump both to the same value |
 | Red at `npm test` | A unit test failed — see the test name in the log |
+| Red at "Reference pages are up to date" | A committed reference page differs from the code, a command has no example, or an example does not parse. Run `npm run docs:reference` and commit the result. |
 | Red at "Remote Script tests" | A Python test of `remote-script/` failed — see the test name in the log |
 | Red at `npm run package` | A real build/type error — see the log |
 | `action_required` | GitHub holds runs triggered by bot-created PRs (e.g. the pakabl index PR) until someone clicks **Approve and run**. Optional for PRs that only change generated JSON. |
@@ -43,6 +44,18 @@ command tree and `src/ableton/remoteScriptOps.ts`). The `build` job runs `npm ru
 --check`: it fails when a committed page differs from what the code produces, when a runnable command
 has no example, or when an example does not parse. Fix it by running `npm run docs:reference` and
 committing the result.
+
+## The docs site
+
+[`docs.yml`](https://github.com/MarvinHauke/cmdAbl/blob/main/.github/workflows/docs.yml) builds the site with
+`mkdocs build --strict`, which fails on a broken link. On a pull request that touches `docs/` or `mkdocs.yml` it
+only builds (the check `docs-build`). On a push to `main` that touches them it also deploys to GitHub Pages. To
+build it yourself:
+
+```sh
+pip install "mkdocs-material==9.*" "mkdocs<2"
+mkdocs build --strict
+```
 
 ## Pinned actions
 

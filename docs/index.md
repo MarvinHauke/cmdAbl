@@ -41,4 +41,4 @@ tag -l                        open the tag board
     - [Live API mapping](reference/live-api.md): how cmdAbl's paths map to the Live Object Model.
 - [Architecture](architecture.md): how cmdAbl is built, for people who want to extend it.
 - [Guides](guides/README.md): writing a command, releasing cmdAbl, the pakabl index and CI.
-- [Known limits](limits.md): what does not work yet, and macOS only for now.
+- [Known limits](limits.md): what cmdAbl cannot do, and macOS only for now.

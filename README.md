@@ -108,7 +108,7 @@ The documentation site has:
 - [Using cmdAbl](https://marvinhauke.github.io/cmdAbl/using/): names, the pick list, tags, `find`, the log, history.
 - [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/): install, update, check and its messages.
 - [Command reference](https://marvinhauke.github.io/cmdAbl/reference/commands/): every command, generated from the code.
-- [Known limits](https://marvinhauke.github.io/cmdAbl/limits/): what does not work yet.
+- [Known limits](https://marvinhauke.github.io/cmdAbl/limits/): what cmdAbl cannot do.
 
 ## Develop
 
