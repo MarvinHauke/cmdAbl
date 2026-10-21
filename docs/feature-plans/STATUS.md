@@ -24,7 +24,8 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
    `hero` (tags in action), `tags` (tag list), `pakabl` (`pakabl list`); optional: Karabiner
    rule screenshot for Getting started. Then drop unused images (`demo.gif`, old `pakabl-list.png`).
 4. Installed-build test: `npm run package`, install the `.ablx`, `cmdabl setup`, restart Live,
-   `cmdabl bridge` shows 0.1.5, `tag` and `#fx` work.
+   `cmdabl bridge` shows 0.1.5, `tag` and `#fx` work. — passed (user, 2026-10-21; `.ablx` from the worktree
+   `../cmdAbl-0.1.1`; setup also reported the 0.1.6 → 0.1.5 downgrade correctly).
 5. Secret scan of the branch (counts only), `ssh-add`, push, PR "Release 0.1.1: tags" — on the
    user's go.
 6. CI green → squash-merge (user's go) → release `v0.1.1`; hand-written notes (tags, `#`/`!#`,
