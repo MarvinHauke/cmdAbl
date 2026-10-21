@@ -35,6 +35,22 @@ documentation work comes up:
   box (never a blur — blurred text can be recovered). When unsure, leave the image out and ask.
 - No environment variables, tokens or keys in any page or image. Never run commands that print
   the environment (`env`, `printenv`, `set`, `ps e`, `pgrep -fl`).
+- **Write for one audience per page** (user, 2026-10-21). The site is public; know who reads it:
+  - **Users** (Home, Getting started, Using cmdAbl, Remote Script, Commands, Known limits): how to
+    use cmdAbl. No `npm`, no development run, no source paths, no CI.
+  - **Extension authors**: how to get an extension listed in pakabl.
+  - **Contributors** (the "Develop" section): building cmdAbl, the SDK, `npm start`, tests,
+    architecture, writing a command, pull requests from forks.
+  - **Maintainers** (releasing, CI and secrets, running the pakabl index): repo only, in
+    `docs/guides/`, excluded from the site in `mkdocs.yml` and linked from the README's
+    Contributing section.
+  A fact that matters to two audiences lives on one page; the other links to it.
+- **Order by relation, not by alphabet.** Sections, lists and tables follow the reader's path:
+  what to do first comes first, related things sit together (e.g. find → goto → next/prev; mute →
+  solo → arm; tag tracks → tags as targets → editing tags). Use alphabetical order only for a pure
+  lookup list that has no natural order, and say so.
+- Never describe unreleased or planned features, and never mention plans that are not in the
+  public repository.
 - The site must build: run the docs build named in `docs/guides/ci.md` before you hand over.
 - Never push. Never run `npm start`.
 
