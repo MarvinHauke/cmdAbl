@@ -62,13 +62,15 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
 7. `tag --rename <old> <new>` (`-r`), plan 0010 decision 8 (user, 2026-10-21): core adds two-value
    options (approved command-format change), then modules builds the rename (merge if the new name exists).
    Built: core `4033470`, modules `8134f55` (also "already has / nothing changed" messages). Live test
-   pending. Open: the palette suggests paths after `--rename ` (core, value-aware suggestions).
+   Live (user, 2026-10-21): `tag -r fx effect`, `tag -r perc percs` (quiet, undo lines logged), palette
+   hints `<old>`/`<new>`/`<tag|#>` (core `ec9c567`, ui `519be51`) — passed. Merge onto an existing tag not yet run.
 6. Logging (plan 0011) — built: core `e7ff3e8` `9d2fda1` `c5ce946`, modules `6a958fe` `9e15cff`,
    bridge `94c1648`. Tag writes are quiet, `cmdabl log [-n] [--undo] [--debug]`, lines read
    `cmdAbl [<source>] <level>:`. Live test: `tag /Lead fx` opens no window, then `cmdabl log --undo`
    shows the undo line; `cmdabl log -n 5`; `arm /x`, then `cmdabl log` (no double prefix); a failed
    write still shows ✓/×; the script line in Log.txt after `cmdabl setup`. Docs `e222996`.
-   `--undo` shows bare commands (`ed07726`) — passed in Live (user, 2026-10-20): empty message, then
+   `--undo` shows bare commands (`ed07726`) — passed; `-n 5`, `[arm]` lines, no doubled time in the
+   terminal, `pakabl list`, and `cmdAbl [script] listening …` in Log.txt — passed (2026-10-21) in Live (user, 2026-10-20): empty message, then
    two commands newest last.
    Timestamps on every line (core `dc88afe`, docs `b45117f`) — Live check: `cmdabl log` lines start
    with `HH:MM:SS [run] info:`; the terminal shows `HH:MM:SS.mmm cmdAbl [run]` (drop ours if the host stamps too).
