@@ -55,7 +55,8 @@ The copied script does not appear in Live's Control Surface list until Live rest
 2. Open **Settings → Tempo & MIDI → MIDI**. Under **Control Surface**, choose **cmdAbl**. Leave
    Input and Output set to *None*. Choosing it starts the script; you do not need to restart Live again.
 
-Live's log shows `cmdAbl bridge listening on 127.0.0.1:27185` once the link is active. The log is at
+Live's log shows `cmdAbl [script] listening on 127.0.0.1:27185` once the link is active. That line appears only after
+`cmdabl setup` and a restart of Live. The log is at
 `~/Library/Preferences/Ableton/Live <version>/Log.txt`, where `<version>` is your Live version; the Remote Script's
 lines contain `RemoteScriptMessage: (cmdAbl)`. To check the link too, see
 [Check the Remote Script](#check-the-remote-script) below.
@@ -113,6 +114,10 @@ Run `cmdabl bridge` in the palette. It sends one request to the Remote Script an
 version, the protocol version, the response time and the operations it supports. If the reply says the
 script is not installed, outdated or not running, follow the message. Restart Live when the message
 says so, then run `cmdabl bridge` again.
+
+![The cmdabl bridge result: Remote Script 0.1.6 is running, with its protocol version, response time and operations](assets/images/bridge.png)
+
+*`cmdabl bridge` on a current install.*
 
 ## What works without the Remote Script
 

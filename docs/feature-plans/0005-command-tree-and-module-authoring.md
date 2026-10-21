@@ -63,7 +63,14 @@ interface CommandNode {
   run?: (inv: Invocation, ports: Ports) => CommandResult | Promise<CommandResult>;   // leaf node only
 }
 
-interface OptionDef { name: string; short?: string; takesValue?: boolean; summary: string }
+interface OptionDef {
+  name: string; short?: string; takesValue?: boolean;
+  choices?: string[];                                   // the value must be one of these
+  number?: { min?: number; max?: number; integer?: boolean };
+  values?: number; valueLabels?: string[];              // N values: --rename <old> <new> (0010 decision 8, 4033470)
+  valueDefault?: string;                                // used when the value is missing: `tag -e` = `tag -e #`
+  summary: string;
+}
 interface ArgDef {
   name: string;
   kind: "path" | "enum" | "text" | "number";
@@ -72,7 +79,12 @@ interface ArgDef {
   complete?: string;            // key of a completer registered by a module (see 3)
 }
 // `args` hold *resolved* values: `path` arguments are already LOM-backed nodes (see 2b), never raw strings.
-interface Invocation { path: string[]; options: Record<string, string | true>; args: ResolvedArg[][] }
+interface Invocation {
+  path: string[];
+  options: Record<string, string | true>;               // a multi-value option is `true` here
+  values: Record<string, string[]>;                     // the values of options with `values`
+  args: ResolvedArg[][];
+}
 ```
 
 **Rules, checked at registration (violations are startup errors, not runtime surprises):**
@@ -80,6 +92,8 @@ interface Invocation { path: string[]; options: Record<string, string | true>; a
 2. Sibling names and aliases are unique; top-level names are owned by exactly one module.
 3. Required arguments precede optional ones; only the last argument may be variadic.
 4. Option names are unique within a node; `help`/`h` are reserved.
+   `choices`, `number` and `values` need `takesValue`; `values` is at least 1 and is not combined
+   with `choices` or `number`.
 5. Everything except `run` is plain JSON, so the tree can be sent to the webview as is.
 
 ### 2b. Path arguments are resolved before the handler runs
@@ -340,7 +354,7 @@ command needs it.
 
 - A module does not import another module's folder, `src/extension`, `src/httpTrigger` or a
   platform dialog page (`interface`, `pick`, `feedback`). It may import its own page
-  `ui/<module>-*.html`. Only `src/modules/index.ts`, the manifest, imports module folders.
+  `ui/modules/<module>/` (until 2026-10-20: `ui/<module>-*.html`). Only `src/modules/index.ts`, the manifest, imports module folders.
 - `src/core/` does not import modules, `httpTrigger` or `extension`.
 - `src/ableton/` does not import modules, `core/ui` or `extension`.
 - Only `src/core/ui.ts` calls `showModalDialog`.

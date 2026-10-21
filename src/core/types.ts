@@ -4,6 +4,9 @@
 // Provider. Today the only provider wraps the command registry, but tracks /
 // devices / clips will plug in here later without the UI needing to change.
 
+import type { ValueOptionHint } from "./commandTree.js";
+export type { ValueOptionHint };
+
 /**
  * "chain" is a rack chain or Drum Rack pad (route [track, device, chain]); the
  * object tree's NodeKind is an Extract of this type.
@@ -35,6 +38,11 @@ export interface PaletteItem {
   keywords?: string[];
   /** Display/address path from the song root, e.g. "/808 Core Kit/Snare Drum". Live objects only. */
   path?: string;
+  /**
+   * Commands only, and only when it has value options: where the caret sits in the values of
+   * `--name`/`-s`, the page offers no suggestions and hints the next value's label as ghost text.
+   */
+  valueOptions?: ValueOptionHint[];
 }
 
 /**
@@ -107,6 +115,12 @@ export interface CommandResult {
    * the log shows. Plain JSON; the presenter caps sizes (see `capSections`).
    */
   sections?: ResultSection[];
+  /**
+   * Lines for the log, not for the user (plan 0011): the platform writes them at info under the
+   * command's name after the handler returns, and the presenter never shows them. A successful
+   * write returns these instead of a `message`: a result with code 0 and only `log` is silent.
+   */
+  log?: string[];
 }
 
 export interface ResultSection {

@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { logger } from "../core/log.js";
 import { TEXT_NO_WRITES, fail, textNoToken, type BridgeResult } from "./bridgeProtocol.js";
 
 // The access token for writing operations (0001 §9). The Remote Script creates
@@ -33,12 +34,13 @@ export interface TokenSourceOptions {
   log?: (line: string) => void;
 }
 
+const tokenLog = logger("bridge");
 const SHAPE = /^[0-9a-f]{32}$/;
 
 export function createTokenSource(options: TokenSourceOptions = {}): TokenSource {
   const platform = options.platform ?? process.platform;
   const read = options.read ?? ((file: string) => fs.readFileSync(file, "utf8"));
-  const log = options.log ?? ((line: string) => console.log(line));
+  const log = options.log ?? ((line: string) => tokenLog.warn(line));
   let cached: string | null = null;
   let lastReason = "";
   /** Say why a read failed, once per reason: the error code (ENOENT, EACCES, …) or "wrong shape". */
@@ -46,7 +48,7 @@ export function createTokenSource(options: TokenSourceOptions = {}): TokenSource
     if (reason === lastReason) return;
     lastReason = reason;
     try {
-      log(`cmdAbl: bridge token: cannot read (${reason})`);
+      log(`bridge token: cannot read (${reason})`);
     } catch {
       // logging must never turn a refusal into a throw
     }

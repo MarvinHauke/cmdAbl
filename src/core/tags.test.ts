@@ -252,6 +252,24 @@ test("pickTagNames: rows with state buttons and a change preview", async () => {
   assert.deepEqual(requests[0]!.items.map((i) => [i.label, i.state, i.detail]), [["#fx", "off", undefined], ["#synth", "on", undefined]]);
 });
 
+test("pickTagNames: multi false is a single-select list without state buttons; the create row still works", async () => {
+  const requests: SelectRequest[] = [];
+  const answers: Array<number[] | { created: string; picked: number[] }> = [[1], { created: "perc", picked: [] }];
+  const ui = { select: async (r: SelectRequest) => (requests.push(r), answers.shift()!) } as never;
+  const tags = [{ name: "fx", on: true }, { name: "solo", on: false }];
+  assert.deepEqual(await pickTagNames(ui, { title: "t", tags, multi: false, change: "toggle", allowNew: true }), ["solo"]);
+  assert.equal(requests[0]!.multi, false);
+  assert.equal(requests[0]!.state, undefined);
+  assert.ok(requests[0]!.items.every((i) => i.state === undefined));
+  assert.deepEqual(requests[0]!.create, { label: "new tag" });
+  assert.deepEqual(await pickTagNames(ui, { title: "t", tags, multi: false, allowNew: true }), ["perc"]);
+  // a page that sends more than one: still one name
+  const odd = { select: async () => ({ created: "perc", picked: [0] }) } as never;
+  assert.deepEqual(await pickTagNames(odd, { title: "t", tags, multi: false, allowNew: true }), ["perc"]);
+  const two = { select: async () => [0, 1] } as never;
+  assert.deepEqual(await pickTagNames(two, { title: "t", tags, multi: false }), ["fx"]);
+});
+
 test("a destructive command never fans out: #fx with several hits asks", async () => {
   const s = setup({ pickAnswer: (c) => [c[1]!] });
   s.deps.registry.add({

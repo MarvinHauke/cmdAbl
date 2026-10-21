@@ -3,6 +3,9 @@ import type { Bridge } from "./bridgeClient.js";
 import { readTags, writeTags, type TagEntry, type TagsWritten } from "./bridgeOps.js";
 import { fail, type BridgeResult } from "./bridgeProtocol.js";
 import type { ObjectNode } from "./objectTree.js";
+import { logger } from "../core/log.js";
+
+const tagLog = logger("tags");
 
 // Track tags come from the Remote Script (Track.get_data). Like the chain names (chainNames.ts) they
 // are *read from a cache* while the object tree is built, and the cache is refreshed in the
@@ -37,7 +40,7 @@ export class TagCache {
       (t as { unref?: () => void }).unref?.();
       return t;
     },
-    private readonly log: (line: string) => void = (line) => console.log(line),
+    private readonly log: (line: string, level?: "info" | "warn") => void = (line, level) => tagLog[level ?? "info"](line),
   ) {}
 
   /** The tags of the track at this place, or undefined when none are known or the name differs. Never an empty list. */
@@ -90,13 +93,13 @@ export class TagCache {
     try {
       const reply = await readTags(bridge);
       if (!reply.ok) {
-        this.say(`cmdAbl: tags refresh failed (code ${reply.code}): ${reply.text}`);
+        this.say(`tags refresh failed (code ${reply.code}): ${reply.text}`, "warn");
         return reply;
       }
       if (gen !== this.writeGen) return { ok: true, value: undefined }; // a write finished meanwhile: this answer is stale
       this.entries = new Map(reply.value.map((e) => [keyOf(e.scope, e.route), e]));
       this.loaded = true;
-      this.say(`cmdAbl: tags refresh: ${reply.value.length} tagged tracks`);
+      this.say(`tags refresh: ${reply.value.length} tagged tracks`);
       return { ok: true, value: undefined };
     } catch {
       return fail(1, "tags refresh failed");
@@ -147,11 +150,11 @@ export class TagCache {
     return result;
   }
 
-  private say(line: string): void {
+  private say(line: string, level: "info" | "warn" = "info"): void {
     if (line === this.lastSummary) return;
     this.lastSummary = line;
     try {
-      this.log(line);
+      this.log(line, level);
     } catch {
       // logging must never fail a refresh
     }

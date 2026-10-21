@@ -3,6 +3,7 @@ import { createFakeBridge, type FakeBridge, type FakeBridgeOptions } from "../ab
 import type { Command } from "../core/commandRegistry.js";
 import { helpForPath, usageForPath } from "../core/commandTree.js";
 import type { Provider } from "../core/types.js";
+import type { BoardAnswer, BoardRequest, StateChange } from "../core/ui.js";
 import type { ModuleApi, TagRow, TrackHandle } from "./types.js";
 
 // A ModuleApi made of fakes, so a module's `activate` and its commands' `run`
@@ -16,6 +17,8 @@ export interface FakeApiOptions {
   dialogAnswer?: string | null;
   /** What `api.pick` answers (default: cancelled). Registered `onPick` listeners are notified like the platform does. */
   pickAnswer?: (candidates: ObjectNode[], multi: boolean) => ObjectNode[] | null;
+  /** What `api.ui.board` answers (default: closed). The request is recorded in `fake.boards`. */
+  boardAnswer?: (request: BoardRequest) => BoardAnswer | null;
   /** What `api.confirm` answers (default: false, i.e. cancelled). */
   confirmAnswer?: boolean;
   /** What `api.pickTags` answers (default: cancelled). */
@@ -32,6 +35,12 @@ export interface FakeApi {
   providers: Provider[];
   logs: string[];
   feedback: string[];
+  /** The boards `api.ui.board` was asked to show. */
+  boards: BoardRequest[];
+  /** The `state` options `api.pick` was given, in order. */
+  pickStates: Array<{ label: string; values: Array<boolean | null>; change?: StateChange }>;
+  /** Every line written through `api.logger`, with its level (`api.log` lines are in `logs` as well). */
+  logged: Array<{ level: "debug" | "info" | "warn" | "error"; text: string }>;
   /** The messages `api.confirm` was asked. */
   confirms: string[];
   /** The tag lists `api.pickTags` showed (title and rows). */
@@ -56,6 +65,9 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     providers: [],
     logs: [],
     feedback: [],
+    logged: [],
+    boards: [],
+    pickStates: [],
     confirms: [],
     tagLists: [],
     tagStore: new Map(Object.entries(options.tags ?? {})),
@@ -82,6 +94,12 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       },
     },
     log: (line) => void fake.logs.push(line),
+    logger: {
+      debug: (text) => void fake.logged.push({ level: "debug", text }),
+      info: (text) => void fake.logged.push({ level: "info", text }),
+      warn: (text) => void fake.logged.push({ level: "warn", text }),
+      error: (text) => void fake.logged.push({ level: "error", text }),
+    },
     dialog: async (html, width, height) => {
       fake.dialogs.push({ html, width, height });
       return options.dialogAnswer || null;
@@ -92,10 +110,17 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       help: (path) => helpForPath(fake.commands, path),
       usage: (path) => usageForPath(fake.commands, path),
     },
-    pick: async (_title, candidates, multi = false) => {
+    pick: async (_title, candidates, multi = false, pickOptions) => {
+      if (pickOptions?.state) fake.pickStates.push(pickOptions.state);
       const chosen = options.pickAnswer?.(candidates, multi) ?? null;
       for (const listener of pickListeners) listener(candidates, chosen);
       return chosen;
+    },
+    ui: {
+      board: async (request) => {
+        fake.boards.push(request);
+        return { answer: options.boardAnswer?.(request) ?? null, cut: false };
+      },
     },
     confirm: async (message) => {
       fake.confirms.push(message);

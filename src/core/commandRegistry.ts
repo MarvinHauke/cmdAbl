@@ -1,3 +1,4 @@
+import { logger } from "./log.js";
 import { validateTree, type CommandNode } from "./commandTree.js";
 import type { ArgValue } from "./resolveArgs.js";
 
@@ -25,7 +26,7 @@ export class CommandRegistry {
   add(node: Command): string[] {
     const problems = validateTree([...this.tree, node]);
     if (problems.length) {
-      console.error(`cmdAbl: command "${node.name}" was not registered:\n  ${problems.join("\n  ")}`);
+      logger("registry").error(`command "${node.name}" was not registered:\n  ${problems.join("\n  ")}`);
       return problems;
     }
     this.tree.push(node);

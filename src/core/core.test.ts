@@ -295,7 +295,7 @@ test("cmdabl: a group on the tree — usage generated, unknown subcommand is a u
   const bad = await run("cmdabl nope");
   assert.equal(bad.result.code, ExitCode.USAGE);
   assert.match(bad.result.message ?? "", /unknown subcommand "nope"/);
-  assert.match(bad.result.message ?? "", /valid: setup, bridge/);
+  assert.match(bad.result.message ?? "", /valid: setup, log, bridge/);
   // the old flags are gone
   assert.equal((await run("cmdabl --setup")).result.code, ExitCode.USAGE);
   assert.equal((await run("cmdabl --bridge")).result.code, ExitCode.USAGE);
@@ -591,4 +591,190 @@ test("usageForPath is what --help prints: short, 'more: man' only with a man com
   const man = { name: "man", summary: "m", run: () => {} } as never;
   assert.match(usageForPath([a, man], ["a", "b"])!, /usage: a b\n\nmore: man a b$/);
   assert.equal(usageForPath([a], ["x"]), undefined);
+});
+
+test("cmdabl log: last 50 lines, -n, --undo, --debug", async () => {
+  const { CommandRegistry } = await import("./commandRegistry.js");
+  const { registerBuiltins } = await import("./builtins.js");
+  const { runLine } = await import("./run.js");
+  const { createLog } = await import("./log.js");
+  const log = createLog(() => {});
+  const l = log.logger("tag");
+  for (let i = 0; i < 60; i++) l.info(i % 10 === 0 ? `undo: tag back ${i}` : `changed ${i}`);
+  const registry = new CommandRegistry();
+  registerBuiltins(registry, { log });
+  const deps = { registry, liveNodes: () => [], pick: async () => null };
+  const text = async (line: string) => String((await runLine(line, deps as never)).result.message);
+  assert.equal((await text("cmdabl log")).split("\n").length, 50);
+  assert.ok((await text("cmdabl log")).endsWith("changed 59"));
+  assert.match((await text("cmdabl log -n 1")), /^\d\d:\d\d:\d\d \[tag\] info: changed 59$/);
+  assert.equal((await text("cmdabl log -n 5")).split("\n").length, 5);
+  const undo = (await text("cmdabl log --undo")).split("\n");
+  assert.equal(undo.length, 6);
+  assert.deepEqual(undo.slice(0, 2), ["tag back 0", "tag back 10"]);
+  assert.equal(undo[5], "tag back 50");
+  assert.ok(undo.every((x) => x.startsWith("tag back ")));
+  log.logger("run").info("start: tag undo: not a command");
+  assert.equal((await text("cmdabl log --undo")).split("\n").length, 6);
+  assert.equal((await runLine("cmdabl log -n 0", deps as never)).result.code, ExitCode.USAGE);
+  l.debug("hidden");
+  assert.ok(!(await text("cmdabl log")).includes("hidden"));
+  assert.match(await text("cmdabl log --debug"), /^debug lines are on for this session/);
+  l.debug("shown");
+  assert.ok((await text("cmdabl log")).includes("debug: shown"));
+  const empty = createLog(() => {});
+  const r2 = new CommandRegistry();
+  registerBuiltins(r2, { log: empty });
+  assert.equal(String((await runLine("cmdabl log", { ...deps, registry: r2 } as never)).result.message), "the log is empty");
+  assert.equal(String((await runLine("cmdabl log --undo", { ...deps, registry: r2 } as never)).result.message), "no undo commands logged yet");
+});
+
+test("cmdabl log: times, and a date line where the day changes", async () => {
+  const { createLog, clockText, dayText } = await import("./log.js");
+  const { CommandRegistry } = await import("./commandRegistry.js");
+  const { registerBuiltins } = await import("./builtins.js");
+  const { runLine } = await import("./run.js");
+  const day1 = new Date(2026, 9, 20, 23, 59, 58, 123).getTime();
+  const day2 = new Date(2026, 9, 21, 0, 0, 1, 5).getTime();
+  let t = day1;
+  const sunk: Array<[string, number]> = [];
+  const log = createLog((line, _l, time) => void sunk.push([line, time]), 500, () => t);
+  log.logger("tag").info("one");
+  t = day2;
+  log.logger("tag").info("two");
+  assert.equal(clockText(day1, true), "23:59:58.123");
+  assert.equal(dayText(day2), "2026-10-21");
+  assert.deepEqual(sunk.map((x) => x[0]), ["cmdAbl [tag] info: one", "cmdAbl [tag] info: two"]);
+  assert.deepEqual(log.lines(), ["cmdAbl [tag] info: one", "cmdAbl [tag] info: two"]);
+  const registry = new CommandRegistry();
+  registerBuiltins(registry, { log });
+  const deps = { registry, liveNodes: () => [], pick: async () => null };
+  const out = String((await runLine("cmdabl log", deps as never)).result.message);
+  assert.equal(out, "2026-10-20\n23:59:58 [tag] info: one\n2026-10-21\n00:00:01 [tag] info: two");
+});
+
+// ── options with several values ─────────────────────────────────────────────
+
+const renameTree: CommandNode<void, string>[] = [
+  {
+    name: "tag",
+    summary: "tags",
+    args: [{ name: "target", kind: "path", required: false }],
+    options: [{ name: "rename", takesValue: true, values: 2, valueLabels: ["old", "new"], summary: "rename a tag" }],
+    run: () => {},
+  },
+];
+
+test("option with values: 2 takes the next two tokens; # and - stay plain text", () => {
+  const r = parse("tag --rename #fx effects", renameTree);
+  assert.equal(r.kind, "run");
+  if (r.kind === "run") {
+    assert.deepEqual(r.invocation.values, { rename: ["#fx", "effects"] });
+    assert.equal(r.invocation.options.rename, true);
+    assert.deepEqual(r.invocation.args, [[]]);
+  }
+  const after = parse("tag --rename fx effects /bass", renameTree);
+  if (after.kind === "run") assert.deepEqual(after.invocation.args, [["/bass"]]);
+  const inline = parse("tag --rename=fx -x", renameTree);
+  if (inline.kind === "run") assert.deepEqual(inline.invocation.values, { rename: ["fx", "-x"] });
+  assert.equal(parse("tag", renameTree).kind, "run");
+});
+
+test("option with values: too few values is a usage error naming the labels; usage and help show them", () => {
+  const bad = parse("tag --rename fx", renameTree);
+  assert.equal(bad.kind, "error");
+  if (bad.kind === "error") {
+    assert.equal(bad.result.code, ExitCode.USAGE);
+    assert.match(bad.result.message ?? "", /option "--rename" needs <old> <new>/);
+  }
+  assert.equal(parse("tag --rename", renameTree).kind, "error");
+  assert.match(usage(renameTree[0]!, ["tag"]), /\[--rename <old> <new>\]/);
+  assert.match(helpText(renameTree[0]!, ["tag"]), /--rename <old> <new>/);
+});
+
+test("option with values: validation", () => {
+  assert.deepEqual(validateTree(renameTree), []);
+  const opt = (o: object): CommandNode<void, string>[] => [{ name: "x", summary: "s", options: [{ name: "o", summary: "s", ...o } as never], run: () => {} }];
+  assert.match(validateTree(opt({ takesValue: true, values: 0 })).join("\n"), /at least 1/);
+  assert.match(validateTree(opt({ takesValue: true, values: 2, choices: ["a"] })).join("\n"), /values together with choices or number/);
+  assert.match(validateTree(opt({ takesValue: true, values: 2, number: {} })).join("\n"), /values together with choices or number/);
+  assert.match(validateTree(opt({ takesValue: false, values: 2 })).join("\n"), /takes no value/);
+  assert.match(validateTree(opt({ takesValue: true, values: 2, valueLabels: ["a"] })).join("\n"), /valueLabels/);
+  assert.match(validateTree(opt({ takesValue: true, valueLabels: ["a", "b"] })).join("\n"), /for one value/);
+  assert.match(validateTree(opt({ takesValue: false, valueLabels: ["a"] })).join("\n"), /takes no value/);
+  assert.deepEqual(validateTree(opt({ takesValue: true, valueLabels: ["tag|#"] })), []);
+});
+
+test("option with values: the remembered line keeps every value", async () => {
+  const { CommandRegistry } = await import("./commandRegistry.js");
+  const { runLine } = await import("./run.js");
+  const registry = new CommandRegistry();
+  let seen: string[] | undefined;
+  registry.add({ ...renameTree[0]!, run: (inv: { values?: Record<string, string[]> }) => { seen = inv.values?.rename; return ok("renamed"); } } as never);
+  const out = await runLine('tag --rename fx "new name"', { registry, liveNodes: () => [], pick: async () => null } as never);
+  assert.deepEqual(seen, ["fx", "new name"]);
+  assert.equal(out.line, 'tag --rename fx "new name"');
+});
+
+test("palette items carry the value options of a command for the ghost hint", async () => {
+  const { CommandRegistry } = await import("./commandRegistry.js");
+  const { createCommandProvider } = await import("./commandProvider.js");
+  const registry = new CommandRegistry();
+  registry.add({
+    ...renameTree[0]!,
+    options: [
+      ...renameTree[0]!.options!,
+      { name: "edit", short: "e", takesValue: true, valueLabels: ["tag|#"], summary: "edit" },
+      { name: "all", summary: "a flag" },
+    ],
+  } as never);
+  registry.add({ name: "plain", summary: "p", run: () => {} } as never);
+  registry.add({ name: "grp", summary: "g", children: [{ name: "go", summary: "s", options: [{ name: "n", takesValue: true, number: {}, summary: "n" }], run: () => {} }] } as never);
+  const items = await createCommandProvider(registry).getItems();
+  assert.deepEqual(items.find((i) => i.id === "tag")!.valueOptions, [
+    { path: [], name: "rename", labels: ["old", "new"] },
+    { path: [], name: "edit", short: "e", labels: ["tag|#"] },
+  ]);
+  assert.equal(items.find((i) => i.id === "plain")!.valueOptions, undefined);
+  assert.deepEqual(items.find((i) => i.id === "grp")!.valueOptions, [{ path: ["go"], name: "n", labels: ["n"] }]);
+});
+
+test("match.ts ValueOptionSpec and commandTree.ts ValueOptionHint stay the same shape", async () => {
+  const { valueHint } = await import("./match.js");
+  const hints: import("./commandTree.js").ValueOptionHint[] = [{ path: [], name: "rename", labels: ["old", "new"] }];
+  assert.equal(valueHint(hints, "--rename "), "<old>"); // fails to compile when the shapes drift apart
+});
+
+test("option with valueDefault: no value (last token, or an option follows) uses the default", () => {
+  const tree: CommandNode<void, string>[] = [
+    {
+      name: "tag",
+      summary: "tags",
+      args: [{ name: "target", kind: "path", required: false }],
+      options: [
+        { name: "edit", short: "e", takesValue: true, valueLabels: ["tag|#"], valueDefault: "#", summary: "edit tags" },
+        { name: "list", summary: "list" },
+      ],
+      run: () => {},
+    },
+  ];
+  const opt = (line: string) => {
+    const r = parse(line, tree);
+    return r.kind === "run" ? [r.invocation.options.edit, r.invocation.args[0]] : r.kind;
+  };
+  assert.deepEqual(opt("tag -e"), ["#", []]);
+  assert.deepEqual(opt("tag --edit --list"), ["#", []]);
+  assert.deepEqual(opt("tag -e fx"), ["fx", []]);
+  assert.deepEqual(opt("tag --edit=fx"), ["fx", []]);
+  assert.deepEqual(opt("tag --edit="), [""  , []]);
+  assert.match(usage(tree[0]!, ["tag"]), /\[--edit \[<tag\|#>\]\]/);
+  assert.match(helpText(tree[0]!, ["tag"]), /-e, --edit \[<tag\|#>\]\s+edit tags \(default #\)/);
+  assert.deepEqual(validateTree(tree), []);
+  const bad = (o: object): CommandNode<void, string>[] => [{ name: "x", summary: "s", options: [{ name: "o", summary: "s", ...o } as never], run: () => {} }];
+  assert.match(validateTree(bad({ takesValue: false, valueDefault: "a" })).join("\n"), /takes no value/);
+  assert.match(validateTree(bad({ takesValue: true, values: 2, valueDefault: "a" })).join("\n"), /several values/);
+  assert.match(validateTree(bad({ takesValue: true, valueDefault: "" })).join("\n"), /empty valueDefault/);
+  assert.match(validateTree(bad({ takesValue: true, choices: ["0", "1"], valueDefault: "2" })).join("\n"), /not one of its choices/);
+  assert.deepEqual(validateTree(bad({ takesValue: true, choices: ["0", "1"], valueDefault: "1" })), []);
+  assert.match(validateTree(bad({ takesValue: true, number: {}, valueDefault: "1" })).join("\n"), /negative number/);
 });

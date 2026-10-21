@@ -34,7 +34,8 @@ be tested with fakes (`createFakeApi` in `src/modules/testPorts.ts`).
 | `api.bridge` | Calls to the Remote Script (`select`, `trackFacts`, `chainSet`, …) through the typed functions in `src/ableton/bridgeOps.ts`. It never throws; a failure is a result with the bridge's exit code and text, which you pass on unchanged. Declare `requires: ["bridge"]` when the command cannot work without it. |
 | `api.liveSet.nodes()` | The Set's objects (tracks, devices, chains and pads), flattened, for find-like commands and the palette rows. |
 | `api.tracks` | `transaction(fn)` (one undo step; `fn` is synchronous and catches its own writes) and `track(node)` → `{ mute, solo, arm }` or null. SDK-backed, so it works without the Remote Script. |
-| `api.log(line)` | One log line; write your own `cmdAbl: ` prefix. |
+| `api.log(line)` | One log line at `info`, tagged with the module's name: `cmdAbl [<module>] info: …`. The platform adds the prefix; write the text only. |
+| `api.logger.{debug,info,warn,error}(text)` | The same, at the level you name. `debug` lines show only after `cmdabl log --debug`. |
 | `api.dialog(html, width, height, name)` | A page of the module's own, through the dialog queue; resolves with the string the page returns, or null when dismissed. |
 | `api.pick(title, candidates, multi)` | The pick list, when a command has to ask. |
 

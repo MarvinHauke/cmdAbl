@@ -53,8 +53,6 @@ maintainers already know about each one.
   and `find` shows them.
 - **A renamed pad needs a moment.** cmdAbl sees a renamed pad after its next refresh. Until then, a command on
   the old name answers that the Live Set changed, and you run the command again.
-- **Racks nested inside a chain are not covered.** cmdAbl's object tree does not walk into chains. The chains of
-  a rack inside another rack's chain are therefore missing from the palette and from `find`.
 
 ## Remote Script
 

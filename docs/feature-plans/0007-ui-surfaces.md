@@ -39,11 +39,11 @@ own page, without touching the core or any module.
 
 | Surface | In | Out |
 |---|---|---|
-| `prompt` — the palette | `{ items: PaletteItem[], initial? }` (later also the command tree and keymap, see 0006) | a `PaletteResult`, or null when dismissed |
+| `prompt` — the palette | `{ items: PaletteItem[], initial? }` (later also the command tree and keymap, see 0006). A `PaletteItem` may carry `valueOptions` (core `ec9c567`, 2026-10-21): the value options of its command with their `valueLabels`, so the page can show a dim hint such as `<old>` / `<new>` / `<tag|#>` while the caret is in an option's values; real value completers come with 0006 | a `PaletteResult`, or null when dismissed |
 | `select` — the pick list | `{ title, multi, items: [{ label, detail?, value?, state? }], preview?, fill?, state?, create? }` (`preview`/`value`/`fill`/`state`: see section 4; `create: { label }` offers a row `+ <label> "<trimmed filter text>"` after the matches while the filter is non-empty and matches no row exactly; when nothing matches it is the only row and has the cursor, as in 0008) | indexes of the chosen items, `{ fill: index }`, `{ created: "<trimmed filter text>", picked: [indexes of the rows marked] }` (only when `create` was sent; `picked` is empty in a single-select list), or null when cancelled |
 | `notify` — a message | `{ text, code, link?, sections? }` (`sections: [{ heading, meta?, items: string[] }]` from `CommandResult.sections` = a structured overview the page draws instead of `text`, which stays the plain fallback; capped by the presenter to 40 sections × 200 items × 300 characters; the page gets it through `/*SECTIONS_PLACEHOLDER*/null`; `code` = the exit code it belongs to; `link: { label, url }` = a button next to Close, a plain https URL, from `CommandResult.link`; the page gets it through `/*LINK_PLACEHOLDER*/null`) | nothing, or `{"open":true}` when the link button was clicked (the platform then opens the request's own `url` with `openUrl`; a failure opening it is shown as a message) |
 
-| `board` — an editable overview (planned, [0010](0010-tag-editing.md)) | `{ title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }`: the `on` items are chips with ×, and each section expands to a checkbox list of all items (like the tag panel in Live's browser) | `{ changes: [{ section, item, on }], created: [ids] }`, or null when closed |
+| `board` — an editable overview (built `96e838a`, [0010](0010-tag-editing.md)) | `{ title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }`: the `on` items are chips with ×, followed by an `add…` input that suggests the other items (like the tag bar in Live's browser) | `{ changes: [{ section, item, on }], created: [ids] }`, or null when closed (`api.ui.board` returns `{ answer, cut }`). Request capped by `capBoard`: 40 sections × 200 items, label/heading/meta ≤ 300 characters (shortened with …), entries without id and duplicate ids dropped, ids over 300 characters dropped, `cut` = true when anything was dropped or shortened; `create.pattern` is a regex a name must match fully. The page gets `/*BOARD_PLACEHOLDER*/null`; Close/Esc answers ''. The answer is checked by `parseBoardAnswer` (never throws): unknown ids, readonly sections and no-ops are dropped, the last change per item wins, created names are trimmed, unique, new and match the pattern |
 
 Everything is plain JSON. A page receives its request through a build-time placeholder and
 answers with `close_and_send`; each page documents this in a comment at its top.
@@ -51,10 +51,11 @@ answers with `close_and_send`; each page documents this in a comment at its top.
 **Where pages go in `ui/`** (decided 2026-10-20, 0010):
 - Core surfaces are generic and replaceable: `ui/<surface>.html`, with the contract here.
 - A page only one module needs is opened with `api.dialog` and lives in `ui/modules/<module>/`.
-  `pakabl-list.html` moves there once a second module page appears.
+  `pakabl-list.html` moved there (`ui/modules/pakabl/list.html`, user, 2026-10-20); the
+  architecture test enforces it.
 - When a second module needs the same kind of page, it becomes a core surface.
-- Editing pages collect the changes and answer once; the extension applies them and reopens the
-  page.
+- Editing pages collect the changes and answer once; the extension applies them after the page
+  closes.
 
 ### 2. Three levels of customization
 

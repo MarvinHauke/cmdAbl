@@ -46,11 +46,18 @@ After you update cmdAbl, run `cmdabl setup` again, then **restart Live**. Live k
 when it started, so a new copy in the User Library does nothing until Live restarts. `cmdabl setup` checks
 the versions and says whether a restart is needed.
 
+The current script is version 0.1.6. An installed 0.1.5 shows as outdated in `cmdabl bridge`: run `cmdabl setup`,
+then restart Live.
+
 ## Check it
 
 Run `cmdabl bridge` in the palette. It sends one request to the Remote Script and reports the script's version,
 the protocol version, the response time, and the operations the script supports. A healthy reply means the
 script is installed, running and answering.
+
+![The cmdabl bridge result: Remote Script 0.1.6 is running, with its protocol version, response time and operations](assets/images/bridge.png)
+
+*`cmdabl bridge` on a current install.*
 
 ## Messages
 

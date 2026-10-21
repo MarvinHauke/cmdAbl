@@ -79,6 +79,22 @@ export interface OptionDef {
    * accepted. The handler gets the typed text (a string, like every option).
    */
   number?: { min?: number; max?: number; integer?: boolean };
+  /**
+   * How many values the option takes (needs `takesValue`; 1 or more; not with `choices` or
+   * `number`): `--rename fx effects` has `values: 2`. The parser takes the next N tokens as the
+   * values (a token starting with `#` or `-` stays plain text) and the handler gets them in
+   * `invocation.values[name]`; `options[name]` is `true`, so presence checks keep working.
+   * Fewer than N: usage error "--rename needs <old> <new>".
+   */
+  values?: number;
+  /**
+   * The value used when the option is given without one (it is the last token, or another option
+   * follows): `tag -e` then acts like `tag -e #`. Needs `takesValue`; not with `values` above 1.
+   * Usage and help show `--edit [<tag|#>]` and "default #". An inline `--edit=` stays empty.
+   */
+  valueDefault?: string;
+  /** Names of the values, one per value, shown as `--rename <old> <new>` (or `--edit <tag|#>` for one value); default "value". */
+  valueLabels?: string[];
   summary: string;
 }
 
@@ -112,6 +128,8 @@ export interface Invocation<V = string> {
   path: string[];
   /** Options by long name; `true` for flags without a value. */
   options: Record<string, string | true>;
+  /** The values of options declared with `values`, by long name (absent when the option was not given). */
+  values?: Record<string, string[]>;
   /** One entry per declared argument, in order; each holds 0..n values. */
   args: V[][];
 }
@@ -232,6 +250,24 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
         if (optionShorts.has(opt.short)) problems.push(`${at}: duplicate short option "-${opt.short}"`);
         optionShorts.add(opt.short);
       }
+      if (opt.valueDefault !== undefined) {
+        if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" has a valueDefault but takes no value`);
+        if ((opt.values ?? 1) > 1) problems.push(`${at}: option "--${opt.name}" has a valueDefault with several values`);
+        if (opt.valueDefault === "") problems.push(`${at}: option "--${opt.name}" has an empty valueDefault`);
+        if (opt.choices && !opt.choices.some((c) => c.toLowerCase() === opt.valueDefault!.toLowerCase())) {
+          problems.push(`${at}: the valueDefault of option "--${opt.name}" is not one of its choices`);
+        }
+        if (opt.number) problems.push(`${at}: option "--${opt.name}" has a valueDefault with number (a following negative number would read as an option)`);
+      }
+      if (opt.values !== undefined) {
+        if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" has values but takes no value`);
+        if (!Number.isInteger(opt.values) || opt.values < 1) problems.push(`${at}: option "--${opt.name}" needs values of at least 1`);
+        if (opt.choices !== undefined || opt.number !== undefined) problems.push(`${at}: option "--${opt.name}" has values together with choices or number`);
+        if (opt.valueLabels !== undefined && opt.valueLabels.length !== opt.values) problems.push(`${at}: option "--${opt.name}" has ${opt.valueLabels.length} valueLabels for ${opt.values} values`);
+      } else if (opt.valueLabels !== undefined) {
+        if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" has valueLabels but takes no value`);
+        if (opt.valueLabels.length !== 1) problems.push(`${at}: option "--${opt.name}" has ${opt.valueLabels.length} valueLabels for one value`);
+      }
       if (opt.number !== undefined) {
         if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" is numeric but takes no value`);
         if (opt.choices !== undefined) problems.push(`${at}: option "--${opt.name}" has both choices and number`);
@@ -300,10 +336,52 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
   return problems;
 }
 
-/** `value`, or `0|1` for an option with declared choices. */
+/** `value`, or `0|1` for an option with declared choices, or `old> <new` for a multi-value option. */
 export function valueLabel(opt: OptionDef): string {
+  if (opt.values !== undefined) return valueNames(opt).join("> <");
+  if (opt.valueLabels?.length) return opt.valueLabels[0]!;
   if (opt.choices?.length) return opt.choices.join("|");
   return opt.number ? "n" : "value";
+}
+
+/** `-e, --edit [<tag|#>]` — how help and the reference write an option. */
+export function optionFlag(opt: OptionDef): string {
+  const label = opt.takesValue ? (opt.valueDefault !== undefined ? ` [<${valueLabel(opt)}>]` : ` <${valueLabel(opt)}>`) : "";
+  return `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${label}`;
+}
+
+/** What follows an option's summary in help: the numeric rule and the default. */
+export function optionNotes(opt: OptionDef): string {
+  return `${opt.number ? ` (${numberRule(opt.number)})` : ""}${opt.valueDefault !== undefined ? ` (default ${opt.valueDefault})` : ""}`;
+}
+
+/** A value option as the palette page needs it to hint what to type next. */
+export interface ValueOptionHint {
+  /** Subcommand words below the top-level command (empty for a plain command). */
+  path: string[];
+  /** Long name without dashes. */
+  name: string;
+  short?: string;
+  /** One label per value, e.g. ["old", "new"]; shown as ghost text `<old>`. */
+  labels: string[];
+}
+
+/** Every value option of the leaves below (and including) `node`, for the palette. */
+export function valueOptionHints(node: CommandNode<any, any>, path: string[] = []): ValueOptionHint[] {
+  if (node.children?.length) return node.children.flatMap((c) => valueOptionHints(c, [...path, c.name]));
+  return (node.options ?? [])
+    .filter((o) => o.takesValue)
+    .map((o) => ({
+      path,
+      name: o.name,
+      ...(o.short ? { short: o.short } : {}),
+      labels: o.values !== undefined ? valueNames(o) : [valueLabel(o)],
+    }));
+}
+
+/** The names of a multi-value option's values (`valueLabels`, else "value" each). */
+export function valueNames(opt: OptionDef): string[] {
+  return Array.from({ length: opt.values ?? 1 }, (_, i) => opt.valueLabels?.[i] ?? "value");
 }
 
 /** "a whole number from 1 to 12" — what a numeric option accepts. */
@@ -352,7 +430,11 @@ export function usage(node: CommandNode<any, any>, path: string[]): string {
     return parts.join(" ");
   }
   for (const opt of effectiveOptions(node)) {
-    parts.push(opt.takesValue ? `[--${opt.name} <${valueLabel(opt)}>]` : `[--${opt.name}]`);
+    parts.push(
+      opt.takesValue
+        ? opt.valueDefault !== undefined ? `[--${opt.name} [<${valueLabel(opt)}>]]` : `[--${opt.name} <${valueLabel(opt)}>]`
+        : `[--${opt.name}]`,
+    );
   }
   for (const arg of node.args ?? []) {
     const shown = arg.kind === "enum" && arg.choices?.length ? arg.choices.join("|") : arg.name;
@@ -377,8 +459,7 @@ function sections(node: CommandNode<any, any>): string[] {
   if (effectiveOptions(node).length) {
     lines.push("", "options:");
     for (const opt of effectiveOptions(node)) {
-      const flag = `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${opt.takesValue ? ` <${valueLabel(opt)}>` : ""}`;
-      lines.push(`  ${flag.padEnd(22)} ${opt.summary}${opt.number ? ` (${numberRule(opt.number)})` : ""}`);
+      lines.push(`  ${optionFlag(opt).padEnd(22)} ${opt.summary}${optionNotes(opt)}`);
     }
   }
   return lines;

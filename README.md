@@ -14,9 +14,7 @@ SDK, with a small Remote Script for what the SDK cannot do.
 
 📖 [Read the documentation](https://marvinhauke.github.io/cmdAbl/) · 🚀 [Get started](https://marvinhauke.github.io/cmdAbl/getting-started/)
 
-![Screen recording: solo Bass, Audio, 808 bass is typed and runs in the palette; Bass, 1 Audio and the Bass Drum pad turn solo](docs/assets/images/demo.gif)
-
-<!-- GIF to come: docs/assets/images/hero.gif, tags in action (tag --set 1, mute drums, solo !#drums, mute --pick drums) -->
+![Screen recording of the palette: mute drums mutes the drum tracks, solo !#drums solos the other tracks, and mute --pick #drums opens a pick list where rows are marked and Enter applies](docs/assets/images/hero.gif)
 
 ## Contents
 
@@ -31,13 +29,16 @@ SDK, with a small Remote Script for what the SDK cannot do.
 
 ## Why cmdAbl
 
-<!-- GIF to come: docs/assets/images/tags.gif -->
+![Screen recording of the tag board: tag -l opens it; Guitar is typed and added to drums, B-Reverb and A-Delay to effect; the arrow keys move to the lead chip and mark it for removal; Enter applies the 3 changes; cmdabl log then lists each change with its undo command](docs/assets/images/tags.gif)
 
 ### Tags that group your tracks
 
 Tag tracks by what they are: `tag /Lead fx synth`. After that, `mute #fx` reaches every track tagged `fx` at once,
 `mute !#drums` every regular track without the tag, and `mute drums` works too when no track name matches it. Tags
 are saved with the Set, and they need the [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/).
+`tag --list` opens a board where you add and remove the tags of every track.
+
+![The tag board: one section per tag, with its tracks as chips and an add field; the untagged tracks are listed at the bottom](docs/assets/images/tag-board.png)
 
 ### A pick list you control
 
@@ -48,14 +49,13 @@ until you press Enter.
 
 ![The pick list for mute --pick #drums: five tracks tagged drums; the speaker buttons of Drums and Synth are marked with a dashed ring, because Enter mutes them, and the cursor is on Lead](docs/assets/images/pick-list.png)
 
-<!-- GIF to come: docs/assets/images/pakabl.gif -->
+![Screen recording of pakabl: the palette runs pakabl list, the extension index opens and scrolls (each entry with Install and Repo), Install is clicked on Chord Voicing Helper, and pakabl reports it installed and asks to restart Live](docs/assets/images/pakabl.gif)
 
 ### Community extensions, one list
 
 pakabl installs Ableton Live extensions from a curated list of community repositories. Run `pakabl update` once,
 then `pakabl list` shows each extension with an Install button. Restart Live after a change.
 
-![The pakabl extension index window: a scrollable list of extensions, each with its name, version and an Install button](docs/assets/images/pakabl-list.png)
 
 More: [Using cmdAbl](https://marvinhauke.github.io/cmdAbl/using/)
 
@@ -67,7 +67,7 @@ These commands ship with cmdAbl. Each feature is a module that declares its comm
 - `find`, `next`, `prev`: find tracks, devices and chains whose path contains a pattern, and step through the matches.
 - `mute`, `solo`: toggle mute or solo on tracks, chains and drum pads.
 - `arm`: toggle record arm on tracks.
-- `tag`: tag tracks, or list the tags of the Set with `tag --list`.
+- `tag`: tag tracks, edit tags on a board (`tag --list`), switch one tag on many tracks (`tag --edit`), or rename a tag (`tag --rename`).
 - `history`: manage the list of recent commands.
 - `man`: show a command's full page in Live, or open the Live manual or the cmdAbl documentation.
 - `lom`: show the Live Object Model path of a track, device or chain.

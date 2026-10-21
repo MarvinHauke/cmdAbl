@@ -41,6 +41,32 @@ class Select(unittest.TestCase):
         self.assertEqual(select(self.song, {"route": [1, 0, 0], "expectName": "Kick"}), {"name": "Kick"})
         self.assertIs(self.rack.view.selected_chain, self.chain)
 
+    def test_nested_rack_selects_the_enclosing_chains_first_and_the_target(self):
+        pad = FakeChain("Kick Rumble", devices=[FakeDevice("Sampler")])
+        drum = FakeDevice("Kit", chains=[pad], drum=True)
+        outer_chain = FakeChain("Strutter Kit", devices=[drum])
+        outer = FakeDevice("Strutter Kit", chains=[outer_chain])
+        song = FakeSong(tracks=[FakeTrack("Drums", devices=[outer])])
+        # a nested pad (route length 5): the outer chain is shown, then the pad in the inner rack
+        self.assertEqual(select(song, {"route": [0, 0, 0, 0, 0], "expectName": "Kick Rumble"}), {"name": "Kick Rumble"})
+        self.assertIs(outer.view.selected_chain, outer_chain)
+        self.assertIs(drum.view.selected_chain, pad)
+        # a device inside the nested pad (route length 6)
+        outer.view.selected_chain = None
+        self.assertEqual(select(song, {"route": [0, 0, 0, 0, 0, 0], "expectName": "Sampler"}), {"name": "Sampler"})
+        self.assertIs(outer.view.selected_chain, outer_chain)
+        self.assertIs(drum.view.selected_chain, pad)
+        # the rack in the first chain (route length 4)
+        self.assertEqual(select(song, {"route": [0, 0, 0, 0], "expectName": "Kit"}), {"name": "Kit"})
+
+    def test_refused_ancestor_selection_is_not_an_error_by_itself(self):
+        inner = FakeDevice("Inner")
+        chain = FakeChain("C", devices=[inner])
+        rack = FakeDevice("R", chains=[chain])
+        song = FakeSong(tracks=[FakeTrack("T", devices=[rack])])
+        rack.view = None  # selecting its chain raises: ignored, the read-back decides
+        self.assertEqual(select(song, {"route": [0, 0, 0, 0], "expectName": "Inner"}), {"name": "Inner"})
+
     def test_stale_name_changes_nothing(self):
         self.assertEqual(code(lambda: select(self.song, {"route": [1], "expectName": "Old"})), "stale")
         self.assertIsNone(self.song.view.selected_track)

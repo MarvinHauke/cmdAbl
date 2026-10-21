@@ -6,7 +6,7 @@ import { indexRelation, installedRelation, type IndexRelation } from "./version.
 import { pakablCommand } from "./command.js";
 import { extensionDir, filterValidEntries, isValidId, repoUrl } from "./guards.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
-import pakablListTemplate from "../../../ui/pakabl-list.html";
+import pakablListTemplate from "../../../ui/modules/pakabl/list.html";
 
 // `context.environment.storageDirectory` is `string | undefined` in the SDK
 // and comes back undefined in practice — so pakabl keeps its own cache/tmp

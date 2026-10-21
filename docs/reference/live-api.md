@@ -46,7 +46,7 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `tracks.track().solo` | sdk | `track.solo` | [`Track.solo`](https://docs.cycling74.com/apiref/lom/track/) |  |
 | `tracks.track().arm` | sdk | `track.arm` | [`Track.arm`](https://docs.cycling74.com/apiref/lom/track/) | Live refuses some tracks silently; `can_be_armed` and the verification come from the script (operation `track_facts`). |
 | `dialog` | sdk | the SDK's modal dialog (`context.ui`, a data: URL page) through the dialog queue | – |  |
-| `log` | platform | `console.log` in the Extension Host | – |  |
+| `log` | platform | an info line in the log, tagged with the module (cmdabl log) | – |  |
 | `pick` | platform | the platform's pick list | – |  |
 | `confirm` | platform | the platform's pick list (Cancel / Confirm rows) | – |  |
 | `pickTags` | platform | the platform's pick list of tags (state buttons) | – |  |
@@ -57,6 +57,11 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `showFeedback` | platform | the platform's message dialog | – |  |
 | `registerProvider` | platform | palette item provider | – |  |
 | `onCommandRun` | platform | listener after a command finished | – |  |
+| `logger.debug` | platform | log line (debug), tagged with the module | – |  |
+| `logger.info` | platform | log line (info), tagged with the module | – |  |
+| `logger.warn` | platform | log line (warn), tagged with the module | – |  |
+| `logger.error` | platform | log line (error), tagged with the module | – |  |
+| `ui.board` | platform | the board editor surface (sections of on/off items) | – |  |
 | `commands.roots` | platform | reads the declared command tree | – |  |
 | `commands.usage` | platform | renders the short --help text for a command path | – |  |
 | `commands.help` | platform | renders --help text for a command path | – |  |

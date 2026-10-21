@@ -26,10 +26,10 @@ test("dialogQueue: a second dialog opens only after the first closed", async () 
   assert.deepEqual(opened, ["palette", "message"]);
   assert.equal(q.describe(), null);
   assert.deepEqual(lines, [
-    "cmdAbl: dialog open: palette",
-    "cmdAbl: dialog closed: palette (no value, open for 0 ms)",
-    "cmdAbl: dialog open: message (0 ms after the previous dialog closed)",
-    "cmdAbl: dialog closed: message (returned a value, open for 0 ms)",
+    "cmdAbl [dialog] info: open: palette",
+    "cmdAbl [dialog] info: closed: palette (no value, open for 0 ms)",
+    "cmdAbl [dialog] info: open: message (0 ms after the previous dialog closed)",
+    "cmdAbl [dialog] info: closed: message (returned a value, open for 0 ms)",
   ]);
 });
 
@@ -41,7 +41,7 @@ test("dialogQueue: a rejected dialog reaches its caller but does not block the q
   await assert.rejects(failing, /boom/);
   assert.equal(await after, "ok");
   assert.equal(q.describe(), null);
-  assert.ok(lines.includes("cmdAbl: dialog failed: palette (boom, open for 0 ms)"));
+  assert.ok(lines.includes("cmdAbl [dialog] warn: failed: palette (boom, open for 0 ms)"));
 });
 
 test("dialogQueue: a task that throws synchronously is a rejection too", async () => {
@@ -84,10 +84,10 @@ test("dialogQueue: log lines carry the open time and the gap to the previous dia
   clock = 1300;
   await q.run("message", async () => "y");
   assert.deepEqual(lines, [
-    "cmdAbl: dialog open: palette",
-    "cmdAbl: dialog closed: palette (returned a value, open for 250 ms)",
-    "cmdAbl: dialog open: message (50 ms after the previous dialog closed)",
-    "cmdAbl: dialog closed: message (returned a value, open for 0 ms)",
+    "cmdAbl [dialog] info: open: palette",
+    "cmdAbl [dialog] info: closed: palette (returned a value, open for 250 ms)",
+    "cmdAbl [dialog] info: open: message (50 ms after the previous dialog closed)",
+    "cmdAbl [dialog] info: closed: message (returned a value, open for 0 ms)",
   ]);
 });
 
@@ -107,7 +107,7 @@ test("dialogQueue: reset frees a stuck dialog; a late result is dropped", async 
   await assert.rejects(waiting, /reset/);
   assert.equal(q.describe(), null);
   assert.equal(idle, 1);
-  assert.ok(lines.includes("cmdAbl: dialog queue reset (was: palette (open), message (queued), open for 61 s)"));
+  assert.ok(lines.includes("cmdAbl [dialog] warn: queue reset (was: palette (open), message (queued), open for 61 s)"));
 
   // The next dialog opens at once, without waiting for the stuck one.
   assert.equal(await q.run("palette", async () => "fresh"), "fresh");
@@ -116,7 +116,7 @@ test("dialogQueue: reset frees a stuck dialog; a late result is dropped", async 
   stuck.resolve("late");
   await tick();
   assert.equal(q.describe(), null);
-  assert.ok(lines.some((l) => l.startsWith("cmdAbl: dialog closed after a reset: palette")));
+  assert.ok(lines.some((l) => l.startsWith("cmdAbl [dialog] info: closed after a reset: palette")));
 });
 
 test("dialogQueue: reset with nothing open returns null; a late rejection is dropped too", async () => {
@@ -149,8 +149,8 @@ test("dialogQueue: after a reset the next dialog reports no gap to the old one",
   await tick();
   q.reset();
   await q.run("palette", async () => "x");
-  const opens = lines.filter((l) => l.startsWith("cmdAbl: dialog open: palette"));
+  const opens = lines.filter((l) => l.startsWith("cmdAbl [dialog] info: open: palette"));
   assert.equal(opens.length, 2);
   assert.ok(opens[0]!.includes("after the previous dialog closed")); // the stuck one followed the message
-  assert.equal(opens[1], "cmdAbl: dialog open: palette"); // no gap reported after a reset
+  assert.equal(opens[1], "cmdAbl [dialog] info: open: palette"); // no gap reported after a reset
 });

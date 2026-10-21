@@ -1,4 +1,7 @@
 import * as http from "node:http";
+import { logger } from "./core/log.js";
+
+const trigger = logger("trigger");
 
 /** A web page (even an <img>) sends Origin or Sec-Fetch-Site; curl and the Karabiner rule send neither. */
 function fromBrowserPage(req: http.IncomingMessage): boolean {
@@ -32,7 +35,7 @@ export function startTriggerServer(
         return;
       }
       const fail = (e: unknown) => {
-        console.error(`cmdAbl: bridge check failed: ${e instanceof Error ? e.message : String(e)}`);
+        trigger.error(`bridge check failed: ${e instanceof Error ? e.message : String(e)}`);
         try {
           res.writeHead(500).end("bridge check failed");
         } catch {
@@ -61,7 +64,7 @@ export function startTriggerServer(
       try {
         res.writeHead(200).end(onReset());
       } catch (e: unknown) {
-        console.error(`cmdAbl: reset failed: ${e instanceof Error ? e.message : String(e)}`);
+        trigger.error(`reset failed: ${e instanceof Error ? e.message : String(e)}`);
         res.writeHead(500).end("reset failed");
       }
     } else {
@@ -71,13 +74,13 @@ export function startTriggerServer(
 
   server.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {
-      console.error(`cmdAbl: port ${port} already in use — trigger server not started`);
+      trigger.error(`port ${port} already in use — trigger server not started`);
     } else {
-      console.error(`cmdAbl: trigger server error: ${err.message}`);
+      trigger.error(`trigger server error: ${err.message}`);
     }
   });
 
   server.listen(port, "127.0.0.1", () => {
-    console.log(`cmdAbl: trigger server listening on http://127.0.0.1:${port}/open`);
+    trigger.info(`trigger server listening on http://127.0.0.1:${port}/open`);
   });
 }

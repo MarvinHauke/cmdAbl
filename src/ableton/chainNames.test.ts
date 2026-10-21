@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ChainNameCache, findRacks, REFRESH_INTERVAL_MS, UNAVAILABLE_INTERVAL_MS, type DeviceLike, type SongLike } from "./chainNames.js";
+import { ChainNameCache, findRacks, MISS_INTERVAL_MS, REFRESH_INTERVAL_MS, UNAVAILABLE_INTERVAL_MS, type DeviceLike, type SongLike } from "./chainNames.js";
 import { createFakeBridge } from "./bridgeFake.js";
 
 type ChainSpec = { handle: { id: { toString(): string } }; devices: DeviceLike[] };
@@ -97,7 +97,7 @@ test("scheduleRefresh is throttled, never runs twice at once, and backs off whil
 test("a throttled trigger leaves one trailing refresh that bounds the staleness", async () => {
   const racks = findRacks(song());
   const timers: Array<{ fn: () => void; ms: number }> = [];
-  const { bridge, requests } = scripted({ "0.1": ["Kick", "Snare"] });
+  const { bridge, requests } = scripted({ "0.1": ["Kick", "Snare"], "1.0": ["Layer"], "1.0.0.0": ["Only"] });
   const cache = new ChainNameCache((fn, ms) => {
     timers.push({ fn, ms });
     return timers.length;
@@ -137,4 +137,56 @@ test("the refresh log is one line per change and names the reason a rack was ski
   assert.match(lines[0]!, /4 racks asked, 1 answered, 2 chain names; skipped: regular \[1,0\]: Remote Script: x/);
   await cache.refresh(racks, createFakeBridge({ running: false }));
   assert.match(lines.at(-1)!, /request failed \(code 5\)/);
+});
+
+test("a rack without usable names makes the next refresh come sooner (MISS_INTERVAL_MS), a complete cache keeps the normal one", async () => {
+  const racks = findRacks(song());
+  const { bridge, requests } = scripted({ "0.1": ["Kick", "Snare"], "1.0": ["Layer"], "1.0.0.0": ["Only"] });
+  const cache = new ChainNameCache(() => 0);
+  assert.equal(cache.missing(racks), 3); // the empty return rack has nothing to name
+  await cache.scheduleRefresh(racks, bridge, 1000);
+  assert.equal(cache.missing(racks), 0);
+  assert.equal(cache.scheduleRefresh(racks, bridge, 1000 + MISS_INTERVAL_MS), null); // complete: still throttled at 2 s
+  const s = song();
+  s.tracks[1]!.devices = [dev("r9", "Instrument Rack", [ch("n1")])]; // replaced rack: names missing
+  assert.equal(cache.missing(findRacks(s)), 1);
+  const p = cache.scheduleRefresh(findRacks(s), bridge, 1000 + MISS_INTERVAL_MS);
+  assert.notEqual(p, null); // went out after 400 ms, not 2000
+  await p;
+  assert.equal(requests(), 2);
+});
+
+test("refreshNow returns at once when nothing is missing, otherwise waits for a refresh that follows the call", async () => {
+  const racks = findRacks(song());
+  const names: Record<string, string[]> = { "0.1": ["Kick", "Snare"], "1.0": ["Layer"], "1.0.0.0": ["Only"] };
+  const { bridge, requests } = scripted(names);
+  const cache = new ChainNameCache(() => 0);
+  await cache.refreshNow(racks, bridge);
+  assert.equal(requests(), 1);
+  await cache.refreshNow(racks, bridge);
+  assert.equal(requests(), 1); // nothing missing: no request
+  const s = song();
+  s.tracks[0]!.devices[1] = dev("r7", "Strutter Kit", [ch("k1"), ch("k2")]);
+  names["0.1"] = ["Kick Rumble", "Kick Yolo"];
+  await cache.refreshNow(findRacks(s), bridge);
+  assert.deepEqual(cache.get("regular", [0, 1], "r7", ["k1", "k2"])?.names, ["Kick Rumble", "Kick Yolo"]);
+  assert.equal(requests(), 2);
+  await cache.refreshNow(findRacks(s), createFakeBridge({ running: false })); // never throws
+});
+
+test("the refresh line counts empty chain names", async () => {
+  const lines: string[] = [];
+  const { bridge } = scripted({ "0.1": ["", "Snare"] });
+  const cache = new ChainNameCache(undefined, (l) => lines.push(l));
+  await cache.refresh(findRacks(song()), bridge);
+  assert.match(lines[0]!, /\(1 empty\)/);
+});
+
+test("refreshNow returns at once while the script is known to be unavailable", async () => {
+  const bridge = createFakeBridge({ running: false });
+  await bridge.request("hello", {}); // learns the state
+  const cache = new ChainNameCache(() => 0);
+  const started = Date.now();
+  await cache.refreshNow(findRacks(song()), bridge);
+  assert.ok(Date.now() - started < 100);
 });

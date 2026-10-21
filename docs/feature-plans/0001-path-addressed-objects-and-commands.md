@@ -493,7 +493,7 @@ background** (`src/ableton/chainNames.ts`):
 - `buildObjectTree` reads names from the cache and **never waits**: a cached entry is used only
   while the SDK still shows the same rack (handle id) with the same chain count; otherwise the
   rack's chains are simply absent. Each build calls `scheduleRefresh` (stale-while-revalidate:
-  not more often than every 2 s, every 10 s while the script is unavailable, never two at once).
+  not more often than every 2 s (every 400 ms while a rack has no usable names yet — also for a rack the script can never name, one cheap request per tree build, deliberate; `ChainNameCache.refreshNow` lets a caller wait for the names before reading the tree — not wired yet), every 10 s while the script is unavailable, never two at once).
   The palette opening builds the tree, which warms the cache before the user commits a command.
 - A renamed pad is seen after the next refresh; until then `select`'s `expectName` makes a
   command on the old name answer "the Live Set changed; run the command again".
@@ -528,8 +528,11 @@ background** (`src/ableton/chainNames.ts`):
   pick); `goto` on a chain runs `select` with a route of length 3 (`rack.view.selected_chain`,
   unverified). A 0.3.0 script keeps working (the op list decides); only `cmdabl bridge` differs.
 - Chain nodes: `kind: "chain"`, route `[track, device, chain]`, path under the rack
-  (`/Vermona MIDI/Drum Rack/Kick`), no children in step 4 (devices inside chains stay out of the
-  tree; the route scheme already addresses them).
+  (`/Vermona MIDI/Drum Rack/Kick`), and — since script 0.1.6 — the devices in
+  the chain as children (SDK `Chain.devices`), recursively: a rack nested in a chain gets its own
+  chain nodes, so `/Drums/Strutter Kit/Strutter Kit/Kit/Kick Rumble` exists. They appear only
+  while the chain-name cache holds the names of the rack that contains them. `select` shows the
+  enclosing chains from the outside in before it selects the target (best effort).
 
 ### 7. Build order (each step has a Live test)
 

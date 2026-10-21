@@ -104,6 +104,10 @@ Drum Rack pads and the chains of other racks are objects too. Their path goes th
 - `/2-808 Core Kit/808 Core Kit/Snare Drum` is the Snare Drum pad of the Drum Rack on the track `2-808 Core Kit`.
 - `mute 808 snare` finds the same pad, because the two words name only that object.
 
+Racks can sit inside a chain of another rack. An Instrument Rack whose chain holds a Drum Rack gives pads such as
+`/Drums/Strutter Kit/Strutter Kit/<Drum Rack>/Kick Rumble`. `find kick` finds such pads, and `goto`, `mute` and `solo`
+work on them. `find` lists the devices inside chains too.
+
 Use `find` to list everything that matches a pattern:
 
 - `find 808` lists every track, device and chain whose path contains `808`: the 808 track and everything below it.
@@ -113,6 +117,8 @@ Use `find` to list everything that matches a pattern:
 - `next` and `prev` step through the last `find` list.
 
 **Tags in `find`.** `find #drums` lists the tracks tagged `drums`, and `next` and `prev` step through them.
+![The find pick list for find #drums: three tracks, Kick, Snare and Perc, each with the tag drums](assets/images/find-tags.png)
+
 `find !#drums` lists the regular tracks without the tag. `find drums` lists what the path matches, and also the
 tracks tagged `drums`; their rows show their tags. `find #drums kick` searches inside the tagged tracks. The kind
 flags and `-L` apply as usual, for example `find #drums -c` lists the chains and pads of the tagged tracks. Without
@@ -127,8 +133,8 @@ changed. cmdAbl never folds the chains back. To fold them again, do it in Live.
 A tag marks what a track is, such as `fx` or `drums`. One command then reaches every track with that tag:
 `mute #fx` mutes all tracks tagged `fx`, at once and without a list.
 
-- `tag --list` (or `tag -l`) lists every tag as a block: its name, how many tracks carry it, and those tracks. A bare
-  `tag` is a usage error that shows the short usage.
+- `tag --list` (or `tag -l`) opens the tag board, described below. A bare `tag` is a usage error that shows the short
+  usage.
 - `tag /Lead` opens a list of tags, with buttons that show which ones Lead has. Mark the tags to switch with `Tab`,
   then press `Enter`.
 - `tag /Lead fx synth` switches `fx` and `synth` on for Lead, or off where they are on.
@@ -151,16 +157,75 @@ A tag marks what a track is, such as `fx` or `drums`. One command then reaches e
 
 In a Set without tags, the empty list says "type a new tag".
 
+**Edit tags on the board.** `tag -l` opens the tag board: one section per tag, with its tracks as chips.
+
+- Each tag shows its tracks as chips. Click a chip's **×** to mark that track for removal; it is struck through.
+  A second click unmarks it.
+- Each tag ends with an **add…** input. Type a track's name and the best match appears as ghost text. Up to six
+  matching tracks show as chips below it: the tracks that do not carry the tag yet. `Tab` puts the highlighted track
+  in the field and `Enter` adds it; `Tab` in an empty field moves to the next one. A click on a suggestion adds it too.
+  The new chip has a dashed ring. "no match" means nothing was added.
+- Chips can also be reached from the keyboard. In an empty field, or with no match and the cursor at the start,
+  `←` moves onto the tag's last chip. `←` and `→` step through the chips, and `→` past the last one returns to the field.
+  `Backspace`, `Delete` or `Space` marks the chip under the cursor for removal, and a second press unmarks it. A chip
+  you just added disappears instead. Typing a letter, `Tab` or `Esc` returns to the field. `Backspace` in an empty field
+  marks the last chip, as before.
+- **new tag…** at the bottom creates a tag: type its name and press `Enter`. Names are saved in lowercase, so
+  "Perc" becomes `perc`. A name that already exists is refused ("exists already"): add the track in that tag's
+  **add…** input instead. Then add tracks in the new tag's **add…** input. A new tag with no track is not kept.
+- The untagged tracks are listed at the end, read-only.
+
+Live does not change until you press **Apply (N changes)**. An Apply that changes something shows nothing when it succeeds:
+the board closes, and each change with its undo command goes to the log (see [Logs](#logs)). If some tracks could not be written, a window
+lists only those. **Close** with nothing applied changes nothing and shows no message.
+
+Keys: while suggestions show, `↑`, `↓`, `←` and `→` move through them. With no match, `←` and `→` move the text
+cursor, and `↑` and `↓` go to the other tags. `Alt+←` and `Alt+→` move the cursor in the typed text. `Enter` applies
+whenever nothing is typed to add: on a chip under the chip cursor, in an empty **add…** input, or in an empty
+**new tag…** input. With no pending changes, `Enter` does nothing. The footer hint reads "Enter = apply · Esc".
+`Esc` clears the input, then closes the board. With pending changes, the first `Esc` (or Close)
+warns "N changes not applied — Esc again to discard". Any other key, or any click except Close, cancels the warning.
+
+![Screen recording of the tag board: tag -l opens it; Guitar is typed and added to drums, B-Reverb and A-Delay to effect; the arrow keys move to the lead chip and mark it for removal; Enter applies the 3 changes; cmdabl log then lists each change with its undo command](assets/images/tags.gif)
+
+*`tag -l`, then the board: add a tag's track, move with the arrows, mark a chip, apply. The log shows what changed.*
+
+![The tag board: one section per tag, with its tracks as chips and an add field; the untagged tracks are listed at the bottom](assets/images/tag-board.png)
+
+*`tag -l` opens the tag board.*
+
+**`tag --edit` (`-e`)** changes one tag on many tracks, from the keyboard. `tag -e fx` opens the pick list of all
+regular and return tracks, with a "tagged fx" button lit where a track has the tag. Mark tracks with `Tab` and press
+`Enter` to switch `fx` on or off for each marked track; `Esc` changes nothing. A bare `tag -e` (or `tag --edit`)
+opens the tag list, the same as `tag -e #`. The tag list is single-select: `Enter` on a tag opens its track list at
+once, and typing a new name plus `Enter` creates the tag. `--edit` cannot be combined with a target, names, `--list` or
+`--set`. The pair to remember: `tag /Lead` picks the tags of one track, and `tag -e fx` picks the tracks of one tag.
+
+![The pick list for tag --edit #drums: all regular tracks; Synth and Lead (tagged drums) and Kick, Snare and Perc are marked, and the boxes show the result of Enter: drums off for Synth and Lead, on for Kick, Snare and Perc](assets/images/tag-pick.png)
+
+*`tag --edit #drums`: the marked tracks switch `drums` on or off.*
+
+![The tag list for tag -e: the tags bass, drums, fx, lead and synth, each with its track count](assets/images/tag-list.png)
+
+*`tag -e` alone lists the tags. Enter on one opens its tracks.*
+
+**Rename a tag.** `tag --rename fx effects` (or `tag -r fx effects`) renames the tag on every regular and return
+track that carries it. A leading `#` is fine. The rename is quiet: `cmdabl log --undo` lists the undo command. If the
+new name already exists, the two tags merge, and the window says "merged #fx into #effects"; a track that has both
+keeps one. An old name that no track carries says "no track is tagged #old".
+
 **Rules.**
 
 - Tag names use lowercase letters, digits, `-` and `_`.
 - Tags are stored in the Live Set. They are saved with the Set, copied by Cmd+D, and kept when a track is renamed.
   Regular, return and main tracks can carry tags.
-- Tags need the Remote Script 0.1.5. After you update cmdAbl, run `cmdabl setup` once, then restart Live.
+- Tags need the Remote Script 0.1.6. After you update cmdAbl, run `cmdabl setup` once, then restart Live.
 - Commands that act on one object, such as `goto`, and destructive commands still ask when a tag matches several
   tracks.
-- Cmd+Z does not undo a tag change. The result prints the reverse command, for example
-  `undo: tag --set 0 /Lead fx`. Each change also leaves an invisible step in Live's undo list, so Cmd+Z may need
+- A write that changes nothing says so: "/Bass already has #bass", "/Bass has no #fx", or "nothing changed" for
+  several tracks.
+- Cmd+Z does not undo a tag change. Each change is logged with its reverse command, for example
+  `undo: tag --set 0 /Lead fx`; `cmdabl log --undo` lists them. Each change also leaves an invisible step in Live's undo list, so Cmd+Z may need
   several presses, and Live asks you to save when you close the Set.
 - A comma list before tag names is not supported yet: `tag /Lead, /Bass fx` fails. Use `#tag`, `!#tag` or `--pick`.
 
@@ -170,6 +235,10 @@ In a Set without tags, the empty list says "type a new tag".
 `more: man <command>` when a full page exists. `man <command>` shows the full page inside Live, offline: summary,
 usage, options, arguments and examples. It has an **Open in browser** button for the command's section on the web.
 It finds a command by its words, so you can name a subcommand too: `man history clear` or `man cmdabl setup`.
+
+![The man page for mute inside Live: the summary, usage, arguments and options, with Close and Open in browser buttons](assets/images/man-page.png)
+
+*`man mute`: the full page, with a button for the web section.*
 
 - `man ableton` opens the Live manual; `man ableton <words>` searches it for the words.
 - `man cmdabl` opens the cmdAbl documentation.
@@ -221,6 +290,29 @@ After a command runs, cmdAbl shows a short message only when there is something 
   [Remote Script](remote-script.md) page for what to do.
 
 A name that matches more than one object does not produce an error: the pick list answers it.
+
+## Logs
+
+cmdAbl writes what it does to a log: what changed, the undo lines of tag writes, and diagnostics. A tag write that
+changes something shows nothing in the palette when it succeeds, so the log is where to look for it.
+
+- `cmdabl log` shows the last 50 lines, newest at the bottom.
+- `cmdabl log -n <count>` shows up to 500 lines.
+- `cmdabl log --undo` shows only the bare undo commands, which put a change back when you type them.
+- `cmdabl log --debug` turns debug lines on for the rest of the session.
+
+![The cmdabl log window: timestamped lines of commands and dialogs, including a tag --rename and its undo commands](assets/images/cmdabl-log.png)
+
+*`cmdabl log`: the undo lines of a rename are the last ones to read.*
+
+The log keeps the last 500 lines of the session. A line reads `HH:MM:SS [<source>] <level>: …`, for example
+`14:05:31 [run] info: start: mute /Bass`. A line `YYYY-MM-DD` appears where the day changes. `<source>` is the part
+that wrote the line, such as `run` for each command or `dialog` for the dialogs.
+
+The npm start terminal shows the same lines with milliseconds: `HH:MM:SS.mmm cmdAbl [<source>] …`. Filter on `cmdAbl [`
+there, too. The Remote
+Script's lines (`cmdAbl [script] …`) are not in `cmdabl log`: they are only in Live's log file, `Log.txt` (see
+[Getting started](getting-started.md)). Search that file for `cmdAbl [script]`.
 
 ## History
 

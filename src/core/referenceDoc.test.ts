@@ -36,7 +36,7 @@ test("renderCommandReference: deterministic, sorted, with usage, arguments, opti
   assert.match(text, /\| `<track>…` \| path \(track\) \| yes \| the tracks \|/);
   assert.match(text, /\| `-a, --all` \| every \\\| any match \|/);
   assert.match(text, /mute tracks \(&lt;id>@&lt;version> &amp; `<code>`\)/);
-  assert.match(text, /\| `--set <0\|1>` \|/);
+  assert.match(text, /\| <code>--set &lt;0&#124;1&gt;<\/code> \|/); // a pipe in a table cell is an entity (a backslash shows in mkdocs)
   assert.match(text, /Needs the Remote Script/);
   assert.match(text, /```\nmute \/Kick\n```\n\nmute one/);
   assert.match(text, /Removes or irreversibly changes something/);
@@ -73,7 +73,7 @@ test("renderRemoteScriptReference: one row per operation, versions in the header
   );
   assert.match(text, /Script version \*\*0\.1\.0\*\*, protocol \*\*v1\*\*/);
   assert.match(text, /\| `hello` \| Reports versions\. \| – \| no \|/);
-  assert.match(text, /\| `chain_set` \| Mutes &lt;chains>\. \| `\{ a \\\| b \}` \| yes/);
+  assert.match(text, /\| `chain_set` \| Mutes &lt;chains>\. \| <code>\{ a &#124; b \}<\/code> \| yes/);
 });
 
 test("renderLiveApiReference: scope table, path examples, port table, script table and checklist", () => {

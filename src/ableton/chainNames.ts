@@ -1,6 +1,9 @@
 import type { TrackScope } from "../core/types.js";
 import type { Bridge } from "./bridgeClient.js";
 import { chains as fetchChains } from "./bridgeOps.js";
+import { logger } from "../core/log.js";
+
+const chainLog = logger("bridge");
 
 // Chain names come from the Remote Script (the SDK's Chain has no name). The
 // object tree is built synchronously from the SDK on every command, so names
@@ -71,6 +74,8 @@ export interface ChainEntry {
 /** Minimum time between two refreshes; longer while the script is known to be unavailable. */
 export const REFRESH_INTERVAL_MS = 2000;
 export const UNAVAILABLE_INTERVAL_MS = 10000;
+/** Minimum time between two refreshes while a rack has no usable names yet (a new or changed rack): fast, so the next command sees it. */
+export const MISS_INTERVAL_MS = 400;
 
 export class ChainNameCache {
   private entries = new Map<string, ChainEntry>();
@@ -93,7 +98,7 @@ export class ChainNameCache {
       (t as { unref?: () => void }).unref?.();
       return t;
     },
-    private readonly log: (line: string) => void = (line) => console.log(line),
+    private readonly log: (line: string, level?: "info" | "warn") => void = (line, level) => chainLog[level ?? "info"](line),
   ) {}
 
   /**
@@ -105,6 +110,34 @@ export class ChainNameCache {
     const entry = this.entries.get(keyOf(scope, route, handleId));
     if (!entry || entry.names.length !== chainIds.length) return null;
     return entry.chainIds.every((id, i) => id === chainIds[i]) ? entry : null;
+  }
+
+  /** How many of `racks` have no usable names in the cache (new, replaced, or with other chains than when read). */
+  missing(racks: RackRef[]): number {
+    return racks.filter((r) => this.get(r.scope, r.route, r.handleId, r.chainIds) === null && r.chainIds.length > 0).length;
+  }
+
+  /**
+   * Make sure every rack in `racks` has names before the caller reads the tree: returns at once when
+   * none is missing, otherwise waits for a refresh that started after this call (at most one request,
+   * the script answers in a few ms). Never throws. A rack the script cannot name stays missing.
+   */
+  async refreshNow(racks: RackRef[], bridge: Bridge): Promise<void> {
+    try {
+      if (this.missing(racks) === 0) return;
+      if (bridge.state() === "unavailable") return; // no script: every rack stays missing, do not wait for the request timeout
+      this.latest = { racks, bridge };
+      while (this.inFlight) await this.inFlight; // may predate the change; read again below
+      if (this.missing(racks) === 0) return;
+      this.lastAttempt = Date.now();
+      this.dirty = false;
+      this.inFlight = this.refresh(racks, bridge).finally(() => {
+        this.inFlight = null;
+      });
+      await this.inFlight;
+    } catch {
+      // nothing may throw out of a refresh
+    }
   }
 
   /**
@@ -121,17 +154,19 @@ export class ChainNameCache {
     try {
       const reply = await fetchChains(bridge, racks);
       if (!reply.ok) {
-        this.say(`cmdAbl: chains refresh: ${racks.length} racks asked, request failed (code ${reply.code}): ${reply.text}`);
+        this.say(`chains refresh: ${racks.length} racks asked, request failed (code ${reply.code}): ${reply.text}`, "warn");
         return;
       }
       const next = new Map<string, ChainEntry>();
       const skipped: string[] = [];
       let names = 0;
+      let empty = 0;
       racks.forEach((rack, i) => {
         const r = reply.value[i];
         if (r?.ok && r.value.names.length === rack.chainIds.length) {
           next.set(keyOf(rack.scope, rack.route, rack.handleId), { ...r.value, chainIds: rack.chainIds });
           names += r.value.names.length;
+          empty += r.value.names.filter((n) => n === "").length;
         } else if (r?.ok) {
           skipped.push(`${rack.scope} [${rack.route.join(",")}]: script has ${r.value.names.length} chains, SDK ${rack.chainIds.length}`);
         } else {
@@ -140,7 +175,8 @@ export class ChainNameCache {
       });
       this.entries = next;
       this.say(
-        `cmdAbl: chains refresh: ${racks.length} racks asked, ${next.size} answered, ${names} chain names` +
+        `chains refresh: ${racks.length} racks asked, ${next.size} answered, ${names} chain names` +
+          (empty > 0 ? ` (${empty} empty)` : "") +
           (skipped.length > 0 ? `; skipped: ${skipped.join("; ")}` : ""),
       );
     } catch {
@@ -148,11 +184,11 @@ export class ChainNameCache {
     }
   }
 
-  private say(line: string): void {
+  private say(line: string, level: "info" | "warn" = "info"): void {
     if (line === this.lastSummary) return;
     this.lastSummary = line;
     try {
-      this.log(line);
+      this.log(line, level);
     } catch {
       // logging must never fail a refresh
     }
@@ -170,7 +206,8 @@ export class ChainNameCache {
       this.dirty = true; // run once more when the current one is done, with the newest list
       return null;
     }
-    const wait = bridge.state() === "unavailable" ? UNAVAILABLE_INTERVAL_MS : REFRESH_INTERVAL_MS;
+    const wait =
+      bridge.state() === "unavailable" ? UNAVAILABLE_INTERVAL_MS : this.missing(racks) > 0 ? MISS_INTERVAL_MS : REFRESH_INTERVAL_MS;
     if (now - this.lastAttempt < wait) {
       // Throttled: one trailing refresh bounds the staleness to the interval (not "until some later build").
       if (this.trailing === null) {

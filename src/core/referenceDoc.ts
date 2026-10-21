@@ -1,4 +1,4 @@
-import { effectiveOptions, numberRule, usage, valueLabel, type ArgDef, type CommandNode } from "./commandTree.js";
+import { effectiveOptions, optionFlag, optionNotes, usage, type ArgDef, type CommandNode } from "./commandTree.js";
 import { parse } from "./parse.js";
 
 // The command reference page, rendered from the command tree — the same
@@ -36,6 +36,13 @@ function argKind(arg: ArgDef): string {
   return arg.kind;
 }
 
+/**
+ * Code in a table cell. A pipe splits a row even inside backticks, and `\|` shows its backslash in
+ * mkdocs, so a cell with a pipe is written as <code> with the pipe as an entity.
+ */
+const codeCell = (text: string): string =>
+  text.includes("|") ? `<code>${text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\|/g, "&#124;")}</code>` : `\`${text}\``;
+
 function argTable(args: ArgDef[]): string[] {
   const lines = ["| Argument | Kind | Required | Description |", "| --- | --- | --- | --- |"];
   for (const arg of args) {
@@ -62,8 +69,8 @@ function renderNode(node: CommandNode<any, any>, path: string[], depth: number):
   if (effectiveOptions(node).length) {
     out.push("", "| Option | Description |", "| --- | --- |");
     for (const opt of effectiveOptions(node)) {
-      const flag = `${opt.short ? `-${opt.short}, ` : ""}--${opt.name}${opt.takesValue ? ` <${valueLabel(opt)}>` : ""}`;
-      out.push(`| \`${flag}\` | ${cell(opt.summary + (opt.number ? ` (${numberRule(opt.number)})` : ""))} |`);
+      const flag = optionFlag(opt);
+      out.push(`| ${codeCell(flag)} | ${cell(opt.summary + optionNotes(opt))} |`);
     }
   }
   const facts: string[] = [];
@@ -142,7 +149,7 @@ export function renderRemoteScriptReference(
     "| --- | --- | --- | --- |",
   ];
   for (const op of ops) {
-    const params = op.params ? `\`${op.params.replace(/\|/g, "\\|")}\`` : "–";
+    const params = op.params ? codeCell(op.params) : "–";
     lines.push(`| \`${op.name}\` | ${cell(op.summary)} | ${params} | ${op.changesLive ? "yes (needs the access token)" : "no"} |`);
   }
   lines.push("");
@@ -224,11 +231,11 @@ export function renderLiveApiReference(input: LiveApiInput): string {
     "",
     "| Scope | LOM list |",
     "| --- | --- |",
-    ...SCOPE_LIST.map(([scope, list]) => `| \`${scope}\` | \`${list}\` |`),
+    ...SCOPE_LIST.map(([scope, list]) => `| ${codeCell(scope)} | ${codeCell(list)} |`),
     "",
     "| Kind | Scope | cmdAbl path | LOM path |",
     "| --- | --- | --- | --- |",
-    ...input.pathExamples.map((e) => `| ${e.kind} | ${e.scope} | \`${e.cmdablPath}\` | \`${e.lomPath}\` |`),
+    ...input.pathExamples.map((e) => `| ${cell(e.kind)} | ${cell(e.scope)} | ${codeCell(e.cmdablPath)} | ${codeCell(e.lomPath)} |`),
     "",
     "## Port methods ↔ SDK call or script operation ↔ LOM",
     "",

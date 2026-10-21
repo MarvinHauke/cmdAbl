@@ -2,7 +2,9 @@ import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { PaletteItem, PaletteResult, ResultSection } from "./types.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsText } from "./notifySize.js";
+import { boardSize, parseBoardAnswer } from "./board.js";
 import { pickHeight, pickWidth } from "./pickSize.js";
+import { logger } from "./log.js";
 import { fillTemplate } from "./inlineJson.js";
 import { createDialogQueue, type DialogQueue } from "./dialogQueue.js";
 import promptTemplate from "../../ui/interface.html";
@@ -10,6 +12,7 @@ import selectTemplate from "../../ui/pick.html";
 import { openUrl } from "./openUrl.js";
 import { wantsOpen } from "./pickResult.js";
 import notifyTemplate from "../../ui/feedback.html";
+import boardTemplate from "../../ui/board.html";
 
 // The UI contract. The platform never touches an HTML file directly — it talks
 // to three "surfaces", each defined only by the data it receives and the value
@@ -119,6 +122,40 @@ export interface NotifyRequest {
   sections?: ResultSection[];
 }
 
+/**
+ * An editor of sections whose items are on or off (plan 0010): the `on` items show as chips with
+ * a remove button and each section expands to a checkbox list of all its items. Nothing is applied
+ * by the page; it answers once, when Apply is pressed (`BoardAnswer`), or null when closed.
+ */
+export interface BoardRequest {
+  title: string;
+  sections: Array<{
+    /** Stable key the answer refers to. */
+    id: string;
+    heading: string;
+    /** Short text next to the heading, e.g. a count. */
+    meta?: string;
+    /** Every candidate item; `on` = it carries the section now. */
+    items: Array<{ id: string; label: string; on: boolean }>;
+    /** Only the `on` items, as chips without a remove button and without a checkbox list. */
+    readonly?: boolean;
+  }>;
+  /** Offer a "new section" entry (a text field); `pattern` is a regular expression a name must fully match. */
+  create?: { label: string; pattern?: string };
+  /** The button that sends the answer. */
+  apply: { label: string };
+}
+
+/**
+ * The answer, after core checked it against the request: only real differences (`on` is the new
+ * state), none for readonly sections; a change may name a section from `created`, whose items start off.
+ */
+export interface BoardAnswer {
+  changes: Array<{ section: string; item: string; on: boolean }>;
+  /** Names of new sections, each matching `create.pattern`, in the order the user added them. */
+  created: string[];
+}
+
 export interface Ui {
   /** Resolves with what the user entered or picked, or null if they dismissed it. */
   prompt(request: PromptRequest): Promise<PaletteResult | null>;
@@ -129,6 +166,8 @@ export interface Ui {
    */
   select(request: SelectRequest): Promise<number[] | { fill: number } | SelectCreated | null>;
   notify(request: NotifyRequest): void;
+  /** The board editor: resolves with the validated answer, or null if closed or unreadable. */
+  board(request: BoardRequest): Promise<BoardAnswer | null>;
   /** A module's own page: resolves with the string it returns on close, or null if dismissed (an empty string counts as dismissed). */
   page(name: string, html: string, width: number, height: number): Promise<string | null>;
 }
@@ -156,7 +195,7 @@ export function createDefaultUi(
       try {
         return JSON.parse(raw) as PaletteResult;
       } catch {
-        console.error(`cmdAbl: malformed palette result: ${raw}`);
+        logger("ui").error(`malformed palette result: ${raw}`);
         return null;
       }
     },
@@ -186,6 +225,12 @@ export function createDefaultUi(
           })
           .catch(() => {});
       });
+    },
+
+    async board(request) {
+      const html = fillTemplate(boardTemplate, { BOARD: request });
+      const { width, height } = boardSize(request);
+      return parseBoardAnswer(await show("board", html, width, height), request);
     },
 
     async page(name, html, width, height) {

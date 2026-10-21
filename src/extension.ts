@@ -1,5 +1,7 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./core/commandRegistry.js";
+import { logger } from "./core/log.js";
+import { runBoard } from "./core/board.js";
 import { helpForPath, usageForPath } from "./core/commandTree.js";
 import { createCommandProvider } from "./core/commandProvider.js";
 import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail } from "./core/types.js";
@@ -10,6 +12,7 @@ import { registerBuiltins } from "./core/builtins.js";
 import { reportBridge } from "./core/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { getTagCache } from "./ableton/tagCache.js";
+import { findRacks, getChainNameCache } from "./ableton/chainNames.js";
 import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
 import { objectRowLine } from "./core/objectRow.js";
@@ -31,7 +34,7 @@ export function activate(activation: ActivationContext) {
   // Node but not here" bugs. Keep it; the answer belongs in docs/sdk-tree.md.
   const g = globalThis as Record<string, unknown>;
   const globals = ["URL", "URLSearchParams", "fetch", "structuredClone", "AbortController", "TextEncoder", "crypto"];
-  console.log(`cmdAbl: host globals: ${globals.map((n) => `${n}=${typeof g[n]}`).join(", ")}`);
+  logger("host").info(`host globals: ${globals.map((n) => `${n}=${typeof g[n]}`).join(", ")}`);
   const registry = new CommandRegistry();
   // Every dialog goes through this — the platform never opens an HTML page itself.
   // One queue: a dialog never opens while another is open (see core/dialogQueue.ts).
@@ -107,7 +110,8 @@ export function activate(activation: ActivationContext) {
       // Only a track node has a track; a device or chain would give its CONTAINING track.
       track: (node) => (node.kind === "track" ? trackFor(context, node) : null),
     },
-    log: (line) => console.log(line),
+    log: (line) => logger("module").info(line), // replaced per module below
+    logger: logger("module") as ModuleApi["logger"],
     dialog: (html, width, height, name = "module page") => ui.page(name, html, width, height),
     commands: {
       add: (command) => void registry.add(command),
@@ -115,9 +119,10 @@ export function activate(activation: ActivationContext) {
       help: (path) => helpForPath(registry.roots(), path),
       usage: (path) => usageForPath(registry.roots(), path),
     },
-    pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill }),
+    pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
-    pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, multi: true, ...options }),
+    ui: { board: (request) => runBoard(ui, request) },
+    pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, ...options, multi: options?.multi ?? true }),
     tags: {
       refresh: () => getTagCache().refreshNow(getBridge()),
       of: (node) => getTagCache().get(node.scope, node.route, node.name) ?? [],
@@ -128,9 +133,37 @@ export function activate(activation: ActivationContext) {
     onCommandRun: (listener) => commandRunListeners.push(listener),
     showFeedback,
   };
+  /**
+   * The api one module gets: the shared ports, with log lines tagged by the module's name
+   * (`mod.name`, else the first command it declares).
+   */
+  function moduleApiFor(mod: Module): ModuleApi {
+    let source = mod.name ?? "module";
+    let named = mod.name !== undefined;
+    const tagged = () => logger(source);
+    return Object.assign(Object.create(moduleApi) as ModuleApi, {
+      log: (line: string) => tagged().info(line),
+      logger: {
+        debug: (text: string) => tagged().debug(text),
+        info: (text: string) => tagged().info(text),
+        warn: (text: string) => tagged().warn(text),
+        error: (text: string) => tagged().error(text),
+      },
+      commands: {
+        ...moduleApi.commands,
+        add: (command: Parameters<ModuleApi["commands"]["add"]>[0]) => {
+          if (!named) {
+            source = command.name;
+            named = true;
+          }
+          moduleApi.commands.add(command);
+        },
+      },
+    });
+  }
   // The command list itself is a provider (priority 0); modules add theirs.
   moduleApi.registerProvider(createCommandProvider(registry));
-  for (const mod of MODULES) mod.activate(moduleApi);
+  for (const mod of MODULES) mod.activate(moduleApiFor(mod));
 
   // ── HTTP trigger server ──────────────────────────────────────────────────
   // Karabiner (or any external tool) can POST/GET http://127.0.0.1:27184/open
@@ -152,7 +185,7 @@ export function activate(activation: ActivationContext) {
 
   // ── startup hint ─────────────────────────────────────────────────────────
   if (!isSetupDone()) {
-    console.log("cmdAbl: keyboard trigger not configured. Open the palette and run: cmdabl setup");
+    logger("host").info("keyboard trigger not configured. Open the palette and run: cmdabl setup");
   }
 
   // ── open command mode ────────────────────────────────────────────────────
@@ -186,6 +219,12 @@ export function activate(activation: ActivationContext) {
         const read = await getTagCache().refreshNow(getBridge());
         return read.ok ? null : fail(read.code, read.text);
       },
+      // Nested rack chains are tree nodes only while their names are cached: read them first.
+      // Without a running script every rack stays "missing": ask nothing then (no 0.5 s wait per command).
+      refreshStructure: () =>
+        getBridge().state() === "unavailable"
+          ? Promise.resolve()
+          : getChainNameCache().refreshNow(findRacks(context.application.song), getBridge()),
       pickTags: (request) => pickTagNames(ui, request),
     });
     if (outcome.fill !== undefined) return outcome.fill;
@@ -211,7 +250,7 @@ export function activate(activation: ActivationContext) {
     const shown = dialogs.describe();
     if (isOpen || shown) {
       // "isOpen but nothing shown" means a command is still running — the case to diagnose.
-      console.log(`cmdAbl: trigger ignored: ${shown ?? "a command is still running (no dialog open)"}`);
+      logger("host").info(`trigger ignored: ${shown ?? "a command is still running (no dialog open)"}`);
       return;
     }
     isOpen = true;
@@ -230,7 +269,7 @@ export function activate(activation: ActivationContext) {
         if (initial === undefined) break;
       }
     } catch (e: unknown) {
-      console.error(e instanceof Error ? e.message : String(e));
+      logger("host").error(e instanceof Error ? e.message : String(e));
     } finally {
       isOpen = false;
       // A message may still be on screen: the flag is reset when the last dialog closes.

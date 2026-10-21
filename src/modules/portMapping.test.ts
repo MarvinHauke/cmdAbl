@@ -48,3 +48,9 @@ test("lomUrl points at the class page", () => {
   assert.equal(lomUrl("Track.mute"), "https://docs.cycling74.com/apiref/lom/track/");
   assert.equal(lomUrl("DrumPad.mute"), "https://docs.cycling74.com/apiref/lom/drumpad/");
 });
+
+test("fake api.pick records a state option", async () => {
+  const { api, pickStates } = createFakeApi({ nodes: [] });
+  await api.pick("t", [], true, { state: { label: "tagged fx", values: [true], change: "toggle" } });
+  assert.deepEqual(pickStates, [{ label: "tagged fx", values: [true], change: "toggle" }]);
+});

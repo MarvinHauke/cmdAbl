@@ -9,7 +9,7 @@ import type { Command } from "../core/commandRegistry.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { Provider } from "../core/types.js";
-import type { PickPreview, StateChange } from "../core/ui.js";
+import type { BoardAnswer, BoardRequest, PickPreview, StateChange } from "../core/ui.js";
 import type { BridgeResult } from "../ableton/bridgeProtocol.js";
 import type { TagsWritten } from "../ableton/bridgeOps.js";
 
@@ -70,8 +70,14 @@ export interface ModuleApi {
   liveSet: LiveSetPort;
   /** Track writes through the SDK. */
   tracks: TracksPort;
-  /** One log line (the platform owns the sink; modules write their own "cmdAbl: …" prefix). */
+  /** One info line in the log, tagged with the module's name (`cmdAbl [name] info: …`); no prefix of your own. */
   log(line: string): void;
+  /**
+   * Leveled log lines tagged with the module's name (plan 0011). `debug` lines exist only after
+   * `cmdabl log --debug`. The last 500 lines are shown by `cmdabl log`. Never log a token, a
+   * secret or an environment value. Prefer `CommandResult.log` for what a command changed.
+   */
+  logger: { debug(text: string): void; info(text: string): void; warn(text: string): void; error(text: string): void };
   /**
    * Show a page of the module's own in a modal dialog; resolves with the one
    * string the page returns when it closes, or null if it was dismissed. Goes
@@ -98,13 +104,25 @@ export interface ModuleApi {
    * `options.fill` (single-select only) lets Tab put the object into the
    * prompt instead of choosing it: the platform then ends the command without a
    * message and reopens the palette; the module sees a cancelled pick.
+   * `options.state` gives each candidate (in order) a state button — `values[i]` true = on,
+   * false = off, null = unknown (a missing entry counts as unknown) — named once by `label` ("tagged fx"); `change` previews what
+   * confirming does ("toggle" flips each marked row, "on"/"off" sets it).
    */
   pick(
     title: string,
     candidates: ObjectNode[],
     multi?: boolean,
-    options?: { fill?: boolean },
+    options?: { fill?: boolean; state?: { label: string; values: Array<boolean | null>; change?: StateChange } },
   ): Promise<ObjectNode[] | null>;
+  /**
+   * The board editor (plan 0010): sections whose items are on or off. Resolves when the page
+   * closes with `answer` = the changes and new section names core validated against the request
+   * (unknown ids, readonly sections, no-ops and names not matching `create.pattern` are already
+   * dropped), or null when closed. `cut` says the request was capped (40 sections × 200 items ×
+   * 300 characters) or had entries dropped, so the module can say "list cut". Nothing is applied
+   * by the page: write the changes, then show a new board if wanted. Section and item ids must be at most 300 characters (longer ones are dropped, `cut` is true); `create.pattern` is used as given.
+   */
+  ui: { board(request: BoardRequest): Promise<{ answer: BoardAnswer | null; cut: boolean }> };
   /**
    * Ask a yes/no question: a single-select list titled `message` with two
    * rows, "Cancel" first and `confirmLabel` second, through the platform's dialog queue.
@@ -120,8 +138,11 @@ export interface ModuleApi {
    * chosen tag names, or null when cancelled or nothing was marked. With `allowNew` the list
    * offers a create row for the filter text; choosing it adds that text (trimmed, as typed, NOT
    * validated — the module checks it) as the last name, next to the rows marked.
+   * With `multi: false` (default true) the list is single-select: Enter picks the cursor row, there are
+   * no marks and no state buttons (`on` and `change` are ignored); the create row still works. The result
+   * holds exactly one name.
    */
-  pickTags(title: string, rows: TagRow[], options?: { change?: StateChange; preview?: PickPreview; allowNew?: boolean }): Promise<string[] | null>;
+  pickTags(title: string, rows: TagRow[], options?: { change?: StateChange; preview?: PickPreview; allowNew?: boolean; multi?: boolean }): Promise<string[] | null>;
   /** Track tags (plan 0008). */
   tags: TagsPort;
   /** Notified whenever a pick list was shown, with what was offered and what was chosen. */
@@ -145,5 +166,7 @@ export interface ModuleApi {
 }
 
 export interface Module {
+  /** The name log lines carry (`cmdAbl [name] …`); default: the module's first command. */
+  name?: string;
   activate(api: ModuleApi): void;
 }

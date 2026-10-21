@@ -33,15 +33,15 @@ class cmdAbl(ControlSurface):
         # The value is never logged.
         self._token = create_token()
         self.log_message(
-            "cmdAbl bridge: access token %s" % ("written" if self._token else "unavailable (writing operations are refused)")
+            "cmdAbl [script] access token %s" % ("written" if self._token else "unavailable (writing operations are refused)")
         )
         try:
             self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self._socket.setblocking(False)
             self._socket.bind((BRIDGE_HOST, BRIDGE_PORT))
-            self.log_message("cmdAbl bridge listening on %s:%d" % (BRIDGE_HOST, BRIDGE_PORT))
+            self.log_message("cmdAbl [script] listening on %s:%d" % (BRIDGE_HOST, BRIDGE_PORT))
         except Exception:
-            self.log_message("cmdAbl bridge failed to bind:\n%s" % traceback.format_exc())
+            self.log_message("cmdAbl [script] failed to bind:\n%s" % traceback.format_exc())
 
     def disconnect(self):
         if self._socket is not None:
@@ -70,7 +70,7 @@ class cmdAbl(ControlSurface):
             try:
                 self._handle(data, addr)
             except Exception:
-                self.log_message("cmdAbl bridge: handler error:\n%s" % traceback.format_exc())
+                self.log_message("cmdAbl [script] handler error:\n%s" % traceback.format_exc())
 
     def _ops_for_song(self):
         """The op table with the song bound; the song is read per request, never cached."""
@@ -81,9 +81,9 @@ class cmdAbl(ControlSurface):
         # (this includes the old one-way `cmd` messages of early development builds).
         reply, problem = handle_request(data, self._ops_for_song(), WRITES, self._token)
         if problem:
-            self.log_message("cmdAbl bridge: dropped datagram: %s" % problem)
+            self.log_message("cmdAbl [script] dropped datagram: %s" % problem)
         if reply is not None:
             try:
                 self._socket.sendto(reply, addr)
             except Exception:
-                self.log_message("cmdAbl bridge: reply failed:\n%s" % traceback.format_exc())
+                self.log_message("cmdAbl [script] reply failed:\n%s" % traceback.format_exc())

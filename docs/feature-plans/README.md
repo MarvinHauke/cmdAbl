@@ -37,7 +37,10 @@ tracked in [`STATUS.md`](STATUS.md).
  ├─ 0007  UI surfaces (replaceable palette, pick list, messages)
  ├─ 0008  Tags and aliases (0.1.1, 0.1.3)
  ├─ 0009  Ideas from ClyphX
- └─ 0010  Tag editing (0.1.2: board, tag --edit)
+ ├─ 0010  Tag editing (0.1.2: board, tag --edit)
+ ├─ 0011  Logging (what goes where, logger, cmdabl log)
+ ├─ 0012  vol and dca (fader levels, DCA groups on tags)
+ └─ 0013  note (one Markdown note per Set)
 0001  Path-addressed objects & commands   (consumer of 0004: path arguments, rm/select)
 0003  pakabl extension system             (consumer of 0005: subcommands migrate)
 ```
@@ -57,4 +60,7 @@ Build order: 0002 Phase A → 0005 → migrate commands → 0006 → 0001 Phase 
 | [0007](0007-ui-surfaces.md) | UI surfaces | In Progress (contract shipped) | The platform talks to three surfaces — `prompt`, `select`, `notify` — defined by data in / one value out, so the palette, pick list and messages can be themed or replaced (Neovim's `vim.ui.select` idea). Parent: 0004. |
 | [0008](0008-tags-and-aliases.md) | Tags and aliases | In Progress (0.1.1 tags shipped; 0.1.3 aliases) | Tags stored in the Live Set (`mute #fx`, tag rows in the pick list) and aliases as saved command lines in cmdAbl's own store. Parent: 0004. |
 | [0009](0009-ideas-from-clyphx.md) | Ideas from ClyphX | Draft | Concepts from the ClyphX action language worth adopting: action lists with `;`, selected/index/range targets, value changes, snapshots, and triggers (commands in clip, locator and pad names). Parent: 0004. |
-| [0010](0010-tag-editing.md) | Tag editing | In Progress (0.1.2) | `tag -l` as an editable overview on a new generic `board` surface, like Live's browser tag panel: tracks as chips with ×, a checkbox list of all tracks per tag, New tag…, Apply; also the `ui/` pattern (core surfaces vs module pages). Parent: 0004. |
+| [0010](0010-tag-editing.md) | Tag editing | In Progress (0.1.2) | `tag -l` as an editable overview on a new generic `board` surface, like the tag bar in Live's browser: tracks as chips with ×, an `add…` input with suggestions per tag, new tag…, Apply; also the `ui/` pattern (core surfaces vs module pages). Parent: 0004. |
+| [0011](0011-logging.md) | Logging | Built (0.1.2) | Three channels (dialog for failures and asked-for output, silence for successful writes, log for the rest); `CommandResult.log`; a core logger with levels and a ring buffer; `cmdabl log`; no `console.` outside `log.ts`; no secrets in logs. Parent: 0004. |
+| [0012](0012-vol-and-dca.md) | vol and dca | Draft | `vol` sets or changes track faders (absolute or relative); `dca` gives tags a DCA: one Utility per DCA in a "cmdAbl DCA" rack on each member, gain and mute like a desk; desk bridges over OSC/TCP (X32 first). Parent: 0004. |
+| [0013](0013-set-note.md) | Set note | Draft | `note`: one Markdown note per Set, view first, `-e` to edit; the file lives in cmdAbl's folder, linked by an id stored in the Set with `Song.set_data`. Parent: 0004. |

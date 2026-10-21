@@ -1,3 +1,4 @@
+import { appLog } from "./log.js";
 import { ExitCode, fail, ok, type CommandResult } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
@@ -28,7 +29,7 @@ export interface RunDeps {
   takeFill?: () => string | undefined;
   /** Longest wait for a command's `pickState.read` (default 600 ms: a bridge request times out at 500); beyond it the list opens without symbols. */
   stateCapMs?: number;
-  /** Log sink and clock; default console.log and Date.now. */
+  /** Log sink (receives finished `cmdAbl [source] level: …` lines) and clock; default the extension log and Date.now. */
   log?: (line: string) => void;
   now?: () => number;
   /** The current Live Set as a flat list of addressable objects. */
@@ -53,6 +54,12 @@ export interface RunDeps {
    * (exit 5, the script's text) ends the run. Absent: the bridge check alone.
    */
   refreshTags?: () => Promise<CommandResult | null>;
+  /**
+   * Make the Set's structure current before the tree is built for a command that takes paths
+   * (nested rack chains exist as nodes only while their names are cached). Capped at
+   * `STRUCTURE_CAP_MS`: a dead script, a rejection or a throw never blocks or fails the command.
+   */
+  refreshStructure?: () => Promise<void>;
   /** Ask the user to choose among the Set's tags (a bare `#` target); null = cancelled. Absent: `#` answers exit 5. */
   pickTags?: (request: { title: string; tags: TagCount[]; multi: boolean; preview: PickPreview }) => Promise<string[] | null>;
 }
@@ -67,13 +74,35 @@ export interface RunOutcome {
   fill?: string;
 }
 
+/** How long a command waits for the Set's structure to refresh. */
+export const STRUCTURE_CAP_MS = 1500;
+
+/** Run `fn`, wait at most `ms` for it; a throw, a rejection or a timeout just ends the wait. */
+async function capped(fn: () => Promise<void>, ms: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.resolve().then(fn),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, ms);
+      }),
+    ]);
+  } catch {
+    // never fail a command because of a refresh
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /** The command and its options, before any target. */
 function headWords(invocation: Invocation<string>): string[] {
   const words = [...invocation.path];
   for (const [name, value] of Object.entries(invocation.options)) {
     // `--name value`, the form the docs use; `=` only where a space would be wrong
     // (an empty value, or one starting with a dash that would read as an option).
-    if (value === true) words.push(`--${name}`);
+    const several = invocation.values?.[name];
+    if (several) words.push(`--${name}`, ...several.map(quoteIfNeeded));
+    else if (value === true) words.push(`--${name}`);
     else if (value === "" || value.startsWith("-")) words.push(`--${name}=${quoteIfNeeded(value)}`);
     else words.push(`--${name}`, quoteIfNeeded(value));
   }
@@ -174,18 +203,24 @@ function previewFor(
  * ran right before the dialog hung".
  */
 export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome> {
-  const log = deps.log ?? ((line: string) => console.log(line));
+  const log = deps.log ?? ((line: string) => appLog.record(line));
   const now = deps.now ?? (() => Date.now());
   const started = now();
   // Logged at the start too: a handler that never returns must leave a trace.
-  log(`cmdAbl: run start: ${input.trim()}`);
+  log(`cmdAbl [run] info: start: ${input.trim()}`);
   let outcome: RunOutcome | undefined;
   try {
     outcome = await runLineInner(input, deps);
+    // The handler's own log lines, under the command's name (the first word of the line that ran).
+    const source = (outcome.line ?? input).trim().split(/\s+/)[0] ?? "";
+    for (const text of outcome.result.log ?? []) {
+      if (typeof text !== "string") continue;
+      for (const part of text.split("\n")) if (part.trim()) log(`cmdAbl [${source}] info: ${part}`);
+    }
     return outcome;
   } finally {
     const code = outcome ? (outcome.fill !== undefined ? "filled" : outcome.cancelled ? "cancelled" : String(outcome.result.code)) : "threw";
-    log(`cmdAbl: run: ${outcome?.line ?? input.trim()} -> ${code} (${now() - started} ms)`);
+    log(`cmdAbl [run] info: ${outcome?.line ?? input.trim()} -> ${code} (${now() - started} ms)`);
   }
 }
 
@@ -268,6 +303,7 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
   }
 
   const needsLive = (node.args ?? []).some((def) => def.kind === "path");
+  if (needsLive && deps.refreshStructure) await capped(deps.refreshStructure, STRUCTURE_CAP_MS);
   let nodes = needsLive ? deps.liveNodes() : [];
   let targets = normalizeTargets(node, invocation, nodes, quoted);
   const typedTargets = targets.map((values) => [...values]);
