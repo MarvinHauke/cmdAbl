@@ -1,6 +1,6 @@
 import { effectiveOptions, optionFlag, optionNotes, usage, type ArgDef, type CommandNode } from "./commandTree.js";
 import { parse } from "./parse.js";
-import { groupByTopic } from "./topics.js";
+import { groupByTopic, TOPIC_ORDER } from "./topics.js";
 
 // The command reference page, rendered from the command tree — the same
 // source `--help` and the palette read. Pure and deterministic: the same tree
@@ -128,6 +128,19 @@ export function checkExamples(roots: CommandNode<any, any>[]): string[] {
   };
   for (const root of roots) walk(root, [root.name]);
   return problems;
+}
+
+/**
+ * Problems with the topics of the shipped commands (empty = fine): each has one that is in
+ * `TOPIC_ORDER`, so a typo does not silently land under "More commands". The runtime allows
+ * unknown topics (third-party modules); only the reference build is strict.
+ */
+export function checkTopics(roots: CommandNode<any, any>[]): string[] {
+  return roots.flatMap((node) =>
+    node.topic !== undefined && TOPIC_ORDER.includes(node.topic)
+      ? []
+      : [`${node.name}: ${node.topic === undefined ? "no topic" : `unknown topic "${node.topic}"`} (use one of: ${TOPIC_ORDER.join(", ")})`],
+  );
 }
 
 /** The Remote Script's operations, rendered for docs/reference/remote-script.md. */

@@ -13,6 +13,7 @@ import { CommandRegistry } from "../src/core/commandRegistry.js";
 import { registerBuiltins } from "../src/core/builtins.js";
 import {
   checkExamples,
+  checkTopics,
   renderCommandReference,
   renderLiveApiReference,
   renderRemoteScriptReference,
@@ -59,7 +60,7 @@ const stub: ModuleApi = {
 };
 for (const mod of MODULES) mod.activate(stub);
 
-const problems = checkExamples(registry.roots());
+const problems = [...checkExamples(registry.roots()), ...checkTopics(registry.roots())];
 if (problems.length) {
   console.error("Command documentation is incomplete:\n  " + problems.join("\n  "));
   process.exit(1);

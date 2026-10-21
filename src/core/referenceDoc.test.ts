@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { CommandNode } from "./commandTree.js";
-import { checkExamples, renderCommandReference, renderLiveApiReference, renderRemoteScriptReference } from "./referenceDoc.js";
+import { checkExamples, checkTopics, renderCommandReference, renderLiveApiReference, renderRemoteScriptReference } from "./referenceDoc.js";
 
 const tree: CommandNode<void, string>[] = [
   {
@@ -110,4 +110,11 @@ test("renderLiveApiReference: scope table, path examples, port table, script tab
   assert.match(text, /\| \[`Song.tracks`\]\(https:\/\/example.test\/p\/song\) \(get; list of Track\) \|/);
   assert.match(text, /- `chain_set` — none yet &lt;x>/);
   assert.ok(!text.includes("- `hello`"));
+});
+
+test("checkTopics: a shipped command needs a topic from TOPIC_ORDER", () => {
+  const node = (topic?: string): CommandNode<void, string> => ({ name: "x", summary: "s", ...(topic ? { topic } : {}), run: () => {} });
+  assert.deepEqual(checkTopics([node("Mix")]), []);
+  assert.match(checkTopics([node()]).join("\n"), /x: no topic/);
+  assert.match(checkTopics([node("Mixx")]).join("\n"), /unknown topic "Mixx"/);
 });
