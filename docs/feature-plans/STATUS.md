@@ -33,6 +33,14 @@ Open from the releases:
   (page by page: using → getting-started → index/README → remote-script/limits → architecture/
   authoring guide → other guides).
 
+## In progress: `vol` (branch `feat/vol`, plan 0012, target 0.1.3)
+
+- bridge `5d0b1b5`: read-only op `param_display` (Live's display text for a volume value), script 0.1.7
+  → release notes: run `cmdabl setup` once and restart Live.
+- core: number/`-inf` tokens as values; volume get/set on the track handle; `cmdabl curve` (measures
+  Live's volume curve into the log) — in progress.
+- user: run `cmdabl curve` once in Live → modules: dB↔value helper from the table, then `vol`.
+
 ## Next (user, 2026-10-20/21)
 
 1. **0013 `note`** — one Markdown note per Set, view first, `-e` to edit; with the settings store in
