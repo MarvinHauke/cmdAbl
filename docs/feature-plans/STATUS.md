@@ -37,8 +37,10 @@ Open from the releases:
 
 1. **0013 `note`** — one Markdown note per Set, view first, `-e` to edit; with the settings store in
    0.1.3. Starts with a spike: `Song.set_data` (save, reload, Save As, Collect All).
-2. **0012 `vol`, then `dca`** — fader levels (absolute or relative), then one Utility per DCA in a rack;
-   desk bridges (X32 first) later. Starts with a spike (dB mapping, `insert_device`).
+2. **0012 `vol`** — fader levels, absolute or relative. Starts with a spike (dB mapping).
+3. **0012 `dca` — later, with its own detailed plan first** (user, 2026-10-21): a "cmdAbl DCA" rack per
+   track, one Utility per tag, each Gain on a macro named after the tag. Spike: macro mapping and
+   naming via the LOM, a shipped preset rack, `insert_device`. Desk bridges after that.
 
 
 ## Where the code is
