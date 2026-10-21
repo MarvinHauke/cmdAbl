@@ -34,8 +34,9 @@ page, Requirements, Install, docs cleanup done (cmdabl-docs).
 7. pakabl index workflow → merge its PR; STATUS on `main`; delete the branch; 0.1.2 (tag editing, 0010) continues on `feat/tag-board`.
 
 
-> PR #13 "Release 0.1.1: tags" open, CI green (2026-10-21). GIFs and screenshots are made for 0.1.2
-> only (user: 0.1.1 has no real user base yet); 0.1.1 ships with the old README images.
+> **0.1.1 released** (2026-10-21): PR #13 squash-merged as `6c881a5`, release `v0.1.1` with the `.ablx`
+> and hand-written notes. `feat/tag-board` is rebased onto it. GIFs and screenshots are made for 0.1.2
+> only (user: 0.1.1 has no real user base yet). Left: the pakabl index PR for 0.1.1.
 
 ## Release 0.1.2 — tag editing (branch `feat/tag-board`, plan 0010)
 
