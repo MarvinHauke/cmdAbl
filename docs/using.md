@@ -52,6 +52,10 @@ A command takes objects as text. cmdAbl reads that text as follows:
 
 When a name matches more than one object, cmdAbl asks. It never picks one for you.
 
+![The palette with Dru typed: rows for the tracks and devices whose names or paths contain Dru, each with its path in grey; names of other gear are covered with grey boxes](assets/images/palette-objects.png)
+
+*Type part of a name, and the palette lists the objects that match.*
+
 ### Dash rules
 
 - A word that starts with `-` is an option. `mute /Bass -6dB` is an error, because `-6dB` is not a known option.
@@ -103,6 +107,10 @@ Drum Rack pads and the chains of other racks are objects too. Their path goes th
 Racks can sit inside a chain of another rack. An Instrument Rack whose chain holds a Drum Rack gives pads such as
 `/Drums/Strutter Kit/Strutter Kit/<Drum Rack>/Kick Rumble`. `goto`, `mute` and `solo` work on them.
 
+![The find pick list headed find: "kick" — 16 matches: the Kick track and its devices, and the chains and devices of a Drum Rack nested in an Instrument Rack, each row with its path and its kind](assets/images/find-nested.png)
+
+*`find kick` reaches the pads of a Drum Rack nested in an Instrument Rack.*
+
 Selecting a pad or a chain does not change how the track is shown. Add `--unfold` to `goto` or `find` to show the
 track's chains as columns in the Session mixer. Live stores this view state with the Set, so the Set counts as
 changed. cmdAbl never folds the chains back; do that in Live.
@@ -127,6 +135,10 @@ Without a pattern, `find` needs `-L` or one of `-t`, `-d` and `-c`; a bare `find
 
 `-L` takes a whole number from 0 to 12 with a pattern, and from 1 without one. For finding tracks by tag, see
 [Tags](#use-tags-as-targets).
+
+![The find pick list headed find: — 12 matches: every track of the Set with its tags, such as #synth #drums on Synth and #bass on Bass, and the main track last](assets/images/find-top.png)
+
+*`find -L 1` lists the top-level tracks, each with its tags.*
 
 ## Toggles, and what they do not do
 
@@ -282,6 +294,10 @@ The pair to remember: `tag /Lead` picks the tags of one track, and `tag -e fx` p
 
 `tag --rename fx effects` (or `tag -r fx effects`) renames the tag on every regular and return track that carries it.
 
+![The palette with tag -r typed and a dim <old> hint after it](assets/images/value-hint.png)
+
+*After `tag -r`, a dim hint shows what to type next: first `<old>`, then `<new>`.*
+
 - A leading `#` is fine in both names.
 - If the new name already exists, the two tags merge. The window says "merged #fx into #effects". A track that has
   both keeps one. Renaming back cannot split them again.
@@ -313,6 +329,10 @@ A write that changes something shows nothing when it succeeds. The changes and t
 kind. Use it when you write a script, or to check what cmdAbl sees. The [Live API mapping](reference/live-api.md)
 shows how cmdAbl's ports and Remote Script operations map to the Live Object Model.
 
+![The result of lom /Bass: the path /Bass, the Live Object Model path live_set tracks 1 and the link to the reference page for tracks](assets/images/lom.png)
+
+*`lom /Bass` shows the object's cmdAbl path, its Live Object Model path and the reference page for its kind.*
+
 ## Read a command's page
 
 - `<command> --help` shows a short usage: the usage line, and each subcommand, option and argument on one line. It
@@ -338,6 +358,10 @@ After a command runs, cmdAbl shows a short message only when there is something 
   [Remote Script](remote-script.md) page says what to do.
 
 A name that matches more than one object is not an error: the pick list answers it.
+
+![A message window that says cmdAbl: mute: nothing matches "nope", with a Close button](assets/images/error.png)
+
+*`mute nope`: no object matches, and the message says so.*
 
 ## Logs
 
@@ -376,6 +400,10 @@ A remembered line keeps:
 
 The history is kept in memory. It is gone when cmdAbl restarts.
 
+![The empty palette: the commands help, cmdabl, history, goto, find, next, prev and mute, with no rows of recent commands](assets/images/palette-empty.png)
+
+*With no history, the empty palette lists only the commands.*
+
 ### Clear, forget and restore
 
 The `history` command manages the list:
@@ -389,3 +417,7 @@ The `history` command manages the list:
   original order, and an entry already in the history again is not added twice.
 
 The [command reference](reference/commands.md) has the full usage.
+
+![The man page of history inside Live: the summary, usage, the subcommands clear, forget and restore, the web address, and the Close and Open in browser buttons](assets/images/man-history.png)
+
+*`man history` shows the page of the history command.*
