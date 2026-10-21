@@ -29,15 +29,15 @@ Live's Extension Host) with a small companion Remote Script (Python) for what th
 
 Peer Claude sessions that message each other (`SendMessage`), watchable in tmux:
 
-| Name               | Agent file                    | Model  | Job                                                        |
-| ------------------ | ----------------------------- | ------ | ---------------------------------------------------------- |
-| `cmdabl-architect` | `.claude/agents/architect.md` | opus   | lead; tasks, plans, contract decisions, Live test lists    |
-| `cmdabl-core`      | `.claude/agents/core.md`      | sonnet | the platform (`src/core/`, registry, module interface)     |
-| `cmdabl-modules`   | `.claude/agents/modules.md`   | sonnet | commands as modules (`src/modules/`), authoring guide      |
-| `cmdabl-bridge`    | `.claude/agents/bridge.md`    | sonnet | Live access (`src/ableton/`, `remote-script/`)             |
-| `cmdabl-reviewer`  | `.claude/agents/reviewer.md`  | opus   | read-only review against the plans and SDK limits          |
-| `cmdabl-ui`        | `.claude/agents/ui.md`        | sonnet | dialogs and themes (`ui/`) — **on demand**                 |
-| `cmdabl-docs`      | `.claude/agents/docs.md`      | haiku  | docs site, README, images (`docs/`) — **on demand**        |
+| Name               | Agent file                    | Model  | Job                                                     |
+| ------------------ | ----------------------------- | ------ | ------------------------------------------------------- |
+| `cmdabl-architect` | `.claude/agents/architect.md` | opus   | lead; tasks, plans, contract decisions, Live test lists |
+| `cmdabl-core`      | `.claude/agents/core.md`      | sonnet | the platform (`src/core/`, registry, module interface)  |
+| `cmdabl-modules`   | `.claude/agents/modules.md`   | sonnet | commands as modules (`src/modules/`), authoring guide   |
+| `cmdabl-bridge`    | `.claude/agents/bridge.md`    | sonnet | Live access (`src/ableton/`, `remote-script/`)          |
+| `cmdabl-reviewer`  | `.claude/agents/reviewer.md`  | opus   | read-only review against the plans and SDK limits       |
+| `cmdabl-ui`        | `.claude/agents/ui.md`        | sonnet | dialogs and themes (`ui/`) — **on demand**              |
+| `cmdabl-docs`      | `.claude/agents/docs.md`      | sonnet | docs site, README, images (`docs/`) — **on demand**     |
 
 Flow: architect → builder → reviewer (→ architect for contract decisions) → builder commits →
 short overview with a Live test list to the architect → the user tests in Live.
