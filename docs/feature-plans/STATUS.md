@@ -33,19 +33,24 @@ Open from the releases:
   (page by page: using → getting-started → index/README → remote-script/limits → architecture/
   authoring guide → other guides).
 
-## In progress: `vol` (branch `feat/vol`, plan 0012, target 0.1.3)
+## Built, Live test pending: `vol` (branch `feat/vol`, plan 0012, target 0.1.3)
 
 - bridge `5d0b1b5`: read-only op `param_display` (Live's display text for a volume value), script 0.1.7
   → release notes: run `cmdabl setup` once and restart Live.
-- core: number/`-inf` tokens as values; volume get/set on the track handle; `cmdabl curve` (measures
-  Live's volume curve into the log) — in progress.
-- user: run `cmdabl curve` once in Live → modules: dB↔value helper from the table, then `vol`.
+- core `540fe62`: number/`±inf` tokens as values; `tracks.volume`/`setVolume`; promise-returning
+  transactions; `cmdabl curve` (measured 2026-10-22: 1001 points, 0 dB ≈ 0.850, 1.0 = +6 dB).
+- modules `8537d24`: `vol [--set] <dB> <target>…` (decimals, `-inf` with `--set`), tracks only
+  (regular, return, group, `/Main`); dB↔value from the measured table (`mixValue.ts`, `mixTable.ts`).
+- Live test: relative/absolute on `#drums`, decimals, the +6 and -inf limits, `/Main`, a chain gives
+  exit 2, one Cmd+Z per run, displayed dB matches the log within 0.1 dB.
+- Docs still to do: `vol` in using.md, `volume`/`setVolume` in the authoring guide's TracksPort row.
 
 ## Next (user, 2026-10-20/21)
 
-1. **0013 `note`** — one Markdown note per Set, view first, `-e` to edit; with the settings store in
-   0.1.3. Starts with a spike: `Song.set_data` (save, reload, Save As, Collect All).
-2. **0012 `vol`** — fader levels, absolute or relative. Starts with a spike (dB mapping).
+1. **0012 `vol`** (0.1.3) — built, see above.
+2. **0013 `note`** (0.1.4) — one Markdown note per Set, view first, `-e` to edit. Starts with a
+   spike: `Song.set_data` (save, reload, Save As, Collect All); the note file goes in the Extensions
+   Data folder (sandbox), not Application Support.
 3. **0012 `dca` — later, with its own detailed plan first** (user, 2026-10-21): a "cmdAbl DCA" rack per
    track, one Utility per tag, each Gain on a macro named after the tag. Spike: macro mapping and
    naming via the LOM, a shipped preset rack, `insert_device`. Desk bridges after that.

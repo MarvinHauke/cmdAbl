@@ -1,6 +1,7 @@
 # `vol` and `dca`: fader levels and DCA groups on tags
 
-**Status:** Draft (2026-10-20). Order: after 0013, `vol` first, then `dca`. Trigger: the user wants the
+**Status:** `vol` built (2026-10-22, `feat/vol`: bridge `5d0b1b5`, core `540fe62`, modules `8537d24`), Live
+test pending, target 0.1.3. `dca` stays a draft and gets its own plan. Trigger: the user wants the
 DCA workflow of large mixing desks, built on tags (0008).
 
 **Parent:** [0004](0004-command-platform.md)
@@ -69,16 +70,18 @@ mute groups (`mute #drums`).
 | Relative (default) | `vol <dB> <target>…` adds `<dB>` to each fader's current level: Kick -6 → -12, Perc -3 → -9 with `vol -6 #drums` |
 | Absolute | `vol --set <dB> <target>…` sets each fader to `<dB>`; `-inf` is allowed |
 | Limits | A fader stops at Live's maximum (+6 dB) and at -inf; the result names any fader that hit a limit, because the balance changed there |
-| Behaviour | Destructive: it overwrites the fader values and works against volume automation. The result says so when the track has automation, if that can be read. |
-| Undo | Inside `withinTransaction`, one undo step |
-| Output | A successful write is quiet; the old and new values go to the log ([0011](0011-logging.md)) |
+| Behaviour | It overwrites the fader values. No automation warning for now (decided 2026-10-22); the command's description says it overwrites the fader. It is not marked `destructive` (the one-target confirmation), because a tag reaches all its members on purpose. |
+| Undo | All faders are read first, then written in one transaction: one Cmd+Z step, exact. The log's `undo: vol --set <old> <path>` lines restore to 0.1 dB. |
+| Output | A successful write is quiet; `/Kick: -6.0 → -12.0 dB` and the undo line go to the log ([0011](0011-logging.md)). A fader at +6 or -inf is named in a message; a relative step on a -inf fader stays at -inf (only `--set` lifts it). Below -69.6 dB the fader goes to -inf. Chains: exit 2 for now. |
 
 ### The dB ↔ value helper (shared)
 
 - Live's volume parameter runs 0…1 and maps to dB non-linearly.
-- The spike checks whether the parameter's display string (`str_for_value` or `display_value`) can be
-  used to search for a value, or whether a fixed table is needed.
-- The helper goes in `src/modules/`, for example `src/modules/mixValue.ts`.
+- **Decided by measurement (2026-10-22):** `cmdabl curve` read Live's `str_for_value` for 1001 values
+  (through the bridge op `param_display`). The table is monotonic; 0 dB ≈ 0.850, 1.0 = +6 dB, linear
+  at 40 dB per unit from about 0.4 up; 0.001 = -69.6 dB.
+- `src/modules/mixTable.ts` holds the table; `src/modules/mixValue.ts` converts by interpolation and
+  binary search.
 
 ### `dca`
 
@@ -136,7 +139,7 @@ No large vendor offers an SDK for "DCA from a DAW". What can be used are the des
 - ~~`vol` syntax~~ — decided (user, 2026-10-21): relative by default, `--set` for absolute.
 - Relative steps in dB do not reverse exactly near -inf or a fader limit (`vol -40` then `vol 40`);
   the log's undo line therefore restores the old values with `vol --set`.
-- Can the automation state of the volume parameter be read, so `vol` can warn?
+- ~~Automation warning~~ — none for now (2026-10-22); revisit if the automation state becomes readable.
 - **Rack building through the LOM:** does `insert_device("Audio Effect Rack")` work, can chains be
   inserted, and does Utility's gain range cover what a DCA needs (about ±35 dB)?
 - Does `dca` also need to act on return tracks and group tracks? Probably yes. Group tracks carry
