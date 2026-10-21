@@ -5,103 +5,33 @@ what comes next. Maintained by the architect — update it whenever a task lands
 change. Design decisions live in the numbered plans; this file only tracks progress. Finished
 work is in the git history, not here.
 
-_Last updated: 2026-10-20._
+_Last updated: 2026-10-21._
 
-## Release 0.1.1 — open (branch `feat/tags-aliases`, version 0.1.1, not pushed)
+## Released
 
-Built and Live-tested: tags on tracks, `#tag`, `!#tag`, bare tag word, `--pick`, new-tag row,
-`tag -l` overview, `find` with tags, `man <command>`, short `--help`. README landing
-page, Requirements, Install, docs cleanup done (cmdabl-docs).
+- **0.1.1 — tags** (2026-10-21, PR #13, `v0.1.1`): tags on tracks, `#tag`, `!#tag`, bare tag word,
+  `--pick` with a new-tag row, `tag -l`, `find` with tags, `man <command>`, short `--help`.
+  Remote Script 0.1.5. (`main` holds an empty second "Release 0.1.1" commit from a retried merge — harmless.)
+- **0.1.2 — tag editing** (2026-10-21, PR #14 → `a61be10`, `v0.1.2`): tag board (`tag -l`),
+  `tag -e [tag]`, `tag -r <old> <new>`, quiet tag writes and `cmdabl log` (plan 0011), nested racks,
+  palette value hints, new README GIFs and stills. Remote Script 0.1.6. All Live tests passed,
+  including the installed `.ablx`. Branch-era commit hashes in plans 0010/0011 predate the rebase.
 
-1. ~~Live tests: `man <command>` with "Open in browser", short `--help`~~ — passed (user, 2026-10-20).
-2. ~~Live test the new-tag row~~ — passed (user, 2026-10-20).
-   ~~Live test `tag --list` / `-l` overview and `find` with tags (`cc16aa3`)~~ — passed (user,
-   2026-10-20).
-   Fix: `!#x` with a tag no track carries → exit 3 "no track is tagged #x", nothing runs
-   (core `ad4c2e5`, find `e4354f6`) — passed (user, 2026-10-20). Small 0.1.2 item: `find !#x`
-   says "no track without #x", `mute` says "every track is tagged #x" — one wording.
-3. Recordings by the user (`.mov` in `/tmp/shots/`) → cmdabl-docs makes GIFs:
-   `hero` (tags in action), `tags` (tag list), `pakabl` (`pakabl list`); optional: Karabiner
-   rule screenshot for Getting started. Then drop unused images (`demo.gif`, old `pakabl-list.png`).
-4. Installed-build test: `npm run package`, install the `.ablx`, `cmdabl setup`, restart Live,
-   `cmdabl bridge` shows 0.1.5, `tag` and `#fx` work. — passed (user, 2026-10-21; `.ablx` from the worktree
-   `../cmdAbl-0.1.1`; setup also reported the 0.1.6 → 0.1.5 downgrade correctly).
-5. Secret scan of the branch (counts only), `ssh-add`, push, PR "Release 0.1.1: tags" — on the
-   user's go.
-6. CI green → squash-merge (user's go) → release `v0.1.1`; hand-written notes (tags, `#`/`!#`,
-   bare tag word, `--pick`, new-tag row, `man <command>` with link, short `--help`, `tag -l` overview (bare `tag` no longer lists), `find` with tags, run `cmdabl setup` once for script
-   0.1.5, Cmd+Z does not undo tags).
-7. pakabl index workflow → merge its PR; STATUS on `main`; delete the branch; 0.1.2 (tag editing, 0010) continues on `feat/tag-board`.
+Open from the releases:
+- pakabl index PR #12 (`pakabl/index-update`): the index run of 2026-10-21 should list 0.1.2 —
+  check the diff, merge on the user's go.
+- Small items: `find !#x` vs `mute` wording for "every track is tagged #x"; palette rows don't refresh
+  chain names first; pick lists and `find -d` list devices inside chains (no filter yet); a pad with
+  one same-named device shows twice in `find` (collapse proposed, undecided).
+- Not run (optional): a board section taller than the view; 64 tracks.
 
+## Next (user, 2026-10-20/21)
 
-> **0.1.1 released** (2026-10-21): PR #13 squash-merged as `6c881a5`, release `v0.1.1` with the `.ablx`
-> and hand-written notes. `feat/tag-board` is rebased onto it. GIFs and screenshots are made for 0.1.2
-> only (user: 0.1.1 has no real user base yet). Left: the pakabl index PR for 0.1.1.
+1. **0013 `note`** — one Markdown note per Set, view first, `-e` to edit; with the settings store in
+   0.1.3. Starts with a spike: `Song.set_data` (save, reload, Save As, Collect All).
+2. **0012 `vol`, then `dca`** — fader levels (absolute or relative), then one Utility per DCA in a rack;
+   desk bridges (X32 first) later. Starts with a spike (dB mapping, `insert_device`).
 
-## Release 0.1.2 — tag editing (branch `feat/tag-board`, plan 0010)
-
-1. `tag --edit <tag|#>` (`-e`) — built `9bba54c` (core `api.pick` state option `ad8ba11`); Live
-   test pending: `tag -e fx` (lit rows, mark two, Enter, undo lines, Cmd+S), `tag -e #` (pick or
-   create a tag, then tracks), `tag -e fx /Lead` / `--set 1` → exit 2, `tag -e` alone → usage,
-   Esc changes nothing, script off → exit 5. `tag -e #` becomes single-select (user, Live
-   test 2026-10-21: Enter on a tag opens its track list): core adds `multi: false` to `api.pickTags`,
-   then modules switches `tag -e #` to it. Built: core `73f0079`, modules `702fcca`.
-   Bare `tag -e` = `tag -e #` (core `c2a6986`, modules `bf85542`). Live (user, 2026-10-21): `tag -e`,
-   `tag -e #`, `tag -e fx`, usage errors and `tag --help` — passed.
-2. `board` surface — core contract built `96e838a` (`api.ui.board` → `{ answer, cut }`);
-   `ui/board.html` built by cmdabl-ui, redesigned to an `add…` input with ghost text and
-   suggestions (`8e70c73`), Esc/Close guard for pending changes (`065fcbe`); dark scheme.
-   Live (user, 2026-10-20): add… input, "no match", Tab accept, ↓ through suggestions, Tab on
-   empty → next field — passed. Apply closes (no reopen) after the user's remark.
-   Passed (user, 2026-10-20, later): ←/→ through suggestions; Apply closes quietly with the change
-   and undo lines in `cmdabl log`; Enter applies from the chip cursor and empty inputs (`f8e4135`).
-   Also passed (2026-10-21): Esc guard; New tag… ("not a valid name", "exists already", `perc` + a track
-   → tagged); autoscroll of input/suggestions (`4b45416`), open at the top (`3e1a0da`), whole section
-   revealed on ↑/↓ (`a74f079`); a new tag with no track leaves Apply greyed out. Not testable by hand:
-   a failed write during a dialog (Live's UI is blocked while a cmdAbl dialog is open) — covered by unit
-   tests. Optional, not run: a section taller than the view; 64 tracks. 0.1.2 Live tests done. Version
-   0.1.2 (`4d0675c`); installed `.ablx` passed (user, 2026-10-21: bridge 0.1.6, board, `tag -e`, `tag -r`,
-   find, `cmdabl log`, man). Images done (stills `d3701ba`, tags.gif `9846a14`, hero.gif `9131f9b`,
-   pakabl.gif `b3558c1`). PR #14 "Release 0.1.2: tag editing" open, CI green (2026-10-21).
-3. `tag -l` on `board` — built `11815ba` (+ lowercase/merge of created names); Live test
-   pending together with 1 and 2.
-5. Module pages moved to `ui/modules/<module>/` (`1b70581`) — Live check: `pakabl list` opens
-   and looks the same, Install/Repo answer.
-4. Docs: `tag --edit` and the board in using.md and README — done `4dbeee0` (image
-   `tag-board.png` to come).
-7. `tag --rename <old> <new>` (`-r`), plan 0010 decision 8 (user, 2026-10-21): core adds two-value
-   options (approved command-format change), then modules builds the rename (merge if the new name exists).
-   Built: core `4033470`, modules `8134f55` (also "already has / nothing changed" messages). Live test
-   Live (user, 2026-10-21): `tag -r fx effect`, `tag -r perc percs` (quiet, undo lines logged), palette
-   hints `<old>`/`<new>`/`<tag|#>` (core `ec9c567`, ui `519be51`) — passed; `tag -r` alone → usage, script off → exit 5 — passed. Merge (`tag -r fx drums` → "merged #fx into #drums") — passed.
-6. Logging (plan 0011) — built: core `e7ff3e8` `9d2fda1` `c5ce946`, modules `6a958fe` `9e15cff`,
-   bridge `94c1648`. Tag writes are quiet, `cmdabl log [-n] [--undo] [--debug]`, lines read
-   `cmdAbl [<source>] <level>:`. Live test: `tag /Lead fx` opens no window, then `cmdabl log --undo`
-   shows the undo line; `cmdabl log -n 5`; `arm /x`, then `cmdabl log` (no double prefix); a failed
-   write still shows ✓/×; the script line in Log.txt after `cmdabl setup`. Docs `e222996`.
-   `--undo` shows bare commands (`ed07726`) — passed; `-n 5`, `[arm]` lines, no doubled time in the
-   terminal, `pakabl list`, and `cmdAbl [script] listening …` in Log.txt — passed (2026-10-21) in Live (user, 2026-10-20): empty message, then
-   two commands newest last.
-   Timestamps on every line (core `dc88afe`, docs `b45117f`) — Live check: `cmdabl log` lines start
-   with `HH:MM:SS [run] info:`; the terminal shows `HH:MM:SS.mmm cmdAbl [run]` (drop ours if the host stamps too).
-
-## Next after 0.1.2 (user, 2026-10-20)
-
-0. Nested racks (2026-10-21, user: in 0.1.2): `find kick` missed the pads of a Drum Rack inside the
-   chain of an Instrument Rack ("Strutter Kit"), because devices inside chains were not tree nodes.
-   Bridge: chain nodes get their devices as children, recursively; `select` selects the ancestor
-   chains top-down (script 0.1.6). Core: await the chain-name refresh before find/goto build the tree.
-   `4992d32` (faster refresh while names are missing, "(N empty)" in the log) stays.
-   Built: bridge `b1b4e23` (script 0.1.6), core `27c3ae9`. Live (user, 2026-10-21): `find kick` lists the
-   four Strutter Kit pads (chain + device each); goto, mute, solo, refresh after a rack change, and script
-   off (exit 5 message, no delay) — all passed.
-   Release notes: 0.1.5 shows as outdated → run `cmdabl setup`. Known: palette rows don't refresh the
-   chain names first; pick lists and `find -d` list devices inside chains too (no filter yet).
-
-1. 0013 `note`: one Markdown note per Set, in a simple form, with the store in 0.1.3. Starts with a spike
-   (`Song.set_data`).
-2. 0012 `vol` (fader levels, absolute or relative), then `dca` (one Utility per DCA in a rack),
-   then the desk bridges (X32 first). Starts with a spike (dB mapping, `insert_device`).
 
 ## Where the code is
 

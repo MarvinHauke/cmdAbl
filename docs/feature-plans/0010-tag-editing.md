@@ -4,7 +4,7 @@
 **Depends on:** [0008](0008-tags-and-aliases.md) (tags on tracks, `tag -l`),
 [0007](0007-ui-surfaces.md) (a new surface `board`).
 
-**Status:** In Progress (built: board `96e838a`/`d468176`, `tag --edit` `9bba54c`, `tag -l` on
+**Status:** Released in 0.1.2 (2026-10-21, `v0.1.2`). Built in (pre-rebase hashes): board `96e838a`/`d468176`, `tag --edit` `9bba54c`, `tag -l` on
 board `11815ba`; Live test pending) — 0.1.2 (user, 2026-10-20: 0.1.1 is released first; 0.1.2 = this plan;
 the store and aliases move to 0.1.3). Branch `feat/tag-board`.
 
