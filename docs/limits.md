@@ -6,21 +6,16 @@ already know about each one.
 
 ## Platform and Live
 
-- **macOS only.** cmdAbl is tested on macOS only. Chains and Drum Rack pads need macOS as well. The Windows setup
-  exists in the code but has not been tested.
+- **macOS only.** cmdAbl is tested on macOS only. Chains and Drum Rack pads need macOS as well. The Windows setup has not been tested.
 - **The Extensions SDK is in beta.** cmdAbl needs a version of Ableton Live with Extensions support, and is built
   against the Extensions SDK 1.0.0-beta.1.
-- **The installed extension is sandboxed.** An installed `.ablx` may read only Live's Extensions and Extensions Data
-  folders and its temp folder. It cannot read the User Library, so it cannot tell whether the Remote Script is
-  missing or outdated, and says "not running" instead. Workaround: run `cmdabl bridge`; it names the running version.
-- **A development run is not sandboxed.** `npm start` is presumed not to be sandboxed, so a read outside those
-  folders may work in development and fail only in the installed version. Test the installed `.ablx` before a
-  release.
+- **cmdAbl runs in a sandbox.** It may read only Live's Extensions and Extensions Data folders and its temp folder.
+  It cannot read the User Library, so it cannot tell a missing Remote Script from an old copy that Live has not loaded
+  or one that is not chosen as Control Surface, and says "not running" for all three. Workaround: run `cmdabl setup`
+  (it reinstalls the current script), restart Live and choose cmdAbl as Control Surface.
 - **pakabl installs may be blocked by a stricter sandbox.** pakabl writes into Live's Extensions folder, which works
   today. Ableton has announced a stricter sandbox for extensions. If it arrives, installing through pakabl may be
   blocked in a later version of Live, and pakabl as a whole may stop working.
-- **Only one Extension Host connects at a time.** This matters to developers who test cmdAbl in Live: one copy runs
-  at a time.
 
 ## Dialogs
 

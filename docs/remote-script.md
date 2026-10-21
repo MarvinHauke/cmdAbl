@@ -28,9 +28,9 @@ Without the Remote Script the palette still opens and most commands run:
 - `lom`, `man`, `help`, `cmdabl log` and the history work.
 - These need the script: `goto`, `find`, `next`, `prev`, picking an object row in the palette, `tag`, targets such
   as `#fx`, and `mute` and `solo` on rack chains and Drum Rack pads.
-- Those commands answer that the Remote Script is not running. In the installed extension this is the usual answer
-  for a missing script, an old copy that Live has not loaded and one that is not chosen as Control Surface, because
-  the installed extension cannot look into the User Library to tell them apart.
+- Those commands answer that the Remote Script is not running. This is the usual answer for a missing script, an old
+  copy that Live has not loaded and one that is not chosen as Control Surface, because cmdAbl cannot look into the User
+  Library to tell them apart.
 
 ## Install it
 
@@ -69,9 +69,8 @@ These are the messages you can get. Each is shown in the palette:
 
 | Message | What it means | What to do |
 | ------- | ------------- | ---------- |
-| *Remote Script not running (install it with `cmdabl setup`, restart Live, then enable cmdAbl as a Control Surface in Live's Settings → Tempo & MIDI)* | The script is not answering in Live. The installed extension cannot tell "not installed" from "not enabled", so the message lists the full order. | Run `cmdabl setup` if it is not installed, restart Live, then choose cmdAbl as the Control Surface (Settings → Tempo & MIDI → MIDI). |
-| *installed Remote Script is outdated; run `cmdabl setup` and restart Live* | The running script does not know an operation this cmdAbl needs, or it speaks another protocol version. A development run (`npm start`) says it too when the copy in the User Library is old. | Run `cmdabl setup`, then restart Live. |
-| *Remote Script not installed; run `cmdabl setup` and restart Live* | The script is not in the User Library. Only a development run (`npm start`) can see this; the installed extension says "not running" instead. | Run `cmdabl setup`, then restart Live. |
+| *Remote Script not running (install it with `cmdabl setup`, restart Live, then enable cmdAbl as a Control Surface in Live's Settings → Tempo & MIDI)* | The script is not answering in Live. cmdAbl cannot tell "not installed" from "not enabled", so the message lists the full order. | Run `cmdabl setup` if it is not installed, restart Live, then choose cmdAbl as the Control Surface (Settings → Tempo & MIDI → MIDI). |
+| *installed Remote Script is outdated; run `cmdabl setup` and restart Live* | The running script does not know an operation this cmdAbl needs, or it speaks another protocol version. | Run `cmdabl setup`, then restart Live. |
 | *the Live Set changed; run the command again* | The track or pad moved or was renamed after you typed the command. | Run the command again. |
 | *the Remote Script did not answer; check Live* | Live did not reply in time. | Check that Live is running and not busy, then run the command again. A change may or may not have happened, so look at the Set. |
 | *the Remote Script refused the change (access token); restart Live (after `cmdabl setup` if the script was updated)* | The script refused a change, because its access token did not match. | Restart Live. After an update, run `cmdabl setup` first. |
@@ -102,7 +101,7 @@ operation, it checks a token that the extension sends with the request.
 
 - **Where it lives.** When Live starts, the script creates a new random token and writes it to
   `~/Library/Application Support/Ableton/Extensions Data/marvinhauke.cmdabl/bridge-token`. Only you can read the folder
-  and the file. The installed extension is sandboxed and may read this folder, so the token lives there. The script
+  and the file. cmdAbl runs in a sandbox that lets it read this folder, so the token lives there. The script
   removes the older folder, `~/Library/Application Support/cmdAbl/`.
 - **When it changes.** Every time Live starts, the token is replaced. If a change is refused, the extension reads the
   file again and tries once more, so a restart of Live is usually all it takes.
@@ -118,7 +117,7 @@ The extension and the Remote Script exchange messages over UDP, on `127.0.0.1`, 
 own Mac can reach that port, and the script answers only on that address. Each request asks for one operation and gets
 one reply. A request that gets no reply within half a second is reported as unanswered.
 
-The [Remote Script reference](reference/remote-script.md) lists every operation and what it does. The
-[Live API mapping](reference/live-api.md) shows how cmdAbl's paths map to the Live Object Model. Both are generated
-from the code of the cmdAbl version this documentation was built from. The operations your running script supports
-are the ones `cmdabl bridge` lists.
+For contributors, the [Remote Script protocol](reference/remote-script.md) lists every operation and what it does,
+and the [Live API mapping](reference/live-api.md) shows how cmdAbl's paths map to the Live Object Model. Both are
+generated from the code of the cmdAbl version this documentation was built from. The operations your running script
+supports are the ones `cmdabl bridge` lists.
