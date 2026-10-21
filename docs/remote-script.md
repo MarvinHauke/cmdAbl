@@ -55,6 +55,10 @@ Run `cmdabl bridge` in the palette. It sends one request to the Remote Script an
 the protocol version, the response time, and the operations the script supports. A healthy reply means the
 script is installed, running and answering.
 
+![The cmdabl bridge result: Remote Script 0.1.6 is running, with its protocol version, response time and operations](assets/images/bridge.png)
+
+*`cmdabl bridge` on a current install.*
+
 ## Messages
 
 These are the messages you can get. Each is shown in the palette, with what to do:

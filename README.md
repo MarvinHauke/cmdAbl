@@ -40,6 +40,8 @@ Tag tracks by what they are: `tag /Lead fx synth`. After that, `mute #fx` reache
 are saved with the Set, and they need the [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/).
 `tag --list` opens a board where you add and remove the tags of every track.
 
+![The tag board: one section per tag, with its tracks as chips and an add field; the untagged tracks are listed at the bottom](docs/assets/images/tag-board.png)
+
 ### A pick list you control
 
 When a name fits more than one object, `mute`, `solo` and `arm` ask instead of guessing. Mark the rows you mean

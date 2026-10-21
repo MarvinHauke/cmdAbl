@@ -117,6 +117,8 @@ Use `find` to list everything that matches a pattern:
 - `next` and `prev` step through the last `find` list.
 
 **Tags in `find`.** `find #drums` lists the tracks tagged `drums`, and `next` and `prev` step through them.
+![The find pick list for find #drums: three tracks, Kick, Snare and Perc, each with the tag drums](assets/images/find-tags.png)
+
 `find !#drums` lists the regular tracks without the tag. `find drums` lists what the path matches, and also the
 tracks tagged `drums`; their rows show their tags. `find #drums kick` searches inside the tagged tracks. The kind
 flags and `-L` apply as usual, for example `find #drums -c` lists the chains and pads of the tagged tracks. Without
@@ -184,7 +186,9 @@ whenever nothing is typed to add: on a chip under the chip cursor, in an empty *
 `Esc` clears the input, then closes the board. With pending changes, the first `Esc` (or Close)
 warns "N changes not applied — Esc again to discard". Any other key, or any click except Close, cancels the warning.
 
-<!-- image to come: docs/assets/images/tag-board.png -->
+![The tag board: one section per tag, with its tracks as chips and an add field; the untagged tracks are listed at the bottom](assets/images/tag-board.png)
+
+*`tag -l` opens the tag board.*
 
 **`tag --edit` (`-e`)** changes one tag on many tracks, from the keyboard. `tag -e fx` opens the pick list of all
 regular and return tracks, with a "tagged fx" button lit where a track has the tag. Mark tracks with `Tab` and press
@@ -192,6 +196,14 @@ regular and return tracks, with a "tagged fx" button lit where a track has the t
 opens the tag list, the same as `tag -e #`. The tag list is single-select: `Enter` on a tag opens its track list at
 once, and typing a new name plus `Enter` creates the tag. `--edit` cannot be combined with a target, names, `--list` or
 `--set`. The pair to remember: `tag /Lead` picks the tags of one track, and `tag -e fx` picks the tracks of one tag.
+
+![The pick list for tag --edit #drums: all regular tracks; Synth and Lead (tagged drums) and Kick, Snare and Perc are marked, and the boxes show the result of Enter: drums off for Synth and Lead, on for Kick, Snare and Perc](assets/images/tag-pick.png)
+
+*`tag --edit #drums`: the marked tracks switch `drums` on or off.*
+
+![The tag list for tag -e: the tags bass, drums, fx, lead and synth, each with its track count](assets/images/tag-list.png)
+
+*`tag -e` alone lists the tags. Enter on one opens its tracks.*
 
 **Rename a tag.** `tag --rename fx effects` (or `tag -r fx effects`) renames the tag on every regular and return
 track that carries it. A leading `#` is fine. The rename is quiet: `cmdabl log --undo` lists the undo command. If the
@@ -219,6 +231,10 @@ keeps one. An old name that no track carries says "no track is tagged #old".
 `more: man <command>` when a full page exists. `man <command>` shows the full page inside Live, offline: summary,
 usage, options, arguments and examples. It has an **Open in browser** button for the command's section on the web.
 It finds a command by its words, so you can name a subcommand too: `man history clear` or `man cmdabl setup`.
+
+![The man page for mute inside Live: the summary, usage, arguments and options, with Close and Open in browser buttons](assets/images/man-page.png)
+
+*`man mute`: the full page, with a button for the web section.*
 
 - `man ableton` opens the Live manual; `man ableton <words>` searches it for the words.
 - `man cmdabl` opens the cmdAbl documentation.
@@ -280,6 +296,10 @@ changes something shows nothing in the palette when it succeeds, so the log is w
 - `cmdabl log -n <count>` shows up to 500 lines.
 - `cmdabl log --undo` shows only the bare undo commands, which put a change back when you type them.
 - `cmdabl log --debug` turns debug lines on for the rest of the session.
+
+![The cmdabl log window: timestamped lines of commands and dialogs, including a tag --rename and its undo commands](assets/images/cmdabl-log.png)
+
+*`cmdabl log`: the undo lines of a rename are the last ones to read.*
 
 The log keeps the last 500 lines of the session. A line reads `HH:MM:SS [<source>] <level>: …`, for example
 `14:05:31 [run] info: start: mute /Bass`. A line `YYYY-MM-DD` appears where the day changes. `<source>` is the part

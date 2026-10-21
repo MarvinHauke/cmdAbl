@@ -115,6 +115,10 @@ version, the protocol version, the response time and the operations it supports.
 script is not installed, outdated or not running, follow the message. Restart Live when the message
 says so, then run `cmdabl bridge` again.
 
+![The cmdabl bridge result: Remote Script 0.1.6 is running, with its protocol version, response time and operations](assets/images/bridge.png)
+
+*`cmdabl bridge` on a current install.*
+
 ## What works without the Remote Script
 
 The palette, `help`, `man`, the history of past commands and the track commands work without the Remote Script:
