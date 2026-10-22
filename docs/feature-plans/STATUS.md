@@ -65,7 +65,7 @@ Open from the releases:
 
 - bridge `f9c1f76` (`set_id`, script 0.1.8); core `d9d5a9f` (`api.set.id`, `api.files`); ui `8f47aab`,
   `2507215`, `6273e68` (page, Cmd+S saves and closes, `changed` flag); modules `9cb136a` (`note`, `-e`).
-- Docs: in work (using.md, remote-script.md token line, authoring guide).
+- Docs: `34d468b` (using.md, remote-script.md token line, authoring guide); Save As / Collect All claim after the Live test.
 - Live (user): `cmdabl setup` + restart Live for 0.1.8; the page; save, reopen, Save As, Collect All.
 
 ## Next (user, 2026-10-20/21)
