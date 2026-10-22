@@ -10,7 +10,7 @@
        HTML, all text goes in with textContent); edit is a plain textarea. An empty text opens in edit.
        Out (close_and_send): the full text when it changed, '' when it did not (or the page was dismissed). A text
        cleared to nothing is sent as "\n" so it differs from "no change"; the module treats whitespace-only as empty.
-       Keys: e (view) edit · Cmd/Ctrl+S save and back to view · Esc in view closes · Esc in edit: no unsaved changes
+       Keys: e (view) edit · Cmd/Ctrl+S (or Save) saves and closes · Esc in view closes · Esc in edit: no unsaved changes
        closes, with changes it warns in the footer first, a second Esc discards them and returns to view. -->
   <style>
     /*SHARED_CSS_PLACEHOLDER*/
@@ -198,7 +198,7 @@
       warned = on;
       hint.classList.toggle('warn', on);
       if (on) hint.textContent = 'unsaved changes — Esc again to discard';
-      else hint.textContent = mode === 'view' ? (saved !== orig ? 'changed — Esc closes and keeps it · e edit' : 'e edit · Esc close') : '⌘S save · Esc close (warns when unsaved)';
+      else hint.textContent = mode === 'view' ? 'e edit · Esc close' : '⌘S save and close · Esc close (warns when unsaved)';
     }
     const dirty = () => mode === 'edit' && edit.value !== saved;
 
@@ -223,7 +223,7 @@
     }
 
     function finish() { send(saved === orig ? '' : (saved === '' ? '\n' : saved)); }
-    function save() { saved = edit.value; show('view'); }
+    function save() { saved = edit.value; finish(); }   // saves and closes: no text is held only in the page
     function back() {   // Esc / Cancel in edit
       if (!dirty()) { finish(); return; }
       if (!warned) { setWarn(true); return; }
