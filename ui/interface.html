@@ -92,6 +92,9 @@
     // null, or { text, cursor }: the input starts with `text` and the caret at `cursor`
     // (0 = start), e.g. a path put in the prompt from a pick list.
     const INITIAL = /*INITIAL_PLACEHOLDER*/null;
+    // null, or the snapshot CmdComplete.complete(line, cursor, COMPLETION) works on:
+    //   { tree, completions, paths, tags }. null = no argument completion.
+    const COMPLETION = /*COMPLETION_PLACEHOLDER*/null;
 
     const input     = document.getElementById('input');
     const dropdown  = document.getElementById('dropdown');
@@ -108,6 +111,8 @@
     let activeIdx = 0;
     let newLine   = null;  // rows + ranker without history lines, built on first use
     let chosen    = false; // the user moved the selection (arrows, Tab) since the last keystroke
+    let mode      = 'word0'; // 'word0': fuzzy rows for the first word; 'args': CmdComplete rows
+    let view      = null;    // args mode: { replace: {from, to}, usage }
 
     // ── messaging ──────────────────────────────────────────────────────────
     // Returns a structured PaletteResult to the host as a JSON string (the
@@ -122,25 +127,16 @@
       }
     }
 
-    // ── parse input into phase ─────────────────────────────────────────────
-    // Once the first token names an actual registered command, everything
-    // after it is *that command's argument text* — not a fresh fuzzy query
-    // against the whole palette (which would let e.g. "mute Microtonic"
-    // resolve to selecting the Microtonic track instead of running `mute`
-    // with "Microtonic" as its argument). Arguments get no completion
-    // ('args' phase) — Enter falls through to rawResult(), which parses the
-    // literal typed text. Otherwise stay in 'command' phase so names
-    // containing spaces (e.g. a track called "Opal Lead") keep fuzzy-matching.
-    function parse(raw) {
-      const spaceIdx = raw.indexOf(' ');
-      if (spaceIdx !== -1) {
-        const cmdName = raw.slice(0, spaceIdx);
-        const cmd = itemsById[cmdName];
-        if (cmd?.type === 'command') {
-          return { phase: 'args', query: raw.slice(spaceIdx + 1) };
-        }
-      }
-      return { phase: 'command', query: raw.trim() };
+    // ── mode: first word (fuzzy) or arguments (CmdComplete) ────────────────
+    // Once the caret is past a registered command's name, CmdComplete.complete() decides
+    // what is offered at that position (options, values, paths, tags). Before that — and
+    // for a first word that is no command name, e.g. a track called "Opal Lead" — the
+    // palette ranks commands, history and Live objects as before.
+    function modeAt(raw, caret) {
+      const m = /^\s*(\S+)/.exec(raw);
+      if (!m || itemsById[m[1]]?.type !== 'command') return 'word0';
+      const end = m[0].length;
+      return raw.length > end && /\s/.test(raw[end]) && caret > end ? 'args' : 'word0';
     }
 
     // A line like ` "/path"` (a path put in the prompt) leaves the caret in front of
@@ -152,12 +148,23 @@
       return !head.includes(' ') && tail.startsWith(' ') ? { head, tail } : null;
     }
 
-    // ── build completion list (fuzzy) ──────────────────────────────────────
+    // ── build completion list ──────────────────────────────────────────────
     function computeItems(raw) {
+      const caret = input.selectionStart ?? raw.length;
+      mode = modeAt(raw, caret);
+      view = null;
+      if (mode === 'args') {
+        if (!COMPLETION) return [];
+        const res = CmdComplete.complete(raw, caret, COMPLETION);
+        view = { replace: res.replace, usage: res.usage ?? null };
+        return res.items.map(r => ({ type: r.kind, title: r.label, subtitle: r.description, insert: r.insert }));
+      }
       const part = wordAtCaret();
       // The word before the caret is a complete command name: its arguments follow, no completion.
       if (part && itemsById[part.head]?.type === 'command') return [];
-      const { phase, query } = parse(part ? part.head : raw);
+      const query = (part ? part.head : raw).trim();
+      // The first word is a command and text follows it: arguments, caret in the name — nothing to rank.
+      if (!part && /^\s*\S+\s/.test(raw) && itemsById[raw.trim().split(/\s/)[0]]?.type === 'command') return [];
       // Around a path put in the prompt the user builds a new line: a stored full
       // invocation (history row) would run on an old target and drop that path.
       if (part && !newLine) newLine = (() => {
@@ -167,7 +174,6 @@
       const rows = part ? newLine.rows : ITEMS;
       const rank = part ? newLine.rank : itemRank;
 
-      if (phase === 'args') return []; // no completion — literal pass-through via rawResult()
       if (!query) return rows;
 
       // Drop "canned full invocation" items (command-type, multi-word id —
@@ -179,6 +185,27 @@
       return rank(query).filter(item =>
         !(item.type === 'command' && item.id.includes(' ')
           && query.length > item.id.length && query.startsWith(item.id)));
+    }
+
+    // Splice a completion row into the line (args mode). `descend` (Tab, click) adds the
+    // space that starts the next word; Enter inserts as is and runs the line.
+    function applyRow(item, descend) {
+      const v = input.value;
+      // The rows belong to the caret position they were built for; a caret that moved some
+      // other way (select all, a drag) must not make them splice over another word.
+      const now = COMPLETION && CmdComplete.complete(v, input.selectionStart ?? v.length, COMPLETION).replace;
+      if (!now || now.from !== view.replace.from || now.to !== view.replace.to) return false;
+      const { from, to } = view.replace;
+      const ins = item.insert ?? item.title;
+      const after = v.slice(to);
+      let text = v.slice(0, from) + ins, caret = text.length;
+      if (descend && !/=$/.test(ins)) {
+        if (/^\s/.test(after)) caret += 1;       // the space is already there
+        else text += ' ', caret += 1;
+      }
+      input.value = text + after;
+      input.setSelectionRange(caret, caret);
+      return true;
     }
 
     // ── structured payload for a chosen item ────────────────────────────────
@@ -233,16 +260,16 @@
       return { type: 'command', id: sp === -1 ? raw : raw.slice(0, sp), line: raw };
     }
 
-    // ── ghost hint: the next missing option value, display only ────────────
-    // Shown in the args phase when the caret is at the end of the line and the text after
-    // "<command> " ends in whitespace (CmdMatch.valueHint decides). Never affects Enter/Tab.
+    // ── ghost: the usage of this position, display only ────────────────────
+    // CmdComplete's `usage` (`<old>`, `<command>`, `[<targets>…]`), shown behind the caret
+    // when it is at the end of the line and the current word is empty or matches nothing.
+    // The one owner of #ghost; it never affects Enter or Tab.
     function updateGhost() {
       let hint = null;
       const v = input.value;
-      const sp = v.indexOf(' ');
-      if (sp > 0 && (input.selectionStart ?? v.length) === v.length && input.selectionEnd === v.length) {
-        const cmd = itemsById[v.slice(0, sp)];
-        if (cmd?.type === 'command' && cmd.valueOptions && CmdMatch.valueHint) hint = CmdMatch.valueHint(cmd.valueOptions, v.slice(sp + 1));
+      if (mode === 'args' && view?.usage && (input.selectionStart ?? v.length) === v.length && input.selectionEnd === v.length
+          && (view.replace.from === view.replace.to || !items.length)) {
+        hint = (/\s$/.test(v) ? '' : ' ') + view.usage;
       }
       ghostMirror.textContent = hint ? v : '';
       ghostHint.textContent = hint ?? '';
@@ -275,7 +302,11 @@
         desc.className = 'desc';
         desc.textContent = item.subtitle ?? '';
         row.append(label, desc);
-        row.addEventListener('mousedown', e => { e.preventDefault(); send(resultFor(item)); });
+        row.addEventListener('mousedown', e => {
+          e.preventDefault();
+          if (mode === 'args') { applyRow(item, true); activeIdx = 0; chosen = false; render(); input.focus(); }
+          else send(resultFor(item));
+        });
         dropdown.appendChild(row);
       });
 
@@ -285,7 +316,7 @@
     // ── keyboard ───────────────────────────────────────────────────────────
     input.addEventListener('input', () => { activeIdx = 0; chosen = false; render(); });
 
-    input.addEventListener('click', updateGhost);   // a click moves the caret
+    input.addEventListener('click', () => { activeIdx = 0; chosen = false; render(); });   // a click moves the caret: rows follow it
 
     // Moving the caret can change which word is completed.
     input.addEventListener('keyup', e => {
@@ -299,12 +330,26 @@
       } else if (e.key === 'Enter') {
         e.preventDefault();
         const item = items[activeIdx];
+        if (mode === 'args') {
+          // The typed line runs; a row only when the user moved the selection to it.
+          if (item && chosen) applyRow(item, false);
+          const result = rawResult();
+          if (result) send(result);
+          return;
+        }
         const result = item && !typedLineWins(item) ? resultFor(item) : rawResult();
         if (result) send(result);
       } else if (e.key === 'Tab') {
         e.preventDefault();
         const item = items[activeIdx];
         if (!item) return;
+        if (mode === 'args') {
+          applyRow(item, true);   // take the row and descend
+          activeIdx = 0;
+          chosen = false;         // the next position's top row is not chosen
+          render();
+          return;
+        }
         // Tab only autocompletes the highlighted item into the input — it never
         // executes. The user commits with Enter (and can edit first).
         // Commands get a trailing space so you land in their arguments. Live
@@ -325,6 +370,7 @@
         activeIdx = 0;
         chosen = true;
         render();
+        if (mode === 'args') chosen = false;   // Tab landed in arguments: nothing is chosen there yet
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         if (items.length) { activeIdx = (activeIdx + 1) % items.length; chosen = true; render(); }
