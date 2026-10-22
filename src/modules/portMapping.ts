@@ -96,7 +96,7 @@ export const PORT_MAPPING: readonly PortMapping[] = [
     via: "script",
     call: "operation `set_id` (reads `cmdabl.set-id`; with create, stores a new random id first)",
     lom: ["Song.get_data", "Song.set_data"],
-    note: "Stored in the Set with Song.set_data (whether it survives save, reload and Save As is still to be checked in Live). Null without the script.",
+    note: "Stored in the Set with Song.set_data (survives save, reload, Save As and Collect All and Save; Live-tested 2026-10-22). Null without the script.",
   },
   {
     port: "files.read",

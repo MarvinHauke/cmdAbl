@@ -74,8 +74,9 @@ export interface TagsPort {
 /** The Live Set's own identity (plan 0013). */
 export interface SetPort {
   /**
-   * The id stored in the Set (`cmdabl.set-id`, kept with Song.set_data; whether it survives save, reload and
-   * Save As is still to be checked in Live), so it can name things that belong to this Set). `create: true` stores a new random id when the Set has none.
+   * The id stored in the Set (`cmdabl.set-id`, kept with Song.set_data; it survives save, reload, Save As and
+   * Collect All and Save (Live-tested 2026-10-22), so it can name things that belong to this Set).
+   * `create: true` stores a new random id when the Set has none.
    * Null: the Set has no id yet (and `create` was not given), or the Remote Script is not running
    * or too old. Never throws.
    */
