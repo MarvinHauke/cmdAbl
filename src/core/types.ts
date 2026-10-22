@@ -56,7 +56,7 @@ export interface PaletteResult {
    * normal result carries them along; the page also returns them ALONE (no `type`/`id`) when the
    * user changed a setting and then dismissed: that runs nothing and opens nothing.
    */
-  settings?: { optionsAbove: boolean };
+  settings?: { above: "off" | "hints" | "options" };
 }
 
 export interface Provider {

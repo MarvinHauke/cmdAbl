@@ -9,23 +9,33 @@ import type { PaletteResult } from "./types.js";
 // a value of the wrong type means the default and one warning. A write goes to a temporary file
 // and is renamed. Nothing throws. No URL, TextEncoder or structuredClone (the host has none).
 
+/** Where the palette shows the options and subcommands: not at all, as a hint panel, or as selectable rows. */
+export const ABOVE_VALUES = ["off", "hints", "options"] as const;
+export type Above = (typeof ABOVE_VALUES)[number];
+
 /** Every key, with its default; the type of the default is the type the value must have. */
 export const SETTINGS_DEFAULTS = {
-  /** The palette shows the options (the tool zone) above the prompt. */
-  "palette.optionsAbove": false,
-} as const;
+  "palette.above": "off" as Above,
+};
+
+/** The allowed values of a key whose values are a closed list (a value outside it counts as the wrong type). */
+const ALLOWED: Partial<Record<SettingKey, readonly unknown[]>> = { "palette.above": ABOVE_VALUES };
 
 export type SettingKey = keyof typeof SETTINGS_DEFAULTS;
 export interface SettingsValues {
-  "palette.optionsAbove": boolean;
+  "palette.above": Above;
 }
+
+/** Does `value` suit the key: the default's type, and one of the allowed values when the key has a list. */
+const fits = (key: SettingKey, value: unknown): boolean =>
+  typeof value === typeof SETTINGS_DEFAULTS[key] && (ALLOWED[key]?.includes(value) ?? true);
 
 /** What the palette page gets and returns (plain JSON). */
 export interface PaletteSettings {
-  optionsAbove: boolean;
+  above: Above;
 }
 
-export const toPaletteSettings = (values: SettingsValues): PaletteSettings => ({ optionsAbove: values["palette.optionsAbove"] });
+export const toPaletteSettings = (values: SettingsValues): PaletteSettings => ({ above: values["palette.above"] });
 
 export interface SettingsStore {
   /** The current values (read from disk once, then kept). */
@@ -75,8 +85,8 @@ export function createSettingsStore(deps: SettingsDeps): SettingsStore {
       } else {
         for (const [key, value] of Object.entries(parsed)) {
           if (key in SETTINGS_DEFAULTS) {
-            if (typeof value === typeof SETTINGS_DEFAULTS[key as SettingKey]) (loaded as unknown as Record<string, unknown>)[key] = value;
-            else deps.warn(`settings: "${key}" has the wrong type; using the default`);
+            if (fits(key as SettingKey, value)) (loaded as unknown as Record<string, unknown>)[key] = value;
+            else deps.warn(`settings: "${key}" has a wrong value; using the default`);
           } else {
             extra[key] = value;
           }
@@ -113,7 +123,7 @@ export function createSettingsStore(deps: SettingsDeps): SettingsStore {
       const current = await get();
       let changed = false;
       for (const [key, value] of Object.entries(patch)) {
-        if (key in SETTINGS_DEFAULTS && typeof value === typeof SETTINGS_DEFAULTS[key as SettingKey] && (current as unknown as Record<string, unknown>)[key] !== value) {
+        if (key in SETTINGS_DEFAULTS && fits(key as SettingKey, value) && (current as unknown as Record<string, unknown>)[key] !== value) {
           (current as unknown as Record<string, unknown>)[key] = value;
           changed = true;
         }
@@ -127,9 +137,9 @@ export function createSettingsStore(deps: SettingsDeps): SettingsStore {
   };
 }
 
-/** `{ optionsAbove: boolean }` from the page, or null for anything else. */
+/** `{ above: "off" | "hints" | "options" }` from the page, or null for anything else. */
 export function parsePaletteSettings(value: unknown): PaletteSettings | null {
-  return isRecord(value) && typeof value.optionsAbove === "boolean" ? { optionsAbove: value.optionsAbove } : null;
+  return isRecord(value) && typeof value.above === "string" && (ABOVE_VALUES as readonly string[]).includes(value.above) ? { above: value.above as Above } : null;
 }
 
 /**

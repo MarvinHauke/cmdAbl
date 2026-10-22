@@ -59,7 +59,7 @@ export function activate(activation: ActivationContext) {
   // cmdAbl's own settings (settings.json in the data folder); the palette page returns changes with its result.
   const settingsStore = createSettingsStore({ base: dataFolder, warn: (text) => logger("settings").warn(text) });
   const gate = createUiGate(
-    createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.optionsAbove": settings.optionsAbove })),
+    createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.above": settings.above })),
   );
   const ui: Ui = gate.ui;
   const providers: { provider: Provider; priority: number }[] = [];
