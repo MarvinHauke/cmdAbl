@@ -66,7 +66,7 @@
     .zhead { flex: 0 0 auto; padding: 4px 12px 3px; font-size: 10px; line-height: 14px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; }
     .znote { position: absolute; left: 0; right: 0; top: 55%; transform: translateY(-50%); text-align: center; font-size: 11px; color: var(--dim); pointer-events: none; }
     .znote:empty { display: none; }
-    .zbody { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
+    .zbody { flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
 
     /* selectable tool zone (above = options): best match at the bottom, next to the prompt; then it scrolls */
     #toolsBody { display: flex; flex-direction: column; }
@@ -75,12 +75,12 @@
 
     /* hint panel (which-key style): read-only, never takes a key. One grid, three aligned columns. */
     #hintsBody {
-      display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 16px; align-content: start;
+      display: grid; grid-template-columns: auto minmax(0, auto) minmax(0, 1fr); column-gap: 16px; align-content: start;
       padding: 6px 12px 4px; font-size: 11px; line-height: 18px; user-select: none; cursor: default;
     }
     #hintsBody .hint { display: contents; }
     #hintsBody .hk { color: var(--accent); font-weight: 600; white-space: nowrap; }
-    #hintsBody .hv { color: var(--dim); white-space: nowrap; }
+    #hintsBody .hv { color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #hintsBody .hd { color: var(--dim); opacity: .75; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* ── dropdown (Set zone, below the prompt) ── */
