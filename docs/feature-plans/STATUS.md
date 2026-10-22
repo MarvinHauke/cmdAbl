@@ -22,8 +22,9 @@ All releases were tested in Live, including the installed `.ablx`.
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push). The private mirror's `main` follows it.
-- In work: argument completion (plan 0006 steps 1–2, 0.1.4, branch `feat/completion`): core, then ui
-  and modules.
+- Built, Live-tested through MCP (2026-10-22): argument completion (plan 0006 steps 1–2, 0.1.4,
+  branch `feat/completion`). Snapshot at palette open: 3 ms warm, about 220 ms on the first open of a
+  session (cold tag cache). Next: release 0.1.4.
 - How testing works since 0.1.3: the architect runs Live test lists through the `cmdabl_*` MCP tools
   (plan 0016) once the user has started `npm start` with a test Set; the user gets a short list of
   the core features to try by hand (`CLAUDE.md`, "Agent team").
@@ -38,6 +39,9 @@ All releases were tested in Live, including the installed `.ablx`.
 - Palette rows don't refresh chain names first; suggestions can lag a few seconds after a rack change.
 - `cmdabl_keys`: another small Live window on top (a plug-in window, Settings) passes the "dialog in
   front" check (plan 0016 risks).
+- `man <command> <sub>` completes top-level names again (completion doesn't follow subcommands yet).
+- A file-stat port in core would remove pakabl's `node:fs` and `node:child_process` exceptions
+  (core/modules boundary, undecided).
 - Nothing is released on deactivate (trigger server, listeners); `extension.ts` holds palette state
   next to the wiring (outside review, 2026-10-19).
 
