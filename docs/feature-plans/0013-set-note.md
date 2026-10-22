@@ -1,11 +1,11 @@
 # `note`: one Markdown note per Set
 
-**Status:** Draft (2026-10-20). Priority: before 0012, in a simple form; target 0.1.3, together with the
-store. Trigger: the user wants a note per Set for general reminders, written in Markdown.
+**Status:** In work for 0.1.3 (user, 2026-10-22: `note` joins the 0.1.3 release with `vol`).
+Trigger: the user wants a note per Set for general reminders, written in Markdown.
 
 **Parent:** [0004](0004-command-platform.md)
-**Depends on:** the settings store (0.1.3; the note file sits next to the settings) and the Remote
-Script's `set_data` (as in [0008](0008-tags-and-aliases.md)).
+**Depends on:** the Remote Script's `set_data` (as in [0008](0008-tags-and-aliases.md)). There is no
+settings store yet; `note` brings the small file access it needs (below).
 
 ## Context
 
@@ -43,7 +43,9 @@ Script's `set_data` (as in [0008](0008-tags-and-aliases.md)).
 - **The id:** `Song.set_data("cmdabl.set-id", <random id>)`, written by the Remote Script.
   - The first `note` in a Set creates the id.
   - This is a write, so the Set asks to be saved: the colour-toggle trick from tags is reused.
-- **The file:** `~/Library/Application Support/cmdAbl/notes/<id>.md`.
+- **The file:** `~/Library/Application Support/Ableton/Extensions Data/<extension id>/notes/<id>.md`,
+  the extension's own data folder (where `bridge-token` and `run-token` already live). A folder outside
+  it is not reachable from the Extension Host's sandbox (corrected 2026-10-22).
   - It is plain Markdown, so it can be edited in any editor.
   - There is no size limit in the Set.
   - A front-matter line records the Set name it was last seen with, for humans.
@@ -86,6 +88,21 @@ Script's `set_data` (as in [0008](0008-tags-and-aliases.md)).
 - Without the Remote Script, it gives exit 5, because the id needs `Song.set_data`.
 - A successful save is quiet; one log line goes to [0011](0011-logging.md).
 
+## Contract additions (additive, 2026-10-22)
+
+- **Bridge:** a new op `set_id {create}` → `{id}` or `{id: null}`. It reads `Song.get_data("cmdabl.set-id")`;
+  with `create` it writes a new random id first. The write uses the same "mark the Set as modified"
+  trick as tags. Script 0.1.8.
+- **`ModuleApi`:**
+  - `api.set.id(create?: boolean): Promise<string | null>`, backed by the op above; null without the
+    script;
+  - `api.files.read(name)` → `Promise<string | null>` and `api.files.write(name, text)` →
+    `Promise<boolean>`, scoped to `<data folder>/modules/<module>/`. Names are plain file names (no `/`,
+    no `..`), so a module can't reach other modules' files. The note file is
+    `modules/note/<id>.md`.
+- **Renderer:** the ui agent writes a small renderer of its own (headings, lists, checkboxes, tables,
+  code, emphasis, links). It is inlined; no library unless that ends up over about 20 KB.
+
 ## Open questions
 
 - Does `Song.set_data` survive saving, reloading, Save As, and Collect All and Save?
@@ -99,9 +116,9 @@ Script's `set_data` (as in [0008](0008-tags-and-aliases.md)).
 
 ## Phased rollout
 
-1. **Spike** (cmdabl-bridge): `Song.set_data` saving, reloading and Save As; the Set name in the SDK.
-2. **cmdabl-bridge:** a `set_id` op that reads the id, or creates it with the token.
-3. **cmdabl-core:** read and write the notes file in cmdAbl's folder, next to the settings store.
+1. **cmdabl-bridge:** the `set_id` op with tests; script 0.1.8. The Live spike (save, reload, Save As)
+   is the user's check, after step 5.
+2. **cmdabl-core:** `api.set.id` and `api.files` with tests (sandbox path, name checks).
 4. **cmdabl-ui:** `note.html` with view, edit and the renderer.
 5. **cmdabl-modules:** the `note` module.
 6. **cmdabl-docs:** a section in using.md.

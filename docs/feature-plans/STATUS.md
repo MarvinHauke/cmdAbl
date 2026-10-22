@@ -61,10 +61,16 @@ Open from the releases:
 - First run (user): test Set open, `npm start`, restart the agent sessions, allow the `cmdabl` MCP
   server; then the architect runs core's checks and the rest of the `vol` list.
 
+## In progress: `note` (branch `feat/note`, plan 0013, joins 0.1.3; user 2026-10-22)
+
+- bridge: `set_id` op, script 0.1.8. core: `api.set.id`, `api.files` (user-approved additions).
+- ui: `ui/modules/note/note.html` with its own small Markdown renderer. modules: the `note` module.
+- Then docs; Live check: save, reload, Save As (user).
+
 ## Next (user, 2026-10-20/21)
 
 1. **0012 `vol`** (0.1.3) — built, see above.
-2. **0013 `note`** (0.1.4) — one Markdown note per Set, view first, `-e` to edit. Starts with a
+2. **0013 `note`** (now in 0.1.3, see above) — one Markdown note per Set, view first, `-e` to edit. Starts with a
    spike: `Song.set_data` (save, reload, Save As, Collect All); the note file goes in the Extensions
    Data folder (sandbox), not Application Support.
 3. **0012 `dca` — later, with its own detailed plan first** (user, 2026-10-21): a "cmdAbl DCA" rack per
