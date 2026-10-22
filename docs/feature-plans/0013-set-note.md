@@ -1,6 +1,6 @@
 # `note`: one Markdown note per Set
 
-**Status:** Built for 0.1.3 (modules `9cb136a`), Live test pending (user, 2026-10-22: `note` joins the 0.1.3 release with `vol`).
+**Status:** Built for 0.1.3 (modules `9cb136a`), Live-tested 2026-10-22 (Save As and Collect All keep the id) (user, 2026-10-22: `note` joins the 0.1.3 release with `vol`).
 Trigger: the user wants a note per Set for general reminders, written in Markdown.
 
 **Parent:** [0004](0004-command-platform.md)
@@ -113,8 +113,8 @@ full text.
 
 ## Open questions
 
-- Does `Song.set_data` survive saving, reloading, Save As, and Collect All and Save?
-- Does `Song.set_data` mark the Set as modified? Tags needed a trick for this on tracks.
+- ~~Does `Song.set_data` survive saving, reloading, Save As, Collect All?~~ Yes (Live test 2026-10-22).
+- ~~Does `Song.set_data` mark the Set as modified?~~ No; `set_id` uses the tags trick.
 - Does the SDK know the Set's name or path? It would fill the "last seen as" line.
 - The renderer: a library or our own code, and how many kB each costs.
 - Later:

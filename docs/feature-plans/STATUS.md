@@ -61,12 +61,13 @@ Open from the releases:
 - First run (user): test Set open, `npm start`, restart the agent sessions, allow the `cmdabl` MCP
   server; then the architect runs core's checks and the rest of the `vol` list.
 
-## Built, Live test pending: `note` (branch `feat/note`, plan 0013, joins 0.1.3)
+## Built, Live-tested 2026-10-22: `note` (branch `feat/note`, plan 0013, joins 0.1.3)
 
 - bridge `f9c1f76` (`set_id`, script 0.1.8); core `d9d5a9f` (`api.set.id`, `api.files`); ui `8f47aab`,
   `2507215`, `6273e68` (page, Cmd+S saves and closes, `changed` flag); modules `9cb136a` (`note`, `-e`).
 - Docs: `34d468b` (using.md, remote-script.md token line, authoring guide); Save As / Collect All claim after the Live test.
-- Live (user): `cmdabl setup` + restart Live for 0.1.8; the page; save, reopen, Save As, Collect All.
+- Live test passed (2026-10-22): page and keys, first save creates the id and file, Save As keeps
+  the note (same id), Collect All and Save keeps it, Esc guard. Docs claim for Save As/Collect All: docs.
 
 ## Next (user, 2026-10-20/21)
 
