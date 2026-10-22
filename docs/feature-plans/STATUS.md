@@ -61,6 +61,13 @@ Open from the releases:
 - First run (user): test Set open, `npm start`, restart the agent sessions, allow the `cmdabl` MCP
   server; then the architect runs core's checks and the rest of the `vol` list.
 
+## Ready to release: 0.1.3 (branch `feat/note`, contains `docs/pakabl-listing-image`, `feat/vol`, `feat/test-mcp`)
+
+- `vol`, `note`, MCP test access and screenshot tools (dev only), Remote Script 0.1.8.
+- Release docs review done: docs `01aa92b`; screenshots `71bb32d` (note view/edit, vol stop/clip,
+  bridge 0.1.8), taken by cmdabl-docs through MCP.
+- Release notes: run `cmdabl setup` once and restart Live.
+
 ## Built, Live-tested 2026-10-22: `note` (branch `feat/note`, plan 0013, joins 0.1.3)
 
 - bridge `f9c1f76` (`set_id`, script 0.1.8); core `d9d5a9f` (`api.set.id`, `api.files`); ui `8f47aab`,
