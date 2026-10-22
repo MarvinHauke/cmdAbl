@@ -61,7 +61,7 @@ Open from the releases:
 - First run (user): test Set open, `npm start`, restart the agent sessions, allow the `cmdabl` MCP
   server; then the architect runs core's checks and the rest of the `vol` list.
 
-## Ready to release: 0.1.3 (branch `feat/note`, contains `docs/pakabl-listing-image`, `feat/vol`, `feat/test-mcp`)
+## Released: 0.1.3 (2026-10-22, PR #17 `27b977a`, tag `v0.1.3`)
 
 - `vol`, `note`, MCP test access and screenshot tools (dev only), Remote Script 0.1.8.
 - Release docs review done: docs `01aa92b`; screenshots `71bb32d` (note view/edit, vol stop/clip,
