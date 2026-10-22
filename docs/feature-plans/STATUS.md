@@ -44,8 +44,9 @@ Open from the releases:
 - Limits: `stop` (default) / `--clip` (`-c`), no question (modules `2db0dc5`; rule in `src/modules/relative.ts`).
 - Live test: relative/absolute on `#drums`, decimals, the +6 and -inf limits, `/Main`, a chain gives
   exit 2, one Cmd+Z per run, displayed dB matches the log within 0.1 dB.
-- Live test (2026-10-22): stop, `--clip`, the -69.6 floor, `--set`, usage errors pass. Not shown in the
-  test: Cmd+Z, a fader at -inf next to others (stop), `/Main`, a chain (exit 2). Follow-ups done: core
+- Live test (2026-10-22): stop, `--clip`, the -69.6 floor, `--set`, usage errors pass. Rest checked through
+  MCP the same day (-inf next to others, `/Main`, chain exit 2, exit 4 headless); Cmd+Z by the user: one
+  step per run. Follow-ups done: core
   `f40a89a` (history no longer quotes numbers); modules (limit messages grouped by end, 5 tracks max).
 - Docs done: docs `6b01c88` (using.md "Fader levels: `vol`", authoring guide `volume`/`setVolume`).
 
@@ -55,6 +56,8 @@ Open from the releases:
   `tools/mcp/`, `.mcp.json`), `a952068` (`/reset` releases a stuck run).
 - Agent rules: `CLAUDE.md` and builder files (`dafe861`). Docs: develop.md "Testing in Live with
   MCP" (`326cefc`).
+- First MCP run 2026-10-22: works after core `0812943` (Live's host has no global `URL`). State,
+  bridge, 19 `vol`/`goto` lines ran headless. Open: busy check, not-running check.
 - First run (user): test Set open, `npm start`, restart the agent sessions, allow the `cmdabl` MCP
   server; then the architect runs core's checks and the rest of the `vol` list.
 
