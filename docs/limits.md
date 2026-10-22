@@ -59,7 +59,7 @@ already know about each one.
 
 ## Remote Script
 
-- **Selection, tags and chain changes need the Remote Script.** Without it, `goto`, `find`, `next`, `prev`, `tag` and
+- **Selection, tags, notes and chain changes need the Remote Script.** Without it, `goto`, `find`, `next`, `prev`, `tag`, `note` and
   mute or solo of rack chains do not work. See [what works without it](remote-script.md#what-works-without-it).
 - **Two copies of Live.** If a second copy of Live starts, its script cannot open the port and writes a new token
   file. The first copy keeps its own token, and its changes are refused. Workaround: restart the first copy.

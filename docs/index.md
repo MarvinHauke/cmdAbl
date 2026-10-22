@@ -34,8 +34,8 @@ For users:
 
 - [Getting started](getting-started.md): install cmdAbl, set up the key and the Remote Script, and run your first
   commands.
-- [Using cmdAbl](using.md): the palette, how names are written, the pick list, pads and chains, `find`, tags, the
-  log and the history.
+- [Using cmdAbl](using.md): the palette, how names are written, the pick list, pads and chains, `find`, tags, fader levels with
+  `vol`, a note per Set, the log and the history.
 - [Remote Script](remote-script.md): what it does, how to update and check it, and what its messages mean.
 - [Commands](reference/commands.md): every command, generated from the code.
 - [Known limits](limits.md): what cmdAbl cannot do, and macOS only for now.

@@ -64,9 +64,11 @@ These commands ship with cmdAbl. Each feature is a module that declares its comm
 - `next`, `prev`: go to the next or previous match of the last `find`.
 - `mute`, `solo`: toggle mute or solo on tracks, chains and drum pads.
 - `arm`: toggle record arm on tracks.
+- `vol`: change the fader level of tracks in dB, by a step or to a level.
 - `tag`: tag tracks; `tag -l` opens the tag board, `tag -e` switches one tag on many tracks, `tag -r` renames a tag.
 - `help`, `man`, `lom`: list the commands; show a command's full page in Live, or open the Live manual or the cmdAbl
   documentation; show the Live Object Model path of a track, device or chain.
+- `note`: open the Markdown note of the Live Set.
 - `history`: manage the list of recent commands.
 - `pakabl`: install and manage Ableton Live extensions.
 - `cmdabl setup`, `cmdabl bridge`, `cmdabl log`: install the key trigger and the Remote Script; show the Remote
@@ -81,8 +83,8 @@ More: [Commands](https://marvinhauke.github.io/cmdAbl/reference/commands/) for t
 - **Ableton Live with Extensions support.** The Extensions SDK is in beta; cmdAbl is built against version 1.0.0-beta.1.
 - **[Karabiner-Elements](https://karabiner-elements.pqrs.org)** (free), for the `:` key. It is optional: the palette
   also opens from Live's context menu.
-- **The cmdAbl Remote Script** (0.1.6, shipped with cmdAbl). `cmdabl setup` installs it; then choose it as Control
-  Surface in Live. Selecting objects, mute and solo on rack chains and Drum Rack pads, and tags need it.
+- **The cmdAbl Remote Script** (0.1.8, shipped with cmdAbl). `cmdabl setup` installs it; then choose it as Control
+  Surface in Live. Selecting objects, mute and solo on rack chains and Drum Rack pads, tags and notes need it.
 
 More: [Getting started → What you need](https://marvinhauke.github.io/cmdAbl/getting-started/#what-you-need)
 

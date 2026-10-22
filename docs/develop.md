@@ -81,6 +81,9 @@ project's `.mcp.json` registers it (`npx tsx tools/mcp/main.ts`); `npm run mcp` 
 | `cmdabl_log(n)` | Returns the last `n` log lines. |
 | `cmdabl_bridge()` | Says whether the Remote Script is connected and how fast it answers. |
 | `cmdabl_state()` | Says whether a palette or dialog is open, so a run would be busy. |
+| `cmdabl_show(line)` | Opens a command's dialog in Live, as if typed in the palette, and returns at once. An empty line opens the empty palette. |
+| `cmdabl_keys(text, key)` | Brings Live to the front and types text or presses one key from a short allowed list. Needs Accessibility access for your terminal app. |
+| `cmdabl_capture(name, target)` | Saves one Live window to `captures/<name>.png` (not committed): `dialog` is the frontmost cmdAbl dialog, `live` is Live's main window. |
 
 When cmdAbl is not running, the tools say so within about 12 seconds.
 
@@ -89,9 +92,11 @@ When cmdAbl is not running, the tools say so within about 12 seconds.
 1. Open a test Set in Live.
 2. Start `npm start`.
 3. Start Claude Code in the repository and allow the project's MCP server.
-4. Run test lines with `cmdabl_run` and check the log lines with `cmdabl_log`.
+4. Run test lines with `cmdabl_run` and check the log lines with `cmdabl_log`. To look at a dialog, open it with
+   `cmdabl_show`, capture it with `cmdabl_capture` and close it with `cmdabl_keys`. A capture can show private names,
+   so check it before you use it anywhere.
 
-What needs eyes or hands stays manual: how a dialog looks, Cmd+Z, moving a control.
+What needs eyes or hands stays manual: Cmd+Z and moving a control.
 
 ## Build the docs site
 

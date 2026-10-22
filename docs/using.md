@@ -164,16 +164,18 @@ want explicitly, like Cmd-clicking the buttons in Live.
 - Decimals work: `vol -1.5 /Bass`, `vol .5 #drums`.
 - Targets are tracks: regular, return, group and the main track (`/Main`), by path, name or tag. A rack chain or
   Drum Rack pad is refused with "vol works on tracks for now".
-- A successful move is quiet. One run is one Cmd+Z step. Levels are as precise as Live's display, 0.1 dB.
+- A move that went as typed is quiet, and so is a `--set` that changes a fader; if nothing moves, it says "nothing changed". One run is one Cmd+Z step. Levels are as precise as Live's display, 0.1 dB.
 
 **Limits.** A fader goes up to +6 dB (Live's maximum) and down to -inf. The lowest level above -inf is -69.6 dB.
 
 - By default, if one fader would cross a limit, the step is shortened for every fader, so the balance stays. The
   message reads, for example, "vol 9: moved +3.0 dB, /Kick reached +6 dB (the maximum)". If nothing can move, it
-  reads "nothing changed: /Kick is at +6 dB (the maximum)".
+  reads "nothing changed: /Kick is at +6 dB (the maximum)". Going down, that message adds "use --clip or --set -inf
+  to go lower".
 - With `--clip` (short `-c`), each fader moves by the full step. The faders at a limit stop there and lose their
   balance. Below -69.6 dB a fader goes to -inf. The message reads "limit reached at +6 dB (the maximum): /Bass,
-  /Lead, …".
+  /Lead, …". It names at most five tracks, then "+N more"; the log has them all. A fader already at -inf is left
+  out.
 - A fader at -inf stays there with a relative step. Only `--set` brings it back.
 - `--clip` together with `--set` is a usage error, and so is a relative `-inf`; use `vol --set -inf`.
 
