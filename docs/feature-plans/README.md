@@ -28,7 +28,7 @@ Progress across all plans is tracked in [`STATUS.md`](STATUS.md): what is on whi
 waits for a Live test, and known issues. This page is the map: what exists, and what comes next in
 which order.
 
-## Where each plan stands (2026-10-22, after 0.1.3)
+## Where each plan stands (2026-10-23, after 0.1.4)
 
 ### Released
 
@@ -44,6 +44,7 @@ which order.
 | [0012](0012-vol-and-dca.md) | `vol` and `dca` | 0.1.3 (`vol`) | `vol` relative and `--set`, `stop`/`--clip` at limits. `dca` is a draft. |
 | [0013](0013-set-note.md) | Set note | 0.1.3 | `note`, `note -e`; the Set id in the Set; `api.files`. |
 | [0016](0016-test-mcp.md) | Test access for agents | 0.1.3 (dev builds) | `/run`, `/show`, `/log`; MCP tools to run, screenshot and record. |
+| [0006](0006-completion-engine.md) | Completion engine | 0.1.4 (steps 1–2) | Argument completion at every position, completers for modules, the palette switch Off · Hints · Options. Open: paths level by level (step 3), ghost text for the best word (step 4), the server variant. |
 
 [0001](0001-path-addressed-objects-and-commands.md) (path-addressed objects) and
 [0004](0004-command-platform.md) (the platform umbrella) are mostly built through the plans above.

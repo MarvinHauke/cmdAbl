@@ -5,7 +5,7 @@ known issues. Maintained by the architect. The order of the next features and ho
 each other is in the [plan index](README.md#next-in-dependency-order); design decisions live in the
 numbered plans. Finished work is in the git history, not here.
 
-_Last updated: 2026-10-22 (cleanup after 0.1.3)._
+_Last updated: 2026-10-23 (cleanup after 0.1.4)._
 
 ## Released
 
@@ -15,6 +15,7 @@ _Last updated: 2026-10-22 (cleanup after 0.1.3)._
 | 0.1.1 | 2026-10-21 | Tags on tracks (`#tag`, `!#tag`, `--pick`), `man <command>`; script 0.1.5 | #13 |
 | 0.1.2 | 2026-10-21 | Tag board, `tag -e`, `tag -r`, `cmdabl log`, nested racks; script 0.1.6 | #14 |
 | 0.1.3 | 2026-10-22 | `vol`, `note`, agent test access (dev builds); script 0.1.8 | #17 |
+| 0.1.4 | 2026-10-23 | Argument completion, palette switch Off · Hints · Options, `settings.json` | #21 |
 
 All releases were tested in Live, including the installed `.ablx`.
 
@@ -22,11 +23,8 @@ All releases were tested in Live, including the installed `.ablx`.
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push). The private mirror's `main` follows it.
-- Built, Live-tested through MCP (2026-10-22): argument completion (plan 0006 steps 1–2, 0.1.4,
-  branch `feat/completion`). Snapshot at palette open: 3 ms warm, about 220 ms on the first open of a
-  session (cold tag cache). Plus the palette switch "Above the prompt: Off · Hints · Options"
-  (`palette.above` in `settings.json`, the first piece of the store), Live-tested. Docs and images
-  done. Next: release 0.1.4, then plan 0017 (scripts and triggers) first.
+- In work: `;` chains (plan 0017), built and Live-tested through MCP on `feat/chain`; then 0017
+  phase 1 (script files, `run`).
 - How testing works since 0.1.3: the architect runs Live test lists through the `cmdabl_*` MCP tools
   (plan 0016) once the user has started `npm start` with a test Set; the user gets a short list of
   the core features to try by hand (`CLAUDE.md`, "Agent team").
