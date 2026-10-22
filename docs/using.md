@@ -64,6 +64,8 @@ If you switch while the palette is open, the layout changes fully at the next op
 
 ![The palette in Hints mode after `tag -`: the panel above the prompt lists the options of tag in columns, and the list below the prompt shows the same options. The footer switch is set to Hints.](assets/images/above-hints.png)
 
+![The palette in Options mode after `tag `: the six options of tag above the prompt, the grey hint `[<target>]` after it, the tracks below, and the footer switch set to Options.](assets/images/above-options.png)
+
 ## Name the objects
 
 A command takes objects as text. cmdAbl reads that text as follows:
