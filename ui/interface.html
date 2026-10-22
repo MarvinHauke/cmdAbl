@@ -79,7 +79,9 @@
       padding: 6px 12px 4px; font-size: 11px; line-height: 18px; user-select: none; cursor: default;
     }
     #hintsBody .hint { display: contents; }
-    #hintsBody .hk { color: var(--accent); font-weight: 600; white-space: nowrap; }
+    #hintsBody .hk { position: relative; color: var(--accent); font-weight: 600; white-space: nowrap; }
+    #hintsBody .cur .hk::before { content: '▸'; position: absolute; left: -10px; }
+    #hintsBody .cur .hv, #hintsBody .cur .hd { color: var(--text); }
     #hintsBody .hv { color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #hintsBody .hd { color: var(--dim); opacity: .75; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -159,7 +161,6 @@
     const startAbove = ABOVE.includes(SETTINGS?.above) ? SETTINGS.above : 'off';
     let above     = startAbove;   // what sits above the prompt (args mode only): nothing, a hint panel, or a selectable tool zone
     let hintRows  = [];     // the panel's rows (read-only): the command's options and subcommands
-    let inList    = false;  // the tool rows are in the list below (after `-`, or subcommands at a group position)
     let dashed    = false;  // the word at the caret starts with `-`: the options are the list
     let view      = null;    // args mode: { replace: {from, to}, usage }
 
@@ -206,7 +207,6 @@
       view = null;
       hintRows = [];
       dashed = false;
-      inList = false;
       if (mode === 'args') {
         if (!COMPLETION) return [];
         const res = CmdComplete.complete(raw, caret, COMPLETION);
@@ -224,8 +224,7 @@
           return [...tool, ...hist, ...set];
         }
         const toolInList = dashed || (!set.length && tool[0]?.type === 'command');
-        inList = toolInList && tool.length > 0;
-        hintRows = above === 'hints' && !toolInList ? tool : [];
+        hintRows = above === 'hints' ? fullTool(raw, res, tool) : [];
         return [...hist, ...set, ...(toolInList ? tool : [])];
       }
       const part = wordAtCaret();
@@ -254,6 +253,15 @@
       return zoned(rank(query).filter(item =>
         !(item.type === 'command' && item.id.includes(' ')
           && query.length > item.id.length && query.startsWith(item.id))));
+    }
+
+    // The hint panel shows the command's whole set of tool rows, also while the word at the caret
+    // is filtering them (`-`, `--ed`) or they are listed below: complete() again with that word removed.
+    function fullTool(raw, res, tool) {
+      const { from, to } = res.replace;
+      if (from === to) return tool;
+      const again = CmdComplete.complete(raw.slice(0, from) + raw.slice(to), from, COMPLETION);
+      return again.items.filter(r => r.zone === 'tool').map(r => ({ type: r.kind, zone: r.zone, title: r.label, subtitle: r.description, insert: r.insert }));
     }
 
     // Word 0: one list below the prompt in ranking order (index 0 is the best row overall, the
@@ -366,13 +374,13 @@
 
     // ── ghost: the usage of this position, display only ────────────────────
     // CmdComplete's `usage` (`<old>`, `<command>`, `[<targets>…]`), shown behind the caret
-    // when it is at the end of the line and the current word is empty or matches nothing.
+    // when it is at the end of the line and the word at the caret is empty (right after a space).
     // The one owner of #ghost; it never affects Enter or Tab.
     function updateGhost() {
       let hint = null;
       const v = input.value;
       if (mode === 'args' && view?.usage && (input.selectionStart ?? v.length) === v.length && input.selectionEnd === v.length
-          && (view.replace.from === view.replace.to || !items.length)) {
+          && view.replace.from === view.replace.to) {
         hint = (/\s$/.test(v) ? '' : ' ') + view.usage;
       }
       ghostMirror.textContent = hint ? v : '';
@@ -385,7 +393,7 @@
     function fillZone(zone, name, tail, empty, wordZeroNote) {
       const cmd = mode === 'args' ? /^\s*(\S+)/.exec(input.value)?.[1] : null;
       zone.querySelector('.zhead').textContent = name + (cmd ? ' · ' + cmd + tail : '');
-      zone.querySelector('.znote').textContent = !empty ? '' : mode === 'args' ? (inList ? 'Listed below' : 'No options here') : wordZeroNote;
+      zone.querySelector('.znote').textContent = !empty ? '' : mode === 'args' ? 'No options here' : wordZeroNote;
     }
 
     // ── render ─────────────────────────────────────────────────────────────
@@ -433,7 +441,8 @@
         let n = 0;
         while (n < words.length && /^(-\w+,?|<[^>]*>|\[[^\]]*\]\S*)$/.test(words[n])) n++;
         const cell = document.createElement('div');
-        cell.className = 'hint';
+        const cur = items[activeIdx];
+        cell.className = 'hint' + (cur && cur.zone === 'tool' && cur.title === h.title ? ' cur' : '');   // the row highlighted in the list
         const k = document.createElement('span'); k.className = 'hk'; k.textContent = h.title;
         const v = document.createElement('span'); v.className = 'hv'; v.textContent = words.slice(0, n).join(' ');
         const d = document.createElement('span'); d.className = 'hd'; d.textContent = words.slice(n).join(' ');
