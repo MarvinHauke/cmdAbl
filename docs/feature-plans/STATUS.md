@@ -26,7 +26,7 @@ All releases were tested in Live, including the installed `.ablx`.
   branch `feat/completion`). Snapshot at palette open: 3 ms warm, about 220 ms on the first open of a
   session (cold tag cache). Plus the palette switch "Above the prompt: Off · Hints · Options"
   (`palette.above` in `settings.json`, the first piece of the store), Live-tested. Docs and images
-  done. Next: release 0.1.4.
+  done. Next: release 0.1.4, then plan 0017 (scripts and triggers) first.
 - How testing works since 0.1.3: the architect runs Live test lists through the `cmdabl_*` MCP tools
   (plan 0016) once the user has started `npm start` with a test Set; the user gets a short list of
   the core features to try by hand (`CLAUDE.md`, "Agent team").

@@ -52,26 +52,21 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
 ### Next, in dependency order
 
 ```
-                       ┌─> 0006 completion (arguments, paths, ghost text)
-0005 step 3 snapshots ─┘
-0008 store ──> aliases ──> 0009 `;` action lists ──> 0009 triggers (later)
-0015 link ──┬─> pan / send (0009 value changes, same rules as vol)
-            └─> 0012 dca (needs the insert_device / macro spike too)
-0007 themes and replacement pages (independent)
-0002 phase B, 0001 rm/select (independent, small)
+0017 phase 1 script files (run) ──> 0017 phase 2 clip/scene triggers (bridge addition, spike)
+0009 `;` action lists ──> 0008 aliases ──> 0017 phase 3 (&&, $1)
+0006 step 3 paths level by level ──> device on/off (`bypass`)
+0015 link ──┬─> pan / send
+            └─> 0012 dca
 ```
 
-1. **Argument completion** ([0006](0006-completion-engine.md) steps 1–2, on [0005](0005-command-tree-and-module-authoring.md)
-   step 3). The palette completes command names today but not their arguments; every command
-   gets better from it. First: the tree and completer snapshots in the palette payload.
-2. **The store and aliases** ([0008](0008-tags-and-aliases.md) 0.1.x part). A settings file in the
-   data folder (`api.files` exists since 0.1.3), aliases as saved command lines, history that
-   survives a restart. Prerequisite for `;` action lists.
-3. **`link`** ([0015](0015-link.md)). Named controls with rules at the limits; `relative.ts` from
-   `vol` moves into it, and the Set data it needs is proven by `note`. Prerequisite for `pan`/`send`
-   with the same rules and for `dca`.
-4. **`pan` and `send`** ([0009](0009-ideas-from-clyphx.md) value changes) on top of `link`.
-5. **`dca`** ([0012](0012-vol-and-dca.md)), with its own detailed plan and a spike first.
+1. **Scripts and triggers** ([0017](0017-scripts-and-triggers.md)), first (user, 2026-10-23):
+   `.cmdabl` files run with `run`; then clips and scenes run them on launch, so the Session grid works
+   as a matrix of commands. Phase 2 needs a bridge addition (script → cmdAbl), still to be decided.
+2. **`;` action lists and aliases** ([0009](0009-ideas-from-clyphx.md), [0008](0008-tags-and-aliases.md));
+   the store exists since 0.1.4.
+3. **Paths level by level** ([0006](0006-completion-engine.md) step 3): the hierarchy in lists such as
+   `mute `; then device on/off as `bypass` (alias `bp`).
+4. **`link`** ([0015](0015-link.md)), then `pan`/`send` and **`dca`** ([0012](0012-vol-and-dca.md)).
 
 ### Later and ideas
 
@@ -97,7 +92,8 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
  ├─ 0012  vol and dca
  ├─ 0013  note
  ├─ 0015  link (named controls with rules for numeric values)
- └─ 0016  Test access for agents
+ ├─ 0016  Test access for agents
+ └─ 0017  Scripts and triggers (.cmdabl files, run from clips and scenes)
 0001  Path-addressed objects & commands   (consumer of 0004)
 0003  pakabl extension system             (consumer of 0005)
 ```
