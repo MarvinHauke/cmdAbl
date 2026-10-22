@@ -116,6 +116,21 @@ The agents can make documentation images themselves, so images follow the code i
   - Accessibility for the terminal app (System Settings → Privacy & Security → Accessibility);
   - the first `cmdabl_keys` call asks to allow control of "System Events" (Automation).
 
+### 6. Recordings for the docs (user, 2026-10-22)
+
+- **`cmdabl_record(name, seconds)`** (1–30 s): brings Live to the front, reads the bounds of Live's main
+  window (as `cmdabl_capture` does), and starts `screencapture -v -V <seconds> -R x,y,w,h
+  captures/<name>.mov` in the background. It answers at once; the actions follow with `cmdabl_show` and
+  `cmdabl_keys`. `cmdabl_record_status(name)` says whether it is still recording and the file size.
+- **Pacing:** `cmdabl_keys` gets an optional `delayMs` per character (0–300, default 0), so typing can
+  be followed in a recording.
+- **Conversion:** `cmdabl_convert(name, format: "mp4"|"gif", width?, crop?)` runs `ffmpeg` on
+  `captures/<name>.mov` → `captures/<name>.mp4|gif` (mp4: H.264, CRF about 24, no audio; gif: a palette
+  pass, about 12 fps). The output stays in `captures/`; docs moves the final file.
+- **Limits:** a recording is a screen area, not a single window: whatever covers Live (notifications,
+  other windows) is recorded too. The user turns on Do Not Disturb; docs checks every frame of the
+  result before it is committed. Keys only, no mouse.
+
 ## Risks
 
 | Risk | Fix |
