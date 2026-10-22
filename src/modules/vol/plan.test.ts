@@ -23,14 +23,11 @@ test("formatDb: one decimal, -inf, no negative zero", () => {
 test("absolute: the fader goes to the level whatever it was", () => {
   const p = planAbsolute(dbToValue(-20).value, -6);
   assert.ok(Math.abs(p.newDb - -6) <= 0.1);
-  assert.equal(p.limit, undefined);
 });
 
-test("past +6 dB the fader stops at the maximum and says so; -inf is allowed", () => {
-  const p = planAbsolute(0.85, 9);
-  assert.deepEqual([p.newValue, p.limit], [1, "max"]);
-  const off = planAbsolute(0.85, -Infinity);
-  assert.deepEqual([off.newValue, off.limit], [0, "-inf"]);
+test("past +6 dB the fader stops at the maximum; -inf is allowed", () => {
+  assert.equal(planAbsolute(0.85, 9).newValue, 1);
+  assert.equal(planAbsolute(0.85, -Infinity).newValue, 0);
 });
 
 test("a move to the level the fader shows already is no move", () => {

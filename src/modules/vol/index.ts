@@ -84,7 +84,6 @@ export function activate(api: ModuleApi): void {
       if (absolute) {
         for (const { node, old } of readable) {
           const plan = planAbsolute(old, db);
-          if (plan.limit) limits.push({ path: node.path, end: plan.limit === "max" ? "+6 dB (the maximum)" : "-inf" });
           if (plan.same) unmoved.push(node);
           else moves.push({ node, plan });
         }

@@ -1,4 +1,4 @@
-import { dbToValue, valueToDb, type FaderLimit } from "../mixValue.js";
+import { dbToValue, valueToDb } from "../mixValue.js";
 
 /**
  * A level or step in dB as the user types it: a number (`-6`, `+2`, `-0.5`, `.5`) or `-inf`. Null for anything
@@ -48,8 +48,7 @@ export function faderMove(oldValue: number, newDb: number): FaderPlan {
   };
 }
 
-/** `vol --set <db>`: the fader goes to `db`; `limit` says the level was past an end (above +6 dB, or -inf / below the lowest step). */
-export function planAbsolute(oldValue: number, db: number): FaderPlan & { limit?: FaderLimit } {
-  const { limit } = dbToValue(db);
-  return { ...faderMove(oldValue, db), ...(limit ? { limit } : {}) };
+/** `vol --set <db>`: the fader goes to `db` (past +6 dB it stops at the top; -inf or below the lowest step it is silent). */
+export function planAbsolute(oldValue: number, db: number): FaderPlan {
+  return faderMove(oldValue, db);
 }

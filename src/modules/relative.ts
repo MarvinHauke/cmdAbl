@@ -19,7 +19,7 @@ export interface RelativeResult {
   newLevels: number[];
   /** The step every member moved by (`stop`: possibly shorter than asked; `clip`: as asked). */
   applied: number;
-  /** Indexes of members that reached an end: `stop` only when the step was shortened; `clip` those clamped or stuck at -Infinity. */
+  /** Indexes of members that reached an end: `stop` only when the step was shortened; `clip` those whose step was cut (clamped at the top or sent to -Infinity); a member already at -Infinity stays and is not listed. */
   limited: number[];
 }
 
@@ -35,10 +35,7 @@ export function applyRelative(levels: readonly number[], delta: number, rule: Re
     const limited: number[] = [];
     const newLevels = levels.map((level, i) => {
       if (delta === 0) return level;
-      if (level === -Infinity) {
-        limited.push(i);
-        return level;
-      }
+      if (level === -Infinity) return level; // stays; its step was not cut by anything, so it is not "limited"
       const target = level + delta;
       if (target > bounds.max) {
         limited.push(i);

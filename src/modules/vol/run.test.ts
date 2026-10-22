@@ -117,10 +117,14 @@ test("--clip: every fader follows the step, the ones past an end stop there and 
   assert.equal(fake.volumes.get("Perc"), 0);
 });
 
-test("--set never shortens and never asks; a level past an end is named", async () => {
+test("--set never shortens, never asks and never shows a limit message", async () => {
   const { run, fake } = setup({ Kick: 5 });
-  assert.equal((await run("20", [kick], { set: true })).message, "limit reached at +6 dB (the maximum): /Kick");
-  assert.equal((await run("-inf", [kick], { set: true })).code, ExitCode.OK);
+  const up = await run("20", [kick], { set: true });
+  assert.equal(up.message, undefined); // --set never shows a limit message; the log has old → new
+  assert.match(up.log!.join("\n"), /\/Kick: 5\.0 → 6\.0 dB/);
+  const off = await run("-inf", [kick], { set: true });
+  assert.equal(off.code, ExitCode.OK);
+  assert.equal(off.message, undefined);
   assert.equal(fake.volumes.get("Kick"), 0);
   assert.equal(fake.confirms.length, 0);
 });
@@ -198,12 +202,11 @@ test("limits are grouped by end: one line per end, five tracks named, the log ha
   const r = (await fake.commands[0]!.run!({ path: ["vol"], options: { clip: true }, args: [["10"], many] } as never, undefined as never)) as Result;
   assert.equal(r.message, "limit reached at +6 dB (the maximum): /A, /B, /C, /D, /E, +1 more");
   assert.match(r.log!.join("\n"), /limit reached at \+6 dB \(the maximum\): \/A, \/B, \/C, \/D, \/E, \/F$/m);
-  const two = await (async () => {
-    const f = createFakeApi({ nodes: many });
-    f.volumes.set("A", dbToValue(5).value);
-    f.volumes.set("G", 0); // at -inf: a step up leaves it there
-    activate(f.api);
-    return (await f.commands[0]!.run!({ path: ["vol"], options: { clip: true }, args: [["3"], [many[0]!, many[6]!]] } as never, undefined as never)) as Result;
-  })();
-  assert.equal(two.message, "limit reached at +6 dB (the maximum): /A\nlimit reached at -inf: /G");
+  // A fader already at -inf stays and is not listed: nothing cut its step.
+  const stuck = createFakeApi({ nodes: many });
+  stuck.volumes.set("A", dbToValue(5).value);
+  stuck.volumes.set("G", 0);
+  activate(stuck.api);
+  const sr = (await stuck.commands[0]!.run!({ path: ["vol"], options: { clip: true }, args: [["3"], [many[0]!, many[6]!]] } as never, undefined as never)) as Result;
+  assert.equal(sr.message, "limit reached at +6 dB (the maximum): /A");
 });

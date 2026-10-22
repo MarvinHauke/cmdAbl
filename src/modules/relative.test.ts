@@ -51,8 +51,8 @@ test("clip: every member follows the step, those past an end are clamped; past t
   assert.equal(down.applied, -10);
 });
 
-test("clip: a member at -inf stays and is reported (a step of 0 reports nothing)", () => {
+test("clip: a member at -inf stays and is not listed, its step was cut by nothing", () => {
   const r = applyRelative([-Infinity, -6], 2, "clip", bounds);
-  assert.deepEqual([r.newLevels, r.limited], [[-Infinity, -4], [0]]);
+  assert.deepEqual([r.newLevels, r.limited], [[-Infinity, -4], []]);
   assert.deepEqual(applyRelative([-Infinity], 0, "clip", bounds).limited, []);
 });
