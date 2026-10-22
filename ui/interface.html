@@ -58,14 +58,14 @@
     #above span.on { background: var(--bg-row); color: var(--accent); }
 
     /* ── selectable tool zone (above = options): best match at the bottom, next to the prompt; ~5 rows, then it scrolls ── */
-    #tools { flex: 0 0 auto; max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
+    #tools { flex: 0 0 auto; height: min(150px, 30vh); overflow-y: auto; scrollbar-gutter: stable; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
     #tools.hidden { display: none; }
     #tools > :first-child { margin-top: auto; }   /* sits at the bottom while the zone is short (safe with overflow) */
     #tools .row { flex-shrink: 0; }
 
     /* ── hint panel (above the prompt, which-key style): read-only, never takes a key ── */
     #hints {
-      flex: 0 0 auto; max-height: 84px; overflow-y: auto;
+      flex: 0 0 auto; height: min(84px, 18vh); overflow-y: auto; align-content: start; scrollbar-gutter: stable;
       display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0 12px;
       padding: 4px 12px; border-bottom: 1px solid var(--border);
       font-size: 11px; line-height: 16px; user-select: none; cursor: default;
@@ -77,7 +77,6 @@
 
     /* ── dropdown (Set zone, below the prompt) ── */
     #dropdown { flex: 1; overflow-y: auto; }
-    #dropdown.hidden { display: none; }
 
     .row {
       display: flex;
@@ -398,9 +397,11 @@
       };
 
       for (const i of displayOrder()) (items[i].pane === 'tool' ? tools : dropdown).appendChild(draw(items[i], i));
-      tools.classList.toggle('hidden', !tools.firstChild);
+      // The area above the prompt is reserved at a fixed height for the whole session in hints/options
+      // mode (empty at word 0), so the prompt and the list never move while typing.
+      tools.classList.toggle('hidden', above !== 'options');
       tools.scrollTop = tools.scrollHeight;   // the best row (the bottom one) in view
-      dropdown.classList.toggle('hidden', !dropdown.firstChild);
+      // The list keeps its place (and the footer its position) even when it is empty.
 
       // The hint panel: read-only, built from the command's tool rows.
       for (const h of hintRows) {
@@ -411,7 +412,7 @@
         cell.append(k, d);
         hintsEl.appendChild(cell);
       }
-      hintsEl.classList.toggle('hidden', !hintsEl.firstChild);
+      hintsEl.classList.toggle('hidden', above !== 'hints');
 
       document.querySelector('.row.active')?.scrollIntoView({ block: 'nearest' });
     }
