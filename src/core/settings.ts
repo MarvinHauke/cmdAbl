@@ -38,7 +38,7 @@ export interface PaletteSettings {
 export const toPaletteSettings = (values: SettingsValues): PaletteSettings => ({ above: values["palette.above"] });
 
 export interface SettingsStore {
-  /** The current values (read from disk once, then kept). */
+  /** The current values (read from disk, and again whenever the file changed since). */
   get(): Promise<SettingsValues>;
   /** Change values and save them. Resolves true when saved; the new values are in effect at once either way. */
   set(patch: Partial<SettingsValues>): Promise<boolean>;
@@ -48,7 +48,7 @@ export interface SettingsDeps {
   /** The extension's data folder. */
   base: string;
   warn: (text: string) => void;
-  fs?: Pick<typeof fsp, "readFile" | "writeFile" | "mkdir" | "rename" | "unlink">;
+  fs?: Pick<typeof fsp, "readFile" | "writeFile" | "mkdir" | "rename" | "unlink" | "stat">;
 }
 
 export const SETTINGS_FILE = "settings.json";
@@ -61,10 +61,23 @@ export function createSettingsStore(deps: SettingsDeps): SettingsStore {
   let values: SettingsValues | null = null;
   /** Keys this version does not know are kept when the file is written again. */
   let extra: Record<string, unknown> = {};
-  let loading: Promise<SettingsValues> | null = null;
   let saving: Promise<boolean> = Promise.resolve(true);
+  /** How the file looked when it was last read or written (modification time and size; "missing" when absent). */
+  let seen: string | null = null;
+
+  /** The file's present stamp. One cheap stat: the file is tiny. */
+  async function stamp(): Promise<string> {
+    try {
+      const st = await fs.stat(file);
+      return `${st.mtimeMs}:${st.size}`;
+    } catch {
+      return "missing";
+    }
+  }
 
   async function load(): Promise<SettingsValues> {
+    seen = await stamp(); // before the read: a change in between is picked up by the next get
+    extra = {};
     const loaded: SettingsValues = { ...SETTINGS_DEFAULTS };
     let text: string | null = null;
     try {
@@ -102,6 +115,7 @@ export function createSettingsStore(deps: SettingsDeps): SettingsStore {
       await fs.mkdir(deps.base, { recursive: true });
       await fs.writeFile(temp, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
       await fs.rename(temp, file);
+      seen = await stamp(); // our own write is not an outside edit
       return true;
     } catch (e: unknown) {
       deps.warn(`settings: cannot write ${SETTINGS_FILE} (${(e as NodeJS.ErrnoException)?.code ?? "error"})`);
@@ -110,30 +124,39 @@ export function createSettingsStore(deps: SettingsDeps): SettingsStore {
     }
   }
 
-  const get = async (): Promise<SettingsValues> => {
-    if (values) return values;
-    loading ??= load();
-    values ??= await loading;
-    return values;
+  /** One operation at a time, so a read never replaces the object a change is about to write. */
+  let lock: Promise<unknown> = Promise.resolve();
+  const exclusive = <T>(work: () => Promise<T>): Promise<T> => {
+    const run = lock.then(work, work);
+    lock = run.then(() => {}, () => {});
+    return run;
   };
 
+  /** The current values: read at the first call and again whenever the file changed since (an edit by hand takes effect at the next open). */
+  async function current(): Promise<SettingsValues> {
+    await saving; // our own pending write first, so it is not mistaken for an outside edit
+    if (values === null || (await stamp()) !== seen) values = await load();
+    return values;
+  }
+
   return {
-    get: async () => ({ ...(await get()) }),
-    async set(patch) {
-      const current = await get();
-      let changed = false;
-      for (const [key, value] of Object.entries(patch)) {
-        if (key in SETTINGS_DEFAULTS && fits(key as SettingKey, value) && (current as unknown as Record<string, unknown>)[key] !== value) {
-          (current as unknown as Record<string, unknown>)[key] = value;
-          changed = true;
+    get: () => exclusive(async () => ({ ...(await current()) })),
+    set: (patch) =>
+      exclusive(async () => {
+        const now = await current();
+        let changed = false;
+        for (const [key, value] of Object.entries(patch)) {
+          if (key in SETTINGS_DEFAULTS && fits(key as SettingKey, value) && (now as unknown as Record<string, unknown>)[key] !== value) {
+            (now as unknown as Record<string, unknown>)[key] = value;
+            changed = true;
+          }
         }
-      }
-      if (!changed) return saving; // nothing differs: no write (every Enter carries the settings along)
-      const snapshot = { ...extra, ...current };
-      // One write after the other, so two quick changes never race on the temporary file.
-      saving = saving.then(() => write(snapshot));
-      return saving;
-    },
+        if (!changed) return saving; // nothing differs: no write (every Enter carries the settings along)
+        const snapshot = { ...extra, ...now };
+        // One write after the other, so two quick changes never race on the temporary file.
+        saving = saving.then(() => write(snapshot));
+        return saving;
+      }),
   };
 }
 

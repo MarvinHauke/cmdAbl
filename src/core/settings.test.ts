@@ -80,7 +80,7 @@ test("creates the folder on the first write; a failing disk answers false with a
   const blocked = createSettingsStore({
     base: dir,
     warn: (t) => warnings.push(t),
-    fs: { readFile: async () => Promise.reject(Object.assign(new Error("x"), { code: "ENOENT" })), mkdir: async () => Promise.reject(Object.assign(new Error("x"), { code: "EACCES" })) as never, writeFile: async () => {}, rename: async () => {}, unlink: async () => {} },
+    fs: { readFile: async () => Promise.reject(Object.assign(new Error("x"), { code: "ENOENT" })), mkdir: async () => Promise.reject(Object.assign(new Error("x"), { code: "EACCES" })) as never, writeFile: async () => {}, rename: async () => {}, unlink: async () => {}, stat: async () => Promise.reject(Object.assign(new Error("x"), { code: "ENOENT" })) },
   });
   assert.equal(await blocked.set({ "palette.above": "options" }), false);
   assert.match(warnings.join("\n"), /cannot write settings.json \(EACCES\)/);
@@ -108,6 +108,34 @@ test("palette.above takes off, hints or options; any other value is the default 
   assert.deepEqual(await store.get(), { "palette.above": "off" });
   await store.set({ "palette.above": "hints" });
   assert.deepEqual(toPaletteSettings(await store.get()), { above: "hints" });
+});
+
+test("an edit of the file from outside is picked up at the next get; our own writes are not reloaded", async () => {
+  const dir = tmp();
+  const file = path.join(dir, SETTINGS_FILE);
+  const warnings: string[] = [];
+  const store = createSettingsStore({ base: dir, warn: (t) => warnings.push(t) });
+  assert.deepEqual(toPaletteSettings(await store.get()), { above: "off" });
+  fs.writeFileSync(file, JSON.stringify({ "palette.above": "hints" })); // by hand, after the first read
+  assert.deepEqual(toPaletteSettings(await store.get()), { above: "hints" });
+  fs.writeFileSync(file, JSON.stringify({ "palette.above": "options", "x": 1 }));
+  assert.deepEqual(toPaletteSettings(await store.get()), { above: "options" });
+  // a write of our own: in effect at once, and the written file is not read back as "changed"
+  await store.set({ "palette.above": "off" });
+  assert.deepEqual(toPaletteSettings(await store.get()), { above: "off" });
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")), { x: 1, "palette.above": "off" }); // the outside key survived
+  // the file removed: back to the defaults, quietly; a broken edit: defaults and ONE warning
+  fs.unlinkSync(file);
+  assert.deepEqual(toPaletteSettings(await store.get()), { above: "off" });
+  fs.writeFileSync(file, "{ nope");
+  await store.get();
+  await store.get();
+  await store.get();
+  assert.equal(warnings.length, 1);
+  // a quick set followed by get never loses the pending value
+  const racing = createSettingsStore({ base: tmp(), warn: () => {} });
+  void racing.set({ "palette.above": "hints" });
+  assert.deepEqual(toPaletteSettings(await racing.get()), { above: "hints" });
 });
 
 test("two quick changes are written one after the other; the last one wins", async () => {
