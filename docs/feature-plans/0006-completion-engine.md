@@ -4,7 +4,7 @@
 **Depends on:** [0005](0005-command-tree-and-module-authoring.md) (the tree and candidate snapshots).
 
 **Status:** Steps 1–2 planned for 0.1.4 (2026-10-22, reviewed; section "0.1.4: argument completion"
-below, waiting for the user's approval of the API additions). Drafted 2026-10-08 — replaces the palette's flat fuzzy search with hierarchical,
+below; API additions approved by the user 2026-10-22, in work on `feat/completion`). Drafted 2026-10-08 — replaces the palette's flat fuzzy search with hierarchical,
 shell-style completion driven by the command tree.
 
 ## Context

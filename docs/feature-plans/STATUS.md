@@ -22,7 +22,8 @@ All releases were tested in Live, including the installed `.ablx`.
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push). The private mirror's `main` follows it.
-- In work: nothing. Next is item 1 of the [plan index](README.md#next-in-dependency-order).
+- In work: argument completion (plan 0006 steps 1–2, 0.1.4, branch `feat/completion`): core, then ui
+  and modules.
 - How testing works since 0.1.3: the architect runs Live test lists through the `cmdabl_*` MCP tools
   (plan 0016) once the user has started `npm start` with a test Set; the user gets a short list of
   the core features to try by hand (`CLAUDE.md`, "Agent team").
