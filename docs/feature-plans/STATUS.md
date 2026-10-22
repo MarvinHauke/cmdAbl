@@ -47,7 +47,7 @@ Open from the releases:
 - Live test (2026-10-22): stop, `--clip`, the -69.6 floor, `--set`, usage errors pass. Not shown in the
   test: Cmd+Z, a fader at -inf next to others (stop), `/Main`, a chain (exit 2). Follow-ups done: core
   `f40a89a` (history no longer quotes numbers); modules (limit messages grouped by end, 5 tracks max).
-- Docs still to do: `vol` in using.md, `volume`/`setVolume` in the authoring guide's TracksPort row.
+- Docs done: docs `6b01c88` (using.md "Fader levels: `vol`", authoring guide `volume`/`setVolume`).
 
 ## Next (user, 2026-10-20/21)
 
