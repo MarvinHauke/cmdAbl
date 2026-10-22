@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. Two zones: tool rows (commands, subcommands, options) above the prompt, Set rows (paths, tags, values, history) below. -->
+<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. SETTINGS_PLACEHOLDER = null | { optionsAbove }. Out also carries { settings: { optionsAbove } } (alone on Esc after a toggle). Lists: one below the prompt (Set rows, then options); with `optionsAbove` the tool rows (subcommands, options) sit above it once a command is recognized. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -50,6 +50,11 @@
       caret-color: var(--accent);
     }
 
+    /* ── footer ── */
+    #foot { flex: 0 0 auto; padding: 4px 12px; border-top: 1px solid var(--border); color: var(--dim); font-size: 11px; }
+    #foot label { display: inline-flex; align-items: center; gap: 6px; cursor: default; user-select: none; }
+    #foot input { margin: 0; accent-color: var(--accent); }
+
     /* ── tool zone (above the prompt): best match at the bottom, next to the prompt; ~5 rows, then it scrolls ── */
     #tools { flex: 0 0 auto; max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
     #tools.hidden { display: none; }
@@ -90,6 +95,8 @@
 
   <div id="dropdown"></div>
 
+  <div id="foot"><label><input type="checkbox" id="above" tabindex="-1" /> Options above the prompt</label></div>
+
   <!-- Shared matcher, inlined as a `CmdMatch` global at build time. -->
   <script>/*MATCH_PLACEHOLDER*/</script>
 
@@ -103,6 +110,8 @@
     // null, or the snapshot CmdComplete.complete(line, cursor, COMPLETION) works on:
     //   { tree, completions, paths, tags }. null = no argument completion.
     const COMPLETION = /*COMPLETION_PLACEHOLDER*/null;
+    // null, or { optionsAbove }: the footer checkbox's initial state (false when absent).
+    const SETTINGS = /*SETTINGS_PLACEHOLDER*/null;
 
     const input     = document.getElementById('input');
     const dropdown  = document.getElementById('dropdown');
@@ -121,13 +130,17 @@
     let newLine   = null;  // rows + ranker without history lines, built on first use
     let chosen    = false; // the user moved the selection (arrows, Tab) since the last keystroke
     let mode      = 'word0'; // 'word0': fuzzy rows for the first word; 'args': CmdComplete rows
+    let optionsAbove = SETTINGS?.optionsAbove === true;   // tool rows above the prompt (args mode only)
+    let toggled   = false;   // the checkbox was flipped: the setting travels back even on Esc
     let view      = null;    // args mode: { replace: {from, to}, usage }
 
     // ── messaging ──────────────────────────────────────────────────────────
     // Returns a structured PaletteResult to the host as a JSON string (the
     // bridge can only carry one string); null/empty closes without acting.
     function send(result) {
-      const payload = result == null ? '' : JSON.stringify(result);
+      // The setting goes back with the answer; on Esc only when the checkbox was flipped (core runs nothing then).
+      const out = result != null ? { ...result, settings: { optionsAbove } } : toggled ? { settings: { optionsAbove } } : null;
+      const payload = out == null ? '' : JSON.stringify(out);
       const msg = { method: 'close_and_send', params: [payload] };
       if (window.webkit?.messageHandlers?.live) {
         window.webkit.messageHandlers.live.postMessage(msg);
@@ -168,7 +181,11 @@
         view = { replace: res.replace, usage: res.usage ?? null };
         const rows = res.items.map(r => ({ type: r.kind, zone: r.zone, title: r.label, subtitle: r.description, insert: r.insert }));
         const tool = rows.filter(r => r.zone === 'tool'), set = rows.filter(r => r.zone !== 'tool');
-        return [...tool, ...recentLines(raw, caret), ...set];
+        const hist = recentLines(raw, caret);
+        // Options on: the tool rows sit above the prompt (the zone shows only where this position has some).
+        // Off: one list below: history, then targets, then the options.
+        for (const r of tool) r.pane = optionsAbove ? 'tool' : 'list';
+        return optionsAbove ? [...tool, ...hist, ...set] : [...hist, ...set, ...tool];
       }
       const part = wordAtCaret();
       // The word before the caret is a complete command name: its arguments follow, no completion.
@@ -198,8 +215,8 @@
           && query.length > item.id.length && query.startsWith(item.id))));
     }
 
-    // Word 0: commands go in the tool zone, history and Live objects in the Set zone. The
-    // ranking order is kept (index 0 is the best row overall, the default highlight).
+    // Word 0: one list below the prompt in ranking order (index 0 is the best row overall, the
+    // default highlight); `zone` only records the kind of row.
     function zoned(rows) {
       return rows.map(i => i.zone ? i : Object.assign({}, i, { zone: i.type === 'command' && !i.id.includes(' ') ? 'tool' : 'set' }));
     }
@@ -212,21 +229,19 @@
         .slice(0, 3).map(i => ({ type: 'history', zone: 'set', title: i.id, subtitle: 'recent', line: i.id }));
     }
 
-    // The highlight with nothing chosen: the best word-0 row; in arguments the Set row nearest
-    // the prompt, or the best tool row when the Set zone is empty (`pakabl ` + Tab = best subcommand).
+    // The highlight with nothing chosen: the best word-0 row; in arguments the first target (path,
+    // tag or value; recent lines stay one ↑ above it), or at a group position the best subcommand
+    // (`pakabl ` + Tab). Options are matched by name and are only reached with ↑ / ↓ (-1 = none).
     function defaultIdx() {
       if (mode !== 'args') return 0;
-      const i = items.findIndex(r => r.zone === 'set');
-      if (i !== -1) return i;
-      // Nothing in the Set zone: a group position's subcommands (commands) still get a highlight; options
-      // are matched by name and are only ever reached with ↑ (-1 = nothing highlighted).
-      return items[0]?.type === 'command' ? 0 : -1;
+      const t = items.findIndex(r => r.zone === 'set' && r.type !== 'history');
+      return t !== -1 ? t : items.findIndex(r => r.type === 'command');
     }
 
-    // Rows top to bottom as drawn: the tool zone reversed (best next to the prompt), then the Set zone.
+    // Rows top to bottom as drawn: the tool zone reversed (best next to the prompt), then the list.
     function displayOrder() {
       const idx = items.map((_, i) => i);
-      return [...idx.filter(i => items[i].zone === 'tool').reverse(), ...idx.filter(i => items[i].zone !== 'tool')];
+      return [...idx.filter(i => items[i].pane === 'tool').reverse(), ...idx.filter(i => items[i].pane !== 'tool')];
     }
 
     // Splice a completion row into the line (args mode). `descend` (Tab, click) adds the
@@ -352,7 +367,7 @@
       };
 
       const order = displayOrder();
-      for (const i of order) (items[i].zone === 'tool' ? tools : dropdown).appendChild(draw(items[i], i));
+      for (const i of order) (items[i].pane === 'tool' ? tools : dropdown).appendChild(draw(items[i], i));
       tools.classList.toggle('hidden', !tools.firstChild);
       dropdown.classList.toggle('hidden', !dropdown.firstChild);
 
@@ -376,7 +391,7 @@
       const order = displayOrder();
       if (!order.length) return;
       if (activeIdx < 0) {   // nothing highlighted: ↑ goes to the best tool row, ↓ to the first Set row
-        const next = d < 0 ? items.findIndex(r => r.zone === 'tool') : items.findIndex(r => r.zone !== 'tool');
+        const next = d < 0 ? items.findIndex(r => r.pane === 'tool') : items.findIndex(r => r.pane !== 'tool');
         if (next === -1) return;
         activeIdx = next; chosen = true; render();
         return;
@@ -443,6 +458,17 @@
         moveSel(-1);
       }
     });
+
+    // The footer checkbox: toggling re-renders at once; keyboard focus stays in the input.
+    const aboveBox = document.getElementById('above');
+    aboveBox.checked = optionsAbove;
+    document.querySelector('#foot label').addEventListener('mousedown', e => {
+      e.preventDefault();   // no focus change, no native toggle
+      optionsAbove = !optionsAbove; toggled = true;
+      aboveBox.checked = optionsAbove;
+      chosen = false; render(); input.focus();
+    });
+    document.querySelector('#foot label').addEventListener('click', e => e.preventDefault());
 
     // ── init ───────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
