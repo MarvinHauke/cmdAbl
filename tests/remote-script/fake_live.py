@@ -96,6 +96,28 @@ class FakeTrackView(object):
         self.selected_device = None
 
 
+class FakeParam(object):
+    """A mixer parameter: Live's volume curve is faked as dB = 20*log10(value) (0 -> -inf)."""
+
+    def __init__(self, low=0.0, high=1.0):
+        self.min = low
+        self.max = high
+        self.value = 0.85
+        self.calls = []
+
+    def str_for_value(self, value):
+        self.calls.append(value)
+        if value <= 0:
+            return "-inf dB"
+        import math
+        return "%.1f dB" % (20 * math.log10(value))
+
+
+class FakeMixer(object):
+    def __init__(self):
+        self.volume = FakeParam()
+
+
 class FakeTrack(object):
     def __init__(self, name, devices=None, group=None, foldable=False, can_be_armed=True, arm=False):
         self.name = name
@@ -108,6 +130,7 @@ class FakeTrack(object):
         self._arm = arm
         self.can_show_chains = any(hasattr(d, "chains") for d in self.devices)
         self.is_showing_chains = False
+        self.mixer_device = FakeMixer()
         self.data = {}
         self.color_index = 5
         self.set_data_raises = False

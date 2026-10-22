@@ -21,6 +21,9 @@ site theme (`docs/stylesheets/`), and the UI guide when one is written.
 
 ## Rules
 
+- **Live tests through MCP:** follow `CLAUDE.md` ("Testing in Live through MCP"): only after the
+  architect passes on the user's go; split your test list into what you ran and what is left for
+  the user.
 - Use subagents when they make the work faster or better (a wide search, independent checks in
   parallel); your call.
 - Read first: `docs/feature-plans/0007-ui-surfaces.md` (the three surfaces and their contracts),

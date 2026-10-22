@@ -295,7 +295,7 @@ test("cmdabl: a group on the tree — usage generated, unknown subcommand is a u
   const bad = await run("cmdabl nope");
   assert.equal(bad.result.code, ExitCode.USAGE);
   assert.match(bad.result.message ?? "", /unknown subcommand "nope"/);
-  assert.match(bad.result.message ?? "", /valid: setup, log, bridge/);
+  assert.match(bad.result.message ?? "", /valid: setup, log, curve, bridge/);
   // the old flags are gone
   assert.equal((await run("cmdabl --setup")).result.code, ExitCode.USAGE);
   assert.equal((await run("cmdabl --bridge")).result.code, ExitCode.USAGE);
@@ -787,4 +787,74 @@ test("CommandNode.topic: a non-empty string; the registry lists it", async () =>
   registry.add({ name: "x", summary: "s", topic: "Mix", run: () => {} } as never);
   registry.add({ name: "y", summary: "s", run: () => {} } as never);
   assert.deepEqual(registry.list(), [{ name: "x", description: "s", topic: "Mix" }, { name: "y", description: "s" }]);
+});
+
+test("numbers are values, never options: -6, -0.5, +2, .5, inf, -inf (unless exactly a declared short)", () => {
+  const tree: CommandNode<void, string>[] = [
+    {
+      name: "vol",
+      summary: "v",
+      args: [{ name: "amount", kind: "text", required: false }, { name: "target", kind: "text", required: false, variadic: true }],
+      options: [{ name: "set", short: "s", takesValue: true, summary: "absolute" }, { name: "one", short: "1", summary: "a digit flag" }],
+      run: () => {},
+    },
+  ];
+  const args = (line: string) => {
+    const r = parse(line, tree);
+    return r.kind === "run" ? r.invocation.args : r.kind;
+  };
+  assert.deepEqual(args("vol -6 /x"), [["-6"], ["/x"]]);
+  assert.deepEqual(args("vol -0.5"), [["-0.5"], []]);
+  assert.deepEqual(args("vol +2"), [["+2"], []]);
+  assert.deepEqual(args("vol .5"), [[".5"], []]);
+  assert.deepEqual(args("vol -inf /x"), [["-inf"], ["/x"]]);
+  assert.deepEqual(args("vol +inf"), [["+inf"], []]);
+  const set = parse("vol --set -inf /x", tree);
+  assert.equal(set.kind, "run");
+  if (set.kind === "run") assert.equal(set.invocation.options.set, "-inf");
+  // exactly a declared short option stays an option; other dash words stay unknown options
+  const one = parse("vol -1", tree);
+  assert.equal(one.kind, "run");
+  if (one.kind === "run") assert.equal(one.invocation.options.one, true);
+  assert.equal(parse("vol -x", tree).kind, "error");
+  assert.equal(parse("vol -6x", tree).kind, "error");
+  assert.equal(parse("vol -s 1", tree).kind, "run");
+});
+
+test("cmdabl curve: sweeps 1001 values, logs the table, summarises; failures keep their code", async () => {
+  const { CommandRegistry } = await import("./commandRegistry.js");
+  const { registerBuiltins } = await import("./builtins.js");
+  const { runLine } = await import("./run.js");
+  const { parseDb } = await import("./curve.js");
+  assert.equal(parseDb("-6.0 dB"), -6);
+  assert.equal(parseDb("-inf dB"), -Infinity);
+  assert.equal(parseDb("+2.5 dB"), 2.5);
+  assert.equal(parseDb("loud"), null);
+  const table: string[] = [];
+  let asked: number[] = [];
+  const mk = (display: (v: number[]) => Promise<never>, hasTrack = true) => {
+    const registry = new CommandRegistry();
+    registerBuiltins(registry, { curve: { hasTrack: () => hasTrack, display: display as never, log: (l) => void table.push(l) } });
+    return (line: string) => runLine(line, { registry, liveNodes: () => [], pick: async () => null, bridge: () => ({ available: async () => ({ ok: true, value: undefined }) }) } as never);
+  };
+  // 0.85 -> 0 dB, 0 -> -inf, 1 -> +6 dB, one unparsable string
+  const run = mk((async (values: number[]) => {
+    asked = values;
+    return { ok: true, value: values.map((v) => (v === 0 ? "-inf dB" : v === 0.85 ? "0.0 dB" : v === 1 ? "6.0 dB" : v === 0.5 ? "??" : "-3.0 dB")) };
+  }) as never);
+  const out = await run("cmdabl curve");
+  assert.equal(asked.length, 1001);
+  assert.equal(asked[1], 0.001);
+  assert.equal(table.length, 101); // ten points to a line, 101 lines: the 500-line log keeps everything else
+  assert.ok(table[0]!.startsWith("0.000 -inf | 0.001 -3.0 | "));
+  assert.ok(table[85]!.startsWith("0.850 0.0 | "));
+  assert.equal(table[100], "1.000 6.0");
+  assert.match(String(out.result.message), /1000 of 1001 points measured/);
+  assert.match(String(out.result.message), /0 dB at value 0\.850/);
+  assert.match(String(out.result.message), /value 1\.0 = 6\.0 dB/);
+  assert.match(String(out.result.message), /could not parse 1: 0\.500: \?\?/);
+  const down = await mk((async () => ({ ok: false, code: 5, text: "Remote Script not running" })) as never)("cmdabl curve");
+  assert.equal(down.result.code, ExitCode.UNAVAILABLE);
+  assert.equal((await mk((async () => ({ ok: true, value: [] })) as never, false)("cmdabl curve")).result.code, ExitCode.NOT_FOUND);
+  assert.equal((await mk((async () => { throw new Error("x"); }) as never)("cmdabl curve")).result.code, ExitCode.UNAVAILABLE);
 });

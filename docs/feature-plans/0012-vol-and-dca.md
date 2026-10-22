@@ -1,6 +1,7 @@
 # `vol` and `dca`: fader levels and DCA groups on tags
 
-**Status:** Draft (2026-10-20). Order: after 0013, `vol` first, then `dca`. Trigger: the user wants the
+**Status:** `vol` built (2026-10-22, `feat/vol`: bridge `5d0b1b5`, core `540fe62`, modules `8537d24`), Live
+test pending, target 0.1.3. `dca` stays a draft and gets its own plan. Trigger: the user wants the
 DCA workflow of large mixing desks, built on tags (0008).
 
 **Parent:** [0004](0004-command-platform.md)
@@ -39,7 +40,10 @@ mute groups (`mute #drums`).
    - The Utility's Gain is that DCA's offset and its Mute is that DCA's mute. Several DCAs add up
      because the Utilities are in series, so no summing code is needed.
    - Each DCA's Gain can be automated in Live.
-3. **`vol` covers absolute and relative changes.** The syntax is still open (see Open questions).
+3. **`vol` is relative by default** (user, 2026-10-21): `vol -6 #drums` moves every drums fader by
+   -6 dB from where it is (Kick at -6 → -12, Perc at -3 → -9), so the balance stays.
+   **`--set` makes it absolute:** `vol --set -6 #drums` puts every fader at -6 dB (the same flag
+   name as `mute --set`).
 
 4. **`dca` moves back and gets its own detailed plan** (user, 2026-10-21), because it adds devices.
    Direction: one **"cmdAbl DCA" rack** per member track, with each Utility's Gain routed to a
@@ -62,17 +66,22 @@ mute groups (`mute #drums`).
 | | |
 |---|---|
 | What it changes | The track's `mixer.volume`, a DeviceParameter in the SDK (`docs/sdk-tree.md`), so no Remote Script is needed |
-| Targets | Paths, names and tags, as for `mute`: `vol /Bass -6`, `vol #drums -3` |
-| Behaviour | Destructive: it overwrites the fader values and works against volume automation. The result says so when the track has automation, if that can be read. |
-| Undo | Inside `withinTransaction`, one undo step |
-| Output | A successful write is quiet; the old and new values go to the log ([0011](0011-logging.md)) |
+| Targets | Paths, names and tags, as for `mute`: `vol -6 /Bass`, `vol 2 #drums` |
+| Relative (default) | `vol <dB> <target>…` adds `<dB>` to each fader's current level: Kick -6 → -12, Perc -3 → -9 with `vol -6 #drums` |
+| Absolute | `vol --set <dB> <target>…` sets each fader to `<dB>`; `-inf` is allowed |
+| Limits | A fader stops at Live's maximum (+6 dB) and at -inf. Relative steps follow a rule (user, 2026-10-22): **`stop`** (default) shrinks the step so no member crosses a limit and the balance stays; **`--clip`** (`-c`) moves each member by the full step and clamps the ones at a limit. A shortened step or a limit is named in a message; the log has the asked and the applied step. Members at -inf stay and don't block. `--set` has no rule. `keep` (remember the overflow) comes with [0015](0015-link.md). |
+| Behaviour | It overwrites the fader values. No automation warning for now (decided 2026-10-22); the command's description says it overwrites the fader. It is not marked `destructive` (the one-target confirmation), because a tag reaches all its members on purpose. |
+| Undo | All faders are read first, then written in one transaction: one Cmd+Z step, exact. The log's `undo: vol --set <old> <path>` lines restore to 0.1 dB. |
+| Output | A successful write is quiet; `/Kick: -6.0 → -12.0 dB` and the undo line go to the log ([0011](0011-logging.md)). A fader whose relative step was cut by a limit is named in a message; `--set` is quiet (the log has old → new). A relative step on a -inf fader leaves it at -inf and doesn't name it (only `--set` lifts it). Below -69.6 dB the fader goes to -inf. Chains: exit 2 for now. |
 
 ### The dB ↔ value helper (shared)
 
 - Live's volume parameter runs 0…1 and maps to dB non-linearly.
-- The spike checks whether the parameter's display string (`str_for_value` or `display_value`) can be
-  used to search for a value, or whether a fixed table is needed.
-- The helper goes in `src/modules/`, for example `src/modules/mixValue.ts`.
+- **Decided by measurement (2026-10-22):** `cmdabl curve` read Live's `str_for_value` for 1001 values
+  (through the bridge op `param_display`). The table is monotonic; 0 dB ≈ 0.850, 1.0 = +6 dB, linear
+  at 40 dB per unit from about 0.4 up; 0.001 = -69.6 dB.
+- `src/modules/mixTable.ts` holds the table; `src/modules/mixValue.ts` converts by interpolation and
+  binary search.
 
 ### `dca`
 
@@ -127,9 +136,12 @@ No large vendor offers an SDK for "DCA from a DAW". What can be used are the des
 
 ## Open questions
 
-- **`vol` syntax.** Recommended: calc operators. `vol #drums -6` sets the value; `vol #drums +=2` and
-  `vol #drums -=2` change it. The alternative is a flag, `vol #drums --by -2`.
-- Can the automation state of the volume parameter be read, so `vol` can warn?
+- Balance at limits: `stop`/`--clip` now; `keep` and named group controls later in [0015](0015-link.md).
+
+- ~~`vol` syntax~~ — decided (user, 2026-10-21): relative by default, `--set` for absolute.
+- Relative steps in dB do not reverse exactly near -inf or a fader limit (`vol -40` then `vol 40`);
+  the log's undo line therefore restores the old values with `vol --set`.
+- ~~Automation warning~~ — none for now (2026-10-22); revisit if the automation state becomes readable.
 - **Rack building through the LOM:** does `insert_device("Audio Effect Rack")` work, can chains be
   inserted, and does Utility's gain range cover what a DCA needs (about ±35 dB)?
 - Does `dca` also need to act on return tracks and group tracks? Probably yes. Group tracks carry
@@ -151,8 +163,10 @@ No large vendor offers an SDK for "DCA from a DAW". What can be used are the des
 
 - Every phase: `npm test` and `npm run build`.
 - Live:
-  - `vol #drums -6` sets every drums fader to -6 dB, and Cmd+Z undoes it in one step.
-  - `vol /Bass +=2` raises the fader by 2 dB.
+  - `vol -6 #drums` lowers every drums fader by 6 dB (Kick -6 → -12, Perc -3 → -9); Cmd+Z undoes it
+    in one step.
+  - `vol --set -6 #drums` puts every drums fader at -6 dB.
+  - `vol 2 /Bass` raises the fader by 2 dB.
   - `dca drums -3` inserts the rack with a "dca drums" Utility at -3 dB on every drums track; the
     faders are unchanged.
   - A second DCA on one track adds a second Utility, and both offsets are heard.

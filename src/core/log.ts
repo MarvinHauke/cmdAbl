@@ -46,6 +46,10 @@ export interface Log {
   lines(count?: number): string[];
   /** Like `lines`, with the time each line was written. */
   entries(count?: number): LogEntry[];
+  /** A position in the log: pass it to `since` later to get the lines written after it (a headless run's own lines). */
+  mark(): number;
+  /** The lines written after `mark` (the ones the ring buffer still holds), oldest first. */
+  since(mark: number): string[];
   /** Turn debug lines on or off for the session. */
   setDebug(on: boolean): void;
   debugOn(): boolean;
@@ -63,10 +67,12 @@ const pick = <T>(items: T[], count?: number): T[] => (count === undefined ? [...
 export function createLog(sink: LogSink = consoleSink, capacity = LOG_CAPACITY, now: () => number = Date.now): Log {
   const buffer: LogEntry[] = [];
   let debug = false;
+  let written = 0; // lines ever written: `mark` / `since` count with it, since the buffer drops old lines
 
   const write = (line: string, level: LogLevel): void => {
     const time = now();
     buffer.push({ time, line });
+    written++;
     if (buffer.length > capacity) buffer.splice(0, buffer.length - capacity);
     try {
       sink(line, level, time);
@@ -101,6 +107,8 @@ export function createLog(sink: LogSink = consoleSink, capacity = LOG_CAPACITY, 
     },
     lines: (count) => pick(buffer, count).map((e) => e.line),
     entries: (count) => pick(buffer, count).map((e) => ({ ...e })),
+    mark: () => written,
+    since: (mark) => pick(buffer, Math.max(0, written - mark)).map((e) => e.line),
     setDebug: (on) => {
       debug = on;
     },

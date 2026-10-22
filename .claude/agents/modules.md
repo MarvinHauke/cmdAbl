@@ -21,6 +21,9 @@ You build the commands of cmdAbl, a command palette for Ableton Live. You work a
 
 ## Rules
 
+- **Live tests through MCP:** follow `CLAUDE.md` ("Testing in Live through MCP"): only after the
+  architect passes on the user's go; split your test list into what you ran and what is left for
+  the user.
 - Use subagents when they make the work faster or better (a wide search, independent checks in
   parallel); your call.
 - Read first: `docs/feature-plans/0005-command-tree-and-module-authoring.md` (how a command is

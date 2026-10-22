@@ -1,6 +1,6 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./core/commandRegistry.js";
-import { logger } from "./core/log.js";
+import { appLog, logger } from "./core/log.js";
 import { runBoard } from "./core/board.js";
 import { helpForPath, usageForPath } from "./core/commandTree.js";
 import { createCommandProvider } from "./core/commandProvider.js";
@@ -12,6 +12,7 @@ import { registerBuiltins } from "./core/builtins.js";
 import { reportBridge } from "./core/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { getTagCache } from "./ableton/tagCache.js";
+import { paramDisplay, setId } from "./ableton/bridgeOps.js";
 import { findRacks, getChainNameCache } from "./ableton/chainNames.js";
 import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
@@ -22,11 +23,20 @@ import { quoteIfNeeded } from "./core/tokenize.js";
 import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/ui.js";
+import { createModuleFiles } from "./core/files.js";
+import { tokenFilePath } from "./ableton/bridgeToken.js";
+import * as path from "node:path";
+import { createUiGate, runHeadless } from "./core/headless.js";
+import { createDevRoutes, runTokenFilePath, type DevRoutes, writeRunToken } from "./devRoutes.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
+import { readVolume, writeVolume, type VolumeTrack } from "./core/volume.js";
 import { trackFor } from "./ableton/trackLookup.js";
 import { MODULES } from "./modules/index.js";
 
 const TRIGGER_PORT = 27184;
+
+/** Set by build.ts: true in development builds, false in `--production` (the code behind it is removed). */
+declare const CMDABL_DEV_ROUTES: boolean;
 
 export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");
@@ -39,7 +49,9 @@ export function activate(activation: ActivationContext) {
   // Every dialog goes through this — the platform never opens an HTML page itself.
   // One queue: a dialog never opens while another is open (see core/dialogQueue.ts).
   const dialogs = createDialogQueue();
-  const ui: Ui = createDefaultUi(context, dialogs);
+  // The gate passes everything through to the real dialogs, except during a headless run (plan 0016).
+  const gate = createUiGate(createDefaultUi(context, dialogs));
+  const ui: Ui = gate.ui;
   const providers: { provider: Provider; priority: number }[] = [];
   // The items of the palette that is open (or was opened last): a picked object row is found here.
   let paletteItems: PaletteItem[] = [];
@@ -97,19 +109,47 @@ export function activate(activation: ActivationContext) {
   }
 
   // ── core: the only commands baked in (see src/core/builtins.ts) ───────────
-  registerBuiltins(registry, { bridge: () => getBridge() });
+  // `cmdabl curve` measures the first regular track (plan 0012): no fader moves, nothing is written.
+  const firstTrack = () => liveNodes().find((n) => n.kind === "track" && n.scope === "regular");
+  registerBuiltins(registry, {
+    bridge: () => getBridge(),
+    curve: {
+      hasTrack: () => firstTrack() !== undefined,
+      display: async (values) => {
+        const track = firstTrack();
+        return track ? paramDisplay(getBridge(), track, "volume", values) : { ok: false, code: ExitCode.NOT_FOUND, text: "curve: no regular track" };
+      },
+    },
+  });
 
   // ── default modules ──────────────────────────────────────────────────────
+  // The extension's data folder: the SDK's storageDirectory when it answers (it is undefined in practice today),
+  // else the macOS path the tokens use. A module's files go under modules/<its name>/ there.
+  const dataFolder = context.environment.storageDirectory ?? path.dirname(tokenFilePath());
   const moduleApi: ModuleApi = {
     get bridge() {
       return getBridge();
     },
     liveSet: { nodes: liveNodes },
     tracks: {
-      transaction: (fn) => context.withinTransaction(fn),
+      transaction: (fn) => {
+        const result = context.withinTransaction(fn);
+        // A returned promise (async writes grouped into the step): answer one that never rejects.
+        return result && typeof (result as Promise<unknown>).then === "function"
+          ? Promise.resolve(result).then(() => undefined, (e: unknown) => void logger("host").warn(`transaction: ${e instanceof Error ? e.message : String(e)}`))
+          : undefined;
+      },
+      // Only a track node has a volume; a device or chain would give its CONTAINING track.
+      volume: (node) => readVolume(node.kind === "track" ? (trackFor(context, node) as unknown as VolumeTrack | null) : null),
+      setVolume: (node, value) => writeVolume(node.kind === "track" ? (trackFor(context, node) as unknown as VolumeTrack | null) : null, value),
       // Only a track node has a track; a device or chain would give its CONTAINING track.
       track: (node) => (node.kind === "track" ? trackFor(context, node) : null),
     },
+    // The Set's id lives in the Set, written and read by the Remote Script (operation set_id).
+    set: { id: (create) => setId(getBridge(), create === true) },
+    // Replaced per module below (a module sees its own folder only). Before a module's first command names it,
+    // this folder is modules/module/; modules call files from a run, after activation.
+    files: createModuleFiles({ base: dataFolder, module: () => "module", warn: (text) => logger("module").warn(text) }),
     log: (line) => logger("module").info(line), // replaced per module below
     logger: logger("module") as ModuleApi["logger"],
     dialog: (html, width, height, name = "module page") => ui.page(name, html, width, height),
@@ -142,6 +182,7 @@ export function activate(activation: ActivationContext) {
     let named = mod.name !== undefined;
     const tagged = () => logger(source);
     return Object.assign(Object.create(moduleApi) as ModuleApi, {
+      files: createModuleFiles({ base: dataFolder, module: () => source, warn: (text) => tagged().warn(text) }),
       log: (line: string) => tagged().info(line),
       logger: {
         debug: (text: string) => tagged().debug(text),
@@ -170,13 +211,37 @@ export function activate(activation: ActivationContext) {
   // to open the command palette without a context menu; GET /state reports
   // open|closed; POST /reset is the supported recovery for a hung dialog and
   // GET /bridge a diagnostic for measuring round trips.
+  // Development builds only (plan 0016): POST /run and GET /log for the agents' test access.
+  let devRoutes: DevRoutes | undefined;
+  if (CMDABL_DEV_ROUTES) {
+    const file = runTokenFilePath();
+    const token = writeRunToken(file);
+    if (token) {
+      devRoutes = createDevRoutes({
+        token,
+        run: (line) => runHeadless(line, runBase, gate),
+        blocked: () => (isOpen || dialogs.describe() !== null ? "a palette or dialog is open" : null),
+        logLines: (count) => appLog.lines(count),
+        // POST /show (plan 0016 §5): the line runs as in the palette, with real dialogs, and is not remembered.
+        show: (line) => void showLine(line),
+      });
+      logger("host").info(`development routes on: POST /run, GET /log (Bearer token in ${file})`);
+    } else {
+      logger("host").warn(`development routes off: cannot write ${file}`);
+    }
+  }
   startTriggerServer(TRIGGER_PORT, () => {
     context.commands.executeCommand("cmdabl.open");
   }, () => isOpen || dialogs.describe() !== null, () => {
     const was = dialogs.reset();
-    if (was) return `dialog queue reset (was: ${was.name})`;
+    // A headless run that never ended (plan 0016) holds the dialogs shut and the /run route busy.
+    const released = devRoutes?.release() === true;
+    const gateReleased = gate.release() || released;
+    const note = gateReleased ? "; run gate released" : "";
+    if (was) return `dialog queue reset (was: ${was.name})${note}`;
+    if (gateReleased) return "run gate released";
     return isOpen ? "no dialog open; a command is still running" : "no dialog was open";
-  }, async () => (await reportBridge(getBridge())).line);
+  }, async () => (await reportBridge(getBridge())).line, devRoutes);
 
   // The Karabiner rule only fires while `cmdabl_open` is 0. If a previous host
   // was stopped with the palette open, the flag would stay at 1 and ":" would
@@ -188,10 +253,27 @@ export function activate(activation: ActivationContext) {
     logger("host").info("keyboard trigger not configured. Open the palette and run: cmdabl setup");
   }
 
+  // What a run needs besides its two pick surfaces: the palette and the headless run share it.
+  const runBase = {
+    registry,
+    liveNodes,
+    bridge: () => getBridge(),
+    refreshTags: async () => {
+      const read = await getTagCache().refreshNow(getBridge());
+      return read.ok ? null : fail(read.code, read.text);
+    },
+    // Nested rack chains are tree nodes only while their names are cached: read them first.
+    // Without a running script every rack stays "missing": ask nothing then (no 0.5 s wait per command).
+    refreshStructure: () =>
+      getBridge().state() === "unavailable"
+        ? Promise.resolve()
+        : getChainNameCache().refreshNow(findRacks(context.application.song), getBridge()),
+  };
+
   // ── open command mode ────────────────────────────────────────────────────
   // Act on what the prompt surface returned.
   /** Runs what the palette returned; resolves with text to open the palette with again (Tab on a pick list), if any. */
-  async function dispatch(result: PaletteResult): Promise<string | undefined> {
+  async function dispatch(result: PaletteResult, remember = true): Promise<string | undefined> {
     pendingFill = undefined; // a fill left over from a pick outside a run must not end this command
     let line: string;
     if (result.type === "command") {
@@ -208,23 +290,11 @@ export function activate(activation: ActivationContext) {
       line = mapped;
     }
     const outcome = await runLine(line, {
-      registry,
-      liveNodes,
-      bridge: () => getBridge(),
+      ...runBase,
       takeFill,
       // The platform's own lists: Tab may put a single-select row into the prompt.
       pick: ({ title, candidates, multi, nodes, preview, details, state }) =>
         pick(title, candidates, multi, { nodes, preview, details, state, fill: true }),
-      refreshTags: async () => {
-        const read = await getTagCache().refreshNow(getBridge());
-        return read.ok ? null : fail(read.code, read.text);
-      },
-      // Nested rack chains are tree nodes only while their names are cached: read them first.
-      // Without a running script every rack stays "missing": ask nothing then (no 0.5 s wait per command).
-      refreshStructure: () =>
-        getBridge().state() === "unavailable"
-          ? Promise.resolve()
-          : getChainNameCache().refreshNow(findRacks(context.application.song), getBridge()),
       pickTags: (request) => pickTagNames(ui, request),
     });
     if (outcome.fill !== undefined) return outcome.fill;
@@ -233,7 +303,7 @@ export function activate(activation: ActivationContext) {
     // History gets successful invocations that carry arguments, in their
     // resolved form ("mute /Bass"), so a re-run is never ambiguous.
     const invocation = outcome.line ?? line;
-    if (outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
+    if (remember && outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
       for (const listener of commandRunListeners) listener(invocation);
     }
     return undefined;
@@ -246,8 +316,33 @@ export function activate(activation: ActivationContext) {
     );
   }
 
-  async function openPalette(): Promise<void> {
+  /** Run `line` as the palette would (real dialogs) without remembering it; an empty line opens the palette. Never throws. */
+  async function showLine(line: string): Promise<void> {
+    if (line.trim() === "") {
+      void openPalette();
+      return;
+    }
+    if (isOpen || dialogs.describe() !== null || gate.active()) return;
+    isOpen = true; // the palette trigger and /run answer "busy" meanwhile
+    setKarabinerPaletteOpen(true);
+    let fill: string | undefined;
+    try {
+      fill = await dispatch({ type: "command", id: line, line }, false);
+    } catch (e: unknown) {
+      logger("host").error(e instanceof Error ? e.message : String(e));
+    } finally {
+      isOpen = false;
+      if (dialogs.describe() === null) setKarabinerPaletteOpen(false);
+    }
+    if (fill !== undefined) void openPalette(fill);
+  }
+
+  async function openPalette(initial?: string): Promise<void> {
     const shown = dialogs.describe();
+    if (gate.active()) {
+      logger("host").info("trigger ignored: a headless run is going");
+      return;
+    }
     if (isOpen || shown) {
       // "isOpen but nothing shown" means a command is still running — the case to diagnose.
       logger("host").info(`trigger ignored: ${shown ?? "a command is still running (no dialog open)"}`);
@@ -262,7 +357,6 @@ export function activate(activation: ActivationContext) {
       const items = (await Promise.all(ordered.map((p) => p.provider.getItems()))).flat();
       paletteItems = items;
       // Tab on a pick list puts an object into the prompt: reopen with it (same queue, same guard).
-      let initial: string | undefined;
       for (;;) {
         const result = await ui.prompt({ items, ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
         initial = result ? await dispatch(result) : undefined;

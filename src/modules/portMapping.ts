@@ -69,11 +69,48 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "tracks.track().mute", via: "sdk", call: "`track.mute`", lom: ["Track.mute"] },
   { port: "tracks.track().solo", via: "sdk", call: "`track.solo`", lom: ["Track.solo"] },
   {
+    port: "tracks.volume",
+    via: "sdk",
+    call: "`track.mixer.volume.getValue()`",
+    lom: ["MixerDevice.volume"],
+    note: "0..1 (0.85 is 0 dB), regular, return, group and main tracks. Live's display text for a value comes from the script (operation `param_display`).",
+  },
+  {
+    port: "tracks.setVolume",
+    via: "sdk",
+    call: "`track.mixer.volume.setValue(v)`",
+    lom: ["MixerDevice.volume"],
+    note: "Clamped to 0..1; inside `tracks.transaction` it joins the undo step.",
+  },
+  {
     port: "tracks.track().arm",
     via: "sdk",
     call: "`track.arm`",
     lom: ["Track.arm"],
     note: "Live refuses some tracks silently; `can_be_armed` and the verification come from the script (operation `track_facts`).",
+  },
+
+  // the Set's identity and the module's files
+  {
+    port: "set.id",
+    via: "script",
+    call: "operation `set_id` (reads `cmdabl.set-id`; with create, stores a new random id first)",
+    lom: ["Song.get_data", "Song.set_data"],
+    note: "Stored in the Set with Song.set_data (survives save, reload, Save As and Collect All and Save; Live-tested 2026-10-22). Null without the script.",
+  },
+  {
+    port: "files.read",
+    via: "platform",
+    call: "reads `<Extensions Data>/<extension id>/modules/<module>/<name>` (UTF-8)",
+    lom: [],
+    note: "Plain file names only; a module sees its own folder.",
+  },
+  {
+    port: "files.write",
+    via: "platform",
+    call: "writes a temporary file and renames it to `<Extensions Data>/<extension id>/modules/<module>/<name>`",
+    lom: [],
+    note: "The folder is created on the first write; at most 1 MB.",
   },
 
   // dialog, log and the platform-only ports

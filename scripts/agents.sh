@@ -101,4 +101,5 @@ if [ "${DRY_RUN:-}" != "" ]; then
     exit 0
 fi
 echo "starting $name in this pane ($model)"
-exec "$cmd"
+# shellcheck disable=SC2086 # the command is split into words on purpose (no argument has spaces)
+exec $cmd

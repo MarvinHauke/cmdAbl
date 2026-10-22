@@ -52,6 +52,10 @@ A command takes objects as text. cmdAbl reads that text as follows:
 
 When a name matches more than one object, cmdAbl asks. It never picks one for you.
 
+![The palette with kic typed: the track Kick and the devices below it, each with its path in grey, then the Magic Mid devices of the main track and the command goto](assets/images/palette-objects.png)
+
+*Type part of a name, and the palette lists the objects that match.*
+
 ### Dash rules
 
 - A word that starts with `-` is an option. `mute /Bass -6dB` is an error, because `-6dB` is not a known option.
@@ -103,6 +107,10 @@ Drum Rack pads and the chains of other racks are objects too. Their path goes th
 Racks can sit inside a chain of another rack. An Instrument Rack whose chain holds a Drum Rack gives pads such as
 `/Drums/Strutter Kit/Strutter Kit/<Drum Rack>/Kick Rumble`. `goto`, `mute` and `solo` work on them.
 
+![The find pick list headed find: "kick" — 16 matches: the Kick track and its devices, and the chains and devices of a Drum Rack nested in an Instrument Rack, each row with its path and its kind](assets/images/find-nested.png)
+
+*`find kick` reaches the pads of a Drum Rack nested in an Instrument Rack.*
+
 Selecting a pad or a chain does not change how the track is shown. Add `--unfold` to `goto` or `find` to show the
 track's chains as columns in the Session mixer. Live stores this view state with the Set, so the Set counts as
 changed. cmdAbl never folds the chains back; do that in Live.
@@ -128,6 +136,10 @@ Without a pattern, `find` needs `-L` or one of `-t`, `-d` and `-c`; a bare `find
 `-L` takes a whole number from 0 to 12 with a pattern, and from 1 without one. For finding tracks by tag, see
 [Tags](#use-tags-as-targets).
 
+![The find pick list headed find: — 11 matches: every track of the Set with its tags, such as #synth on Synth and #bass #drums on Bass, the three return tracks, and the main track last](assets/images/find-top.png)
+
+*`find -L 1` lists the top-level tracks, each with its tags.*
+
 ## Toggles, and what they do not do
 
 - `mute`, `solo` and `arm` **toggle** each object they name: a muted track is unmuted, an unmuted one is muted.
@@ -140,6 +152,43 @@ Without a pattern, `find` needs `-L` or one of `-t`, `-d` and `-c`; a bare `find
 **Exclusive arm and solo are not applied.** If Live's "Exclusive" setting is on for arm or solo, cmdAbl does not
 follow it. `arm /Bass /Lead` arms both tracks, and `arm /Bass` does not disarm other tracks. Name every track you
 want explicitly, like Cmd-clicking the buttons in Live.
+
+## Fader levels: `vol`
+
+`vol` moves track faders in dB (decibels). It needs no Remote Script.
+
+- `vol <dB> <target>…` moves each fader by `<dB>` from where it is. With Kick at -6 dB and Perc at -3 dB,
+  `vol -6 #drums` gives -12 and -9, so the balance between them stays.
+- `vol --set <dB> <target>…` (short `-s`) puts every fader at that level. `vol --set -inf /Lead` silences the Lead
+  track.
+- Decimals work: `vol -1.5 /Bass`, `vol .5 #drums`.
+- Targets are tracks: regular, return, group and the main track (`/Main`), by path, name or [tag](#use-tags-as-targets). A rack chain or
+  Drum Rack pad is refused with "vol works on tracks for now".
+- A move that went as typed is quiet, and so is a `--set` that changes a fader; if nothing moves, it says "nothing changed". One run is one Cmd+Z step. Levels are as precise as Live's display, 0.1 dB.
+
+**Limits.** A fader goes up to +6 dB (Live's maximum) and down to -inf. The lowest level above -inf is -69.6 dB.
+
+- By default, if one fader would cross a limit, the step is shortened for every fader, so the balance stays. The
+  message reads, for example, "vol 9: moved +3.0 dB, /Kick reached +6 dB (the maximum)".
+
+  ![A message window: vol 9: moved +3.0 dB, /Kick reached +6 dB (the maximum)](assets/images/vol-stop.png)
+
+  If nothing can move, it reads "nothing changed: /Kick is at +6 dB (the maximum)". Going down, that message adds
+  "use --clip or --set -inf to go lower".
+- With `--clip` (short `-c`), each fader moves by the full step. The faders at a limit stop there and lose their
+  balance. Below -69.6 dB a fader goes to -inf. The message reads "limit reached at +6 dB (the maximum): /Bass,
+  /Lead, …". It names at most five tracks, then "+N more"; the log has them all. A fader already at -inf is left
+  out.
+
+  ![A message window: limit reached at +6 dB (the maximum): /Bass, /Lead, /Guitar, /Kick, /Snare, +1 more](assets/images/vol-clip.png)
+- A fader at -inf stays there with a relative step. Only `--set` brings it back.
+- `--clip` together with `--set` is a usage error, and so is a relative `-inf`; use `vol --set -inf`.
+
+**The log and undo.** [`cmdabl log`](#logs) shows what a run did: "asked +9.0 dB, applied +3.0 dB", then
+`/Kick: 3.0 → 6.0 dB` and an `undo: vol --set 3.0 /Kick` line per track. `cmdabl log --undo` lists the undo lines.
+
+**Automation.** `vol` overwrites the fader like a hand move. On a track with volume automation, Live treats it as a
+manual change (see Live's Re-Enable Automation button).
 
 ## Tags
 
@@ -198,13 +247,13 @@ tracks.
   chains and pads of the tagged tracks.
 - Without the Remote Script, `#` answers that the Remote Script is not running. Plain words work as before.
 
-![The find pick list for find #drums: three tracks, Kick, Snare and Perc, each with the tag drums](assets/images/find-tags.png)
+![The find pick list for find #drums: six tracks, Bass, Lead, Guitar, Kick, Snare and Perc, each with the tag drums](assets/images/find-tags.png)
 
 ### The tag board
 
 `tag -l` (or `tag --list`) opens the tag board. It shows one section per tag.
 
-![Screen recording of the tag board: tag -l opens it; Guitar is typed and added to drums, B-Reverb and A-Delay to effect; the arrow keys move to the lead chip and mark it for removal; Enter applies the 3 changes; cmdabl log then lists each change with its undo command](assets/images/tags.gif)
+![Screen recording of the tag board: tag -l opens it; Synth is typed and added to drums; the arrow keys move to the Lead chip under fx and mark it for removal; Enter applies the 2 changes](assets/images/tags.gif)
 
 *`tag -l`: add tracks to tags, mark a chip for removal, apply. The log lists what changed.*
 
@@ -282,6 +331,10 @@ The pair to remember: `tag /Lead` picks the tags of one track, and `tag -e fx` p
 
 `tag --rename fx effects` (or `tag -r fx effects`) renames the tag on every regular and return track that carries it.
 
+![The palette with tag -r typed and a dim <old> hint after it](assets/images/value-hint.png)
+
+*After `tag -r`, a dim hint shows what to type next: first `<old>`, then `<new>`.*
+
 - A leading `#` is fine in both names.
 - If the new name already exists, the two tags merge. The window says "merged #fx into #effects". A track that has
   both keeps one. Renaming back cannot split them again.
@@ -313,6 +366,10 @@ A write that changes something shows nothing when it succeeds. The changes and t
 kind. Use it when you write a script, or to check what cmdAbl sees. The [Live API mapping](reference/live-api.md)
 shows how cmdAbl's ports and Remote Script operations map to the Live Object Model.
 
+![The result of lom /Bass: the path /Bass, the Live Object Model path live_set tracks 1 and the link to the reference page for tracks](assets/images/lom.png)
+
+*`lom /Bass` shows the object's cmdAbl path, its Live Object Model path and the reference page for its kind.*
+
 ## Read a command's page
 
 - `<command> --help` shows a short usage: the usage line, and each subcommand, option and argument on one line. It
@@ -327,6 +384,35 @@ shows how cmdAbl's ports and Remote Script operations map to the Live Object Mod
 
 ![The man page for mute inside Live: the summary, usage, arguments and options, with Close and Open in browser buttons](assets/images/man-page.png)
 
+## A note per Set: `note`
+
+`note` opens a note that belongs to the current Live Set, for things like a to-do list or a mix plan. It needs the
+[Remote Script](remote-script.md); without it the command stops with exit code 5.
+
+- `note` shows the note, rendered: headings, lists, checkboxes, tables, code, bold and italic. Links show as text.
+- `note -e` (long form `--edit`) opens it for editing. A Set without a note opens in edit mode on an empty page.
+
+![The note window in view mode: the heading Mix notes, a table with Track and Todo columns, and a checklist with one open and one done item. The footer says e edit, Esc close, with Edit and Close buttons](assets/images/note-view.png)
+
+![The same note in edit mode: the Markdown source with its heading, table and checklist. The footer says Cmd+S save and close, Esc close (warns when unsaved), with Save and Cancel buttons](assets/images/note-edit.png)
+
+Keys in the note window:
+
+- `e` switches from view to edit.
+- `Cmd+S` or **Save** saves and closes.
+- `Esc` in view closes the note.
+- `Esc` in edit with unsaved changes warns first. A second `Esc` discards the changes.
+
+**Where the note lives.** The note is plain Markdown. It is stored as a file in cmdAbl's data folder (the Extensions
+Data folder in Ableton's Application Support) and linked to the Set by an id that is saved inside the Set. Viewing
+never changes the Set. The first save adds the id, so Live asks you to save the Set. Save it, or the link is lost.
+
+**Save As and Collect All and Save.** The note stays with the Set's id. After Save As, both Sets show the same note,
+and editing it in one changes it for both. Collect All and Save keeps the note.
+
+**After a save.** A save is quiet; `cmdabl log` shows "note saved". If saving fails, the message says so, and the next
+`note` opens your text again until cmdAbl restarts.
+
 ## What the palette tells you
 
 After a command runs, cmdAbl shows a short message only when there is something to say:
@@ -338,6 +424,10 @@ After a command runs, cmdAbl shows a short message only when there is something 
   [Remote Script](remote-script.md) page says what to do.
 
 A name that matches more than one object is not an error: the pick list answers it.
+
+![A message window that says cmdAbl: mute: nothing matches "nope", with a Close button](assets/images/error.png)
+
+*`mute nope`: no object matches, and the message says so.*
 
 ## Logs
 
@@ -376,6 +466,10 @@ A remembered line keeps:
 
 The history is kept in memory. It is gone when cmdAbl restarts.
 
+![The empty palette: the commands help, cmdabl, history, goto, find, next, prev and mute, with no rows of recent commands](assets/images/palette-empty.png)
+
+*With no history, the empty palette lists only the commands.*
+
 ### Clear, forget and restore
 
 The `history` command manages the list:
@@ -389,3 +483,7 @@ The `history` command manages the list:
   original order, and an entry already in the history again is not added twice.
 
 The [command reference](reference/commands.md) has the full usage.
+
+![The man page of history inside Live: the summary, usage, the subcommands clear, forget and restore, the web address, and the Close and Open in browser buttons](assets/images/man-history.png)
+
+*`man history` shows the page of the history command.*

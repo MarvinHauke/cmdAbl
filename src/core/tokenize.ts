@@ -63,9 +63,12 @@ export function tokenize(input: string): TokenizeResult {
   return { ok: true, tokens };
 }
 
+/** `-6`, `-0.5`, `+2`, `.5`, `inf`, `-inf`, `+inf`: a number, which the parser reads as a value and never as an option. */
+export const NUMBERISH = /^(?:[+-]?(?:\d+\.?\d*|\.\d+)|[+-]?inf)$/i;
+
 /** Quote a value for insertion into a command line if it needs it. */
 export function quoteIfNeeded(value: string): string {
-  // A leading dash is quoted too, or the word would re-parse as an option.
-  if (value !== "" && !value.startsWith("-") && !/[\s"'\\]/.test(value)) return value;
+  // A leading dash is quoted too, or the word would re-parse as an option — except a number, which is a value.
+  if (value !== "" && (!value.startsWith("-") || NUMBERISH.test(value)) && !/[\s"'\\]/.test(value)) return value;
   return `"${value.replace(/(["\\])/g, "\\$1")}"`;
 }

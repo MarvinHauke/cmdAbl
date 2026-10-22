@@ -9,9 +9,9 @@ shows as help. Type a command in the palette; `<command> --help` prints the same
 **Contents**
 
 - Find and select: `goto`, `find`, `next`, `prev`
-- Mix: `mute`, `solo`, `arm`
+- Mix: `mute`, `solo`, `arm`, `vol`
 - Tags: `tag`
-- Look things up: `help`, `man`, `lom`
+- Look things up: `help`, `man`, `lom`, `note`
 - Recent commands: `history`
 - Extensions: `pakabl`
 - cmdAbl itself: `cmdabl`
@@ -326,6 +326,63 @@ arm --set 0 /Bass, /Lead
 
 disarm both
 
+### `vol`
+
+change the fader level of tracks, in dB
+
+Moves the volume fader of each target track by the given number of dB: vol -6 /Bass lowers it by 6 dB from where it is, vol 2 #drums raises every drums fader by 2 dB, so the balance between them stays. If a step would push a fader past Live's maximum, +6 dB, or below the lowest level, the step is shortened for every target, so they all move by the same amount and keep their balance; the result then says how far they moved and which fader reached the end. With --clip every fader follows the full step instead and the ones past an end stop there (below the lowest level a fader goes to -inf). With --set the level is absolute: vol --set -6 #drums puts every fader at -6 dB, vol --set -inf /Bass silences it. A fader at -inf stays there on a relative step, use --set to bring it back. This overwrites the fader and works against volume automation. It works on tracks (including the return and main tracks, /Main), not yet on chains. A change that went as typed shows nothing: the old and new level and the command that puts it back go to the log, and Cmd+Z undoes the whole command in one step. Works without the Remote Script.
+
+**Usage:** `vol [--set] [--clip] [--pick] <dB> <target>…`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<dB>` | text | yes | Level or step in dB: -6, +2, 0.5; -inf only with --set |
+| `<target>…` | path (track / chain) | yes | Tracks to change; separate several with commas, or use #tag |
+
+| Option | Description |
+| --- | --- |
+| `-s, --set` | treat the number as the level to set, not a step from where the fader is |
+| `-c, --clip` | let each fader follow the whole step and stop at an end alone, instead of shortening the step for all |
+| `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
+
+**Examples**
+
+```
+vol -6 /Bass
+```
+
+lower the Bass fader by 6 dB
+
+```
+vol 2 #drums
+```
+
+raise every drums fader by 2 dB, or by less if one of them reaches +6 dB
+
+```
+vol --clip 9 #drums
+```
+
+raise every drums fader by 9 dB, each stopping at +6 dB
+
+```
+vol --set -6 #drums
+```
+
+put every drums fader at -6 dB
+
+```
+vol --set 0 /Bass, /Lead
+```
+
+both faders to 0 dB
+
+```
+vol --set -inf /Lead
+```
+
+silence the fader
+
 ## Tags
 
 ### `tag`
@@ -510,6 +567,34 @@ lom snare
 ```
 
 the object with "snare" in its name
+
+### `note`
+
+open the note of this Live Set
+
+Opens the Markdown note that belongs to this Live Set, for reminders: headings, lists, checkboxes, tables and code are drawn, links are shown as text. note opens it to read; note -e opens it to edit, and so does a Set that has no note yet. In the page, e switches to editing, Cmd+S saves and closes, and Esc closes (with unsaved changes it warns first). The note is a plain Markdown file in cmdAbl's data folder, linked to the Set by an id stored inside the Set, so it follows the Set when it is renamed or saved under another name (both copies then share one note). The Set gets its id the first time a note is saved, which marks the Set as changed: save it so the link is kept. Needs the cmdAbl Remote Script. A saved note shows nothing; the log has one line.
+
+**Usage:** `note [--edit]`
+
+| Option | Description |
+| --- | --- |
+| `-e, --edit` | open the note to edit instead of to read |
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+note
+```
+
+read the note of this Set
+
+```
+note -e
+```
+
+open the note to edit
 
 ## Recent commands
 
@@ -723,7 +808,7 @@ Setup and status commands of cmdAbl itself.
 
 **Usage:** `cmdabl <command>`
 
-**Subcommands:** `setup`, `log`, `bridge`
+**Subcommands:** `setup`, `log`, `curve`, `bridge`
 
 #### `cmdabl setup`
 
@@ -780,6 +865,24 @@ cmdabl log --debug
 ```
 
 turn on debug lines for this session
+
+#### `cmdabl curve`
+
+measure Live's volume curve for developers
+
+Reads Live's own display text for 1001 volume values (0, 0.001 … 1) of the first regular track through the Remote Script, without moving any fader. The table goes to the log, ten points to a line (source curve; see cmdabl log -n 120); the result shows the points measured, the value at 0 dB and the dB at value 1.0. Writes nothing.
+
+**Usage:** `cmdabl curve`
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+cmdabl curve
+```
+
+measure the curve once and read the table from the log
 
 #### `cmdabl bridge`
 

@@ -5,6 +5,7 @@ import { REMOTE_SCRIPT_DOCS_URL, runSetup } from "./setup.js";
 import { ok, fail, ExitCode } from "./types.js";
 import { reportBridge, type BridgeProbe } from "./bridgeStatus.js";
 import { adviseRemoteScript } from "./setupAdvice.js";
+import { measureCurve, type CurveDeps } from "./curve.js";
 import { commandListText } from "./topics.js";
 import { appLog, clockText, dayText, type Log } from "./log.js";
 
@@ -23,6 +24,8 @@ export interface BuiltinsDeps {
   shippedVersion?: string;
   /** The log `cmdabl log` shows (default: the extension's). */
   log?: Pick<Log, "entries" | "setDebug" | "debugOn">;
+  /** The ports of `cmdabl curve` (absent: it answers exit 5). */
+  curve?: CurveDeps;
 }
 
 export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps = {}): void {
@@ -120,6 +123,17 @@ export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps =
           if (shown.length === 0) return ok(`${note}${invocation.options.undo === true ? "no undo commands logged yet" : "the log is empty"}`);
           return ok(`${note}${shown.join("\n")}`);
         },
+      },
+      {
+        name: "curve",
+        summary: "measure Live's volume curve for developers",
+        description:
+          "Reads Live's own display text for 1001 volume values (0, 0.001 … 1) of the first regular track through the Remote Script, " +
+          "without moving any fader. The table goes to the log, ten points to a line (source curve; see cmdabl log -n 120); the result shows the points measured, " +
+          "the value at 0 dB and the dB at value 1.0. Writes nothing.",
+        examples: [{ line: "cmdabl curve", note: "measure the curve once and read the table from the log" }],
+        requires: ["bridge"],
+        run: async () => (deps.curve ? measureCurve(deps.curve) : fail(ExitCode.UNAVAILABLE, "curve: the Remote Script bridge is not available in this build")),
       },
       {
         name: "bridge",

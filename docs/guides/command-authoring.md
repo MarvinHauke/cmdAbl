@@ -91,13 +91,15 @@ would look like success. A failure that touches several targets returns one `det
 ## Reaching Live: the ports
 
 A module never touches the SDK or the socket. It uses the ports on `api`, so a command's `run` can be tested with
-fakes (`createFakeApi` in `src/modules/testPorts.ts`).
+fakes (`createFakeApi` in `src/modules/testPorts.ts`, which fakes `set.id` and `files` too).
 
 | Port | Use it for |
 |---|---|
 | `api.bridge` | Calls to the Remote Script (`select`, `trackFacts`, `chainSet`, …) through the typed functions in `src/ableton/bridgeOps.ts`. It never throws; a failure is a result with the bridge's exit code and text, which you pass on unchanged. |
 | `api.liveSet.nodes()` | The Set's objects (tracks, devices, chains and pads), flattened, for find-like commands and the palette rows. |
-| `api.tracks` | `transaction(fn)` (one undo step; `fn` is synchronous) and `track(node)` → `{ mute, solo, arm }` or null. SDK-backed, so it works without the Remote Script. |
+| `api.tracks` | `transaction(fn)` (one undo step; `fn` is synchronous, but it may return a promise to group async writes into the step), `track(node)` → `{ mute, solo, arm }` or null, `volume(node)` → `Promise<number \| null>` and `setVolume(node, v)` → `Promise<boolean>`. `volume` is 0..1, where 0.85 is 0 dB, for regular, return, group and main tracks; null when the node is no track or the read fails. `setVolume` clamps to 0..1 and resolves false for no track or a failed write. The dB ↔ value conversion (Live's measured curve) is in `src/modules/mixValue.ts`. SDK-backed, so it works without the Remote Script. |
+| `api.set.id(create?)` | `Promise<string \| null>`: the Set's own id, kept in the Set. With `create` it is made if missing. Null when the Set has no id yet (without `create`) or the id could not be read (no or old Remote Script, no token, timeout), so never treat null as "no id". The op needs the bridge token, also for a read. |
+| `api.files.read(name)` and `api.files.write(name, text)` | `Promise<string \| null>` and `Promise<boolean>`: text files in a folder of your module in cmdAbl's data folder. Names are plain: no `/`, `\` or `..`, no leading dot, at most 100 characters. UTF-8, written atomically, at most 1 MB per write. A missing or unreadable file reads null. Nothing throws. |
 | `api.tags` | Track tags: `refresh()` reads them from the script, `of(node)` returns a track's tags, `write(node, tags)` replaces them. Names must be normalised by the caller. |
 | `api.pick(title, candidates, multi?, options?)` | The pick list, when a command has to ask. `options.state` gives each row a state button: `{ label, values, change? }` with `values[i]` true, false or null. |
 | `api.pickTags(title, rows, options?)` | A list of tags. `rows` are `{ name, count?, on? }`. `options.multi: false` makes it single-select, `options.allowNew` adds a row that creates a new name, `options.change` previews what `Enter` does. It resolves with the chosen names, or null. |

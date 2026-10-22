@@ -216,6 +216,20 @@ test("architecture: no console.* outside src/core/log.ts (apart from the listed 
   assert.deepEqual([...listed].filter((f) => !users.includes(f)), [], "this console exception no longer applies; remove it from CONSOLE_EXCEPTIONS");
 });
 
+// Live's Extension Host lacks some globals (the startup log "host globals" says which: URL,
+// URLSearchParams, structuredClone, TextEncoder are undefined there). Node's test runner has them,
+// so a unit test cannot catch their use: this one reads the source. tools/ runs in plain Node.
+const MISSING_GLOBALS = /\b(?:new\s+URL\s*\(|\bURL\.\w+\s*\(|new\s+URLSearchParams\b|structuredClone\s*\(|new\s+TextEncoder\b|new\s+TextDecoder\b)/;
+
+test("architecture: src/ does not use globals the Extension Host lacks (URL, URLSearchParams, structuredClone, TextEncoder)", () => {
+  const users = sourceFiles("src").filter((file) => {
+    if (file.endsWith(".test.ts")) return false;
+    const code = fs.readFileSync(path.join(ROOT, file), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+    return MISSING_GLOBALS.test(code);
+  });
+  assert.deepEqual(users, [], "parse by hand (see splitUrl in src/devRoutes.ts) or use a Node module");
+});
+
 test("architecture: the checker sees the imports and flags what it should", () => {
   assert.ok(sourceFiles("src").length > 30);
   const specifiers = importSpecifiers(

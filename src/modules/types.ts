@@ -23,12 +23,14 @@ export interface TrackHandle {
 /** The SDK-backed track port — works without the Remote Script. */
 export interface TracksPort {
   /**
-   * One transaction = one undo step for everything `fn` writes. `fn` must be
-   * synchronous (an async callback would write outside the transaction). A
-   * write can throw — it is the SDK track — so catch inside `fn`: nothing may
-   * throw at a user action.
+   * One transaction = one undo step for everything `fn` writes. `fn` itself must be
+   * synchronous (an async callback would write outside the transaction), but it may RETURN a
+   * promise — `Promise.all([api.tracks.setVolume(a, 0.5), …])` — to group async writes into the
+   * step. A write can throw — it is the SDK track — so catch inside `fn`: nothing may throw at
+   * a user action. With a returned promise the call answers a promise that never rejects
+   * (resolves when the writes are done); with a plain `void` fn it answers at once.
    */
-  transaction(fn: () => void): void;
+  transaction(fn: () => void | Promise<unknown>): Promise<void> | void;
   /**
    * The track at the node's position, or null when there is none or the node
    * is not a track (a device, chain or pad never answers with its containing
@@ -36,6 +38,17 @@ export interface TracksPort {
    * name when it matters.
    */
   track(node: ObjectNode): TrackHandle | null;
+  /**
+   * The track's volume as 0..1 (`mixer.volume`; 0.85 is 0 dB), for regular, return, group and main
+   * tracks; null when the node is no track or the read fails. Not a dB value: the curve is Live's own.
+   */
+  volume(node: ObjectNode): Promise<number | null>;
+  /**
+   * Set the track's volume, 0..1 (clamped). The write starts at once, so inside `transaction(() =>
+   * setVolume(…))` it joins that undo step. Resolves true when written, false for no track, a
+   * non-finite value or a failed write; never rejects.
+   */
+  setVolume(node: ObjectNode, value: number): Promise<boolean>;
 }
 
 /** One row of a tag list (`ModuleApi.pickTags`). */
@@ -58,6 +71,34 @@ export interface TagsPort {
   write(node: ObjectNode, tags: string[]): Promise<BridgeResult<TagsWritten>>;
 }
 
+/** The Live Set's own identity (plan 0013). */
+export interface SetPort {
+  /**
+   * The id stored in the Set (`cmdabl.set-id`, kept with Song.set_data; it survives save, reload, Save As and
+   * Collect All and Save (Live-tested 2026-10-22), so it can name things that belong to this Set).
+   * `create: true` stores a new random id when the Set has none.
+   * Null: the Set has no id yet (and `create` was not given), or the Remote Script is not running
+   * or too old. Never throws.
+   */
+  id(create?: boolean): Promise<string | null>;
+}
+
+/** A module's own small text files in the extension's data folder (plan 0013). */
+export interface FilesPort {
+  /**
+   * The text of the file, or null when it does not exist, the name is refused or the read fails.
+   * Names are plain file names (no "/" or "\\" or "..", no leading dot, at most 100 characters); a
+   * module sees only its own folder `<data folder>/modules/<module name>/`.
+   */
+  read(name: string): Promise<string | null>;
+  /**
+   * Write the file (UTF-8, at most 1 MB), creating the folder on the first write; the file appears
+   * whole or not at all. True when written, false for a refused name, too much text or a failing
+   * disk (a warning is logged). Never throws.
+   */
+  write(name: string, text: string): Promise<boolean>;
+}
+
 export interface LiveSetPort {
   /** The addressable objects of the current Set, flattened (tracks, devices, chains), with unique-able paths. */
   nodes(): ObjectNode[];
@@ -70,6 +111,10 @@ export interface ModuleApi {
   liveSet: LiveSetPort;
   /** Track writes through the SDK. */
   tracks: TracksPort;
+  /** The Set's identity (plan 0013). */
+  set: SetPort;
+  /** The module's own files (plan 0013). */
+  files: FilesPort;
   /** One info line in the log, tagged with the module's name (`cmdAbl [name] info: …`); no prefix of your own. */
   log(line: string): void;
   /**

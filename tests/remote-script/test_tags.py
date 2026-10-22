@@ -158,7 +158,7 @@ class TagsSet(unittest.TestCase):
         self.assertEqual(r["error"]["code"], "forbidden")
         self.assertEqual(s.tracks[0].data, {})
         self.assertTrue(ask(s, "tags_all", {}, with_token=False)["ok"])
-        self.assertEqual(set(WRITES), {"chain_set", "tags_set"})
+        self.assertEqual(set(WRITES), {"chain_set", "set_id", "tags_set"})
 
 
 if __name__ == "__main__":

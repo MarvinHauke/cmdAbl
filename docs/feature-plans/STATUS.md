@@ -33,11 +33,57 @@ Open from the releases:
   (page by page: using → getting-started → index/README → remote-script/limits → architecture/
   authoring guide → other guides).
 
+## Built, Live-tested 2026-10-22: `vol` (branch `feat/vol`, plan 0012, target 0.1.3)
+
+- bridge `5d0b1b5`: read-only op `param_display` (Live's display text for a volume value), script 0.1.7
+  → release notes: run `cmdabl setup` once and restart Live.
+- core `540fe62`: number/`±inf` tokens as values; `tracks.volume`/`setVolume`; promise-returning
+  transactions; `cmdabl curve` (measured 2026-10-22: 1001 points, 0 dB ≈ 0.850, 1.0 = +6 dB).
+- modules `8537d24`: `vol [--set] <dB> <target>…` (decimals, `-inf` with `--set`), tracks only
+  (regular, return, group, `/Main`); dB↔value from the measured table (`mixValue.ts`, `mixTable.ts`).
+- Limits: `stop` (default) / `--clip` (`-c`), no question (modules `2db0dc5`; rule in `src/modules/relative.ts`).
+- Live test: relative/absolute on `#drums`, decimals, the +6 and -inf limits, `/Main`, a chain gives
+  exit 2, one Cmd+Z per run, displayed dB matches the log within 0.1 dB.
+- Live test (2026-10-22): stop, `--clip`, the -69.6 floor, `--set`, usage errors pass. Rest checked through
+  MCP the same day (-inf next to others, `/Main`, chain exit 2, exit 4 headless); Cmd+Z by the user: one
+  step per run. Follow-ups done: core
+  `f40a89a` (history no longer quotes numbers); modules (limit messages grouped by end, 5 tracks max).
+- Docs done: docs `6b01c88` (using.md "Fader levels: `vol`", authoring guide `volume`/`setVolume`).
+
+## Built, Live-tested 2026-10-22: agent test access (branch `feat/test-mcp`, plan 0016)
+
+- core `d8fd4b9` (headless run, dev-only `POST /run`/`GET /log`, run-token), `3512336` (MCP server
+  `tools/mcp/`, `.mcp.json`), `a952068` (`/reset` releases a stuck run).
+- Agent rules: `CLAUDE.md` and builder files (`dafe861`). Docs: develop.md "Testing in Live with
+  MCP" (`326cefc`).
+- First MCP run 2026-10-22: works after core `0812943` (Live's host has no global `URL`). State,
+  bridge, 19 `vol`/`goto` lines ran headless. Busy (palette open) and not running checked too.
+- First run (user): test Set open, `npm start`, restart the agent sessions, allow the `cmdabl` MCP
+  server; then the architect runs core's checks and the rest of the `vol` list.
+
+## Ready to release: 0.1.3 (branch `feat/note`, contains `docs/pakabl-listing-image`, `feat/vol`, `feat/test-mcp`)
+
+- `vol`, `note`, MCP test access and screenshot tools (dev only), Remote Script 0.1.8.
+- Release docs review done: docs `01aa92b`; screenshots `71bb32d` (note view/edit, vol stop/clip,
+  bridge 0.1.8), taken by cmdabl-docs through MCP.
+- Images redone through MCP: audit and stills `b2331dc` (palette.png had hardware names, replaced);
+  GIFs `a824320` (hero, tags, new vol-note on the home page); recording tools core `6f5287d`, `126f3dc`.
+- Release notes: run `cmdabl setup` once and restart Live.
+
+## Built, Live-tested 2026-10-22: `note` (branch `feat/note`, plan 0013, joins 0.1.3)
+
+- bridge `f9c1f76` (`set_id`, script 0.1.8); core `d9d5a9f` (`api.set.id`, `api.files`); ui `8f47aab`,
+  `2507215`, `6273e68` (page, Cmd+S saves and closes, `changed` flag); modules `9cb136a` (`note`, `-e`).
+- Docs: `34d468b` (using.md, remote-script.md token line, authoring guide); Save As / Collect All claim after the Live test.
+- Live test passed (2026-10-22): page and keys, first save creates the id and file, Save As keeps
+  the note (same id), Collect All and Save keeps it, Esc guard. Docs claim for Save As/Collect All: docs.
+
 ## Next (user, 2026-10-20/21)
 
-1. **0013 `note`** — one Markdown note per Set, view first, `-e` to edit; with the settings store in
-   0.1.3. Starts with a spike: `Song.set_data` (save, reload, Save As, Collect All).
-2. **0012 `vol`** — fader levels, absolute or relative. Starts with a spike (dB mapping).
+1. **0012 `vol`** (0.1.3) — built, see above.
+2. **0013 `note`** (now in 0.1.3, see above) — one Markdown note per Set, view first, `-e` to edit. Starts with a
+   spike: `Song.set_data` (save, reload, Save As, Collect All); the note file goes in the Extensions
+   Data folder (sandbox), not Application Support.
 3. **0012 `dca` — later, with its own detailed plan first** (user, 2026-10-21): a "cmdAbl DCA" rack per
    track, one Utility per tag, each Gain on a macro named after the tag. Spike: macro mapping and
    naming via the LOM, a shipped preset rack, `insert_device`. Desk bridges after that.
@@ -288,6 +334,12 @@ Release:
 - Tag editing (user, 2026-10-20): plan 0010 — `tag -l` as an editable overview on a new
   `board` surface like the tag bar in Live's browser (chips with ×, an `add…` input with
   suggestions per tag, new tag…, Apply). 0.1.2, in work on `feat/tag-board`.
+
+- Agent test access (user, 2026-10-22): plan 0016 — development-only `POST /run` (headless
+  `runLine`) plus a cmdAbl MCP server, so builders can run Live test lists themselves.
+
+- `link` (user, 2026-10-22): plan 0015 — named controls (`@drums`) with rules at the limits
+  (`keep`, `stop`, `clip`) for every numeric command; `vol` already has `stop` and `--clip`.
 
 - Ideas from ClyphX (2026-10-20): plan 0009 — `;` action lists with aliases (0.1.3); `.`,
   index, range and `all` targets, `vol`/`pan`/`send` (0.1.x); snapshots (0.2.x); triggers from

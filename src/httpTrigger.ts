@@ -4,7 +4,7 @@ import { logger } from "./core/log.js";
 const trigger = logger("trigger");
 
 /** A web page (even an <img>) sends Origin or Sec-Fetch-Site; curl and the Karabiner rule send neither. */
-function fromBrowserPage(req: http.IncomingMessage): boolean {
+export function fromBrowserPage(req: http.IncomingMessage): boolean {
   const site = req.headers["sec-fetch-site"];
   return req.headers.origin !== undefined || (site !== undefined && site !== "none");
 }
@@ -20,8 +20,11 @@ export function startTriggerServer(
   onReset: () => string = () => "not supported",
   /** GET /bridge: a diagnostic for measuring round trips — timed hellos to the Remote Script (min / median / max); answers a plain-text line. */
   onBridge: () => Promise<string> = async () => "not supported",
+  /** Routes that exist only in development builds (src/devRoutes.ts): answers true when it handled the request. */
+  extra?: (req: http.IncomingMessage, res: http.ServerResponse) => boolean,
 ): void {
   const server = http.createServer((req, res) => {
+    if (extra?.(req, res)) return;
     if (req.url === "/open") {
       onTrigger();
       res.writeHead(200).end("ok");

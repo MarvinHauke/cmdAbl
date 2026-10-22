@@ -40,10 +40,10 @@ Then enable the keyboard rule. In Karabiner-Elements, open **Complex Modificatio
 
 The command ends with one line of advice and a link to step 3. You will see one of these:
 
-- *"Remote Script 0.1.6 is shipped but not running. Restart Live … then enable cmdAbl as a control surface"*: the
+- *"Remote Script 0.1.8 is shipped but not running. Restart Live … then enable cmdAbl as a control surface"*: the
   usual answer on a first install. Go to step 3.
 - *"… is shipped and running"*: nothing to do. If you have just updated cmdAbl, restart Live once.
-- *"… is shipped, but Live still runs 0.1.x. Restart Live to load Remote Script 0.1.6"*: you updated cmdAbl.
+- *"… is shipped, but Live still runs 0.1.x. Restart Live to load Remote Script 0.1.8"*: you updated cmdAbl.
   Restart Live.
 
 ## 3. Turn on the Remote Script in Live
@@ -66,7 +66,7 @@ Check that it works:
   Control Surface (after `cmdabl setup` and a restart). The log is `~/Library/Preferences/Ableton/Live <version>/Log.txt`, where `<version>` is
   your Live version. The Remote Script's lines contain `RemoteScriptMessage: (cmdAbl)`.
 
-![The cmdabl bridge result: Remote Script 0.1.6 is running, with its protocol version, response time and operations](assets/images/bridge.png)
+![The cmdabl bridge result: Remote Script 0.1.8 is running, with its protocol version, response time and operations](assets/images/bridge.png)
 
 *`cmdabl bridge` on a current install.*
 
@@ -86,7 +86,7 @@ from step 2 works too.
 | `↑` / `↓` | moves through the list |
 | `Esc` | closes the palette without running anything |
 
-![The palette open with the text Sub typed: tracks, devices and chains whose names or paths contain Sub appear as rows, with their track or path in grey](assets/images/palette.png)
+![The palette open with the text sn typed: the track Snare and the devices below it appear as rows, with their path in grey](assets/images/palette.png)
 
 *Type part of a name: tracks, devices and chains appear as rows. Enter selects the highlighted one.*
 
@@ -106,7 +106,7 @@ When a name matches more than one object, cmdAbl shows a **pick list** instead o
 `↑` and `↓` to move, `Enter` to choose and `Esc` to cancel. Commands that take several tracks, such as `mute`, let
 you mark more than one row with `Tab`.
 
-![The pick list for mute --pick #drums, with five tracks: Drums, Bass, Synth, Lead and FX Sound, each with its tags; the speaker buttons of Drums and Synth are marked with a dashed ring](assets/images/pick-list.png)
+![The pick list for mute --pick #drums, with six tracks: Bass, Lead, Guitar, Kick, Snare and Perc, each with its tags; the speaker buttons of Bass, Guitar and Kick are marked with a dashed ring](assets/images/pick-list.png)
 
 *A name that matches several tracks opens the pick list. The line above the filter shows the command that Enter
 will run, and the buttons show the state that Enter would set.*

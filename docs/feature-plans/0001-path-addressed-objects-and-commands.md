@@ -640,6 +640,30 @@ addition if the chain's switch turns out not to match the visible button.
   `tags_all` refresh. A cached list counts only while the track at that route still has the name it had
   when the tags were read; `TagCache.write` updates the cache at once.
 
+**Operation for Live's display text of mixer values** (script 0.1.7; the plan is `0012`)
+- `param_display` `{scope, route (length 1), param: "volume", values: [number], expectName?}` →
+  `{strings: [text]}` in the order of `values`: `track.mixer_device.volume.str_for_value(v)` ("-6.0 dB",
+  "-inf dB"). A read: needs no token, does not move the fader. A value must be a finite number inside
+  the parameter's `min`..`max`; at most 64 values per call (`bad_request` beyond that), so the reply
+  stays far under the 4 KB cap. `param` takes only "volume" for now; "pan" and the sends join the
+  script's table later.
+- Extension: `paramDisplay(bridge, track, "volume", values)` in `bridgeOps.ts` sends longer lists in
+  chunks of `PARAM_DISPLAY_MAX_VALUES` (64) and returns one string per value; exit code 5 when the
+  script is down or too old.
+
+**Operation for the Set's own id** (script 0.1.8; the plan is `0013`)
+- `set_id` `{create?: bool}` → `{id: string | null, marked?}`. The id is a 32-character hex string in
+  `Song.set_data("cmdabl.set-id")` (Python API, not in the Cycling '74 reference). Without `create` the op
+  only reads. With `create` and no id yet it stores `uuid4().hex`, reads it back, and marks the Set as
+  modified with the colour toggle of `tags_set` (on the first track; `marked: false` if that failed).
+  With an id already there nothing is written.
+  A stored value that is not an id counts as none and is replaced on `create`.
+- It is a writing op (`WRITES`), so the access token is demanded on every call, a read too: the
+  protocol decides by op name, not by arguments.
+- Extension: `setId(bridge, create?)` in `bridgeOps.ts` → `string | null`; every problem (script not
+  running, too old, token missing, bad reply) is null, nothing throws.
+- Live-tested 2026-10-22: the id survives save, reload, Save As and Collect All and Save (Save As keeps the same id in the copy).
+
 **Access token** (mandatory before the first operation that changes something — built with the
 first one, `chain_set`)
 - *Threat model.* Any local process can send UDP to 127.0.0.1:27185. The same user can already

@@ -14,6 +14,8 @@ The Extensions SDK cannot do some things that cmdAbl needs. The Remote Script do
   script for them.
 - **Tags.** The SDK has no place to keep tags in the Set. The script stores them on the tracks, so they are saved
   with the Set. `tag`, the tag board and targets such as `#fx` use it.
+- **The Set's id.** `note` needs a name for the Set that stays the same when the Set is saved, reopened or saved
+  under another name. The script keeps an id inside the Set for this.
 - **Facts the SDK does not show.** Live can refuse to arm a track, for example a MIDI track whose input device is
   missing. The SDK reads back "armed" in that case. The script reads the real state, so `arm` can report the track
   as failed.
@@ -24,10 +26,10 @@ The script talks to the extension over a local socket, only on your Mac. See [Ho
 
 Without the Remote Script the palette still opens and most commands run:
 
-- `mute`, `solo` and `arm` work on tracks. `arm` cannot warn about tracks that Live refuses to arm.
+- `mute`, `solo`, `arm` and `vol` work on tracks. `arm` cannot warn about tracks that Live refuses to arm.
 - `lom`, `man`, `help`, `cmdabl log` and the history work.
 - These need the script: `goto`, `find`, `next`, `prev`, picking an object row in the palette, `tag`, targets such
-  as `#fx`, and `mute` and `solo` on rack chains and Drum Rack pads.
+  as `#fx`, `note`, and `mute` and `solo` on rack chains and Drum Rack pads.
 - Those commands answer that the Remote Script is not running. This is the usual answer for a missing script, an old
   copy that Live has not loaded and one that is not chosen as Control Surface, because cmdAbl cannot look into the User
   Library to tell them apart.
@@ -46,9 +48,9 @@ screenshots.
 After you update cmdAbl, run `cmdabl setup` again, then **restart Live**. Live keeps the script it loaded when it
 started, so a new copy in the User Library does nothing until Live restarts.
 
-The script of this release is version 0.1.6. `cmdabl setup` compares that version with the one that is running and
-says whether a restart is needed. For example: "Remote Script 0.1.6 is shipped, but Live still runs 0.1.5. Restart
-Live to load Remote Script 0.1.6."
+The script of this release is version 0.1.8. `cmdabl setup` compares that version with the one that is running and
+says whether a restart is needed. For example: "Remote Script 0.1.8 is shipped, but Live still runs 0.1.5. Restart
+Live to load Remote Script 0.1.8."
 
 ## Check it
 
@@ -56,12 +58,12 @@ Run `cmdabl bridge` in the palette. It sends one request to the Remote Script an
 version, the response time and the operations it supports. A healthy reply means the script is running and
 answering.
 
-![The cmdabl bridge result: Remote Script 0.1.6 is running, with its protocol version, response time and operations](assets/images/bridge.png)
+![The cmdabl bridge result: Remote Script 0.1.8 is running, with its protocol version, response time and operations](assets/images/bridge.png)
 
 *`cmdabl bridge` on a current install.*
 
 If the running script is not the version this cmdAbl ships, the reply names both, for example
-`Remote Script 0.1.5 (this extension ships 0.1.6) is running`. Update the script as above.
+`Remote Script 0.1.5 (this extension ships 0.1.8) is running`. Update the script as above.
 
 ## Messages
 
@@ -109,7 +111,7 @@ operation, it checks a token that the extension sends with the request.
   change is refused, restart Live. After an update, run `cmdabl setup` first.
 
 The token guards against other users on the Mac and against stray messages. It does not guard against programs you
-run yourself, which can change your Set in other ways anyway. Reads and selection need no token.
+run yourself, which can change your Set in other ways anyway. Reads and selection need no token, except `set_id`, which can create the Set's id.
 
 ## How the two talk
 

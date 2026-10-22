@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chains, chunkTargets, select, readTags, writeTags, trackFacts, REQUEST_BYTES_BUDGET, TRACK_FACTS_PER_REQUEST } from "./bridgeOps.js";
+import { chains, chunkTargets, select, readTags, writeTags, trackFacts, paramDisplay, setId, PARAM_DISPLAY_MAX_VALUES, REQUEST_BYTES_BUDGET, TRACK_FACTS_PER_REQUEST } from "./bridgeOps.js";
 import { createFakeBridge } from "./bridgeFake.js";
 import { fail, TEXT_OUTDATED } from "./bridgeProtocol.js";
 
@@ -248,4 +248,43 @@ test("writeTags is a writing request with the token and the track's name", async
   assert.equal((await writeTags(odd, node, ["fx"])).ok, false);
   const stale = createFakeBridge({ ops: { tags_set: () => fail(1, "the Live Set changed; run the command again") } });
   assert.deepEqual(await writeTags(stale, node, []), { ok: false, code: 1, text: "the Live Set changed; run the command again" });
+});
+
+test("paramDisplay is a read: scope, route, name, param and values go out, the strings come back in order", async () => {
+  const bridge = createFakeBridge({ ops: { param_display: (a) => ({ ok: true, value: { strings: (a.values as number[]).map((v) => `${v} dB`) } }) } });
+  assert.deepEqual(await paramDisplay(bridge, node, "volume", [0.5, 1]), { ok: true, value: ["0.5 dB", "1 dB"] });
+  assert.deepEqual(bridge.calls, [{ op: "param_display", args: { scope: "regular", route: [2, 1], expectName: "EQ Eight", param: "volume", values: [0.5, 1] }, changes: false }]);
+});
+
+test("paramDisplay sends long lists in chunks and keeps the order", async () => {
+  const bridge = createFakeBridge({ ops: { param_display: (a) => ({ ok: true, value: { strings: (a.values as number[]).map(String) } }) } });
+  const values = Array.from({ length: PARAM_DISPLAY_MAX_VALUES * 2 + 3 }, (_, i) => i);
+  const r = await paramDisplay(bridge, node, "volume", values);
+  assert.deepEqual(r, { ok: true, value: values.map(String) });
+  assert.deepEqual(bridge.calls.map((c) => (c.args.values as number[]).length), [PARAM_DISPLAY_MAX_VALUES, PARAM_DISPLAY_MAX_VALUES, 3]);
+  assert.deepEqual(await paramDisplay(bridge, node, "volume", []), { ok: true, value: [] });
+});
+
+test("paramDisplay rejects odd replies and passes failures through (exit code 5 without the op or the script)", async () => {
+  const short = createFakeBridge({ ops: { param_display: () => ({ ok: true, value: { strings: ["x"] } }) } });
+  assert.equal((await paramDisplay(short, node, "volume", [0.1, 0.2])).ok, false);
+  const odd = createFakeBridge({ ops: { param_display: () => ({ ok: true, value: { strings: [1] } }) } });
+  assert.equal((await paramDisplay(odd, node, "volume", [0.1])).ok, false);
+  assert.deepEqual(await paramDisplay(createFakeBridge({ running: false }), node, "volume", [0.1]), { ok: false, code: 5, text: "Remote Script not running" });
+  assert.deepEqual(await paramDisplay(createFakeBridge({}), node, "volume", [0.1]), { ok: false, code: 5, text: TEXT_OUTDATED });
+});
+
+test("setId reads or creates through the writing op with the token, and every problem is null", async () => {
+  const bridge = createFakeBridge({ ops: { set_id: (a) => ({ ok: true, value: { id: a.create ? "a".repeat(32) : null } }) } });
+  assert.equal(await setId(bridge), null);
+  assert.equal(await setId(bridge, true), "a".repeat(32));
+  assert.deepEqual(bridge.calls, [
+    { op: "set_id", args: {}, changes: false, token: true },
+    { op: "set_id", args: { create: true }, changes: true, token: true },
+  ]);
+  assert.equal(await setId(createFakeBridge({ running: false })), null);
+  assert.equal(await setId(createFakeBridge({})), null); // an older script without the op
+  assert.equal(await setId(createFakeBridge({ ops: { set_id: () => ({ ok: true, value: { id: 5 } }) } })), null);
+  assert.equal(await setId(createFakeBridge({ ops: { set_id: () => ({ ok: true, value: { id: "" } }) } })), null);
+  assert.equal(await setId(createFakeBridge({ ops: { set_id: () => fail(1, "x") } }), true), null);
 });
