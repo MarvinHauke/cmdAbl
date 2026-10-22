@@ -1,7 +1,7 @@
 # Scripts and triggers: `.cmdabl` files, run from clips and scenes
 
-**Status:** Draft (2026-10-23). First in the order after 0.1.4 (user): `;` chains first, in work on
-`feat/chain`. The bridge protocol addition
+**Status:** Draft (2026-10-23). First in the order after 0.1.4 (user): `;` chains first: core built (`cfe1e4f`),
+palette follow-up in work on `feat/chain`. The bridge protocol addition
 (phase 2) is not decided yet: the user decides after reading this plan. Trigger: run command scripts from
 clips and scenes, so Live's Session grid works as a grid of commands.
 
@@ -45,8 +45,12 @@ it.
   - in the palette, an ambiguous part asks as usual, in turn;
   - cancelling a pick stops the chain, and the parts before it stay done;
   - headless (scripts, MCP, triggers): exit 4 for that part.
-- **Undo:** one Cmd+Z for the whole line if one SDK transaction can span the parts; otherwise one step
-  per part, documented. Core checks which.
+- **Undo:** one Cmd+Z per part, not per line. The SDK's `withinTransaction` callback must be synchronous
+  (`docs/sdk-tree.md`), and parts wait for target resolution, pick lists and the bridge, so one
+  transaction can't span them (core `cfe1e4f`).
+- **Behaviour change** (release notes): an unquoted `;` splits everywhere, also in free-text arguments
+  (`find a;b` is two commands). Old history entries with `;` replay as chains. Wording: "`;` separates
+  commands; quote it to search for it".
 - **History:** stores the whole line, each part with its unique paths (as single commands are stored
   today).
 - **Completion:** after `; ` completion starts again at the command name. The hint panel and the usage
