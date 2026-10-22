@@ -1,6 +1,6 @@
 # Test access for agents: a `/run` route and a cmdAbl MCP server
 
-**Status:** Built (core `d8fd4b9`, `3512336`), Live test pending, on `feat/test-mcp` (based on `feat/vol`). Trigger: every Live test needs the user to type the commands; the
+**Status:** Built (core `d8fd4b9`, `3512336`, `a952068`), Live test pending, on `feat/test-mcp` (based on `feat/vol`). Trigger: every Live test needs the user to type the commands; the
 user wants the agents to run test lists themselves.
 
 **Parent:** [0004](0004-command-platform.md)
@@ -97,6 +97,7 @@ agent ──MCP (stdio)──> tools/mcp/cmdabl-mcp ──HTTP 127.0.0.1:27184�
 | Any local process could run commands. | Development builds only, a 0600 token file, browser pages refused, localhost only. |
 | Agents change the user's Set. | Only on the user's go, in a test Set; every run is logged; one Cmd+Z per run. |
 | A command waits for a dialog forever. | The headless `Ui` never opens one; the route has a timeout (about 10 s) and answers 504. |
+| A run hangs past the timeout and keeps the gate closed. | `POST /reset` releases the run gate and the route ("run gate released", core `a952068`). Known edge: a released run that wakes up later may open a real dialog or land in a newer run's capture; rare, fixed only if it shows up. |
 | Two agents run at once. | 409 while a run is going; the MCP tool says "busy". |
 | The route drifts from the palette's behaviour. | Both call `runLine`; only the deps differ. Tests run the same lines through both. |
 
