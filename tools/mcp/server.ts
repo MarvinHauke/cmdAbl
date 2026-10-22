@@ -55,9 +55,10 @@ export function createServer(client: Client = createClient(), desktop: Desktop =
       inputSchema: {
         text: z.string().max(200).optional().describe("printable text to type"),
         key: z.enum(Object.keys(KEYS) as [string, ...string[]]).optional().describe("one key to press after the text"),
+        delayMs: z.number().int().min(0).max(300).optional().describe("pause after each typed character, for readable typing in a recording (default 0)"),
       },
     },
-    async ({ text, key }) => reply(await desktop.keys({ text, key })),
+    async ({ text, key, delayMs }) => reply(await desktop.keys({ text, key, delayMs })),
   );
   server.registerTool(
     "cmdabl_capture",
@@ -70,6 +71,40 @@ export function createServer(client: Client = createClient(), desktop: Desktop =
       },
     },
     async ({ name, target }) => reply(await desktop.capture({ name, target })),
+  );
+  server.registerTool(
+    "cmdabl_record",
+    {
+      description:
+        "Record Live's main window (a screen area, not a single window: whatever covers it is recorded too) for 1..30 seconds to captures/<name>.mov (gitignored). Brings Live to the front, starts the recording in the background and answers at once with the path and the end time; then do the actions with cmdabl_show and cmdabl_keys (delayMs for readable typing). Refuses while another recording runs. Needs Screen Recording for the terminal app. Never records the full screen. The recording may show the user's real Set around a dialog and private names: it goes through the docs agent (every frame checked) before anything is committed.",
+      inputSchema: {
+        name: z.string().regex(/^[a-z0-9-]{1,60}$/).describe("file name without extension: a-z, 0-9 and - only"),
+        seconds: z.number().int().min(1).max(30),
+      },
+    },
+    async ({ name, seconds }) => reply(await desktop.record({ name, seconds })),
+  );
+  server.registerTool(
+    "cmdabl_record_status",
+    {
+      description: "Is captures/<name>.mov still recording, or done, and how big is the file. Read-only.",
+      inputSchema: { name: z.string().regex(/^[a-z0-9-]{1,60}$/) },
+    },
+    async ({ name }) => reply(await desktop.recordStatus({ name })),
+  );
+  server.registerTool(
+    "cmdabl_convert",
+    {
+      description:
+        'Convert captures/<name>.mov with ffmpeg to captures/<name>.mp4 (H.264, CRF 24, yuv420p, faststart, no audio) or captures/<name>.gif (about 12 fps, two-pass palette, width 960 by default). Optional width in pixels and crop "w:h:x:y" in source pixels. Answers the path and size. The recording may show private names: docs checks every frame before anything is committed.',
+      inputSchema: {
+        name: z.string().regex(/^[a-z0-9-]{1,60}$/),
+        format: z.enum(["mp4", "gif"]),
+        width: z.number().int().min(100).max(4000).optional(),
+        crop: z.string().regex(/^\d{1,5}:\d{1,5}:\d{1,5}:\d{1,5}$/).optional().describe("w:h:x:y in source pixels"),
+      },
+    },
+    async ({ name, format, width, crop }) => reply(await desktop.convert({ name, format, width, crop })),
   );
   return server;
 }

@@ -203,13 +203,13 @@ test("show: posts the line with the token and says it started; busy is an answer
   }
 });
 
-test("the MCP server lists the seven tools", async () => {
+test("the MCP server lists its ten tools", async () => {
   const [a, b] = InMemoryTransport.createLinkedPair();
   const server = createServer(createClient({ port: 1, ...withToken }));
   const client = new Client({ name: "test", version: "0" });
   try {
     await Promise.all([server.connect(a), client.connect(b)]);
-    assert.deepEqual((await client.listTools()).tools.map((t) => t.name).sort(), ["cmdabl_bridge", "cmdabl_capture", "cmdabl_keys", "cmdabl_log", "cmdabl_run", "cmdabl_show", "cmdabl_state"]);
+    assert.deepEqual((await client.listTools()).tools.map((t) => t.name).sort(), ["cmdabl_bridge", "cmdabl_capture", "cmdabl_convert", "cmdabl_keys", "cmdabl_log", "cmdabl_record", "cmdabl_record_status", "cmdabl_run", "cmdabl_show", "cmdabl_state"]);
   } finally {
     await client.close();
     await server.close();
