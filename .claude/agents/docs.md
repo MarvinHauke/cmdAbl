@@ -33,6 +33,12 @@ documentation work comes up:
 - Images only where they explain something text cannot. An image shows no user name, no home
   path, no private project name and nothing from other windows: cover such parts with an opaque
   box (never a blur — blurred text can be recovered). When unsure, leave the image out and ask.
+- **Screenshots with the cmdAbl MCP tools** (plan 0016 §5), only after the architect passes on the
+  user's go that a test Set is open and Live is free: `cmdabl_show(line)` opens a command's dialog,
+  `cmdabl_capture(name, dialog|live)` writes `captures/<name>.png` (gitignored), and
+  `cmdabl_keys(key="escape")` closes the dialog. Always close what you opened. Crop and cover with
+  ImageMagick (`magick`), then move the final image to `docs/assets/images/`; never commit
+  `captures/`.
 - No environment variables, tokens or keys in any page or image. Never run commands that print
   the environment (`env`, `printenv`, `set`, `ps e`, `pgrep -fl`).
 - **Write for one audience per page** (user, 2026-10-21). The site is public; know who reads it:
