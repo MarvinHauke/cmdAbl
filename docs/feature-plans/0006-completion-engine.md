@@ -211,6 +211,31 @@ Steps 1–2 of the rollout: completion at every position, not only for command n
    `tag -r <old>`, `tag -e <tag>`); the authoring guide via docs.
 4. **Test through MCP:** `cmdabl_show("")` plus `cmdabl_keys` and `cmdabl_capture` at each position.
 
+## Two zones (user, 2026-10-22)
+
+After the first Live use of argument completion: after `tag ` only targets showed, so the options
+(`--list`, `--edit`, …) were hidden until `-` was typed, and the tool lost part of its
+self-explanation. The user also wants recent commands first.
+
+```
+   --rename  -r <old> <new>  rename a tag …        ↑ tool zone: subcommands and options
+   --edit    -e <tag|#>      …                       (best match next to the prompt)
+ : tag ▌<target>…                                    prompt; ghost = usage hint
+   mute /Kick            (history)                 ↓ Set zone: recent lines first, then
+   /Kick                 track                       paths, #tags, values
+```
+
+- `complete()` items carry `zone: "tool" | "set"`, derived from the kind: `command` and `option` go
+  in the tool zone, `path`, `tag` and `value` in the Set zone.
+- At positional and `rest` positions, `complete()` also returns the unused options and subcommands.
+  Not after `--`, and not while an option waits for its value.
+- **Recent first:** history lines starting with the typed command (newest, at most 3) lead the Set
+  zone. At word 0, history sits directly below the prompt and commands go above.
+- **Keys:** ↑ enters the tool zone, ↓ the Set zone; Tab takes; Enter runs the typed line unless the
+  selection moved.
+- The tool zone shows at most about 5 rows; the dialog size is unchanged; the ghost text stays the
+  usage hint.
+
 ## Open questions
 
 - Prototype ghost text on a plain `<input>` overlay vs. a `contenteditable`; settle by trying.
