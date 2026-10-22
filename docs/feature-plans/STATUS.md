@@ -41,6 +41,7 @@ Open from the releases:
   transactions; `cmdabl curve` (measured 2026-10-22: 1001 points, 0 dB ≈ 0.850, 1.0 = +6 dB).
 - modules `8537d24`: `vol [--set] <dB> <target>…` (decimals, `-inf` with `--set`), tracks only
   (regular, return, group, `/Main`); dB↔value from the measured table (`mixValue.ts`, `mixTable.ts`).
+- Limits: `stop` (default) / `--clip` replace the confirm question (modules, in progress).
 - Live test: relative/absolute on `#drums`, decimals, the +6 and -inf limits, `/Main`, a chain gives
   exit 2, one Cmd+Z per run, displayed dB matches the log within 0.1 dB.
 - Docs still to do: `vol` in using.md, `volume`/`setVolume` in the authoring guide's TracksPort row.
@@ -301,6 +302,9 @@ Release:
 - Tag editing (user, 2026-10-20): plan 0010 — `tag -l` as an editable overview on a new
   `board` surface like the tag bar in Live's browser (chips with ×, an `add…` input with
   suggestions per tag, new tag…, Apply). 0.1.2, in work on `feat/tag-board`.
+
+- `link` (user, 2026-10-22): plan 0015 — named controls (`@drums`) with rules at the limits
+  (`keep`, `stop`, `clip`) for every numeric command; `vol` already has `stop` and `--clip`.
 
 - Ideas from ClyphX (2026-10-20): plan 0009 — `;` action lists with aliases (0.1.3); `.`,
   index, range and `all` targets, `vol`/`pan`/`send` (0.1.x); snapshots (0.2.x); triggers from
