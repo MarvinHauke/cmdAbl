@@ -58,9 +58,12 @@ Older checks that were never reported; most can now run through MCP.
 
 ## Backlog (not ordered)
 
-- Device mute (user, 2026-10-22): `mute <device>` switches the device's "Device On" off (SDK `parameters[0]`,
-  no Remote Script). Deferred until the `mute` listing has a hierarchy (tracks, then their chains and
-  devices: plan 0006 step 3); order set by the user.
+- Device on/off (user, 2026-10-22): its own module `bypass` with the short alias `bp` (command aliases
+  exist in the tree). It switches a device's "Device On" (SDK `parameters[0]`, no Remote Script). Rules as
+  `mute`: toggle, `--set 1` bypassed, `--set 0` active, several targets, pick list with state, one undo
+  step. Devices only (a track gives a clear message); completion offers only devices. Not part of `mute`:
+  mute silences a path (track, chain, pad), bypass skips a device's processing. Deferred until the `mute`
+  listing has a hierarchy (plan 0006 step 3); order set by the user.
 
 - A `cmdabl settings` page (user, 2026-10-22): one place for cmdAbl's settings (`settings.json`); the
   palette's "above the prompt" switch likely moves there. Builds on the store from 0.1.4 (plan 0008).
