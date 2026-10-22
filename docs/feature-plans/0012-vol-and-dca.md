@@ -72,7 +72,7 @@ mute groups (`mute #drums`).
 | Limits | A fader stops at Live's maximum (+6 dB) and at -inf. Relative steps follow a rule (user, 2026-10-22): **`stop`** (default) shrinks the step so no member crosses a limit and the balance stays; **`--clip`** (`-c`) moves each member by the full step and clamps the ones at a limit. A shortened step or a limit is named in a message; the log has the asked and the applied step. Members at -inf stay and don't block. `--set` has no rule. `keep` (remember the overflow) comes with [0015](0015-link.md). |
 | Behaviour | It overwrites the fader values. No automation warning for now (decided 2026-10-22); the command's description says it overwrites the fader. It is not marked `destructive` (the one-target confirmation), because a tag reaches all its members on purpose. |
 | Undo | All faders are read first, then written in one transaction: one Cmd+Z step, exact. The log's `undo: vol --set <old> <path>` lines restore to 0.1 dB. |
-| Output | A successful write is quiet; `/Kick: -6.0 → -12.0 dB` and the undo line go to the log ([0011](0011-logging.md)). A fader at +6 or -inf is named in a message; a relative step on a -inf fader stays at -inf (only `--set` lifts it). Below -69.6 dB the fader goes to -inf. Chains: exit 2 for now. |
+| Output | A successful write is quiet; `/Kick: -6.0 → -12.0 dB` and the undo line go to the log ([0011](0011-logging.md)). A fader whose relative step was cut by a limit is named in a message; `--set` is quiet (the log has old → new). A relative step on a -inf fader leaves it at -inf and doesn't name it (only `--set` lifts it). Below -69.6 dB the fader goes to -inf. Chains: exit 2 for now. |
 
 ### The dB ↔ value helper (shared)
 
