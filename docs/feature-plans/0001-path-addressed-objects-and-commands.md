@@ -662,7 +662,7 @@ addition if the chain's switch turns out not to match the visible button.
   protocol decides by op name, not by arguments.
 - Extension: `setId(bridge, create?)` in `bridgeOps.ts` → `string | null`; every problem (script not
   running, too old, token missing, bad reply) is null, nothing throws.
-- Open (Live): does the id survive save, close, reopen and Save As?
+- Live-tested 2026-10-22: the id survives save, reload, Save As and Collect All and Save (Save As keeps the same id in the copy).
 
 **Access token** (mandatory before the first operation that changes something — built with the
 first one, `chain_set`)

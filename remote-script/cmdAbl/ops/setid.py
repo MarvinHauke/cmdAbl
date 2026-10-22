@@ -1,8 +1,8 @@
 """`set_id`: the Live Set's own id, kept in the Set (plan 0013), for things that belong to one Set.
 
 Where it lives: `Song.set_data("cmdabl.set-id", <hex string>)`; `get_data`/`set_data` are in Live's
-Python API (Song and Track), not in the Cycling '74 reference. Whether the value survives save,
-reload and Save As is still to be checked in Live.
+Python API (Song and Track), not in the Cycling '74 reference. The value survives save, reload,
+Save As and Collect All and Save (Live-tested 2026-10-22).
 
 set_id   Args: {create?: bool (default false)}. (A writing op: it needs the token, as `create` may write.)
          Result: {id: string | null, marked?: bool}.

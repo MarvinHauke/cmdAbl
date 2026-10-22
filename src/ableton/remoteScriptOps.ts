@@ -201,7 +201,7 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
     usesRoute: false,
     lom: [
       lom("Song", "song", "get_data", "call", "function(key, default)", "Python API only: not in the Cycling '74 reference; key \"cmdabl.set-id\", a 32-character hex string; anything else counts as no id", false),
-      lom("Song", "song", "set_data", "call", "function(key, value)", "only with create and no id yet; read back after the write; survival of save, reload and Save As is still to be checked in Live", false),
+      lom("Song", "song", "set_data", "call", "function(key, value)", "only with create and no id yet; read back after the write; survives save, reload, Save As and Collect All and Save (Live-tested 2026-10-22)", false),
       lom("Track", "track", "color_index", "get", "int", "the colour toggle that marks the Set as modified (as in tags_set)"),
       lom("Track", "track", "color_index", "set", "int", "changed to a neighbour and put back inside one undo step"),
       lom("Song", "song", "begin_undo_step", "call", "function()", "groups the colour toggle into one step; not in the reference's Song page", false),
