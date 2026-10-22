@@ -102,14 +102,19 @@ export function createClient(options: ClientOptions = {}) {
 
   /** Statuses the routes answer besides 200, as text. */
   function refusal(status: number, text: string): ToolText | null {
+    const r = refusalText(status, text);
+    return r ? { ...r, text: `HTTP ${status}: ${r.text}` } : null;
+  }
+
+  function refusalText(status: number, text: string): ToolText | null {
     const body = parse(text);
     if (status === 200) return null;
     if (status === 401) return bad("cmdAbl refused the token (it changes at every start; the file was re-read, so cmdAbl may have restarted: try again).");
     if (status === 403) return bad("refused: the request looked like it came from a web page.");
-    if (status === 404) return bad("this cmdAbl build has no test routes (a production build, or an older development build): run npm start.");
+    if (status === 404) return bad("this cmdAbl build has no test routes (a production build, an older development build, or the route failed): run npm start.");
     if (status === 409) return bad(`busy: ${body?.reason ?? "another run is going or the user has a palette or dialog open"}. Try again in a moment.`);
     if (status === 504) return bad(`${body?.reason ?? "the run took too long"}. Check cmdabl_log before running more.`);
-    return bad(`cmdAbl answered ${status}${body?.error ? `: ${body.error}` : ""}`);
+    return bad(`cmdAbl answered${body?.error ? `: ${body.error}` : ""}`);
   }
 
   return {

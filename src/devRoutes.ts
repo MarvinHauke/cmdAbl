@@ -46,6 +46,22 @@ export interface DevRouteDeps {
   timeoutMs?: number;
 }
 
+/** `/log?n=5#x` -> ["/log", "n=5"]: the path and the query, without URL (not available in Live's host). */
+export function splitUrl(url: string | undefined): [string, string] {
+  const raw = (url ?? "/").split("#")[0] ?? "/";
+  const at = raw.indexOf("?");
+  return at < 0 ? [raw, ""] : [raw.slice(0, at), raw.slice(at + 1)];
+}
+
+/** The first value of `name` in a query string (`a=1&n=7`), or undefined. No percent-decoding: only plain numbers are read. */
+export function queryValue(query: string, name: string): string | undefined {
+  for (const part of query.split("&")) {
+    const eq = part.indexOf("=");
+    if ((eq < 0 ? part : part.slice(0, eq)) === name) return eq < 0 ? "" : part.slice(eq + 1);
+  }
+  return undefined;
+}
+
 function sameToken(given: string, expected: string): boolean {
   const a = Buffer.from(given);
   const b = Buffer.from(expected);
@@ -128,23 +144,19 @@ export function createDevRoutes(deps: DevRouteDeps): DevRoutes {
     }
   }
 
-  function handleLog(req: http.IncomingMessage, res: http.ServerResponse, url: URL): void {
+  function handleLog(req: http.IncomingMessage, res: http.ServerResponse, query: string): void {
     if (req.method !== "GET") return void res.writeHead(405, { Allow: "GET" }).end();
     if (fromBrowserPage(req)) return void res.writeHead(403).end("forbidden");
     if (!authorized(req, deps.token)) return void json(res, 401, { error: "unauthorized" });
-    const asked = Number(url.searchParams.get("n") ?? "50");
+    const asked = Number(queryValue(query, "n") ?? "50");
     const count = Number.isFinite(asked) ? Math.min(MAX_LOG_LINES, Math.max(1, Math.floor(asked))) : 50;
     json(res, 200, { lines: deps.logLines(count) });
   }
 
   const handler = (req: http.IncomingMessage, res: http.ServerResponse): boolean => {
-    let url: URL;
-    try {
-      url = new URL(req.url ?? "/", "http://127.0.0.1");
-    } catch {
-      return false;
-    }
-    if (url.pathname !== "/run" && url.pathname !== "/log") return false;
+    // No URL / URLSearchParams: Live's Extension Host has neither (startup log "host globals").
+    const [pathname = "", query = ""] = splitUrl(req.url);
+    if (pathname !== "/run" && pathname !== "/log") return false;
     const fail = (): void => {
       try {
         json(res, 500, { error: "internal error" });
@@ -153,7 +165,7 @@ export function createDevRoutes(deps: DevRouteDeps): DevRoutes {
       }
     };
     try {
-      if (url.pathname === "/log") handleLog(req, res, url);
+      if (pathname === "/log") handleLog(req, res, query);
       else void handleRun(req, res).catch(fail);
     } catch {
       fail();

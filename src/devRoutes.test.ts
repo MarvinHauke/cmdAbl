@@ -5,7 +5,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
-import { createDevRoutes, runTokenFilePath, writeRunToken, type DevRouteDeps } from "./devRoutes.js";
+import { createDevRoutes, queryValue, splitUrl, runTokenFilePath, writeRunToken, type DevRouteDeps } from "./devRoutes.js";
 import type { HeadlessOutcome } from "./core/headless.js";
 
 const TOKEN = "fake-token";
@@ -176,4 +176,39 @@ test("release frees the route after a stuck run; the stuck run ending late does 
     assert.equal((await call("POST", "/run", { body: '{"line":"third"}' })).status, 409);
     assert.equal((await next).status, 504); // 30 ms limit, the run needs 80
   });
+});
+
+test("the routes work without the URL and URLSearchParams globals (Live's Extension Host has neither)", async () => {
+  const saved = { URL: globalThis.URL, URLSearchParams: globalThis.URLSearchParams };
+  let asked = 0;
+  await withServer({ logLines: (n) => ((asked = n), ["a"]) }, async (call) => {
+    // The test client needs the globals itself: take them away only while the server handles the request.
+    const routes = lastRoutes!;
+    const answers: Array<{ status: number; body: string }> = [];
+    const fakeRes = () => {
+      const res = { status: 0, body: "", writeHead(status: number) { res.status = status; return res; }, end(body?: string) { res.body = body ?? ""; answers.push({ status: res.status, body: res.body }); return res; } };
+      return res;
+    };
+    delete (globalThis as { URL?: unknown }).URL;
+    delete (globalThis as { URLSearchParams?: unknown }).URLSearchParams;
+    try {
+      const get = { method: "GET", url: "/log?n=9", headers: { authorization: `Bearer ${TOKEN}` } };
+      assert.equal(routes(get as never, fakeRes() as never), true);
+      assert.equal(routes({ method: "GET", url: "/other", headers: {} } as never, fakeRes() as never), false);
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+    assert.equal(answers[0]!.status, 200);
+    assert.equal(asked, 9);
+    void call;
+  });
+});
+
+test("splitUrl and queryValue", () => {
+  assert.deepEqual(splitUrl("/log?n=5#x"), ["/log", "n=5"]);
+  assert.deepEqual(splitUrl("/run"), ["/run", ""]);
+  assert.deepEqual(splitUrl(undefined), ["/", ""]);
+  assert.equal(queryValue("a=1&n=7", "n"), "7");
+  assert.equal(queryValue("n", "n"), "");
+  assert.equal(queryValue("m=1", "n"), undefined);
 });
