@@ -28,7 +28,7 @@ import { REMOTE_SCRIPT_ROUTE_LOM } from "./remoteScriptOps.js";
 // The Python sources are scanned for what they touch on LOM objects: every attribute that is read
 // from a LOM variable, plus names passed to getattr/_flag. Cheap, not a parser: it keeps the
 // declared `lom` lists honest in both directions.
-const sources = ["routes.py", "ops/select.py", "ops/tracks.py", "ops/chains.py", "ops/tags.py", "ops/params.py"].map((f) =>
+const sources = ["routes.py", "ops/select.py", "ops/tracks.py", "ops/chains.py", "ops/tags.py", "ops/params.py", "ops/setid.py"].map((f) =>
   readFileSync(new URL(`../../remote-script/cmdAbl/${f}`, import.meta.url), "utf8"),
 );
 const code = sources.join("\n").replace(/"""[\s\S]*?"""/g, "").replace(/#.*$/gm, "");

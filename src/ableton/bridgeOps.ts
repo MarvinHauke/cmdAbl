@@ -456,3 +456,20 @@ export async function paramDisplay(
   }
   return { ok: true, value: strings };
 }
+
+/**
+ * The Live Set's own id (plan 0013), kept in the Set by the Remote Script. `create` false only reads;
+ * true stores a new random id when the Set has none (and marks the Set as modified). Resolves to the
+ * id, or null when the Set has none, the script is not running, too old, or anything went wrong:
+ * never throws. The op is a writing op (the token is sent also for a read).
+ */
+export async function setId(bridge: Bridge, create = false): Promise<string | null> {
+  try {
+    const reply = await bridge.request("set_id", create ? { create: true } : {}, { changes: create, token: true });
+    if (!reply.ok) return null;
+    const id = reply.value.id;
+    return typeof id === "string" && id !== "" ? id : null;
+  } catch {
+    return null;
+  }
+}

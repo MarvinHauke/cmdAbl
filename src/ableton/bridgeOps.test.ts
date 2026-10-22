@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chains, chunkTargets, select, readTags, writeTags, trackFacts, paramDisplay, PARAM_DISPLAY_MAX_VALUES, REQUEST_BYTES_BUDGET, TRACK_FACTS_PER_REQUEST } from "./bridgeOps.js";
+import { chains, chunkTargets, select, readTags, writeTags, trackFacts, paramDisplay, setId, PARAM_DISPLAY_MAX_VALUES, REQUEST_BYTES_BUDGET, TRACK_FACTS_PER_REQUEST } from "./bridgeOps.js";
 import { createFakeBridge } from "./bridgeFake.js";
 import { fail, TEXT_OUTDATED } from "./bridgeProtocol.js";
 
@@ -272,4 +272,19 @@ test("paramDisplay rejects odd replies and passes failures through (exit code 5 
   assert.equal((await paramDisplay(odd, node, "volume", [0.1])).ok, false);
   assert.deepEqual(await paramDisplay(createFakeBridge({ running: false }), node, "volume", [0.1]), { ok: false, code: 5, text: "Remote Script not running" });
   assert.deepEqual(await paramDisplay(createFakeBridge({}), node, "volume", [0.1]), { ok: false, code: 5, text: TEXT_OUTDATED });
+});
+
+test("setId reads or creates through the writing op with the token, and every problem is null", async () => {
+  const bridge = createFakeBridge({ ops: { set_id: (a) => ({ ok: true, value: { id: a.create ? "a".repeat(32) : null } }) } });
+  assert.equal(await setId(bridge), null);
+  assert.equal(await setId(bridge, true), "a".repeat(32));
+  assert.deepEqual(bridge.calls, [
+    { op: "set_id", args: {}, changes: false, token: true },
+    { op: "set_id", args: { create: true }, changes: true, token: true },
+  ]);
+  assert.equal(await setId(createFakeBridge({ running: false })), null);
+  assert.equal(await setId(createFakeBridge({})), null); // an older script without the op
+  assert.equal(await setId(createFakeBridge({ ops: { set_id: () => ({ ok: true, value: { id: 5 } }) } })), null);
+  assert.equal(await setId(createFakeBridge({ ops: { set_id: () => ({ ok: true, value: { id: "" } }) } })), null);
+  assert.equal(await setId(createFakeBridge({ ops: { set_id: () => fail(1, "x") } }), true), null);
 });
