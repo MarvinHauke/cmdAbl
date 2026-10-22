@@ -153,6 +153,36 @@ Without a pattern, `find` needs `-L` or one of `-t`, `-d` and `-c`; a bare `find
 follow it. `arm /Bass /Lead` arms both tracks, and `arm /Bass` does not disarm other tracks. Name every track you
 want explicitly, like Cmd-clicking the buttons in Live.
 
+## Fader levels: `vol`
+
+`vol` moves track faders in dB (decibels). It needs no Remote Script.
+
+- `vol <dB> <target>…` moves each fader by `<dB>` from where it is. With Kick at -6 dB and Perc at -3 dB,
+  `vol -6 #drums` gives -12 and -9, so the balance between them stays.
+- `vol --set <dB> <target>…` (short `-s`) puts every fader at that level. `vol --set -inf /Lead` silences the Lead
+  track.
+- Decimals work: `vol -1.5 /Bass`, `vol .5 #drums`.
+- Targets are tracks: regular, return, group and the main track (`/Main`), by path, name or tag. A rack chain or
+  Drum Rack pad is refused with "vol works on tracks for now".
+- A successful move is quiet. One run is one Cmd+Z step. Levels are as precise as Live's display, 0.1 dB.
+
+**Limits.** A fader goes up to +6 dB (Live's maximum) and down to -inf. The lowest level above -inf is -69.6 dB.
+
+- By default, if one fader would cross a limit, the step is shortened for every fader, so the balance stays. The
+  message reads, for example, "vol 9: moved +3.0 dB, /Kick reached +6 dB (the maximum)". If nothing can move, it
+  reads "nothing changed: /Kick is at +6 dB (the maximum)".
+- With `--clip` (short `-c`), each fader moves by the full step. The faders at a limit stop there and lose their
+  balance. Below -69.6 dB a fader goes to -inf. The message reads "limit reached at +6 dB (the maximum): /Bass,
+  /Lead, …".
+- A fader at -inf stays there with a relative step. Only `--set` brings it back.
+- `--clip` together with `--set` is a usage error, and so is a relative `-inf`; use `vol --set -inf`.
+
+**The log and undo.** `cmdabl log` shows what a run did: "asked +9.0 dB, applied +3.0 dB", then
+`/Kick: 3.0 → 6.0 dB` and an `undo: vol --set 3.0 /Kick` line per track. `cmdabl log --undo` lists the undo lines.
+
+**Automation.** `vol` overwrites the fader like a hand move. On a track with volume automation, Live treats it as a
+manual change (see Live's Re-Enable Automation button).
+
 ## Tags
 
 A tag marks what a track is, such as `fx` or `drums`. After you tag a track, one command can reach every track
