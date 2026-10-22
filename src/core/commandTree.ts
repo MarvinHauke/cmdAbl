@@ -411,30 +411,6 @@ export function optionNotes(opt: OptionDef): string {
   return `${opt.number ? ` (${numberRule(opt.number)})` : ""}${opt.valueDefault !== undefined ? ` (default ${opt.valueDefault})` : ""}`;
 }
 
-/** A value option as the palette page needs it to hint what to type next. */
-export interface ValueOptionHint {
-  /** Subcommand words below the top-level command (empty for a plain command). */
-  path: string[];
-  /** Long name without dashes. */
-  name: string;
-  short?: string;
-  /** One label per value, e.g. ["old", "new"]; shown as ghost text `<old>`. */
-  labels: string[];
-}
-
-/** Every value option of the leaves below (and including) `node`, for the palette. */
-export function valueOptionHints(node: CommandNode<any, any>, path: string[] = []): ValueOptionHint[] {
-  if (node.children?.length) return node.children.flatMap((c) => valueOptionHints(c, [...path, c.name]));
-  return (node.options ?? [])
-    .filter((o) => o.takesValue)
-    .map((o) => ({
-      path,
-      name: o.name,
-      ...(o.short ? { short: o.short } : {}),
-      labels: o.values !== undefined ? valueNames(o) : [valueLabel(o)],
-    }));
-}
-
 /** The names of a multi-value option's values (`valueLabels`, else "value" each). */
 export function valueNames(opt: OptionDef): string[] {
   return Array.from({ length: opt.values ?? 1 }, (_, i) => opt.valueLabels?.[i] ?? "value");

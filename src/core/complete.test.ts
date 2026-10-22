@@ -310,3 +310,16 @@ test("completer rows: strings and objects, insert quoted, bad entries skipped", 
   assert.deepEqual(r.labels, ["a b", "shown"]);
   assert.deepEqual(r.inserts, ['"a b"', '"real value"']);
 });
+
+test("usage of a multi-value option without a completer still names each value (<old>, then <new>)", () => {
+  const plain: CommandNode<any, any>[] = [
+    { name: "tag", summary: "t", options: [{ name: "rename", short: "r", takesValue: true, values: 2, valueLabels: ["old", "new"], summary: "r" }], run },
+  ];
+  const d: CompletionData = { tree: completionTree(plain), completions: {}, paths: [], tags: [] };
+  for (const [line, hint] of [["tag --rename ", "<old>"], ["tag -r ", "<old>"], ["tag -r fx ", "<new>"], ["tag --rename=fx ", "<new>"]] as const) {
+    assert.equal(complete(line, line.length, d).usage, hint, line);
+  }
+  // no labels declared: "value" for each
+  const bare = completionTree([{ name: "x", summary: "s", options: [{ name: "pair", takesValue: true, values: 2, summary: "p" }], run }]);
+  assert.equal(complete("x --pair ", 9, { ...d, tree: bare }).usage, "<value>");
+});

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import Fuse from "fuse.js";
-import { filterRanked, filterer, matches, matchesNode, rank, ranker, suggest, valueHint } from "./match.js";
+import { filterRanked, filterer, matches, matchesNode, rank, ranker, suggest } from "./match.js";
 
 test("matches: every word occurs, any order, ignoring case", () => {
   assert.equal(matches("/Vermona MIDI/Drum Rack/Kick", "vermona kick"), true);
@@ -82,28 +82,4 @@ test("suggest with an own-name field: a close parent name alone does not suggest
   ];
   assert.deepEqual(suggest(items, "vermoan", ["path"], 8, "name").map((i) => i.path), ["/Vermona MIDI"]);
   assert.equal(suggest(items, "vermoan", ["path"]).length, 2); // without the own-name field both come
-});
-
-test("valueHint: the label of the next value after a value option", () => {
-  const specs = [
-    { path: [], name: "rename", short: "r", labels: ["old", "new"] },
-    { path: [], name: "edit", short: "e", labels: ["tag|#"] },
-    { path: ["go"], name: "n", labels: ["n"] },
-  ];
-  assert.equal(valueHint(specs, "--rename "), "<old>");
-  assert.equal(valueHint(specs, "-r fx "), "<new>");
-  assert.equal(valueHint(specs, "--rename=fx "), "<new>");
-  assert.equal(valueHint(specs, "--rename fx effects "), null);
-  assert.equal(valueHint(specs, "-e "), "<tag|#>");
-  assert.equal(valueHint(specs, "-e fx /bass "), null);
-  assert.equal(valueHint(specs, "--rename"), null); // no trailing space: still typing the name
-  assert.equal(valueHint(specs, "--rename fx"), null); // still typing the value
-  assert.equal(valueHint(specs, '--rename "a b" '), "<new>");
-  assert.equal(valueHint(specs, "/bass "), null);
-  assert.equal(valueHint(specs, "go -- "), null);
-  assert.equal(valueHint(specs, "go --n "), "<n>");
-  assert.equal(valueHint(specs, "--n "), null); // belongs to the subcommand
-  assert.equal(valueHint(specs, '-r "my '), null); // inside an open quote
-  assert.equal(valueHint(specs, "-- --rename "), null); // after -- it is text
-  assert.equal(valueHint(undefined, "--rename "), null);
 });
