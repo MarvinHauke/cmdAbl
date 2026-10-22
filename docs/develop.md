@@ -45,6 +45,54 @@ The Remote Script's protocol tests are Python, with the standard library only:
 python3 -B -m unittest discover -s tests/remote-script
 ```
 
+## Testing in Live with MCP
+
+A development run (`npm start`) can run command lines without a dialog, so a coding agent can test commands in a
+real Live Set. A packaged `.ablx` has none of this.
+
+**Warning:** this changes the open Live Set. Use a test Set, and do not work in Live while a test runs.
+
+**The two routes.** In a development run, cmdAbl offers two local routes on its trigger port, `127.0.0.1:27184`:
+
+- `POST /run` with `{"line": "…"}` runs one command line without any dialog.
+- `GET /log?n=` returns the last `n` log lines.
+
+Both need a Bearer token (an access key sent in the `Authorization` header). cmdAbl writes it at each start to a
+`run-token` file in its Extensions Data folder, readable by you only. Browser pages are refused. Never paste or print
+the token.
+
+**What a run does:**
+
+- An ambiguous address ends with exit code 4 and lists the candidates.
+- Questions, pick lists and pages are skipped, and the answer names them.
+- Messages are captured and returned in the answer.
+- One run is one undo step.
+- A run is not added to the history.
+
+**When it says no.** A run answers 409 (busy) while another run is going or a palette or dialog is open. A run that
+takes longer than 10 seconds answers 504. `POST /reset` releases a run that is stuck.
+
+**The MCP server.** MCP (Model Context Protocol) lets a coding agent call tools. The server is in `tools/mcp/`. The
+project's `.mcp.json` registers it (`npx tsx tools/mcp/main.ts`); `npm run mcp` starts it by hand. Its tools:
+
+| Tool | What it does |
+|---|---|
+| `cmdabl_run(line)` | Runs one command line, like `POST /run`. |
+| `cmdabl_log(n)` | Returns the last `n` log lines. |
+| `cmdabl_bridge()` | Says whether the Remote Script is connected and how fast it answers. |
+| `cmdabl_state()` | Says whether a palette or dialog is open, so a run would be busy. |
+
+When cmdAbl is not running, the tools say so within about 12 seconds.
+
+**How to use it:**
+
+1. Open a test Set in Live.
+2. Start `npm start`.
+3. Start Claude Code in the repository and allow the project's MCP server.
+4. Run test lines with `cmdabl_run` and check the log lines with `cmdabl_log`.
+
+What needs eyes or hands stays manual: how a dialog looks, Cmd+Z, moving a control.
+
 ## Build the docs site
 
 The docs site is built with MkDocs:
