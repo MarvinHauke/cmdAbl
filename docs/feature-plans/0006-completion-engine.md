@@ -3,7 +3,8 @@
 **Parent:** [0004](0004-command-platform.md)
 **Depends on:** [0005](0005-command-tree-and-module-authoring.md) (the tree and candidate snapshots).
 
-**Status:** Draft (2026-10-08) — replaces the palette's flat fuzzy search with hierarchical,
+**Status:** Steps 1–2 planned for 0.1.4 (2026-10-22, reviewed; section "0.1.4: argument completion"
+below, waiting for the user's approval of the API additions). Drafted 2026-10-08 — replaces the palette's flat fuzzy search with hierarchical,
 shell-style completion driven by the command tree.
 
 ## Context
@@ -124,6 +125,89 @@ Today's precursor: the per-word tags of 0005 "Forgiving target resolution". Open
 - How it fits the level-by-level completion with ghost text (Tab descends a level).
 - Highlighting needs match positions per row — a contract addition to `SelectRequest` items;
   ask before building.
+
+## 0.1.4: argument completion (2026-10-22, reviewed by cmdabl-reviewer)
+
+Steps 1–2 of the rollout: completion at every position, not only for command names.
+
+### One function, LSP-shaped
+
+`complete(line, cursor) → { items, replace: {from, to}, usage? }` in core, pure and shared.
+- `items`: `{ label, insert, description?, kind }`. Core quotes `insert` (`quoteIfNeeded`), so the
+  page never quotes. A path inserts `uniquePath(nodes, node)` (`/Kick#2`), not the bare name.
+- **Position:** a new `locate(tokens, cursor, tree)`. It never validates and reuses parse.ts's
+  helpers (`findChild`, `startsOption` with NUMBERISH, `effectiveOptions`, `valueNames`). `parse()`
+  is not used for completion, because it stops at the first problem; `tokenize` never throws and
+  returns the partial last token with its range on an open quote.
+- **Positions:** command and subcommand, option, option value, positional argument, `rest`, `#tag`,
+  path (whole path for now; segment by segment is step 3).
+- **Sources:**
+  - the tree (names, options, enum `choices`);
+  - core built-ins (Live paths from the object tree, tags from the tag cache, command names);
+  - module completers.
+
+  At word 0, commands come first, then history and Live-object rows, as today (§2 table).
+- **Caps:** at most about 100 rows per level.
+- **The single source of hints:** `usage` replaces today's `CmdMatch.valueHint`, so one hint per
+  position. `#ghost` keeps one owner, reused for ghost text later (step 4).
+
+### Module API (additive; user approval needed)
+
+- `api.commands.completer(key, (ctx: { tokens?: string[] }) => Candidate[] | Promise<Candidate[]>)`.
+  `ArgDef.complete` and the new **`OptionDef.complete`** name the key (option values like
+  `tag -r <old>`, `tag -e <tag>` need it).
+- One signature for both transports: the snapshot calls it once at palette open without `tokens`; a
+  later server variant may pass the typed tokens.
+- Completers are **read-only** (no side effects; the guide says so) and read caches. They never call
+  the bridge per call: bridge-backed caches (tags, chain names) refresh once at palette open, as
+  `refreshStructure` does.
+- Each completer runs under a budget of about 100 ms. A throw or timeout gives no rows and a debug
+  log line; it never blocks the palette.
+- At activation, an unknown `complete` key is a warning (and a test failure in the module tests).
+
+### Transport: snapshot first
+
+- **0.1.4 ships the snapshot (b).**
+  - At palette open, core builds `{ tree (without run), completions, items }`.
+  - `complete()` is bundled into the palette and runs there while typing.
+  - Measure the payload for a Set with about 300 tracks; cap paths and tags.
+- **A completion server (a) is a later enhancement, behind a spike.** The palette would call
+  `fetch("http://127.0.0.1:27184/complete")` while typing.
+  - **Spike:** can a `data:` page (origin `null`) reach it; how long does the CORS preflight take;
+    does Windows WebView2 (Private Network Access) block it?
+  - **Security**, if it goes ahead:
+    - a random token of at least 128 bits, made at palette open and passed in the page JSON;
+    - the token is revoked on close, compared with `timingSafeEqual`, and never logged;
+    - it is sent in the `Authorization` header, never in the URL;
+    - `Origin: null` is allowed only for `/complete` and only with a valid token;
+    - `/open`, `/reset` and the dev routes keep refusing every Origin;
+    - the route is read-only, and it needs its own guard because it would exist in release builds.
+  - **Page side:** a 50 ms debounce, an AbortController per request, a sequence id, a 150 ms
+    timeout, then the snapshot.
+  - **Rule change, if it goes ahead:** the dialog rule (`CLAUDE.md`, 0007, the Context above) changes
+    in the same change to "the SDK channel returns one string on close; a page may read the local
+    trigger server only through token-guarded, read-only routes".
+
+### Keys
+
+- **Tab** takes the highlighted row and descends one level (adds a space after a word).
+- **Enter runs the typed line** unless the user moved the selection (the existing `chosen` flag in
+  `ui/interface.html`). It never takes the top row on its own: "never pick the first match silently".
+
+### Work
+
+1. **core:**
+   - `locate`, `complete`, the candidate model;
+   - `api.commands.completer`, `OptionDef.complete`, the key check;
+   - the snapshot at palette open, with caps;
+   - built-in sources (paths, tags, commands);
+   - tests for the edge cases: a bare `-` against `-6`, a cursor inside an open quote, a cursor in the
+     middle, `--name=value`, multi-value options, `rest`.
+2. **ui:** the palette uses `complete()` at every position: Tab, the usage line, the Enter rule. It
+   replaces `parse()`, `computeItems()` and the `args` phase.
+3. **modules:** `complete` sources where they're missing (`pakabl install <id>`, `man <command>`,
+   `tag -r <old>`, `tag -e <tag>`); the authoring guide via docs.
+4. **Test through MCP:** `cmdabl_show("")` plus `cmdabl_keys` and `cmdabl_capture` at each position.
 
 ## Open questions
 
