@@ -41,7 +41,8 @@ tracked in [`STATUS.md`](STATUS.md).
  ├─ 0011  Logging (what goes where, logger, cmdabl log)
  ├─ 0012  vol and dca (fader levels, DCA groups on tags)
  ├─ 0013  note (one Markdown note per Set)
- └─ 0015  link (named controls with rules for numeric values)
+ ├─ 0015  link (named controls with rules for numeric values)
+ └─ 0016  Test access for agents (/run route, cmdAbl MCP server)
 0001  Path-addressed objects & commands   (consumer of 0004: path arguments, rm/select)
 0003  pakabl extension system             (consumer of 0005: subcommands migrate)
 ```
@@ -66,3 +67,4 @@ Build order: 0002 Phase A → 0005 → migrate commands → 0006 → 0001 Phase 
 | [0012](0012-vol-and-dca.md) | vol and dca | vol built (0.1.3), dca Draft | `vol` sets or changes track faders (absolute or relative); `dca` gives tags a DCA: one Utility per DCA in a "cmdAbl DCA" rack on each member, gain and mute like a desk; desk bridges over OSC/TCP (X32 first). Parent: 0004. |
 | [0013](0013-set-note.md) | Set note | Draft | `note`: one Markdown note per Set, view first, `-e` to edit; the file lives in cmdAbl's folder, linked by an id stored in the Set with `Song.set_data`. Parent: 0004. |
 | [0015](0015-link.md) | link | Draft (idea) | Named controls (`@drums`) that bind a parameter of a tag's members with a rule at the limits — `keep` (remembers overflow), `stop`, `clip`; limits can be controls too. Numeric values need links, on/off states don't. Parent: 0004. |
+| [0016](0016-test-mcp.md) | Test access for agents | Draft | A development-only `POST /run` route that runs one command line headless (no dialogs; ambiguous gives exit 4) and an MCP server in `tools/mcp/`, so agents can run Live test lists against a test Set on the user's go. Parent: 0004. |

@@ -303,6 +303,9 @@ Release:
   `board` surface like the tag bar in Live's browser (chips with ×, an `add…` input with
   suggestions per tag, new tag…, Apply). 0.1.2, in work on `feat/tag-board`.
 
+- Agent test access (user, 2026-10-22): plan 0016 — development-only `POST /run` (headless
+  `runLine`) plus a cmdAbl MCP server, so builders can run Live test lists themselves.
+
 - `link` (user, 2026-10-22): plan 0015 — named controls (`@drums`) with rules at the limits
   (`keep`, `stop`, `clip`) for every numeric command; `vol` already has `stop` and `--clip`.
 
