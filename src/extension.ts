@@ -4,6 +4,8 @@ import { appLog, logger } from "./core/log.js";
 import { runBoard } from "./core/board.js";
 import { helpForPath, usageForPath } from "./core/commandTree.js";
 import { createCommandProvider } from "./core/commandProvider.js";
+import { buildCompletionData } from "./core/completeSnapshot.js";
+import type { CompletionData } from "./core/complete.js";
 import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail } from "./core/types.js";
 import type { Module, ModuleApi } from "./modules/types.js";
 import { startTriggerServer } from "./httpTrigger.js";
@@ -158,6 +160,7 @@ export function activate(activation: ActivationContext) {
       roots: () => registry.roots(),
       help: (path) => helpForPath(registry.roots(), path),
       usage: (path) => usageForPath(registry.roots(), path),
+      completer: (key, source) => registry.completer(key, source),
     },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
@@ -205,6 +208,8 @@ export function activate(activation: ActivationContext) {
   // The command list itself is a provider (priority 0); modules add theirs.
   moduleApi.registerProvider(createCommandProvider(registry));
   for (const mod of MODULES) mod.activate(moduleApiFor(mod));
+  // A command that names a completer nobody registered would complete nothing: say so once, at startup.
+  for (const problem of registry.unknownCompleters()) logger("host").warn(problem);
 
   // ── HTTP trigger server ──────────────────────────────────────────────────
   // Karabiner (or any external tool) can POST/GET http://127.0.0.1:27184/open
@@ -337,6 +342,31 @@ export function activate(activation: ActivationContext) {
     if (fill !== undefined) void openPalette(fill);
   }
 
+  /** What the palette completes arguments from (plan 0006), taken once at open. Never throws. */
+  async function snapshotCompletion(): Promise<CompletionData | undefined> {
+    const started = Date.now();
+    try {
+      const data = await buildCompletionData({
+        roots: registry.roots(),
+        completers: registry.completers(),
+        nodes: liveNodes,
+        // The caches that live behind the bridge are read once here; the completers and the paths read them.
+        refresh: () =>
+          getBridge().state() === "unavailable"
+            ? Promise.resolve()
+            : Promise.all([getTagCache().refreshNow(getBridge()), runBase.refreshStructure()]),
+        debug: (line) => logger("completion").debug(line),
+      });
+      logger("completion").debug(
+        `snapshot: ${data.paths.length} paths, ${data.tags.length} tags, ${Object.keys(data.completions).length} completers, ${JSON.stringify(data).length} bytes, ${Date.now() - started} ms`,
+      );
+      return data;
+    } catch (e: unknown) {
+      logger("completion").warn(`snapshot failed: ${e instanceof Error ? e.message : String(e)}`);
+      return undefined;
+    }
+  }
+
   async function openPalette(initial?: string): Promise<void> {
     const shown = dialogs.describe();
     if (gate.active()) {
@@ -354,11 +384,13 @@ export function activate(activation: ActivationContext) {
       // Snapshot every provider's items, then let the webview search them.
       // Stable sort by priority (lower first); ties keep registration order.
       const ordered = [...providers].sort((a, b) => a.priority - b.priority);
-      const items = (await Promise.all(ordered.map((p) => p.provider.getItems()))).flat();
+      // The completion snapshot is taken side by side with the providers: the palette opens as soon as both are ready.
+      const [itemLists, completion] = await Promise.all([Promise.all(ordered.map((p) => p.provider.getItems())), snapshotCompletion()]);
+      const items = itemLists.flat();
       paletteItems = items;
       // Tab on a pick list puts an object into the prompt: reopen with it (same queue, same guard).
       for (;;) {
-        const result = await ui.prompt({ items, ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
+        const result = await ui.prompt({ items, completion, ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
         initial = result ? await dispatch(result) : undefined;
         if (initial === undefined) break;
       }

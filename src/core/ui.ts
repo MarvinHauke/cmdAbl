@@ -1,5 +1,6 @@
 import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { PaletteItem, PaletteResult, ResultSection } from "./types.js";
+import type { CompletionData } from "./complete.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsText } from "./notifySize.js";
 import { boardSize, parseBoardAnswer } from "./board.js";
@@ -27,6 +28,12 @@ import boardTemplate from "../../ui/board.html";
 /** The command palette: type a line or pick an item. */
 export interface PromptRequest {
   items: PaletteItem[];
+  /**
+   * The snapshot the page completes arguments from (plan 0006): the command tree, module completer
+   * rows, the Set's paths and tags. Plain JSON; the page runs `CmdComplete.complete(line, cursor, completion)`.
+   * Absent: the page offers no argument completion.
+   */
+  completion?: CompletionData;
   /**
    * Open with this text in the input and the caret at `cursor` (0 = at the
    * start): used when a pick list's Tab put an object into the prompt, e.g.
@@ -189,7 +196,7 @@ export function createDefaultUi(
 
   const ui: Ui = {
     async prompt(request) {
-      const html = fillTemplate(promptTemplate, { ITEMS: request.items, INITIAL: request.initial ?? null });
+      const html = fillTemplate(promptTemplate, { ITEMS: request.items, INITIAL: request.initial ?? null, COMPLETION: request.completion ?? null });
       const raw = await show("palette", html, 500, 260);
       if (!raw) return null;
       try {

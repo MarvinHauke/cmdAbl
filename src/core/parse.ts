@@ -23,7 +23,8 @@ const error = <P>(code: Exclude<CommandResult["code"], 0>, message: string): Par
   result: fail(code, message),
 });
 
-function findChild<P>(nodes: CommandNode<P, any>[], word: string): CommandNode<P, any> | undefined {
+/** The child named (or aliased) `word`. Shared with the completion engine (complete.ts). */
+export function findChild<P>(nodes: readonly CommandNode<P, any>[], word: string): CommandNode<P, any> | undefined {
   return nodes.find((n) => n.name === word || n.aliases?.includes(word));
 }
 
@@ -32,7 +33,7 @@ function findChild<P>(nodes: CommandNode<P, any>[], word: string): CommandNode<P
  * number (`-6`, `-inf`) is a value, not an option, unless it is exactly a declared short option of
  * the node (`shorts`, e.g. a command with `-1`); the command words before the node is known have none.
  */
-function startsOption(input: string, token: Token, shorts: readonly string[] = []): boolean {
+export function startsOption(input: string, token: Token, shorts: readonly string[] = []): boolean {
   if (input[token.start] !== "-" || !token.value.startsWith("-")) return false;
   if (NUMBERISH.test(token.value) && !(token.value.length === 2 && shorts.includes(token.value.slice(1)))) return false;
   return true;

@@ -70,6 +70,7 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `commands.roots` | platform | reads the declared command tree | – |  |
 | `commands.usage` | platform | renders the short --help text for a command path | – |  |
 | `commands.help` | platform | renders --help text for a command path | – |  |
+| `commands.completer` | platform | registers a source of completion candidates under a key | – |  |
 | `commands.add` | platform | declares a node on the command tree | – |  |
 
 ## Remote Script operations ↔ LOM

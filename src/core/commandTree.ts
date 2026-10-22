@@ -45,7 +45,10 @@ export interface ArgDef {
    * the handler receives the declared spelling.
    */
   choices?: string[];
-  /** Key of a completer registered by a module; supplies the candidates. */
+  /**
+   * Key of a completer registered by a module (`api.commands.completer`); supplies the candidates
+   * the palette offers at this argument. An unknown key is a warning at activation.
+   */
   complete?: string;
   /** One line for help and the generated reference: what the argument is. */
   summary?: string;
@@ -95,6 +98,12 @@ export interface OptionDef {
   valueDefault?: string;
   /** Names of the values, one per value, shown as `--rename <old> <new>` (or `--edit <tag|#>` for one value); default "value". */
   valueLabels?: string[];
+  /**
+   * Key of a completer registered by a module (`api.commands.completer`): the candidates the
+   * palette offers for the value(s) of this option (`tag -r <old>`). Needs `takesValue`; not with
+   * `choices` (a closed list) or `number`. An unknown key is a warning at activation.
+   */
+  complete?: string;
   summary: string;
 }
 
@@ -259,6 +268,11 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
         if (optionShorts.has(opt.short)) problems.push(`${at}: duplicate short option "-${opt.short}"`);
         optionShorts.add(opt.short);
       }
+      if (opt.complete !== undefined) {
+        if (typeof opt.complete !== "string" || !opt.complete.trim()) problems.push(`${at}: option "--${opt.name}" has an empty complete key`);
+        if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" has complete but takes no value`);
+        if (opt.choices !== undefined || opt.number !== undefined) problems.push(`${at}: option "--${opt.name}" has complete together with choices or number`);
+      }
       if (opt.valueDefault !== undefined) {
         if (!opt.takesValue) problems.push(`${at}: option "--${opt.name}" has a valueDefault but takes no value`);
         if ((opt.values ?? 1) > 1) problems.push(`${at}: option "--${opt.name}" has a valueDefault with several values`);
@@ -345,6 +359,39 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
   return problems;
 }
 
+/** The completer keys that nodes of `roots` name (arguments and options), once each, in tree order. */
+export function completerKeys(roots: readonly CommandNode<any, any>[]): string[] {
+  const keys = new Set<string>();
+  const visit = (node: CommandNode<any, any>): void => {
+    for (const arg of node.args ?? []) if (arg.complete) keys.add(arg.complete);
+    for (const opt of node.options ?? []) if (opt.complete) keys.add(opt.complete);
+    for (const child of node.children ?? []) visit(child);
+  };
+  roots.forEach(visit);
+  return [...keys];
+}
+
+/**
+ * The places where a node names a completer key that is not in `known`, as readable lines
+ * (`tag --rename: unknown completer "tags"`). Checked after all modules are activated.
+ */
+export function unknownCompleterKeys(roots: readonly CommandNode<any, any>[], known: Iterable<string>): string[] {
+  const have = new Set(known);
+  const problems: string[] = [];
+  const visit = (node: CommandNode<any, any>, parents: string[]): void => {
+    const at = [...parents, node.name];
+    for (const arg of node.args ?? []) {
+      if (arg.complete && !have.has(arg.complete)) problems.push(`${at.join(" ")} <${arg.name}>: unknown completer "${arg.complete}"`);
+    }
+    for (const opt of node.options ?? []) {
+      if (opt.complete && !have.has(opt.complete)) problems.push(`${at.join(" ")} --${opt.name}: unknown completer "${opt.complete}"`);
+    }
+    for (const child of node.children ?? []) visit(child, at);
+  };
+  roots.forEach((root) => visit(root, []));
+  return problems;
+}
+
 /** `value`, or `0|1` for an option with declared choices, or `old> <new` for a multi-value option. */
 export function valueLabel(opt: OptionDef): string {
   if (opt.values !== undefined) return valueNames(opt).join("> <");
@@ -425,7 +472,7 @@ export const PICK_OPTION: OptionDef = {
 };
 
 /** A node's declared options plus the platform's (`--pick` on runnable nodes with path arguments). */
-export function effectiveOptions(node: CommandNode<any, any>): OptionDef[] {
+export function effectiveOptions(node: Pick<CommandNode<any, any>, "children" | "options" | "args">): OptionDef[] {
   const own = node.options ?? [];
   const takesPaths = !(node.children?.length) && (node.args ?? []).some((a) => a.kind === "path");
   return takesPaths ? [...own, PICK_OPTION] : own;
@@ -536,6 +583,22 @@ export function usageForPath(roots: readonly CommandNode<any, any>[], path: stri
 export function helpForPath(roots: readonly CommandNode<any, any>[], path: string[]): string | undefined {
   const node = nodeAt(roots, path);
   return node ? helpText(node, path) : undefined;
+}
+
+/**
+ * The tree as the palette's completion needs it: names, aliases, summaries, options and arguments,
+ * without handlers and without the long texts (description, examples) that only help pages read.
+ */
+export function completionTree(roots: readonly CommandNode<any, any>[]): SerializedNode[] {
+  return roots.map((node) => ({
+    name: node.name,
+    summary: node.summary,
+    ...(node.aliases?.length ? { aliases: node.aliases } : {}),
+    ...(node.options?.length ? { options: node.options } : {}),
+    ...(node.args?.length ? { args: node.args } : {}),
+    runnable: Boolean(node.run),
+    ...(node.children?.length ? { children: completionTree(node.children) } : {}),
+  }));
 }
 
 export function serializeTree(roots: CommandNode<any, any>[]): SerializedNode[] {
