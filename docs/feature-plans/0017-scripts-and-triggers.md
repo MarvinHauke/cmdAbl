@@ -84,6 +84,32 @@ clips and scenes, so Live's Session grid works as a grid of commands.
 - `&&` and `||` on exit codes; `$1` and `$@` parameters for scripts and aliases.
 - Named values, conditions on Live state, waiting in musical time: each with its own plan.
 
+## What a complete scripting engine still needs (2026-10-23)
+
+| Piece | What it is | State |
+|---|---|---|
+| `;` chains | several commands in one line, run in order | **next, first** (user, 2026-10-23) |
+| Script files | `.cmdabl`, `run <name>` | phase 1 |
+| Triggers | clips and scenes run scripts on launch | phase 2, bridge addition undecided |
+| Aliases | saved lines under a name | [0008](0008-tags-and-aliases.md); the store exists |
+| `&&` / `\|\|` | run the next part only on success or failure (exit codes) | exit codes exist; operators missing |
+| Parameters | `$1`, `$@` in scripts and aliases | missing |
+| Relative targets | "this clip's track", the selected track (`.`), index and range | idea in [0009](0009-ideas-from-clyphx.md) |
+| Variables | named values (`$drop = -6`), maybe controls from [0015](0015-link.md) | missing |
+| Reading state | queries on Live (`muted /Kick`, current dB) usable in conditions | missing; needs a small query form |
+| Conditions | `if … then … else …` on state or exit codes | missing |
+| Loops | over tags or ranges beyond what targets already do | mostly covered by tags; real loops missing |
+| Time | wait in musical time (`wait 1 bar`), quantized to Live's clock | missing; needs scheduling, a spike |
+| Events | triggers beyond clips and scenes: locators, transport start/stop | later, after phase 2 |
+| Errors | stop, continue or report per part; one result for a whole script | partly (exit codes, ✓/× dialog) |
+| Undo | one Cmd+Z per line or script | needs a spike (transactions across parts) |
+| Debugging | dry run (`--dry`), step log, line numbers in errors | missing |
+| Editing | the editor page, completion inside scripts | phase 1 uses the note editor |
+| Safety | depth and time limits, loop guards, no dialogs | planned in phases 1 and 2 |
+
+The rule for all of it: stay small and shell-like, never throw, every part has an exit code, and nothing
+opens a dialog while running from a trigger or script.
+
 ## Open questions
 
 - Can several command lines share one SDK transaction (one undo step per script)?
