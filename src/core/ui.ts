@@ -1,6 +1,7 @@
 import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { PaletteItem, PaletteResult, ResultSection } from "./types.js";
 import type { CompletionData } from "./complete.js";
+import { PALETTE_WIDTH, paletteHeight } from "./paletteSize.js";
 import { takePaletteAnswer, type PaletteSettings } from "./settings.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsText } from "./notifySize.js";
@@ -210,7 +211,7 @@ export function createDefaultUi(
         COMPLETION: request.completion ?? null,
         SETTINGS: request.settings ?? null,
       });
-      const raw = await show("palette", html, 500, 260);
+      const raw = await show("palette", html, PALETTE_WIDTH, paletteHeight(request.settings?.above));
       return takePaletteAnswer(raw, onSettings, (bad) => logger("ui").error(`malformed palette result: ${bad.slice(0, 200)}`));
     },
 
