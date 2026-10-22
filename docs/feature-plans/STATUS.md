@@ -33,7 +33,7 @@ Open from the releases:
   (page by page: using → getting-started → index/README → remote-script/limits → architecture/
   authoring guide → other guides).
 
-## Built, Live test pending: `vol` (branch `feat/vol`, plan 0012, target 0.1.3)
+## Built, Live-tested 2026-10-22: `vol` (branch `feat/vol`, plan 0012, target 0.1.3)
 
 - bridge `5d0b1b5`: read-only op `param_display` (Live's display text for a volume value), script 0.1.7
   → release notes: run `cmdabl setup` once and restart Live.
@@ -44,6 +44,9 @@ Open from the releases:
 - Limits: `stop` (default) / `--clip` (`-c`), no question (modules `2db0dc5`; rule in `src/modules/relative.ts`).
 - Live test: relative/absolute on `#drums`, decimals, the +6 and -inf limits, `/Main`, a chain gives
   exit 2, one Cmd+Z per run, displayed dB matches the log within 0.1 dB.
+- Live test (2026-10-22): stop, `--clip`, the -69.6 floor, `--set`, usage errors pass. Not shown in the
+  test: Cmd+Z, a fader at -inf next to others (stop), `/Main`, a chain (exit 2). Follow-ups: core —
+  history quotes negative numbers (`vol "-30"`); modules — group the `--clip` message by limit.
 - Docs still to do: `vol` in using.md, `volume`/`setVolume` in the authoring guide's TracksPort row.
 
 ## Next (user, 2026-10-20/21)
