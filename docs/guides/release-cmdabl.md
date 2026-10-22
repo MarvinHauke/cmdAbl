@@ -23,6 +23,16 @@ yet. Nothing bumps the version for you.
 8. **Update pakabl's list.** cmdAbl itself is an approved source in `pakabl/sources.json`, so
    the next [pakabl index](pakabl-index.md) run (daily, or trigger it manually) opens a PR with
    the new version. Merge it.
+9. **Clean up the plans** (the architect, right after the merge):
+   - `docs/feature-plans/STATUS.md` keeps only open things: in work, small items, untested
+     leftovers, backlog and known issues. Anything finished is removed; Git, the PRs and the release
+     notes keep that history.
+   - Each released plan stays. Its status line reads "Released in 0.1.x", and finished rollout steps
+     shrink to one line. Decisions, known limits and open questions stay, because the code doesn't
+     explain why.
+   - The plan index (`docs/feature-plans/README.md`) moves the plan to "Released" and sorts "Next"
+     by what builds on what again.
+   - Ideas stay until built or dropped; dropped ones go to "Deferred" with one reason.
 
 When a new major version of Live comes out, set `LIVE_MANUAL_VERSION` in
 `src/modules/man/topics.ts` to it before releasing: `man ableton <words>` searches only that

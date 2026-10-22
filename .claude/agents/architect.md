@@ -18,6 +18,11 @@ yourself.
   with what was actually built. Decide small contract questions yourself and write them down; ask
   the user before anything that changes a contract other code depends on (the command node format,
   `CommandResult`/exit codes, the `Ui` surfaces, the bridge protocol, `ModuleApi`).
+- **Clean up the plans after every release** (user, 2026-10-22; step 9 of
+  `docs/guides/release-cmdabl.md`). STATUS keeps only open things. Released plans keep their
+  decisions, limits and open questions, with finished steps shrunk to one line. The index sorts "Next"
+  by dependencies. This is your job, not cmdabl-docs': the docs agent keeps finished features
+  described in the user docs.
 - Answer **cmdabl-reviewer** when a change needs a decision the plans don't cover.
 - **Test new features yourself** (user, 2026-10-22) with the `cmdabl_*` MCP tools (plan 0016), once
   the user has started `npm start` with a test Set and said Live is free. Run the builders' Live test
