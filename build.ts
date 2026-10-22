@@ -9,12 +9,13 @@ const outfile = process.argv.find((a) => a.startsWith("--outfile="))?.slice("--o
 // The dialog pages are standalone data: URLs with no module loader, so nothing
 // can be `import`ed there.
 //
-// The one name matcher (src/core/match.ts), bundled to a browser IIFE that
-// exposes a `CmdMatch` global (matches, ranker, filterer, …) and inlined into
-// the pages at build time. It contains Fuse.js.
+// The one name matcher (src/core/match.ts) and the argument completion (src/core/complete.ts),
+// bundled together to one browser IIFE that exposes the `CmdMatch` global (matches, ranker,
+// filterer, …) and the `CmdComplete` global (complete, locate, …), inlined into the pages at build
+// time. It contains Fuse.js.
 const matchBundle = await esbuild.build({
   stdin: {
-    contents: `import * as m from "./src/core/match.ts"; window.CmdMatch = m;`,
+    contents: `import * as m from "./src/core/match.ts"; import * as c from "./src/core/complete.ts"; window.CmdMatch = m; window.CmdComplete = c;`,
     resolveDir: process.cwd(),
     loader: "ts",
   },

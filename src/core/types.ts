@@ -4,9 +4,6 @@
 // Provider. Today the only provider wraps the command registry, but tracks /
 // devices / clips will plug in here later without the UI needing to change.
 
-import type { ValueOptionHint } from "./commandTree.js";
-export type { ValueOptionHint };
-
 /**
  * "chain" is a rack chain or Drum Rack pad (route [track, device, chain]); the
  * object tree's NodeKind is an Extract of this type.
@@ -38,11 +35,6 @@ export interface PaletteItem {
   keywords?: string[];
   /** Display/address path from the song root, e.g. "/808 Core Kit/Snare Drum". Live objects only. */
   path?: string;
-  /**
-   * Commands only, and only when it has value options: where the caret sits in the values of
-   * `--name`/`-s`, the page offers no suggestions and hints the next value's label as ghost text.
-   */
-  valueOptions?: ValueOptionHint[];
 }
 
 /**
@@ -59,6 +51,12 @@ export interface PaletteResult {
    * `goto <unique path>` (core/objectRow.ts).
    */
   line?: string;
+  /**
+   * The palette's settings as the page has them now (additive, plan 0006). Core saves them. A
+   * normal result carries them along; the page also returns them ALONE (no `type`/`id`) when the
+   * user changed a setting and then dismissed: that runs nothing and opens nothing.
+   */
+  settings?: { above: "off" | "hints" | "options" };
 }
 
 export interface Provider {

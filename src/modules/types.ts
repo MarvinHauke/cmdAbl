@@ -9,6 +9,8 @@ import type { Command } from "../core/commandRegistry.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { Provider } from "../core/types.js";
+import type { Completer } from "../core/complete.js";
+export type { Candidate, Completer, CompleterContext } from "../core/complete.js";
 import type { BoardAnswer, BoardRequest, PickPreview, StateChange } from "../core/ui.js";
 import type { BridgeResult } from "../ableton/bridgeProtocol.js";
 import type { TagsWritten } from "../ableton/bridgeOps.js";
@@ -143,6 +145,17 @@ export interface ModuleApi {
     help(path: string[]): string | undefined;
     /** Exactly what `<command> --help` prints (usage, sections, and `more: man …` when `man` exists); undefined when unknown. For a handler that answers exit 2 with the usage. */
     usage(path: string[]): string | undefined;
+    /**
+     * Register a source of completion candidates under `key`; commands name it in `ArgDef.complete`
+     * or `OptionDef.complete` (`tag --rename` -> the Set's tags). The palette calls it ONCE when it
+     * opens (the context has no `tokens` then) and filters the rows while the user types.
+     * Return strings or `{ label, insert?, description? }`, synchronously or as a promise.
+     * A completer is read-only: no writes, no dialogs, no bridge call of its own: read a cache
+     * (refresh bridge-backed caches in a hook that runs at open, not here). It gets about 100 ms; a throw or
+     * a timeout gives no rows (and a debug line in the log). A key nobody registered is a
+     * warning at activation. Never throws at the caller.
+     */
+    completer(key: string, source: Completer): void;
   };
   /**
    * Show the pick list; resolves with the chosen objects, or null if cancelled.

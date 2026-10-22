@@ -61,6 +61,11 @@ const EXCEPTIONS: Exception[] = [
     target: "node:child_process",
     why: "pakabl downloads, unpacks, deletes and reads files by shelling out (curl, unzip, rm, cat; PowerShell on Windows); no port offers file or network access yet",
   },
+  {
+    file: "src/modules/pakabl/platform.ts",
+    target: "node:fs",
+    why: "the id completers run on every palette open and need a one-stat mtime check and an existence test; a shell spawn per open cost ~100 ms; no port offers file stats yet",
+  },
 ];
 
 /** The only Node built-ins a module may import (rule 6). */
@@ -286,4 +291,26 @@ test("architecture: the checker sees the imports and flags what it should", () =
   assert.match(brokenRule("src/ableton/tagCache.ts", "src/core/run") ?? "", /^3:/);
   assert.match(brokenRule("src/ableton/select.ts", "src/core/run") ?? "", /^3:/); // ableton knows core only through its shared types
   assert.match(brokenRule("src/ableton/select.ts", "src/core/setup") ?? "", /^3:/);
+});
+
+// The palette page bundles src/core/match.ts and src/core/complete.ts (build.ts, globals CmdMatch and
+// CmdComplete): a page has no Node, so nothing they import may need it.
+test("architecture: the code bundled into the palette page imports no Node built-in", async () => {
+  const esbuild = await import("esbuild");
+  const result = await esbuild.build({
+    stdin: {
+      contents: `import * as m from "./src/core/match.ts"; import * as c from "./src/core/complete.ts"; (globalThis as any).keep = [m, c];`,
+      resolveDir: ROOT,
+      loader: "ts",
+    },
+    bundle: true,
+    format: "iife",
+    platform: "browser", // a Node built-in cannot be resolved here: the build fails
+    write: false,
+    logLevel: "silent",
+  });
+  const text = result.outputFiles[0]!.text;
+  assert.ok(text.length > 1000, "the bundle is empty");
+  assert.ok(!/require\(["']node:/.test(text) && !/require\(["'](fs|path|os|crypto|child_process)["']\)/.test(text), "a Node require ended up in the bundle");
+  assert.ok(!/<\/script/i.test(text), 'the bundle contains "</script": it cannot be inlined into a page');
 });

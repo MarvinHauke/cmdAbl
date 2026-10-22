@@ -49,3 +49,10 @@ test("every pakabl command is documented and its examples parse", () => {
     "pakabl list",
   ]);
 });
+
+test("install names the index ids, uninstall and upgrade the installed ones", () => {
+  const byName = Object.fromEntries((pakablCommand(handlers).children ?? []).map((c) => [c.name, c]));
+  assert.equal(byName.install!.args![0]!.complete, "pakabl-index-ids");
+  assert.equal(byName.uninstall!.args![0]!.complete, "pakabl-installed-ids");
+  assert.equal(byName.upgrade!.args![0]!.complete, "pakabl-installed-ids");
+});

@@ -43,10 +43,16 @@ export function createServer(client: Client = createClient(), desktop: Desktop =
     "cmdabl_show",
     {
       description:
-        'Start a cmdAbl line interactively in Live, as if typed in the palette: its dialogs really open (for screenshots and hand checks). Returns at once, without waiting for the dialog. An empty line opens the empty palette. Not added to the history. Answers busy while a dialog is open or a run is going. Close the dialog with cmdabl_keys (escape) when done.',
+        'Start a cmdAbl line interactively in Live, as if typed in the palette: its dialogs really open (for screenshots and hand checks). Waits up to about 2 s until a Live dialog window is on screen, plus a short settle, and says "opened" or "timed out" (a line that opens no dialog times out). An empty line opens the empty palette. Not added to the history. Answers busy while a dialog is open or a run is going. Close the dialog with cmdabl_keys (escape) when done.',
       inputSchema: { line: z.string().describe('the line, e.g. "tag -l"; empty opens the palette') },
     },
-    async ({ line }) => reply(await client.show(line)),
+    async ({ line }) => {
+      const started = await client.show(line);
+      if (started.isError) return reply(started);
+      // Wait for the window (and let the page load) so an immediate keys or capture finds it.
+      const waited = await desktop.waitForDialog();
+      return reply({ text: `${started.text}\n${waited.text}`, isError: false });
+    },
   );
   server.registerTool(
     "cmdabl_keys",

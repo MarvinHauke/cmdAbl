@@ -19,6 +19,14 @@ export function changeLines(path: string, c: TagChange): string[] {
  * by the Remote Script. Toggles like mute; `--set` adds or removes.
  */
 export function activate(api: ModuleApi): void {
+  // The Set's tags for `--edit` and `--rename`: read from the tag cache (the platform refreshes it when the palette opens).
+  api.commands.completer("tags", () =>
+    tagIndex(api.liveSet.nodes().filter((n) => n.kind === "track").map((t) => ({ path: t.path, tags: api.tags.of(t) }))).map((e) => ({
+      label: e.tag,
+      description: `${e.paths.length} track${e.paths.length === 1 ? "" : "s"}`,
+    })),
+  );
+
   /** Writes `planFor(node, before)` to every target and builds the result: changed tracks with their undo lines. */
   const applyPlans = async (targets: ObjectNode[], planFor: (node: ObjectNode, before: string[]) => TagChange, stopOnFail = false, unchanged?: string): Promise<CommandResult> => {
     const lines: string[] = [];
@@ -192,6 +200,7 @@ export function activate(api: ModuleApi): void {
         name: "edit",
         short: "e",
         takesValue: true,
+        complete: "tags",
         valueLabels: ["tag|#"],
         valueDefault: "#",
         summary: "list the tracks with the tag lit and toggle the tag on the marked ones; without a tag first asks which tag",
@@ -200,6 +209,7 @@ export function activate(api: ModuleApi): void {
         name: "rename",
         short: "r",
         takesValue: true,
+        complete: "tags",
         values: 2,
         valueLabels: ["old", "new"],
         summary: "rename a tag on every track that carries it; an existing name merges",

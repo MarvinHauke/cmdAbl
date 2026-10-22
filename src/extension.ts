@@ -4,6 +4,8 @@ import { appLog, logger } from "./core/log.js";
 import { runBoard } from "./core/board.js";
 import { helpForPath, usageForPath } from "./core/commandTree.js";
 import { createCommandProvider } from "./core/commandProvider.js";
+import { buildCompletionData } from "./core/completeSnapshot.js";
+import type { CompletionData } from "./core/complete.js";
 import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail } from "./core/types.js";
 import type { Module, ModuleApi } from "./modules/types.js";
 import { startTriggerServer } from "./httpTrigger.js";
@@ -24,6 +26,7 @@ import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/ui.js";
 import { createModuleFiles } from "./core/files.js";
+import { createSettingsStore, toPaletteSettings } from "./core/settings.js";
 import { tokenFilePath } from "./ableton/bridgeToken.js";
 import * as path from "node:path";
 import { createUiGate, runHeadless } from "./core/headless.js";
@@ -45,12 +48,19 @@ export function activate(activation: ActivationContext) {
   const g = globalThis as Record<string, unknown>;
   const globals = ["URL", "URLSearchParams", "fetch", "structuredClone", "AbortController", "TextEncoder", "crypto"];
   logger("host").info(`host globals: ${globals.map((n) => `${n}=${typeof g[n]}`).join(", ")}`);
+  // The extension's data folder: the SDK's storageDirectory when it answers (it is undefined in practice today),
+  // else the macOS path the tokens use. A module's files go under modules/<its name>/ there.
+  const dataFolder = context.environment.storageDirectory ?? path.dirname(tokenFilePath());
   const registry = new CommandRegistry();
   // Every dialog goes through this — the platform never opens an HTML page itself.
   // One queue: a dialog never opens while another is open (see core/dialogQueue.ts).
   const dialogs = createDialogQueue();
   // The gate passes everything through to the real dialogs, except during a headless run (plan 0016).
-  const gate = createUiGate(createDefaultUi(context, dialogs));
+  // cmdAbl's own settings (settings.json in the data folder); the palette page returns changes with its result.
+  const settingsStore = createSettingsStore({ base: dataFolder, warn: (text) => logger("settings").warn(text) });
+  const gate = createUiGate(
+    createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.above": settings.above })),
+  );
   const ui: Ui = gate.ui;
   const providers: { provider: Provider; priority: number }[] = [];
   // The items of the palette that is open (or was opened last): a picked object row is found here.
@@ -123,9 +133,6 @@ export function activate(activation: ActivationContext) {
   });
 
   // ── default modules ──────────────────────────────────────────────────────
-  // The extension's data folder: the SDK's storageDirectory when it answers (it is undefined in practice today),
-  // else the macOS path the tokens use. A module's files go under modules/<its name>/ there.
-  const dataFolder = context.environment.storageDirectory ?? path.dirname(tokenFilePath());
   const moduleApi: ModuleApi = {
     get bridge() {
       return getBridge();
@@ -158,6 +165,7 @@ export function activate(activation: ActivationContext) {
       roots: () => registry.roots(),
       help: (path) => helpForPath(registry.roots(), path),
       usage: (path) => usageForPath(registry.roots(), path),
+      completer: (key, source) => registry.completer(key, source),
     },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
@@ -205,6 +213,8 @@ export function activate(activation: ActivationContext) {
   // The command list itself is a provider (priority 0); modules add theirs.
   moduleApi.registerProvider(createCommandProvider(registry));
   for (const mod of MODULES) mod.activate(moduleApiFor(mod));
+  // A command that names a completer nobody registered would complete nothing: say so once, at startup.
+  for (const problem of registry.unknownCompleters()) logger("host").warn(problem);
 
   // ── HTTP trigger server ──────────────────────────────────────────────────
   // Karabiner (or any external tool) can POST/GET http://127.0.0.1:27184/open
@@ -337,6 +347,50 @@ export function activate(activation: ActivationContext) {
     if (fill !== undefined) void openPalette(fill);
   }
 
+  /** What the palette completes arguments from (plan 0006), taken once at open. Never throws. */
+  const warnedCompleters = new Set<string>();
+  let tagsAwaited = false; // the cold tag cache is awaited once per session, never again
+  async function snapshotCompletion(): Promise<CompletionData | undefined> {
+    const started = Date.now();
+    try {
+      const data = await buildCompletionData({
+        roots: registry.roots(),
+        completers: registry.completers(),
+        nodes: liveNodes,
+        // Stale-while-revalidate, like the tree build: building the tree (liveNodes) already schedules a
+        // background refresh of the tags and the rack chain names, so an open palette sees what the last
+        // refresh read. Only the very first snapshot of a session waits for a cold tag cache (so the
+        // first `#` is not empty); every later open starts a background refresh and never waits.
+        refresh: () => {
+          if (getBridge().state() === "unavailable") return Promise.resolve();
+          const tags = getTagCache();
+          if (!tags.ready() && !tagsAwaited) {
+            tagsAwaited = true;
+            return tags.refreshNow(getBridge()).then((read) => {
+              if (!read.ok) logger("completion").debug(`tag cache not read (exit ${read.code}); later opens will not wait for it`);
+              else if (!tags.ready()) logger("completion").debug("tag cache still not ready after the read (a write landed meanwhile); later opens will not wait for it");
+            });
+          }
+          return Promise.resolve(); // building the tree schedules the background refresh
+        },
+        debug: (line) => logger("completion").debug(line),
+        // A slow synchronous completer would warn at every open: once per line per session, the numbers stay at debug.
+        warn: (line) => {
+          if (warnedCompleters.has(line.split(" blocked for ")[0]!)) return logger("completion").debug(line);
+          warnedCompleters.add(line.split(" blocked for ")[0]!);
+          logger("completion").warn(line);
+        },
+      });
+      logger("completion").debug(
+        `snapshot: ${data.paths.length} paths, ${data.tags.length} tags, ${Object.keys(data.completions).length} completers, ${JSON.stringify(data).length} bytes, ${Date.now() - started} ms`,
+      );
+      return data;
+    } catch (e: unknown) {
+      logger("completion").warn(`snapshot failed: ${e instanceof Error ? e.message : String(e)}`);
+      return undefined;
+    }
+  }
+
   async function openPalette(initial?: string): Promise<void> {
     const shown = dialogs.describe();
     if (gate.active()) {
@@ -354,11 +408,13 @@ export function activate(activation: ActivationContext) {
       // Snapshot every provider's items, then let the webview search them.
       // Stable sort by priority (lower first); ties keep registration order.
       const ordered = [...providers].sort((a, b) => a.priority - b.priority);
-      const items = (await Promise.all(ordered.map((p) => p.provider.getItems()))).flat();
+      // The completion snapshot is taken side by side with the providers: the palette opens as soon as both are ready.
+      const [itemLists, completion] = await Promise.all([Promise.all(ordered.map((p) => p.provider.getItems())), snapshotCompletion()]);
+      const items = itemLists.flat();
       paletteItems = items;
       // Tab on a pick list puts an object into the prompt: reopen with it (same queue, same guard).
       for (;;) {
-        const result = await ui.prompt({ items, ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
+        const result = await ui.prompt({ items, completion, settings: toPaletteSettings(await settingsStore.get()), ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
         initial = result ? await dispatch(result) : undefined;
         if (initial === undefined) break;
       }

@@ -425,6 +425,30 @@ export function createDesktop(options: DesktopOptions = {}) {
       return ok(`converted: captures/${name}.${format} (${size(bytes)})`);
     },
 
+    /**
+     * After `cmdabl_show`: wait until a Live dialog window is on screen (polled every `pollMs`, at most
+     * `timeoutMs`), then `settleMs` more so the page has loaded before keys reach it. Answers "opened"
+     * or "timed out" (not an error: a line that opens no dialog is legitimate); never throws.
+     */
+    async waitForDialog(wait: { timeoutMs?: number; pollMs?: number; settleMs?: number } = {}): Promise<Answer> {
+      const timeoutMs = wait.timeoutMs ?? 2000;
+      const pollMs = wait.pollMs ?? 100;
+      const settleMs = wait.settleMs ?? 150;
+      const attempts = Math.max(1, Math.ceil(timeoutMs / pollMs));
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        const listed = await run("osascript", ["-l", "JavaScript", "-e", WINDOW_LIST_SCRIPT]);
+        if (listed.code !== 0) return ok(`not waited: cannot list Live's windows (${osaProblem(listed.stderr)})`);
+        const windows = parseWindowList(listed.stdout.trim());
+        if (windows === null) return ok("not waited: cannot read the window list");
+        if (pickWindow(windows, "dialog")) {
+          await sleep(settleMs);
+          return ok(`opened: a dialog window is on screen (waited ${attempt * pollMs} ms + ${settleMs} ms to settle)`);
+        }
+        if (attempt < attempts - 1) await sleep(pollMs);
+      }
+      return ok(`timed out: no dialog window appeared within ${timeoutMs} ms (the line may open none)`);
+    },
+
     async capture(input: { name: string; target: "dialog" | "live" }): Promise<Answer> {
       const { name, target } = input;
       if (!NAME.test(name)) return bad("name must be 1..60 characters of a-z, 0-9 and - only");

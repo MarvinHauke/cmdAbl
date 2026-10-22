@@ -1,5 +1,4 @@
 import type { Provider, PaletteItem } from "./types.js";
-import { valueOptionHints } from "./commandTree.js";
 import type { CommandRegistry } from "./commandRegistry.js";
 
 /**
@@ -9,15 +8,12 @@ import type { CommandRegistry } from "./commandRegistry.js";
 export function createCommandProvider(registry: CommandRegistry): Provider {
   return {
     getItems(): PaletteItem[] {
-      const roots = registry.roots();
       return registry.list().map((def) => {
-        const valueOptions = valueOptionHints(roots.find((n) => n.name === def.name)!, []);
         return {
           id: def.name,
           type: "command" as const,
           title: def.name,
           subtitle: def.description,
-          ...(valueOptions.length ? { valueOptions } : {}),
         };
       });
     },

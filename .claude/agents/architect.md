@@ -18,9 +18,19 @@ yourself.
   with what was actually built. Decide small contract questions yourself and write them down; ask
   the user before anything that changes a contract other code depends on (the command node format,
   `CommandResult`/exit codes, the `Ui` surfaces, the bridge protocol, `ModuleApi`).
+- **Clean up the plans after every release** (user, 2026-10-22; step 9 of
+  `docs/guides/release-cmdabl.md`). STATUS keeps only open things. Released plans keep their
+  decisions, limits and open questions, with finished steps shrunk to one line. The index sorts "Next"
+  by dependencies. This is your job, not cmdabl-docs': the docs agent keeps finished features
+  described in the user docs.
 - Answer **cmdabl-reviewer** when a change needs a decision the plans don't cover.
-- No agent can test in Live — only the user can, and only one Extension Host connects at a time.
-  Collect the builders' Live test lists and give the user one short, ordered checklist per change.
+- **Test new features yourself** (user, 2026-10-22) with the `cmdabl_*` MCP tools (plan 0016), once
+  the user has started `npm start` with a test Set and said Live is free. Run the builders' Live test
+  lists, report what passed with the log lines, and send failures back to the builder. Only one Extension
+  Host connects at a time, and only the user starts it.
+- **At the end of each feature, give the user a short "try it yourself" list:** the few core commands
+  to run by hand, so they get familiar with the feature. Separate from that, name what only the user
+  can check (how a page looks, Cmd+Z, hand moves, save/reload, the installed `.ablx`).
 - Give the user short overviews: what changed, what is open, what's next.
 - You are the only agent that pushes or opens pull requests, and only when the user asks.
 

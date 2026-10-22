@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). Out (close_and_send): JSON PaletteResult, or '' when dismissed. -->
+<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. SETTINGS_PLACEHOLDER = null | { above: "off"|"hints"|"options" }. Out also carries { settings: { above } } (alone on Esc after a change). One list below the prompt (recent lines, targets; options after typing `-`; subcommands at a group position). above="hints": a read-only which-key panel above the prompt shows the command's options and subcommands; above="options": a selectable tool zone above it (↑ enters, best row next to the prompt). -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -50,9 +50,45 @@
       caret-color: var(--accent);
     }
 
-    /* ── dropdown ── */
+    /* ── footer ── */
+    #foot { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-top: 1px solid var(--border); color: var(--dim); font-size: 11px; user-select: none; }
+    #above { display: inline-flex; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+    #above span { padding: 1px 8px; cursor: default; }
+    #above span + span { border-left: 1px solid var(--border); }
+    #above span.on { background: var(--bg-row); color: var(--accent); }
+
+    /* ── the area above the prompt (hints / options mode): a fixed height reserved from open on, so nothing moves.
+          A dim heading at its top says what it is; one dim note in the middle while it has no rows. ── */
+    .zone { flex: 0 0 auto; position: relative; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
+    .zone.hidden { display: none; }
+    #tools { height: 190px; }
+    #hints { height: 160px; }
+    .zhead { flex: 0 0 auto; padding: 4px 12px 3px; font-size: 10px; line-height: 14px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; }
+    .znote { position: absolute; left: 0; right: 0; top: 55%; transform: translateY(-50%); text-align: center; font-size: 11px; color: var(--dim); pointer-events: none; }
+    .znote:empty { display: none; }
+    .zbody { flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
+
+    /* selectable tool zone (above = options): best match at the bottom, next to the prompt; then it scrolls */
+    #toolsBody { display: flex; flex-direction: column; }
+    #toolsBody > :first-child { margin-top: auto; }   /* sits at the bottom while the zone is short (safe with overflow) */
+    #toolsBody .row { flex-shrink: 0; }
+
+    /* hint panel (which-key style): read-only, never takes a key. One grid, three aligned columns. */
+    #hintsBody {
+      display: grid; grid-template-columns: auto minmax(0, auto) minmax(0, 1fr); column-gap: 16px; align-content: start;
+      padding: 6px 12px 4px; font-size: 11px; line-height: 18px; user-select: none; cursor: default;
+    }
+    #hintsBody .hint { display: contents; }
+    #hintsBody .hk { position: relative; color: var(--accent); font-weight: 600; white-space: nowrap; }
+    #hintsBody .cur .hk::before { content: '▸'; position: absolute; left: -10px; }
+    #hintsBody .cur .hv, #hintsBody .cur .hd { color: var(--text); }
+    #hintsBody .hdt { display: inline-block; white-space: nowrap; }
+    #hintsBody .cur .hd { text-overflow: clip; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent); }
+    #hintsBody .hv { color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #hintsBody .hd { color: var(--dim); opacity: .75; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── dropdown (Set zone, below the prompt) ── */
     #dropdown { flex: 1; overflow-y: auto; }
-    #dropdown.hidden { display: none; }
 
     .row {
       display: flex;
@@ -72,6 +108,9 @@
 </head>
 <body>
 
+  <div id="tools" class="zone hidden"><div class="zhead"></div><div class="zbody" id="toolsBody"></div><div class="znote"></div></div>
+  <div id="hints" class="zone hidden"><div class="zhead"></div><div class="zbody" id="hintsBody"></div><div class="znote"></div></div>
+
   <div id="bar">
     <span id="colon">:</span>
     <div id="field">
@@ -81,6 +120,8 @@
   </div>
 
   <div id="dropdown"></div>
+
+  <div id="foot"><span>Above the prompt</span><span id="above" role="radiogroup"><span data-v="off">Off</span><span data-v="hints">Hints</span><span data-v="options">Options</span></span></div>
 
   <!-- Shared matcher, inlined as a `CmdMatch` global at build time. -->
   <script>/*MATCH_PLACEHOLDER*/</script>
@@ -92,9 +133,18 @@
     // null, or { text, cursor }: the input starts with `text` and the caret at `cursor`
     // (0 = start), e.g. a path put in the prompt from a pick list.
     const INITIAL = /*INITIAL_PLACEHOLDER*/null;
+    // null, or the snapshot CmdComplete.complete(line, cursor, COMPLETION) works on:
+    //   { tree, completions, paths, tags }. null = no argument completion.
+    const COMPLETION = /*COMPLETION_PLACEHOLDER*/null;
+    // null, or { above }: the footer switch's initial state ("off" when absent).
+    const SETTINGS = /*SETTINGS_PLACEHOLDER*/null;
 
     const input     = document.getElementById('input');
     const dropdown  = document.getElementById('dropdown');
+    const hintsZone = document.getElementById('hints');
+    const toolsZone = document.getElementById('tools');
+    const hintsEl   = document.getElementById('hintsBody');
+    const tools     = document.getElementById('toolsBody');
     const ghostMirror = document.querySelector('#ghost .mirror');
     const ghostHint   = document.querySelector('#ghost .hint');
 
@@ -108,12 +158,21 @@
     let activeIdx = 0;
     let newLine   = null;  // rows + ranker without history lines, built on first use
     let chosen    = false; // the user moved the selection (arrows, Tab) since the last keystroke
+    let mode      = 'word0'; // 'word0': fuzzy rows for the first word; 'args': CmdComplete rows
+    const ABOVE = ['off', 'hints', 'options'];
+    const startAbove = ABOVE.includes(SETTINGS?.above) ? SETTINGS.above : 'off';
+    let above     = startAbove;   // what sits above the prompt (args mode only): nothing, a hint panel, or a selectable tool zone
+    let hintRows  = [];     // the panel's rows (read-only): the command's options and subcommands
+    let dashed    = false;  // the word at the caret starts with `-`: the options are the list
+    let view      = null;    // args mode: { replace: {from, to}, usage }
 
     // ── messaging ──────────────────────────────────────────────────────────
     // Returns a structured PaletteResult to the host as a JSON string (the
     // bridge can only carry one string); null/empty closes without acting.
     function send(result) {
-      const payload = result == null ? '' : JSON.stringify(result);
+      // The setting goes back with the answer; on Esc only when the checkbox was flipped (core runs nothing then).
+      const out = result != null ? { ...result, settings: { above } } : above !== startAbove ? { settings: { above } } : null;
+      const payload = out == null ? '' : JSON.stringify(out);
       const msg = { method: 'close_and_send', params: [payload] };
       if (window.webkit?.messageHandlers?.live) {
         window.webkit.messageHandlers.live.postMessage(msg);
@@ -122,25 +181,16 @@
       }
     }
 
-    // ── parse input into phase ─────────────────────────────────────────────
-    // Once the first token names an actual registered command, everything
-    // after it is *that command's argument text* — not a fresh fuzzy query
-    // against the whole palette (which would let e.g. "mute Microtonic"
-    // resolve to selecting the Microtonic track instead of running `mute`
-    // with "Microtonic" as its argument). Arguments get no completion
-    // ('args' phase) — Enter falls through to rawResult(), which parses the
-    // literal typed text. Otherwise stay in 'command' phase so names
-    // containing spaces (e.g. a track called "Opal Lead") keep fuzzy-matching.
-    function parse(raw) {
-      const spaceIdx = raw.indexOf(' ');
-      if (spaceIdx !== -1) {
-        const cmdName = raw.slice(0, spaceIdx);
-        const cmd = itemsById[cmdName];
-        if (cmd?.type === 'command') {
-          return { phase: 'args', query: raw.slice(spaceIdx + 1) };
-        }
-      }
-      return { phase: 'command', query: raw.trim() };
+    // ── mode: first word (fuzzy) or arguments (CmdComplete) ────────────────
+    // Once the caret is past a registered command's name, CmdComplete.complete() decides
+    // what is offered at that position (options, values, paths, tags). Before that — and
+    // for a first word that is no command name, e.g. a track called "Opal Lead" — the
+    // palette ranks commands, history and Live objects as before.
+    function modeAt(raw, caret) {
+      const m = /^\s*(\S+)/.exec(raw);
+      if (!m || itemsById[m[1]]?.type !== 'command') return 'word0';
+      const end = m[0].length;
+      return raw.length > end && /\s/.test(raw[end]) && caret > end ? 'args' : 'word0';
     }
 
     // A line like ` "/path"` (a path put in the prompt) leaves the caret in front of
@@ -152,12 +202,39 @@
       return !head.includes(' ') && tail.startsWith(' ') ? { head, tail } : null;
     }
 
-    // ── build completion list (fuzzy) ──────────────────────────────────────
+    // ── build completion list ──────────────────────────────────────────────
     function computeItems(raw) {
+      const caret = input.selectionStart ?? raw.length;
+      mode = modeAt(raw, caret);
+      view = null;
+      hintRows = [];
+      dashed = false;
+      if (mode === 'args') {
+        if (!COMPLETION) return [];
+        const res = CmdComplete.complete(raw, caret, COMPLETION);
+        view = { replace: res.replace, usage: res.usage ?? null };
+        const rows = res.items.map(r => ({ type: r.kind, zone: r.zone, title: r.label, subtitle: r.description, insert: r.insert }));
+        const tool = rows.filter(r => r.zone === 'tool'), set = rows.filter(r => r.zone !== 'tool');
+        const hist = recentLines(raw, caret);
+        // The list holds targets (recent lines first). Options join it only once `-` is typed, and
+        // subcommands at a group position with no targets; otherwise the tool rows are only hints.
+        dashed = raw.slice(res.replace.from, caret).startsWith('-');
+        // above = options: the tool rows are a selectable zone above the prompt, best row next to it.
+        if (above === 'options') {
+          for (const r of tool) r.pane = 'tool';
+          hintRows = [];
+          return [...tool, ...hist, ...set];
+        }
+        const toolInList = dashed || (!set.length && tool[0]?.type === 'command');
+        hintRows = above === 'hints' ? fullTool(raw, res, tool) : [];
+        return [...hist, ...set, ...(toolInList ? tool : [])];
+      }
       const part = wordAtCaret();
       // The word before the caret is a complete command name: its arguments follow, no completion.
       if (part && itemsById[part.head]?.type === 'command') return [];
-      const { phase, query } = parse(part ? part.head : raw);
+      const query = (part ? part.head : raw).trim();
+      // The first word is a command and text follows it: arguments, caret in the name — nothing to rank.
+      if (!part && /^\s*\S+\s/.test(raw) && itemsById[raw.trim().split(/\s/)[0]]?.type === 'command') return [];
       // Around a path put in the prompt the user builds a new line: a stored full
       // invocation (history row) would run on an old target and drop that path.
       if (part && !newLine) newLine = (() => {
@@ -167,8 +244,7 @@
       const rows = part ? newLine.rows : ITEMS;
       const rank = part ? newLine.rank : itemRank;
 
-      if (phase === 'args') return []; // no completion — literal pass-through via rawResult()
-      if (!query) return rows;
+      if (!query) return zoned(rows);
 
       // Drop "canned full invocation" items (command-type, multi-word id —
       // e.g. a history entry "mute A, B") that the user has already typed
@@ -176,9 +252,74 @@
       // otherwise leave the shorter, stale row fuzzy-matched and active, so
       // Enter would silently run the old invocation instead of the new one.
       // Forward-completable matches (entry.startsWith(query)) stay.
-      return rank(query).filter(item =>
+      return zoned(rank(query).filter(item =>
         !(item.type === 'command' && item.id.includes(' ')
-          && query.length > item.id.length && query.startsWith(item.id)));
+          && query.length > item.id.length && query.startsWith(item.id))));
+    }
+
+    // The hint panel shows the command's whole set of tool rows, also while the word at the caret
+    // is filtering them (`-`, `--ed`) or they are listed below: complete() again with that word removed.
+    function fullTool(raw, res, tool) {
+      const { from, to } = res.replace;
+      if (from === to) return tool;
+      const again = CmdComplete.complete(raw.slice(0, from) + raw.slice(to), from, COMPLETION);
+      return again.items.filter(r => r.zone === 'tool').map(r => ({ type: r.kind, zone: r.zone, title: r.label, subtitle: r.description, insert: r.insert }));
+    }
+
+    // Word 0: one list below the prompt in ranking order (index 0 is the best row overall, the
+    // default highlight); `zone` only records the kind of row.
+    function zoned(rows) {
+      return rows.map(i => i.zone ? i : Object.assign({}, i, { zone: i.type === 'command' && !i.id.includes(' ') ? 'tool' : 'set' }));
+    }
+
+    // Arguments: stored lines that start with what is typed lead the Set zone (newest first, at most 3).
+    function recentLines(raw, caret) {
+      if (caret !== raw.length) return [];
+      const typed = raw.trimStart().toLowerCase();
+      return ITEMS.filter(i => i.type === 'command' && i.id.includes(' ') && i.id.length > typed.length && i.id.toLowerCase().startsWith(typed))
+        .slice(0, 3).map(i => ({ type: 'history', zone: 'set', title: i.id, subtitle: 'recent', line: i.id }));
+    }
+
+    // The highlight with nothing chosen: the best word-0 row; in arguments the first target (path,
+    // tag or value; recent lines stay one ↑ above it), at a group position the best subcommand
+    // (`pakabl ` + Tab), and after a typed `-` the first option. -1 = none.
+    function defaultIdx() {
+      if (mode !== 'args') return 0;
+      const t = items.findIndex(r => r.zone === 'set' && r.type !== 'history');
+      if (t !== -1) return t;
+      return items.findIndex(r => r.type === 'command' || (dashed && r.type === 'option'));
+    }
+
+    // Rows top to bottom as drawn: the tool zone reversed (best next to the prompt), then the list.
+    function displayOrder() {
+      const idx = items.map((_, i) => i);
+      return [...idx.filter(i => items[i].pane === 'tool').reverse(), ...idx.filter(i => items[i].pane !== 'tool')];
+    }
+
+    // Splice a completion row into the line (args mode). `descend` (Tab, click) adds the
+    // space that starts the next word; Enter inserts as is and runs the line.
+    function applyRow(item, descend) {
+      const v = input.value;
+      if (item.line !== undefined) {   // a stored line replaces the whole prompt
+        input.value = item.line;
+        input.setSelectionRange(item.line.length, item.line.length);
+        return true;
+      }
+      // The rows belong to the caret position they were built for; a caret that moved some
+      // other way (select all, a drag) must not make them splice over another word.
+      const now = COMPLETION && CmdComplete.complete(v, input.selectionStart ?? v.length, COMPLETION).replace;
+      if (!now || now.from !== view.replace.from || now.to !== view.replace.to) return false;
+      const { from, to } = view.replace;
+      const ins = item.insert ?? item.title;
+      const after = v.slice(to);
+      let text = v.slice(0, from) + ins, caret = text.length;
+      if (descend && !/=$/.test(ins)) {
+        if (/^\s/.test(after)) caret += 1;       // the space is already there
+        else text += ' ', caret += 1;
+      }
+      input.value = text + after;
+      input.setSelectionRange(caret, caret);
+      return true;
     }
 
     // ── structured payload for a chosen item ────────────────────────────────
@@ -233,38 +374,71 @@
       return { type: 'command', id: sp === -1 ? raw : raw.slice(0, sp), line: raw };
     }
 
-    // ── ghost hint: the next missing option value, display only ────────────
-    // Shown in the args phase when the caret is at the end of the line and the text after
-    // "<command> " ends in whitespace (CmdMatch.valueHint decides). Never affects Enter/Tab.
+    // ── ghost: the usage of this position, display only ────────────────────
+    // CmdComplete's `usage` (`<old>`, `<command>`, `[<targets>…]`), shown behind the caret
+    // when it is at the end of the line and the word at the caret is empty (right after a space).
+    // The one owner of #ghost; it never affects Enter or Tab.
     function updateGhost() {
       let hint = null;
       const v = input.value;
-      const sp = v.indexOf(' ');
-      if (sp > 0 && (input.selectionStart ?? v.length) === v.length && input.selectionEnd === v.length) {
-        const cmd = itemsById[v.slice(0, sp)];
-        if (cmd?.type === 'command' && cmd.valueOptions && CmdMatch.valueHint) hint = CmdMatch.valueHint(cmd.valueOptions, v.slice(sp + 1));
+      if (mode === 'args' && view?.usage && (input.selectionStart ?? v.length) === v.length && input.selectionEnd === v.length
+          && view.replace.from === view.replace.to) {
+        hint = (/\s$/.test(v) ? '' : ' ') + view.usage;
       }
       ghostMirror.textContent = hint ? v : '';
       ghostHint.textContent = hint ?? '';
       ghostMirror.style.marginLeft = hint ? -input.scrollLeft + 'px' : '0';
     }
 
+    // The marked row's summary, when clipped, scrolls sideways like a marquee: it starts after 700 ms on the
+    // row, moves at 40 px/s (a transform on an inner span, so nothing reflows), waits 1 s at the end, jumps
+    // back and goes again. Any render (another row, another key) stops it. Reduced motion: a title instead.
+    let marqueeTimer = null, marqueeAnim = null;
+    function stopMarquee() {
+      clearTimeout(marqueeTimer); marqueeTimer = null;
+      if (marqueeAnim) { marqueeAnim.cancel(); marqueeAnim = null; }
+    }
+    function armMarquee() {
+      stopMarquee();
+      const hd = hintsEl.querySelector('.cur .hd');
+      const t = hd?.firstChild;
+      if (!t || !t.animate) return;
+      const dist = Math.ceil(t.offsetWidth - hd.clientWidth);
+      if (dist <= 1) return;   // fits: nothing to read
+      const travel = dist + 18;   // the end of the text clears the fade at the right edge
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { hd.title = t.textContent; return; }
+      const run = () => {
+        marqueeAnim = t.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-travel) + 'px)' }],
+                                { duration: travel / 0.04, easing: 'linear', fill: 'forwards' });
+        marqueeAnim.onfinish = () => {
+          marqueeTimer = setTimeout(() => {   // 1 s at the end, then jump back and go again
+            if (marqueeAnim) { marqueeAnim.cancel(); marqueeAnim = null; }
+            marqueeTimer = setTimeout(run, 700);
+          }, 1000);
+        };
+      };
+      marqueeTimer = setTimeout(run, 700);
+    }
+
+    // The heading and the note of an area above the prompt (textContent only). The heading names the
+    // recognized command; the note shows while the area has no rows.
+    function fillZone(zone, name, tail, empty, wordZeroNote) {
+      const cmd = mode === 'args' ? /^\s*(\S+)/.exec(input.value)?.[1] : null;
+      zone.querySelector('.zhead').textContent = name + (cmd ? ' · ' + cmd + tail : '');
+      zone.querySelector('.znote').textContent = !empty ? '' : mode === 'args' ? 'No options here' : wordZeroNote;
+    }
+
     // ── render ─────────────────────────────────────────────────────────────
     function render() {
       items     = computeItems(input.value);
+      activeIdx = chosen ? Math.min(activeIdx, items.length - 1) : defaultIdx();
       updateGhost();
-      activeIdx = Math.min(activeIdx, Math.max(items.length - 1, 0));
 
       dropdown.innerHTML = '';
+      hintsEl.innerHTML = '';
+      tools.innerHTML = '';
 
-      if (!items.length) {
-        dropdown.classList.add('hidden');
-        return;
-      }
-
-      dropdown.classList.remove('hidden');
-
-      items.forEach((item, i) => {
+      const draw = (item, i) => {
         const row = document.createElement('div');
         row.className = 'row' + (i === activeIdx ? ' active' : '');
         // textContent, not innerHTML: item titles may be user data (track names).
@@ -275,22 +449,74 @@
         desc.className = 'desc';
         desc.textContent = item.subtitle ?? '';
         row.append(label, desc);
-        row.addEventListener('mousedown', e => { e.preventDefault(); send(resultFor(item)); });
-        dropdown.appendChild(row);
-      });
+        row.addEventListener('mousedown', e => {
+          e.preventDefault();
+          if (mode === 'args') { applyRow(item, true); activeIdx = 0; chosen = false; render(); input.focus(); }
+          else send(resultFor(item));
+        });
+        return row;
+      };
 
-      dropdown.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
+      for (const i of displayOrder()) (items[i].pane === 'tool' ? tools : dropdown).appendChild(draw(items[i], i));
+      // The area above the prompt is reserved at a fixed height for the whole session in hints/options
+      // mode (empty at word 0), so the prompt and the list never move while typing.
+      toolsZone.classList.toggle('hidden', above !== 'options');
+      fillZone(toolsZone, 'Options', ' — ↑ to choose', !tools.firstChild, 'Type a command to see its options');
+      tools.scrollTop = tools.scrollHeight;   // the best row (the bottom one) in view
+      // The list keeps its place (and the footer its position) even when it is empty.
+
+      // The hint panel: read-only, built from the command's tool rows.
+      for (const h of hintRows) {
+        // Three aligned columns: the long flag, the short flag with its value names, the summary.
+        // complete() describes a row as "-e <tag|#> list the tracks…": split the leading flag/value words off.
+        const words = (h.subtitle ?? '').split(/\s+/).filter(Boolean);
+        let n = 0;
+        while (n < words.length && /^(-\w+,?|<[^>]*>|\[[^\]]*\]\S*)$/.test(words[n])) n++;
+        const cell = document.createElement('div');
+        const cur = items[activeIdx];
+        cell.className = 'hint' + (cur && cur.zone === 'tool' && cur.title === h.title ? ' cur' : '');   // the row highlighted in the list
+        const k = document.createElement('span'); k.className = 'hk'; k.textContent = h.title;
+        const v = document.createElement('span'); v.className = 'hv'; v.textContent = words.slice(0, n).join(' ');
+        const d = document.createElement('span'); d.className = 'hd';
+        const summary = words.slice(n).join(' ');
+        if (cell.classList.contains('cur')) {   // the marked row only: an inner span the marquee can move
+          const t = document.createElement('span'); t.className = 'hdt'; t.textContent = summary; d.appendChild(t);
+        } else d.textContent = summary;
+        cell.append(k, v, d);
+        hintsEl.appendChild(cell);
+      }
+      armMarquee();
+      hintsZone.classList.toggle('hidden', above !== 'hints');
+      fillZone(hintsZone, 'Hints', '', !hintsEl.firstChild, 'Type a command to see what it can do');
+
+      document.querySelector('.row.active')?.scrollIntoView({ block: 'nearest' });
     }
 
     // ── keyboard ───────────────────────────────────────────────────────────
     input.addEventListener('input', () => { activeIdx = 0; chosen = false; render(); });
 
-    input.addEventListener('click', updateGhost);   // a click moves the caret
+    input.addEventListener('click', () => { activeIdx = 0; chosen = false; render(); });   // a click moves the caret: rows follow it
 
     // Moving the caret can change which word is completed.
     input.addEventListener('keyup', e => {
       if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) { activeIdx = 0; chosen = false; render(); }
     });
+
+    // ↑/↓ walk the rows as drawn (the tool zone on top when it is selectable, the list below; the hint
+    // panel is never part of it); the ends stop.
+    function moveSel(d) {
+      const order = displayOrder();
+      if (!order.length) return;
+      if (activeIdx < 0) {   // nothing highlighted: ↑ goes to the best tool row, ↓ to the first list row
+        const next = d < 0 ? items.findIndex(r => r.pane === 'tool') : items.findIndex(r => r.pane !== 'tool');
+        if (next === -1) return;
+        activeIdx = next; chosen = true; render();
+        return;
+      }
+      activeIdx = order[Math.max(0, Math.min(order.indexOf(activeIdx) + d, order.length - 1))];
+      chosen = true;
+      render();
+    }
 
     input.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
@@ -299,12 +525,26 @@
       } else if (e.key === 'Enter') {
         e.preventDefault();
         const item = items[activeIdx];
+        if (mode === 'args') {
+          // The typed line runs; a row only when the user moved the selection to it.
+          if (item && chosen) applyRow(item, false);
+          const result = rawResult();
+          if (result) send(result);
+          return;
+        }
         const result = item && !typedLineWins(item) ? resultFor(item) : rawResult();
         if (result) send(result);
       } else if (e.key === 'Tab') {
         e.preventDefault();
         const item = items[activeIdx];
         if (!item) return;
+        if (mode === 'args') {
+          applyRow(item, true);   // take the row and descend
+          activeIdx = 0;
+          chosen = false;         // the next position's top row is not chosen
+          render();
+          return;
+        }
         // Tab only autocompletes the highlighted item into the input — it never
         // executes. The user commits with Enter (and can edit first).
         // Commands get a trailing space so you land in their arguments. Live
@@ -325,13 +565,27 @@
         activeIdx = 0;
         chosen = true;
         render();
+        if (mode === 'args') { chosen = false; render(); }   // Tab landed in arguments: nothing is chosen there yet
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        if (items.length) { activeIdx = (activeIdx + 1) % items.length; chosen = true; render(); }
+        moveSel(+1);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        if (items.length) { activeIdx = (activeIdx - 1 + items.length) % items.length; chosen = true; render(); }
+        moveSel(-1);
       }
+    });
+
+    // The footer switch (Off · Hints · Options): a click sets it and re-renders at once; no key, and
+    // keyboard focus stays in the input.
+    const aboveBox = document.getElementById('above');
+    const showAbove = () => aboveBox.querySelectorAll('span').forEach(el => el.classList.toggle('on', el.dataset.v === above));
+    showAbove();
+    aboveBox.addEventListener('mousedown', e => {
+      e.preventDefault();   // no focus change
+      const v = e.target.dataset?.v;
+      if (!ABOVE.includes(v) || v === above) return;
+      above = v; showAbove();
+      chosen = false; render(); input.focus();
     });
 
     // ── init ───────────────────────────────────────────────────────────────

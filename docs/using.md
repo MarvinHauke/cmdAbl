@@ -26,6 +26,46 @@ The palette shows two kinds of rows:
 
 After a command runs, the palette closes. Only a message or a pick list can stay open.
 
+### Suggestions for arguments
+
+After a command name, the list below the prompt shows what fits at the cursor:
+
+- targets, where the command takes one: your recent lines first, then tracks, chains, `#` tags (with the number of
+  tracks each one has) and values;
+- options, after you type `-`, and the values an option takes;
+- subcommands, for a command that has them, such as `pakabl`;
+- extension ids for `pakabl install`, tag names for `tag -r` and `tag -e`, and commands for `man`.
+
+A grey hint after the cursor shows what the command expects next, such as `<target>…`, `<old>` or `<id>`. It shows
+only where nothing is typed yet.
+
+- `Tab` takes the highlighted suggestion and moves on: it adds the space. The highlight and `Tab` start at the
+  first target, or at the best subcommand or option where there is no target.
+- `↑` and `↓` pick a different row.
+- `Enter` runs exactly what you typed. It never takes the top row on its own; it takes a suggestion only if you
+  moved to that row with the arrow keys first.
+
+A name with spaces is quoted for you.
+
+![The palette after `tag --rename `: the five tags of the Set with their track counts, and the grey hint `<old>`.](assets/images/complete-rename.png)
+
+#### Show the options above the prompt
+
+The footer of the palette has a switch, **Above the prompt: Off · Hints · Options**. Click it with the mouse. The
+choice is saved and used the next time you open the palette. The palette opens taller for **Hints** and **Options**.
+If you switch while the palette is open, the layout changes fully at the next open.
+
+- **Off** (the default): one list below the prompt. Options appear in it after you type `-`.
+- **Hints**: a reference panel above the prompt, headed `Hints · <command>`, lists the command's options in
+  columns: the long flag, the short flag with its values, and the description. You cannot select in it. After
+  `-`, the option highlighted in the list is marked with `▸` in the panel, and a long description scrolls after a
+  short moment.
+- **Options**: the options sit above the prompt and you can select them. `↑` goes up into them, and `Tab` takes one.
+
+![The palette in Hints mode after `tag -`: the panel above the prompt lists the options of tag in columns, and the list below the prompt shows the same options. The footer switch is set to Hints.](assets/images/above-hints.png)
+
+![The palette in Options mode after `tag `: the six options of tag above the prompt, the grey hint `[<target>]` after it, the tracks below, and the footer switch set to Options.](assets/images/above-options.png)
+
 ## Name the objects
 
 A command takes objects as text. cmdAbl reads that text as follows:

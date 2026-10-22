@@ -1,7 +1,8 @@
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { createFakeBridge, type FakeBridge, type FakeBridgeOptions } from "../ableton/bridgeFake.js";
 import type { Command } from "../core/commandRegistry.js";
-import { helpForPath, usageForPath } from "../core/commandTree.js";
+import { helpForPath, unknownCompleterKeys, usageForPath } from "../core/commandTree.js";
+import type { Completer } from "../core/complete.js";
 import type { Provider } from "../core/types.js";
 import type { BoardAnswer, BoardRequest, StateChange } from "../core/ui.js";
 import { MAX_FILE_BYTES, validFileName } from "../core/files.js";
@@ -63,6 +64,13 @@ export interface FakeApi {
   fileStore: Map<string, string>;
   /** The Set's id now (`api.set.id(true)` fills it when empty). */
   setId: string | null;
+  /** The completers the module registered, by key. */
+  completers: Map<string, Completer>;
+  /**
+   * Command nodes that name a completer key the module did not register, as readable lines. A module's
+   * test asserts this is empty (the platform only warns at activation).
+   */
+  unknownCompleters(): string[];
 }
 
 export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
@@ -88,6 +96,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     transactions: 0,
     fileStore: new Map(Object.entries(options.files ?? {})),
     setId: options.setId ?? null,
+    completers: new Map(),
+    unknownCompleters: () => unknownCompleterKeys(fake.commands, fake.completers.keys()),
   };
   fake.api = {
     bridge,
@@ -144,6 +154,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       roots: () => fake.commands,
       help: (path) => helpForPath(fake.commands, path),
       usage: (path) => usageForPath(fake.commands, path),
+      completer: (key, source) => void (fake.completers.has(key) ? undefined : fake.completers.set(key, source)),
     },
     pick: async (_title, candidates, multi = false, pickOptions) => {
       if (pickOptions?.state) fake.pickStates.push(pickOptions.state);

@@ -717,35 +717,6 @@ test("option with values: the remembered line keeps every value", async () => {
   assert.equal(out.line, 'tag --rename fx "new name"');
 });
 
-test("palette items carry the value options of a command for the ghost hint", async () => {
-  const { CommandRegistry } = await import("./commandRegistry.js");
-  const { createCommandProvider } = await import("./commandProvider.js");
-  const registry = new CommandRegistry();
-  registry.add({
-    ...renameTree[0]!,
-    options: [
-      ...renameTree[0]!.options!,
-      { name: "edit", short: "e", takesValue: true, valueLabels: ["tag|#"], summary: "edit" },
-      { name: "all", summary: "a flag" },
-    ],
-  } as never);
-  registry.add({ name: "plain", summary: "p", run: () => {} } as never);
-  registry.add({ name: "grp", summary: "g", children: [{ name: "go", summary: "s", options: [{ name: "n", takesValue: true, number: {}, summary: "n" }], run: () => {} }] } as never);
-  const items = await createCommandProvider(registry).getItems();
-  assert.deepEqual(items.find((i) => i.id === "tag")!.valueOptions, [
-    { path: [], name: "rename", labels: ["old", "new"] },
-    { path: [], name: "edit", short: "e", labels: ["tag|#"] },
-  ]);
-  assert.equal(items.find((i) => i.id === "plain")!.valueOptions, undefined);
-  assert.deepEqual(items.find((i) => i.id === "grp")!.valueOptions, [{ path: ["go"], name: "n", labels: ["n"] }]);
-});
-
-test("match.ts ValueOptionSpec and commandTree.ts ValueOptionHint stay the same shape", async () => {
-  const { valueHint } = await import("./match.js");
-  const hints: import("./commandTree.js").ValueOptionHint[] = [{ path: [], name: "rename", labels: ["old", "new"] }];
-  assert.equal(valueHint(hints, "--rename "), "<old>"); // fails to compile when the shapes drift apart
-});
-
 test("option with valueDefault: no value (last token, or an option follows) uses the default", () => {
   const tree: CommandNode<void, string>[] = [
     {

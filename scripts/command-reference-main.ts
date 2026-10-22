@@ -51,7 +51,7 @@ const stub: ModuleApi = {
   dialog: async () => {
     throw new Error("a module opened a dialog while being activated; declare commands only");
   },
-  commands: { add: (command) => void registry.add(command) },
+  commands: { add: (command) => void registry.add(command), completer: () => {} },
   pick: async () => null,
   onPick: () => {},
   registerProvider: () => {},

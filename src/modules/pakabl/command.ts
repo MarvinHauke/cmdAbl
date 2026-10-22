@@ -35,7 +35,7 @@ export function pakablCommand(h: PakablHandlers): Command {
           "Downloads one Ableton Live extension from the curated list and unpacks it into Live's Extensions folder. " +
           "Restart Live to load it. Run pakabl update first to fetch the list.",
         examples: [{ line: "pakabl install federico-pepe.snake", note: "install the extension with that id" }],
-        args: [{ name: "id", kind: "text", summary: "Extension id as shown by pakabl list: author.name" }],
+        args: [{ name: "id", kind: "text", complete: "pakabl-index-ids", summary: "Extension id as shown by pakabl list: author.name" }],
         run: (inv) => h.install(firstArg(inv)),
       },
       {
@@ -45,7 +45,7 @@ export function pakablCommand(h: PakablHandlers): Command {
           "Deletes an installed extension from Live's Extensions folder. Restart Live to unload it.",
         examples: [{ line: "pakabl uninstall federico-pepe.snake", note: "remove that extension" }],
         destructive: true,
-        args: [{ name: "id", kind: "text", summary: "Extension id as shown by pakabl list: author.name" }],
+        args: [{ name: "id", kind: "text", complete: "pakabl-installed-ids", summary: "Extension id as shown by pakabl list: author.name" }],
         run: (inv) => h.uninstall(firstArg(inv)),
       },
       {
@@ -72,6 +72,7 @@ export function pakablCommand(h: PakablHandlers): Command {
           {
             name: "ref",
             kind: "text",
+            complete: "pakabl-installed-ids",
             summary: "Extension id, optionally followed by @ and the version the list holds, to install it even if it is not newer",
           },
         ],

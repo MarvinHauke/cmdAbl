@@ -1,5 +1,6 @@
 import { logger } from "./log.js";
-import { validateTree, type CommandNode } from "./commandTree.js";
+import { unknownCompleterKeys, validateTree, type CommandNode } from "./commandTree.js";
+import type { Completer } from "./complete.js";
 import type { ArgValue } from "./resolveArgs.js";
 
 /** A declared command: parsed and resolved by the platform before `run` is called. */
@@ -19,6 +20,7 @@ export interface CommandDef {
  */
 export class CommandRegistry {
   private readonly tree: Command[] = [];
+  private readonly sources = new Map<string, Completer>();
 
   /**
    * Add a declared command (or a group of subcommands). A node that breaks the
@@ -33,6 +35,32 @@ export class CommandRegistry {
     }
     this.tree.push(node);
     return [];
+  }
+
+  /**
+   * Register a completer under a key (`api.commands.completer`). A key given twice keeps the first
+   * and logs a warning; a non-function or empty key is ignored with a warning. Never throws.
+   */
+  completer(key: string, source: Completer): void {
+    if (typeof key !== "string" || key.trim() === "" || typeof source !== "function") {
+      logger("registry").warn("completer ignored: it needs a key and a function");
+      return;
+    }
+    if (this.sources.has(key)) {
+      logger("registry").warn(`completer "${key}" is already registered; the first one stays`);
+      return;
+    }
+    this.sources.set(key, source);
+  }
+
+  /** The registered completers, by key. */
+  completers(): ReadonlyMap<string, Completer> {
+    return this.sources;
+  }
+
+  /** Nodes that name a completer key nobody registered, as readable lines (checked once after activation). */
+  unknownCompleters(): string[] {
+    return unknownCompleterKeys(this.tree, this.sources.keys());
   }
 
   /** The declared command tree. */

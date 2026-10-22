@@ -3,7 +3,10 @@
 **Parent:** [0004](0004-command-platform.md)
 **Depends on:** [0005](0005-command-tree-and-module-authoring.md) (the tree and candidate snapshots).
 
-**Status:** Draft (2026-10-08) — replaces the palette's flat fuzzy search with hierarchical,
+**Status:** Steps 1–2 planned for 0.1.4 (2026-10-22, reviewed; section "0.1.4: argument completion"
+below; API additions approved by the user 2026-10-22; built and Live-tested through MCP on
+`feat/completion`: core `d0f1337`, `4198526`, `742da98`, `e803fcd`, `c53d6af`; modules `0b980b8`, `514fd39`;
+ui `624c889`; docs `bc72468`, `6092d3e`). Drafted 2026-10-08 — replaces the palette's flat fuzzy search with hierarchical,
 shell-style completion driven by the command tree.
 
 ## Context
@@ -124,6 +127,165 @@ Today's precursor: the per-word tags of 0005 "Forgiving target resolution". Open
 - How it fits the level-by-level completion with ghost text (Tab descends a level).
 - Highlighting needs match positions per row — a contract addition to `SelectRequest` items;
   ask before building.
+
+## 0.1.4: argument completion (2026-10-22, reviewed by cmdabl-reviewer)
+
+Steps 1–2 of the rollout: completion at every position, not only for command names.
+
+### One function, LSP-shaped
+
+`complete(line, cursor) → { items, replace: {from, to}, usage? }` in core, pure and shared.
+- `items`: `{ label, insert, description?, kind }`. Core quotes `insert` (`quoteIfNeeded`), so the
+  page never quotes. A path inserts `uniquePath(nodes, node)` (`/Kick#2`), not the bare name.
+- **Position:** a new `locate(tokens, cursor, tree)`. It never validates and reuses parse.ts's
+  helpers (`findChild`, `startsOption` with NUMBERISH, `effectiveOptions`, `valueNames`). `parse()`
+  is not used for completion, because it stops at the first problem; `tokenize` never throws and
+  returns the partial last token with its range on an open quote.
+- **Positions:** command and subcommand, option, option value, positional argument, `rest`, `#tag`,
+  path (whole path for now; segment by segment is step 3).
+- **Sources:**
+  - the tree (names, options, enum `choices`);
+  - core built-ins (Live paths from the object tree, tags from the tag cache, command names);
+  - module completers.
+
+  At word 0, commands come first, then history and Live-object rows, as today (§2 table).
+- **Caps:** at most about 100 rows per level.
+- **The single source of hints:** `usage` replaces today's `CmdMatch.valueHint`, so one hint per
+  position. `#ghost` keeps one owner, reused for ghost text later (step 4).
+
+### Module API (additive; user approval needed)
+
+- `api.commands.completer(key, (ctx: { tokens?: string[] }) => Candidate[] | Promise<Candidate[]>)`.
+  `ArgDef.complete` and the new **`OptionDef.complete`** name the key (option values like
+  `tag -r <old>`, `tag -e <tag>` need it).
+- One signature for both transports: the snapshot calls it once at palette open without `tokens`; a
+  later server variant may pass the typed tokens.
+- Completers are **read-only** (no side effects; the guide says so) and read caches. They never call
+  the bridge per call: bridge-backed caches (tags, chain names) refresh once at palette open, as
+  `refreshStructure` does.
+- Each completer runs under a budget of about 100 ms. A throw or timeout gives no rows and a debug
+  log line; it never blocks the palette.
+- At activation, an unknown `complete` key is a warning (and a test failure in the module tests).
+
+### Transport: snapshot first
+
+- **0.1.4 ships the snapshot (b).**
+  - At palette open, core builds `{ tree (without run), completions, items }`.
+  - `complete()` is bundled into the palette and runs there while typing.
+  - Measure the payload for a Set with about 300 tracks; cap paths and tags.
+- **A completion server (a) is a later enhancement, behind a spike.** The palette would call
+  `fetch("http://127.0.0.1:27184/complete")` while typing.
+  - **Spike:** can a `data:` page (origin `null`) reach it; how long does the CORS preflight take;
+    does Windows WebView2 (Private Network Access) block it?
+  - **Security**, if it goes ahead:
+    - a random token of at least 128 bits, made at palette open and passed in the page JSON;
+    - the token is revoked on close, compared with `timingSafeEqual`, and never logged;
+    - it is sent in the `Authorization` header, never in the URL;
+    - `Origin: null` is allowed only for `/complete` and only with a valid token;
+    - `/open`, `/reset` and the dev routes keep refusing every Origin;
+    - the route is read-only, and it needs its own guard because it would exist in release builds.
+  - **Page side:** a 50 ms debounce, an AbortController per request, a sequence id, a 150 ms
+    timeout, then the snapshot.
+  - **Rule change, if it goes ahead:** the dialog rule (`CLAUDE.md`, 0007, the Context above) changes
+    in the same change to "the SDK channel returns one string on close; a page may read the local
+    trigger server only through token-guarded, read-only routes".
+
+### Keys
+
+- **Tab** takes the highlighted row and descends one level (adds a space after a word).
+- **Enter runs the typed line** unless the user moved the selection (the existing `chosen` flag in
+  `ui/interface.html`). It never takes the top row on its own: "never pick the first match silently".
+
+### Work
+
+1. **core:**
+   - `locate`, `complete`, the candidate model;
+   - `api.commands.completer`, `OptionDef.complete`, the key check;
+   - the snapshot at palette open, with caps;
+   - built-in sources (paths, tags, commands);
+   - tests for the edge cases: a bare `-` against `-6`, a cursor inside an open quote, a cursor in the
+     middle, `--name=value`, multi-value options, `rest`.
+2. **ui:** the palette uses `complete()` at every position: Tab, the usage line, the Enter rule. It
+   replaces `parse()`, `computeItems()` and the `args` phase.
+3. **modules:** `complete` sources where they're missing (`pakabl install <id>`, `man <command>`,
+   `tag -r <old>`, `tag -e <tag>`); the authoring guide via docs.
+4. **Test through MCP:** `cmdabl_show("")` plus `cmdabl_keys` and `cmdabl_capture` at each position.
+
+## Two zones (user, 2026-10-22)
+
+After the first Live use of argument completion: after `tag ` only targets showed, so the options
+(`--list`, `--edit`, …) were hidden until `-` was typed, and the tool lost part of its
+self-explanation. The user also wants recent commands first.
+
+```
+   --rename  -r <old> <new>  rename a tag …        ↑ tool zone: subcommands and options
+   --edit    -e <tag|#>      …                       (best match next to the prompt)
+ : tag ▌<target>…                                    prompt; ghost = usage hint
+   mute /Kick            (history)                 ↓ Set zone: recent lines first, then
+   /Kick                 track                       paths, #tags, values
+```
+
+- `complete()` items carry `zone: "tool" | "set"`, derived from the kind: `command` and `option` go
+  in the tool zone, `path`, `tag` and `value` in the Set zone.
+- At positional and `rest` positions, `complete()` also returns the unused options and subcommands.
+  Not after `--`, and not while an option waits for its value.
+- **Recent first:** history lines starting with the typed command (newest, at most 3) lead the Set
+  zone. At word 0, history sits directly below the prompt and commands go above.
+- **Keys:** ↑ enters the tool zone, ↓ the Set zone; Tab takes; Enter runs the typed line unless the
+  selection moved.
+- The tool zone shows at most about 5 rows; the dialog size is unchanged; the ghost text stays the
+  usage hint.
+
+**Refined after the first build (user, 2026-10-22; partly replaced by the hint panel below):**
+- **The tool zone is optional, and off by default.** A checkbox in the palette's footer, "Options
+  above the prompt", turns it on. With it off there is one list below the prompt: targets first, then
+  the options. So the options stay visible, but the palette never grows upward.
+- **With it on,** the palette grows upward only after a command is recognized **and** that position
+  has options or subcommands. At word 0 there is no tool zone; commands, history and Live objects stay
+  in one list below, as before.
+- **Start at targets:** with nothing chosen, the highlight (and so Tab) is the first target row. Recent
+  history lines stay at the top of the Set zone, one ↑ away from the first target. At a group position
+  with no targets (`pakabl `), it is the best subcommand.
+- **The setting is stored by core** in `settings.json` in cmdAbl's data folder (`palette.hints`,
+  default `false`) and passed to the palette in its JSON. The page can't call the extension while
+  open, so it returns the setting with its result, or alone on Esc
+  (`PaletteResult.settings?: { hints: boolean }`; a result with only `settings` runs nothing).
+  This is the first piece of the 0008 store; an additive change to the palette contract, asked for by
+  the user.
+
+
+**Hint panel instead of a tool zone (user, 2026-10-22, second refinement):**
+- **Above the prompt sits a which-key style hint panel** (as in Neovim's which-key): a compact, smaller
+  grid of the recognized command's options and subcommands, e.g. `-e --edit <tag|#>`. It is **not
+  selectable**; it teaches what exists. It appears only after a command is recognized and when that
+  position has tool rows. The footer checkbox "Hints above the prompt" turns it on (off by default;
+  setting `palette.hints`).
+- **The list below holds targets only,** in the larger row style: recent lines, then paths, tags and
+  values. Options become selectable only after typing `-`; the list then shows the options. At a group
+  position with no targets (`pakabl `), the list shows the subcommands.
+- `complete()` keeps returning tool rows with `zone: "tool"`; the page draws them in the hint panel,
+  not in the list.
+
+**Both as a choice (user, 2026-10-22, after trying the selectable zone in Live):**
+- The setting becomes `palette.above: "off" | "hints" | "options"`, default `"off"`. It replaces
+  `palette.hints`.
+  - `"off"`: one list below; options appear only after `-` (subcommands at a group position).
+  - `"hints"`: the which-key panel above, not selectable, compact.
+  - `"options"`: the selectable tool zone above (↑ enters it, best row next to the prompt), as built in
+    ui `4745dd2`.
+- In every mode, the list below holds targets in the larger row style and starts at the first target.
+- The footer control is a small three-way switch (Off · Hints · Options) instead of the checkbox. It is
+  clicked; no key, and focus stays in the input.
+
+**Layout without jumping (user, 2026-10-22):**
+- The prompt keeps one position for the whole time the palette is open (ui `05ff390`).
+- In "hints" and "options" mode the palette opens **taller** (core, `src/core/ui.ts`), so the area above
+  the prompt is bigger and at least 5 target rows stay visible below it.
+- That area has **no frame, background or divider while it is empty**, so it looks absent until there is
+  content. The prompt still doesn't move.
+- A separate hint window is not possible: the SDK has only modal dialogs, one at a time, with a fixed
+  size. Live's status bar (`show_message`) would need the palette to reach cmdAbl while open; it depends
+  on the server spike above.
 
 ## Open questions
 
