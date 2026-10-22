@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cmdabl": {
+      "command": "npx",
+      "args": ["tsx", "tools/mcp/main.ts"]
+    }
+  }
+}

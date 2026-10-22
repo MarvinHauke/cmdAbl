@@ -9,7 +9,8 @@
   "scripts": {
     "build": "tsc --noEmit && tsx build.ts --production",
     "build:dev": "tsc --noEmit && tsx build.ts",
-    "test": "tsx --test \"src/**/*.test.ts\"",
+    "test": "tsx --test \"src/**/*.test.ts\" \"tools/**/*.test.ts\"",
+    "mcp": "tsx tools/mcp/main.ts",
     "docs:reference": "tsx scripts/gen-command-reference.ts",
     "start": "npm run build:dev && extensions-cli run",
     "package": "npm run build && extensions-cli package --include karabiner --include windows --include remote-script"
@@ -20,9 +21,11 @@
   },
   "devDependencies": {
     "@ableton-extensions/cli": "file:./vendor/ableton-extensions-cli-1.0.0-beta.1.tgz",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@types/node": "^24.1.0",
     "esbuild": "0.28.2",
     "tsx": "^4.19.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "zod": "^4.6.7"
   }
 }
