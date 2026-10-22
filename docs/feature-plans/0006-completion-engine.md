@@ -236,7 +236,7 @@ self-explanation. The user also wants recent commands first.
 - The tool zone shows at most about 5 rows; the dialog size is unchanged; the ghost text stays the
   usage hint.
 
-**Refined after the first build (user, 2026-10-22):**
+**Refined after the first build (user, 2026-10-22; partly replaced by the hint panel below):**
 - **The tool zone is optional, and off by default.** A checkbox in the palette's footer, "Options
   above the prompt", turns it on. With it off there is one list below the prompt: targets first, then
   the options. So the options stay visible, but the palette never grows upward.
@@ -252,6 +252,19 @@ self-explanation. The user also wants recent commands first.
   (`PaletteResult.settings?: { optionsAbove: boolean }`; a result with only `settings` runs nothing).
   This is the first piece of the 0008 store; an additive change to the palette contract, asked for by
   the user.
+
+
+**Hint panel instead of a tool zone (user, 2026-10-22, second refinement):**
+- **Above the prompt sits a which-key style hint panel** (as in Neovim's which-key): a compact, smaller
+  grid of the recognized command's options and subcommands, e.g. `-e --edit <tag|#>`. It is **not
+  selectable**; it teaches what exists. It appears only after a command is recognized and when that
+  position has tool rows. The footer checkbox "Hints above the prompt" turns it on (off by default;
+  setting `palette.hints`).
+- **The list below holds targets only,** in the larger row style: recent lines, then paths, tags and
+  values. Options become selectable only after typing `-`; the list then shows the options. At a group
+  position with no targets (`pakabl `), the list shows the subcommands.
+- `complete()` keeps returning tool rows with `zone: "tool"`; the page draws them in the hint panel,
+  not in the list.
 
 ## Open questions
 
