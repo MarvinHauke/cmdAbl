@@ -41,7 +41,7 @@ Open from the releases:
   transactions; `cmdabl curve` (measured 2026-10-22: 1001 points, 0 dB ≈ 0.850, 1.0 = +6 dB).
 - modules `8537d24`: `vol [--set] <dB> <target>…` (decimals, `-inf` with `--set`), tracks only
   (regular, return, group, `/Main`); dB↔value from the measured table (`mixValue.ts`, `mixTable.ts`).
-- Limits: `stop` (default) / `--clip` replace the confirm question (modules, in progress).
+- Limits: `stop` (default) / `--clip` (`-c`), no question (modules `2db0dc5`; rule in `src/modules/relative.ts`).
 - Live test: relative/absolute on `#drums`, decimals, the +6 and -inf limits, `/Main`, a chain gives
   exit 2, one Cmd+Z per run, displayed dB matches the log within 0.1 dB.
 - Docs still to do: `vol` in using.md, `volume`/`setVolume` in the authoring guide's TracksPort row.
