@@ -251,6 +251,36 @@ test("run: the remembered line is canonical — unique paths, each object once",
   assert.equal((await runLine(dash.line!, d2)).result.code, ExitCode.OK);
 });
 
+test("run: numbers and ±inf stay unquoted in the remembered line and round-trip; option-like text stays quoted", async () => {
+  const { deps, registry } = setup();
+  registry.add({
+    name: "vol",
+    summary: "volume",
+    args: [{ name: "amount", kind: "text" }, { name: "track", kind: "path", kinds: ["track"], variadic: true }],
+    run: () => {},
+  });
+  registry.add({
+    name: "setv",
+    summary: "volume, absolute",
+    args: [{ name: "track", kind: "path", kinds: ["track"], variadic: true }],
+    options: [{ name: "set", takesValue: true, summary: "absolute" }],
+    run: () => {},
+  });
+  for (const [typed, line] of [
+    ["vol -1.5 /Kick#1", "vol -1.5 /Kick#1"],
+    ["setv --set -inf /Kick#1", "setv --set -inf /Kick#1"],
+    ["vol .5 /Opal Lead", 'vol .5 "/Opal Lead"'],
+    ["setv --set -65 /Kick#1", "setv --set -65 /Kick#1"],
+  ] as const) {
+    const out = await runLine(typed, deps);
+    assert.equal(out.result.code, ExitCode.OK, typed);
+    assert.equal(out.line, line, typed);
+    assert.equal((await runLine(out.line!, deps)).line, line, `round trip: ${typed}`);
+  }
+  const text = await runLine('vol "-x" /Kick#1', deps);
+  assert.equal(text.line, 'vol "-x" /Kick#1');
+});
+
 test("run: the preview shows uniquely resolved text as its path, once", async () => {
   const { deps, picks } = setup((c) => [c[0]!]);
   await runLine('mute opal "/Opal Lead" kick vermona', deps);

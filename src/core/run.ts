@@ -7,7 +7,7 @@ import { shortHelpIn, type CommandNode, type Invocation, type PickState } from "
 import { commandListText } from "./topics.js";
 import { parse } from "./parse.js";
 import { applyPick, lookupTarget, normalizeTargets, resolveTargets, tagTargetOf, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
-import { quoteIfNeeded, tokenize } from "./tokenize.js";
+import { NUMBERISH, quoteIfNeeded, tokenize } from "./tokenize.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { PickPreview, StateChange } from "./ui.js";
 import { isTagWord, nodesForTag, nodesWithTag, parseTagTarget, type TagCount } from "./tags.js";
@@ -104,7 +104,7 @@ function headWords(invocation: Invocation<string>): string[] {
     const several = invocation.values?.[name];
     if (several) words.push(`--${name}`, ...several.map(quoteIfNeeded));
     else if (value === true) words.push(`--${name}`);
-    else if (value === "" || value.startsWith("-")) words.push(`--${name}=${quoteIfNeeded(value)}`);
+    else if (value === "" || (value.startsWith("-") && !NUMBERISH.test(value))) words.push(`--${name}=${quoteIfNeeded(value)}`);
     else words.push(`--${name}`, quoteIfNeeded(value));
   }
   return words;

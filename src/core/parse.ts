@@ -1,6 +1,6 @@
 import { ExitCode, fail, type CommandResult } from "./types.js";
 import { checkNumber, effectiveOptions, numberRule, type CommandNode, type Invocation, usage, valueNames } from "./commandTree.js";
-import { tokenize, type Token } from "./tokenize.js";
+import { NUMBERISH, tokenize, type Token } from "./tokenize.js";
 
 // Turns a typed line into a matched leaf plus a (not yet resolved) invocation.
 // Modules never parse: this is the only place raw input is interpreted.
@@ -26,9 +26,6 @@ const error = <P>(code: Exclude<CommandResult["code"], 0>, message: string): Par
 function findChild<P>(nodes: CommandNode<P, any>[], word: string): CommandNode<P, any> | undefined {
   return nodes.find((n) => n.name === word || n.aliases?.includes(word));
 }
-
-/** `-6`, `-0.5`, `+2`, `.5`, `inf`, `-inf`, `+inf`: a number, which is a value and never an option. */
-const NUMBERISH = /^(?:[+-]?(?:\d+\.?\d*|\.\d+)|[+-]?inf)$/i;
 
 /**
  * An option starts with an unquoted dash; quotes later in the token (`--to="a b"`) are fine. A
