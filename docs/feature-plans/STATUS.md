@@ -49,6 +49,12 @@ Open from the releases:
   `f40a89a` (history no longer quotes numbers); modules (limit messages grouped by end, 5 tracks max).
 - Docs done: docs `6b01c88` (using.md "Fader levels: `vol`", authoring guide `volume`/`setVolume`).
 
+## In progress: agent test access (branch `feat/test-mcp`, plan 0016)
+
+- core: headless `runLine` deps and `Ui`; development-only `POST /run` and `GET /log` with a token
+  file; `tools/mcp/` MCP server and `.mcp.json`.
+- Then: agent rules (architect), a "testing with MCP" section in the contributor docs (docs).
+
 ## Next (user, 2026-10-20/21)
 
 1. **0012 `vol`** (0.1.3) — built, see above.

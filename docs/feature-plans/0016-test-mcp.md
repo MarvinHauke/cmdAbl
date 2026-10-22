@@ -1,6 +1,6 @@
 # Test access for agents: a `/run` route and a cmdAbl MCP server
 
-**Status:** Draft (2026-10-22). Trigger: every Live test needs the user to type the commands; the
+**Status:** Approved (user, 2026-10-22), in work on `feat/test-mcp` (based on `feat/vol`). Trigger: every Live test needs the user to type the commands; the
 user wants the agents to run test lists themselves.
 
 **Parent:** [0004](0004-command-platform.md)
