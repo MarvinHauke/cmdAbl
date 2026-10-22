@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark" />
+  <title>note</title>
+  <!-- Module page of `note` (plan 0013). In: NOTE_PLACEHOLDER = { text: string, mode: "view" | "edit", setName?: string }.
+       view draws the Markdown (own small renderer below: headings, paragraphs, nested lists, checkboxes (read-only),
+       tables, quotes, inline and fenced code, bold, italic, strike, links (drawn as text, never followed), rules; no raw
+       HTML, all text goes in with textContent); edit is a plain textarea. An empty text opens in edit.
+       Out (close_and_send): the full text when it changed, '' when it did not (or the page was dismissed). A text
+       cleared to nothing is sent as "\n" so it differs from "no change"; the module treats whitespace-only as empty.
+       Keys: e (view) edit · Cmd/Ctrl+S save and back to view · Esc in view closes · Esc in edit: no unsaved changes
+       closes, with changes it warns in the footer first, a second Esc discards them and returns to view. -->
+  <style>
+    /*SHARED_CSS_PLACEHOLDER*/
+
+    html, body { height: 100%; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
+
+    #bar { display: flex; align-items: baseline; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    #colon { color: var(--accent); font-size: 15px; font-weight: 700; user-select: none; }
+    #title { font-weight: 600; }
+    #set { color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #mode { margin-left: auto; flex: none; color: var(--dim); font-size: 11px; }
+
+    #view { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 12px 14px; outline: none; line-height: 1.5; overflow-wrap: anywhere; }
+    #edit { flex: 1; min-height: 0; width: 100%; resize: none; border: none; outline: none; background: var(--bg); color: var(--text);
+            font: inherit; line-height: 1.5; padding: 10px 12px; caret-color: var(--accent); tab-size: 2; }
+    [hidden] { display: none !important; }
+
+    /* ── the rendered note ── */
+    #view > * + * { margin-top: 8px; }
+    #view h1, #view h2, #view h3, #view h4, #view h5, #view h6 { color: var(--accent); font-size: 13px; font-weight: 700; margin-top: 14px; }
+    #view h1 { font-size: 16px; } #view h2 { font-size: 14px; }
+    #view > :first-child { margin-top: 0; }
+    #view p { white-space: pre-line; }
+    #view ul, #view ol { padding-left: 22px; }
+    #view ul ul, #view ul ol, #view ol ul, #view ol ol { margin-top: 2px; }
+    #view li { margin-top: 2px; }
+    #view li.task { list-style: none; margin-left: -18px; }
+    #view .box { color: var(--dim); margin-right: 6px; user-select: none; }
+    #view .box.on { color: var(--accent); }
+    #view li.done > .t { color: var(--dim); text-decoration: line-through; }
+    #view code { background: var(--bg-row); padding: 0 4px; border-radius: 2px; }
+    #view pre { background: var(--bg-row); padding: 8px 10px; border-radius: 2px; overflow-x: auto; }
+    #view pre code { background: none; padding: 0; white-space: pre; overflow-wrap: normal; }
+    #view strong { color: #fff; }
+    #view .link { color: var(--accent); border-bottom: 1px dotted var(--accent); cursor: default; }
+    #view blockquote { border-left: 2px solid var(--dim); padding-left: 10px; color: var(--dim); }
+    #view hr { border: none; border-top: 1px solid var(--dim); }
+    #view .tbl { overflow-x: auto; }
+    #view table { border-collapse: collapse; }
+    #view th, #view td { border: 1px solid var(--dim); padding: 2px 8px; text-align: left; }
+    #view th { background: var(--bg-row); color: #fff; }
+    #view .empty { color: var(--dim); }
+
+    #footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 6px 12px; display: flex; align-items: center; gap: 8px; }
+    #hint { flex: 1; min-width: 0; color: var(--dim); font-size: 10px; line-height: 13px; }
+    #hint.warn { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <div id="bar">
+    <span id="colon">:</span>
+    <span id="title">note</span>
+    <span id="set"></span>
+    <span id="mode"></span>
+  </div>
+
+  <div id="view" tabindex="-1"></div>
+  <textarea id="edit" spellcheck="false" hidden></textarea>
+
+  <div id="footer">
+    <span id="hint"></span>
+    <button id="b1"></button>
+    <button id="b2"></button>
+  </div>
+
+  <script>
+    const NOTE = /*NOTE_PLACEHOLDER*/null;
+
+    function send(value) {
+      const m = { method: 'close_and_send', params: [value] };
+      if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
+      else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
+    }
+
+    // ── Markdown → DOM. Text only via textContent/createTextNode; no raw HTML, links are never anchors. ──
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+    const INLINE = /\\([\\`*_{}\[\]()#+\-.!|~>])|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)|\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~|\*([^*\s](?:[^*]*[^*\s])?)\*|\b_([^_\s](?:[^_]*[^_\s])?)_\b/;
+    function inline(src, parent) {
+      while (src) {
+        const m = INLINE.exec(src);
+        if (!m) { parent.append(document.createTextNode(src)); return; }
+        if (m.index) parent.append(document.createTextNode(src.slice(0, m.index)));
+        if (m[1] != null) parent.append(document.createTextNode(m[1]));
+        else if (m[2] != null) parent.append(mk('code', '', m[2]));
+        else if (m[3] != null) { const a = mk('span', 'link'); a.title = m[4]; inline(m[3], a); parent.append(a); }
+        else {
+          const kind = m[5] != null ? ['strong', m[5]] : m[6] != null ? ['strong', m[6]] : m[7] != null ? ['s', m[7]] : ['em', m[8] ?? m[9]];
+          const e = mk(kind[0]); inline(kind[1], e); parent.append(e);
+        }
+        src = src.slice(m.index + m[0].length);
+      }
+    }
+
+    const RE = {
+      fence: /^\s*(```|~~~)/, head: /^(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/, hr: /^\s*([-*_])(?:\s*\1){2,}\s*$/,
+      item: /^(\s*)([-*+]|\d+[.)])\s+(.*)$/, quote: /^\s*>\s?/, sep: /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$/,
+    };
+    const indentOf = s => s.replace(/\t/g, '    ').length;
+    const isBlockStart = l => RE.fence.test(l) || RE.head.test(l) || RE.hr.test(l) || RE.item.test(l) || RE.quote.test(l);
+    const cells = l => l.trim().replace(/\\\|/g, '\u0000').replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.replace(/\u0000/g, '|').trim());
+
+    function buildList(items, parent) {
+      const stack = [];
+      for (const it of items) {
+        while (stack.length && it.indent < stack[stack.length - 1].indent) stack.pop();
+        let top = stack[stack.length - 1], box = top && top.last;
+        if (top && it.indent === top.indent && it.ordered !== top.ordered) { stack.pop(); box = top.box; top = null; }   // 1. after a bullet: a new list
+        else if (top) box = top.last;
+        if (!top || it.indent > top.indent) {
+          const list = mk(it.ordered ? 'ol' : 'ul'), holder = box || parent;
+          holder.append(list);
+          top = { indent: it.indent, ordered: it.ordered, list, last: null, box: holder }; stack.push(top);
+        }
+        const li = mk('li');
+        const task = /^\[([ xX])\]\s+(.*)$/.exec(it.text);
+        if (task) {
+          const on = task[1] !== ' ';
+          li.className = 'task' + (on ? ' done' : '');
+          li.append(mk('span', 'box' + (on ? ' on' : ''), on ? '☑' : '☐'));
+          const t = mk('span', 't'); inline(task[2], t); li.append(t);
+        } else inline(it.text, li);
+        top.list.append(li); top.last = li;
+      }
+    }
+
+    function render(md, root) {
+      const lines = md.replace(/\r\n?/g, '\n').split('\n');
+      let i = 0;
+      while (i < lines.length) {
+        const l = lines[i];
+        if (!l.trim()) { i++; continue; }
+        let m;
+        if (RE.fence.test(l)) {
+          const mark = RE.fence.exec(l)[1], body = [];
+          for (i++; i < lines.length && !lines[i].trim().startsWith(mark); i++) body.push(lines[i]);
+          i++;
+          const pre = mk('pre'); pre.append(mk('code', '', body.join('\n'))); root.append(pre);
+        } else if ((m = RE.head.exec(l))) {
+          const h = mk('h' + m[1].length); inline(m[2], h); root.append(h); i++;
+        } else if (RE.hr.test(l)) { root.append(mk('hr')); i++; }
+        else if (l.includes('|') && i + 1 < lines.length && lines[i + 1].includes('-') && RE.sep.test(lines[i + 1]) && lines[i + 1].includes('|')) {
+          const head = cells(l), align = cells(lines[i + 1]).map(c => (c.startsWith(':') && c.endsWith(':') ? 'center' : c.endsWith(':') ? 'right' : ''));
+          const wrap = mk('div', 'tbl'), table = mk('table'), tr = mk('tr');
+          head.forEach((c, k) => { const th = mk('th'); if (align[k]) th.style.textAlign = align[k]; inline(c, th); tr.append(th); });
+          table.append(tr);
+          for (i += 2; i < lines.length && lines[i].trim() && lines[i].includes('|'); i++) {
+            const row = mk('tr');
+            cells(lines[i]).forEach((c, k) => { const td = mk('td'); if (align[k]) td.style.textAlign = align[k]; inline(c, td); row.append(td); });
+            table.append(row);
+          }
+          wrap.append(table); root.append(wrap);
+        } else if (RE.quote.test(l)) {
+          const body = [];
+          for (; i < lines.length && RE.quote.test(lines[i]); i++) body.push(lines[i].replace(RE.quote, ''));
+          const q = mk('blockquote'); render(body.join('\n'), q); root.append(q);
+        } else if ((m = RE.item.exec(l))) {
+          const items = [];
+          while (i < lines.length) {
+            const im = RE.item.exec(lines[i]);
+            if (im && !RE.hr.test(lines[i])) items.push({ indent: indentOf(im[1]), ordered: /\d/.test(im[2]), text: im[3] });
+            else if (lines[i].trim() && /^\s/.test(lines[i]) && items.length) items[items.length - 1].text += ' ' + lines[i].trim();   // a wrapped item line
+            else if (!lines[i].trim() && i + 1 < lines.length && RE.item.test(lines[i + 1])) { /* blank line inside a list */ }
+            else break;
+            i++;
+          }
+          buildList(items, root);
+        } else {
+          const para = [];
+          for (; i < lines.length && lines[i].trim() && (!para.length || !isBlockStart(lines[i])); i++) para.push(lines[i].trim());
+          const p = mk('p'); inline(para.join('\n'), p); root.append(p);
+        }
+      }
+    }
+
+    // ── the page ──
+    const view = document.getElementById('view'), edit = document.getElementById('edit');
+    const hint = document.getElementById('hint'), b1 = document.getElementById('b1'), b2 = document.getElementById('b2');
+    const orig = typeof NOTE?.text === 'string' ? NOTE.text : '';
+    let saved = orig, mode = NOTE?.mode === 'edit' || !orig.trim() ? 'edit' : 'view', warned = false;
+
+    function setWarn(on, n) {
+      warned = on;
+      hint.classList.toggle('warn', on);
+      if (on) hint.textContent = 'unsaved changes — Esc again to discard';
+      else hint.textContent = mode === 'view' ? (saved !== orig ? 'changed — Esc closes and keeps it · e edit' : 'e edit · Esc close') : '⌘S save · Esc close (warns when unsaved)';
+    }
+    const dirty = () => mode === 'edit' && edit.value !== saved;
+
+    function show(next) {
+      mode = next;
+      document.getElementById('mode').textContent = mode;
+      view.hidden = mode !== 'view'; edit.hidden = mode !== 'edit';
+      b1.hidden = false;
+      if (mode === 'view') {
+        view.replaceChildren();
+        if (saved.trim()) render(saved, view); else view.append(mk('p', 'empty', 'empty note — press e to write'));
+        b1.textContent = 'Edit'; b1.id = 'b1'; b1.style.cssText = '';
+        b2.textContent = 'Close';
+        view.scrollTop = 0; view.focus();
+      } else {
+        edit.value = saved;
+        b1.textContent = 'Save'; b1.style.borderColor = 'var(--accent)'; b1.style.color = 'var(--accent)';
+        b2.textContent = 'Cancel';
+        edit.focus(); edit.setSelectionRange(edit.value.length, edit.value.length);
+      }
+      setWarn(false);
+    }
+
+    function finish() { send(saved === orig ? '' : (saved === '' ? '\n' : saved)); }
+    function save() { saved = edit.value; show('view'); }
+    function back() {   // Esc / Cancel in edit
+      if (!dirty()) { finish(); return; }
+      if (!warned) { setWarn(true); return; }
+      edit.value = saved; if (saved.trim()) show('view'); else finish();
+    }
+    function esc() { if (mode === 'view') finish(); else back(); }
+
+    b1.addEventListener('click', () => { if (mode === 'view') show('edit'); else save(); });
+    b2.addEventListener('click', () => { if (mode === 'view') finish(); else back(); });
+
+    document.addEventListener('keydown', e => {
+      if (warned && e.key !== 'Escape' && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) setWarn(false);
+      if (e.key === 'Escape') { e.preventDefault(); esc(); }
+      else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (mode === 'edit') save(); }
+      else if (mode === 'view' && e.key === 'e' && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); show('edit'); }
+      else if (mode === 'edit' && e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); document.execCommand('insertText', false, '  '); }   // nested lists need an indent
+    });
+    document.addEventListener('mousedown', e => { if (warned && e.target !== b2) setWarn(false); });   // a click on Cancel keeps the warning, so it can discard
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('set').textContent = NOTE?.setName ? '· ' + NOTE.setName : '';
+      show(mode);
+    });
+  </script>
+</body>
+</html>
