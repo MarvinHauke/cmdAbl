@@ -99,21 +99,27 @@ export const frontIsDialog = new Function(`${FRONT_IS_DIALOG_SRC}; return frontI
  * between a check and a keystroke cannot send them to another app. Answers JSON:
  * `{"sent":true}` or `{"sent":false,"reason":"not-frontmost"|"no-dialog"}`.
  */
-export function guardedScript(input: { text?: string; key?: KeySpec; delayMs?: number }): string {
+export function guardedScript(input: {
+  text?: string;
+  key?: KeySpec;
+  delayMs?: number;
+  /** Tests only: a stand-in for System Events (so nothing real can be typed) and guards that always pass. */
+  stub?: { systemEvents: string };
+}): string {
   const actions: string[] = [];
   const delay = input.delayMs && input.delayMs > 0 ? Math.min(MAX_DELAY_MS, Math.floor(input.delayMs)) : 0;
   if (input.text !== undefined && delay === 0) actions.push(`se.keystroke(${JSON.stringify(input.text)}); typed = Array.from(${JSON.stringify(input.text)}).length;`);
   if (input.text !== undefined && delay > 0) {
+    // The pause is the GLOBAL delay(): app.delay() on currentApplication() is "Message not understood" (-1708) in osascript.
     // One character at a time, so a typing recording is readable. Before EACH character both guards are checked
     // again (Live in front, a cmdAbl dialog on top): the dialog may close while the text is being typed.
-    actions.push(`var app = Application.currentApplication(); app.includeStandardAdditions = true;
-    var chars = Array.from(${JSON.stringify(input.text)});
+    actions.push(`var chars = Array.from(${JSON.stringify(input.text)});
     var typed = 0;
     for (var i = 0; i < chars.length; i++) {
       if (why()) break;
       se.keystroke(chars[i]);
       typed++;
-      app.delay(${delay / 1000});
+      delay(${delay / 1000});
     }
     if (typed < chars.length) { out = { sent: false, reason: 'moved-away', typed: typed }; }`);
   }
@@ -126,7 +132,7 @@ export function guardedScript(input: { text?: string; key?: KeySpec; delayMs?: n
   return `
 ObjC.import('CoreGraphics');
 ${FRONT_IS_DIALOG_SRC}
-var se = Application('System Events');
+var se = ${input.stub ? input.stub.systemEvents : "Application('System Events')"};
 function liveWindows() {
   var all = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly | $.kCGWindowListExcludeDesktopElements, $.kCGNullWindowID)));
   return all.filter(function (w) { return w.kCGWindowOwnerName === ${JSON.stringify(LIVE_PROCESS)} && w.kCGWindowBounds.Width >= 100 && w.kCGWindowBounds.Height >= 60 && w.kCGWindowAlpha !== 0; })
@@ -134,6 +140,7 @@ function liveWindows() {
 }
 // Why keys must not be sent now, or null: Live must be the frontmost app AND a cmdAbl dialog its top window.
 function why() {
+  ${input.stub ? "return null; // stubbed" : ""}
   if (se.processes.whose({ frontmost: true })[0].bundleIdentifier() !== ${JSON.stringify(LIVE_BUNDLE_ID)}) return 'not-frontmost';
   if (!frontIsDialog(liveWindows())) return 'no-dialog';
   return null;

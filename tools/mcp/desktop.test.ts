@@ -277,10 +277,11 @@ test("keys: delayMs is validated, types one character at a time, checks the focu
   for (const delayMs of [-1, 301, 1.5]) assert.match((await d.keys({ key: "escape", delayMs })).text, /delayMs must be/);
   assert.equal(f.calls.length, 0);
   const slow = guardedScript({ text: "abc", key: KEYS["return"], delayMs: 100 });
-  assert.ok(slow.includes("Array.from(\"abc\")") && slow.includes("app.delay(0.1)"));
+  assert.ok(slow.includes("Array.from(\"abc\")") && slow.includes("delay(0.1);"));
+  assert.ok(!slow.includes("app.delay") && !slow.includes("currentApplication"), "app.delay is not understood by osascript (-1708): use the global delay()");
   assert.ok(slow.indexOf("if (why()) break;") < slow.indexOf("se.keystroke(chars[i])")); // both guards are checked per character
   assert.ok(slow.includes("if (out.sent) { if (why())")); // and again right before the key
-  assert.ok(!guardedScript({ text: "abc" }).includes("app.delay"));
+  assert.ok(!guardedScript({ text: "abc" }).includes("delay("));
   const g = fake((c) => (isFrontmostCheck(c) ? { stdout: "com.ableton.live" } : isGuarded(c) ? { stdout: '{"sent":false,"reason":"moved-away","typed":2}' } : {}));
   const out = await createDesktop({ run: g.run, sleep: async () => {} }).keys({ text: "abcd", delayMs: 50 });
   assert.match(out.text, /lost the focus after 2 characters/);
@@ -299,7 +300,8 @@ function runKeyScript(script: string, world: { front: () => string; windows: () 
   const sandbox = {
     ObjC: { import() {}, deepUnwrap: (x: unknown) => x, castRefToObject: (x: unknown) => x },
     $: { CGWindowListCopyWindowInfo: () => world.windows().map((w) => ({ kCGWindowOwnerName: "Live", kCGWindowNumber: w.id, kCGWindowAlpha: 1, kCGWindowBounds: { Width: w.w, Height: w.h } })), kCGWindowListOptionOnScreenOnly: 1, kCGWindowListExcludeDesktopElements: 2, kCGNullWindowID: 0 },
-    Application: Object.assign(() => se, { currentApplication: () => ({ includeStandardAdditions: false, delay() { events.push("wait"); } }) }),
+    Application: Object.assign(() => se, { currentApplication: () => ({}) }),
+    delay: () => void events.push("wait"),
     JSON,
     Array,
   };
@@ -349,4 +351,15 @@ test("script run: focus moving to another app mid-typing also stops it", () => {
   const out = runKeyScript(guardedScript({ text: "abcd", key: KEYS["return"], delayMs: 50 }), { front, windows: () => DIALOG_OVER_MAIN });
   assert.equal(out.answer.sent, false);
   assert.ok(out.events.length < 4 && !out.events.includes("key:36"));
+});
+
+import { execFileSync } from "node:child_process";
+
+test("macOS: the paced-typing script really runs in osascript (key and dialog checks stubbed, nothing is typed)", { skip: process.platform !== "darwin" }, () => {
+  const stubSe = "{ processes: { whose: function () { return [{ bundleIdentifier: function () { return 'com.ableton.live'; } }]; } }, keystroke: function () {}, keyCode: function () {} }";
+  const script = guardedScript({ text: "ab", key: KEYS["return"], delayMs: 10, stub: { systemEvents: stubSe } });
+  // Safety: the real System Events must not appear in the script that is about to run.
+  assert.ok(script.includes(stubSe) && !/Application\(\s*['"]System Events['"]\s*\)/.test(script), "the script must use the stub, not the real System Events");
+  const out = execFileSync("osascript", ["-l", "JavaScript", "-e", script], { encoding: "utf8", timeout: 15_000 });
+  assert.deepEqual(JSON.parse(out.trim()), { sent: true });
 });
