@@ -51,6 +51,12 @@ export interface PaletteResult {
    * `goto <unique path>` (core/objectRow.ts).
    */
   line?: string;
+  /**
+   * The palette's settings as the page has them now (additive, plan 0006). Core saves them. A
+   * normal result carries them along; the page also returns them ALONE (no `type`/`id`) when the
+   * user changed a setting and then dismissed: that runs nothing and opens nothing.
+   */
+  settings?: { optionsAbove: boolean };
 }
 
 export interface Provider {

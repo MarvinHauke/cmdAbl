@@ -26,6 +26,7 @@ import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/ui.js";
 import { createModuleFiles } from "./core/files.js";
+import { createSettingsStore, toPaletteSettings } from "./core/settings.js";
 import { tokenFilePath } from "./ableton/bridgeToken.js";
 import * as path from "node:path";
 import { createUiGate, runHeadless } from "./core/headless.js";
@@ -47,12 +48,19 @@ export function activate(activation: ActivationContext) {
   const g = globalThis as Record<string, unknown>;
   const globals = ["URL", "URLSearchParams", "fetch", "structuredClone", "AbortController", "TextEncoder", "crypto"];
   logger("host").info(`host globals: ${globals.map((n) => `${n}=${typeof g[n]}`).join(", ")}`);
+  // The extension's data folder: the SDK's storageDirectory when it answers (it is undefined in practice today),
+  // else the macOS path the tokens use. A module's files go under modules/<its name>/ there.
+  const dataFolder = context.environment.storageDirectory ?? path.dirname(tokenFilePath());
   const registry = new CommandRegistry();
   // Every dialog goes through this — the platform never opens an HTML page itself.
   // One queue: a dialog never opens while another is open (see core/dialogQueue.ts).
   const dialogs = createDialogQueue();
   // The gate passes everything through to the real dialogs, except during a headless run (plan 0016).
-  const gate = createUiGate(createDefaultUi(context, dialogs));
+  // cmdAbl's own settings (settings.json in the data folder); the palette page returns changes with its result.
+  const settingsStore = createSettingsStore({ base: dataFolder, warn: (text) => logger("settings").warn(text) });
+  const gate = createUiGate(
+    createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.optionsAbove": settings.optionsAbove })),
+  );
   const ui: Ui = gate.ui;
   const providers: { provider: Provider; priority: number }[] = [];
   // The items of the palette that is open (or was opened last): a picked object row is found here.
@@ -125,9 +133,6 @@ export function activate(activation: ActivationContext) {
   });
 
   // ── default modules ──────────────────────────────────────────────────────
-  // The extension's data folder: the SDK's storageDirectory when it answers (it is undefined in practice today),
-  // else the macOS path the tokens use. A module's files go under modules/<its name>/ there.
-  const dataFolder = context.environment.storageDirectory ?? path.dirname(tokenFilePath());
   const moduleApi: ModuleApi = {
     get bridge() {
       return getBridge();
@@ -409,7 +414,7 @@ export function activate(activation: ActivationContext) {
       paletteItems = items;
       // Tab on a pick list puts an object into the prompt: reopen with it (same queue, same guard).
       for (;;) {
-        const result = await ui.prompt({ items, completion, ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
+        const result = await ui.prompt({ items, completion, settings: toPaletteSettings(await settingsStore.get()), ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
         initial = result ? await dispatch(result) : undefined;
         if (initial === undefined) break;
       }

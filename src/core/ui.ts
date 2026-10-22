@@ -1,6 +1,7 @@
 import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { PaletteItem, PaletteResult, ResultSection } from "./types.js";
 import type { CompletionData } from "./complete.js";
+import { takePaletteAnswer, type PaletteSettings } from "./settings.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsText } from "./notifySize.js";
 import { boardSize, parseBoardAnswer } from "./board.js";
@@ -34,6 +35,11 @@ export interface PromptRequest {
    * Absent: the page offers no argument completion.
    */
   completion?: CompletionData;
+  /**
+   * The palette's stored settings (plan 0006 "Two zones"), for the page to start with. The page returns
+   * changed settings in `PaletteResult.settings` (see `createDefaultUi`'s `onSettings`).
+   */
+  settings?: PaletteSettings;
   /**
    * Open with this text in the input and the caret at `cursor` (0 = at the
    * start): used when a pick list's Tab put an object into the prompt, e.g.
@@ -189,6 +195,8 @@ const dataUrl = (html: string) => `data:text/html;charset=utf-8,${encodeURICompo
 export function createDefaultUi(
   context: ExtensionContext<"1.0.0">,
   queue: DialogQueue = createDialogQueue(),
+  /** Called with the settings a palette result carried (also one that carried nothing else). */
+  onSettings?: (settings: PaletteSettings) => void,
 ): Ui {
   const show = (name: string, html: string, width: number, height: number): Promise<string | null> =>
     // A failure is already logged by the queue; here it only counts as dismissed.
@@ -196,15 +204,14 @@ export function createDefaultUi(
 
   const ui: Ui = {
     async prompt(request) {
-      const html = fillTemplate(promptTemplate, { ITEMS: request.items, INITIAL: request.initial ?? null, COMPLETION: request.completion ?? null });
+      const html = fillTemplate(promptTemplate, {
+        ITEMS: request.items,
+        INITIAL: request.initial ?? null,
+        COMPLETION: request.completion ?? null,
+        SETTINGS: request.settings ?? null,
+      });
       const raw = await show("palette", html, 500, 260);
-      if (!raw) return null;
-      try {
-        return JSON.parse(raw) as PaletteResult;
-      } catch {
-        logger("ui").error(`malformed palette result: ${raw}`);
-        return null;
-      }
+      return takePaletteAnswer(raw, onSettings, (bad) => logger("ui").error(`malformed palette result: ${bad.slice(0, 200)}`));
     },
 
     async select(request) {
