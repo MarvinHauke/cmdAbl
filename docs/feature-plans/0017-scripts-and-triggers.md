@@ -1,6 +1,7 @@
 # Scripts and triggers: `.cmdabl` files, run from clips and scenes
 
-**Status:** Draft (2026-10-23). First in the order after 0.1.4 (user). The bridge protocol addition
+**Status:** Draft (2026-10-23). First in the order after 0.1.4 (user): `;` chains first, in work on
+`feat/chain`. The bridge protocol addition
 (phase 2) is not decided yet: the user decides after reading this plan. Trigger: run command scripts from
 clips and scenes, so Live's Session grid works as a grid of commands.
 
@@ -25,6 +26,32 @@ clips and scenes, so Live's Session grid works as a grid of commands.
 **Done means:**
 - `drop.cmdabl` in cmdAbl's scripts folder runs from the palette;
 - a clip or scene whose name names the script runs it when it launches.
+
+## First: `;` chains (user, 2026-10-23)
+
+`mute #drums; vol -6 #bass` runs both commands in one line. This comes before script files, which reuse
+it.
+
+- **Splitting:** core splits on `;` outside quotes (`";"` stays text).
+  - A word ending in `;` splits too: `mute /Kick; solo /Bass` is the same as `mute /Kick ; solo /Bass`.
+  - Empty parts and a trailing `;` are ignored.
+- **Order and failures:** the parts run in order. Like `;` in a shell, a failing part does not stop the
+  rest; stopping on failure is `&&`, later.
+- **Result:**
+  - all parts ok: quiet, with one log line per part;
+  - with a failure: the ✓/× dialog lists each part with its result;
+  - the exit code is the first failing part's code, or 0.
+- **Pick lists:**
+  - in the palette, an ambiguous part asks as usual, in turn;
+  - cancelling a pick stops the chain, and the parts before it stay done;
+  - headless (scripts, MCP, triggers): exit 4 for that part.
+- **Undo:** one Cmd+Z for the whole line if one SDK transaction can span the parts; otherwise one step
+  per part, documented. Core checks which.
+- **History:** stores the whole line, each part with its unique paths (as single commands are stored
+  today).
+- **Completion:** after `; ` completion starts again at the command name. The hint panel and the usage
+  belong to the part the caret is in.
+- **Errors in the parser** name the part: `part 2 (vol -6 #bass): …`.
 
 ## Phase 1: script files (no protocol change)
 
