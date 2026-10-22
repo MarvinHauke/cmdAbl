@@ -1,6 +1,6 @@
 # Test access for agents: a `/run` route and a cmdAbl MCP server
 
-**Status:** Approved (user, 2026-10-22), in work on `feat/test-mcp` (based on `feat/vol`). Trigger: every Live test needs the user to type the commands; the
+**Status:** Built (core `d8fd4b9`, `3512336`), Live test pending, on `feat/test-mcp` (based on `feat/vol`). Trigger: every Live test needs the user to type the commands; the
 user wants the agents to run test lists themselves.
 
 **Parent:** [0004](0004-command-platform.md)
@@ -29,12 +29,14 @@ agent ──MCP (stdio)──> tools/mcp/cmdabl-mcp ──HTTP 127.0.0.1:27184�
 ### 1. Headless run (core)
 
 - `runLine` with a headless set of deps and a headless `Ui`. No dialog opens:
-  - `pick` and `pickTags` resolve as "ambiguous": the run ends with exit 4 and the candidates in
-    the message. It must not be "cancelled", so a test sees why.
+  - The platform's `pick` and `pickTags` resolve as "ambiguous": the run ends with exit 4 and the
+    candidates in the message. It must not be "cancelled", so a test sees why. A module's own
+    `api.pick` is only dismissed and named in `dialogs` (as built, d8fd4b9).
   - `prompt`, `select`, `board` and `page` (including `api.confirm`) resolve null. The command
     gets "cancelled", and the outcome says a dialog was needed.
   - `notify` is captured into the outcome instead of shown.
-- **Outcome:** `{ code, message, log: string[], dialogs: string[], ms }`.
+- **Outcome:** `{ code, message, log: string[], dialogs: string[], notices: string[], ms }`
+  (`notices`: captured `notify` texts).
   - `log` holds the lines the run wrote (from the logger's ring buffer, by run).
   - `dialogs` names any surface the command tried to open.
 - Each run is one undo step, as in the palette. A headless run is not added to the history.
