@@ -40,7 +40,8 @@ Peer Claude sessions that message each other (`SendMessage`), watchable in tmux:
 | `cmdabl-docs`      | `.claude/agents/docs.md`      | sonnet | docs site, README, images (`docs/`) — **on demand**     |
 
 Flow: architect → builder → reviewer (→ architect for contract decisions) → builder commits →
-short overview with a Live test list to the architect → the user tests in Live.
+short overview with a Live test list to the architect → the architect runs it through MCP → the user
+gets a short list of the core features to try by hand, plus what only they can check.
 
 - **One agent per area.** Tasks name the files an agent owns; before editing, check
   `git diff <file>` and don't touch a file with another agent's uncommitted changes; stage only
