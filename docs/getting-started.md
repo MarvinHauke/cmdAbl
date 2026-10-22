@@ -86,7 +86,7 @@ from step 2 works too.
 | `↑` / `↓` | moves through the list |
 | `Esc` | closes the palette without running anything |
 
-![The palette open with the text Sub typed: tracks, devices and chains whose names or paths contain Sub appear as rows, with their track or path in grey](assets/images/palette.png)
+![The palette open with the text sn typed: the track Snare and the devices below it appear as rows, with their path in grey](assets/images/palette.png)
 
 *Type part of a name: tracks, devices and chains appear as rows. Enter selects the highlighted one.*
 
@@ -106,7 +106,7 @@ When a name matches more than one object, cmdAbl shows a **pick list** instead o
 `↑` and `↓` to move, `Enter` to choose and `Esc` to cancel. Commands that take several tracks, such as `mute`, let
 you mark more than one row with `Tab`.
 
-![The pick list for mute --pick #drums, with five tracks: Drums, Bass, Synth, Lead and FX Sound, each with its tags; the speaker buttons of Drums and Synth are marked with a dashed ring](assets/images/pick-list.png)
+![The pick list for mute --pick #drums, with six tracks: Bass, Lead, Guitar, Kick, Snare and Perc, each with its tags; the speaker buttons of Bass, Guitar and Kick are marked with a dashed ring](assets/images/pick-list.png)
 
 *A name that matches several tracks opens the pick list. The line above the filter shows the command that Enter
 will run, and the buttons show the state that Enter would set.*

@@ -52,7 +52,7 @@ A command takes objects as text. cmdAbl reads that text as follows:
 
 When a name matches more than one object, cmdAbl asks. It never picks one for you.
 
-![The palette with Dru typed: rows for the tracks and devices whose names or paths contain Dru, each with its path in grey; names of other gear are covered with grey boxes](assets/images/palette-objects.png)
+![The palette with kic typed: the track Kick and the devices below it, each with its path in grey, then the Magic Mid devices of the main track and the command goto](assets/images/palette-objects.png)
 
 *Type part of a name, and the palette lists the objects that match.*
 
@@ -136,7 +136,7 @@ Without a pattern, `find` needs `-L` or one of `-t`, `-d` and `-c`; a bare `find
 `-L` takes a whole number from 0 to 12 with a pattern, and from 1 without one. For finding tracks by tag, see
 [Tags](#use-tags-as-targets).
 
-![The find pick list headed find: — 12 matches: every track of the Set with its tags, such as #synth #drums on Synth and #bass on Bass, and the main track last](assets/images/find-top.png)
+![The find pick list headed find: — 11 matches: every track of the Set with its tags, such as #synth on Synth and #bass #drums on Bass, the three return tracks, and the main track last](assets/images/find-top.png)
 
 *`find -L 1` lists the top-level tracks, each with its tags.*
 
@@ -162,7 +162,7 @@ want explicitly, like Cmd-clicking the buttons in Live.
 - `vol --set <dB> <target>…` (short `-s`) puts every fader at that level. `vol --set -inf /Lead` silences the Lead
   track.
 - Decimals work: `vol -1.5 /Bass`, `vol .5 #drums`.
-- Targets are tracks: regular, return, group and the main track (`/Main`), by path, name or tag. A rack chain or
+- Targets are tracks: regular, return, group and the main track (`/Main`), by path, name or [tag](#use-tags-as-targets). A rack chain or
   Drum Rack pad is refused with "vol works on tracks for now".
 - A move that went as typed is quiet, and so is a `--set` that changes a fader; if nothing moves, it says "nothing changed". One run is one Cmd+Z step. Levels are as precise as Live's display, 0.1 dB.
 
@@ -184,7 +184,7 @@ want explicitly, like Cmd-clicking the buttons in Live.
 - A fader at -inf stays there with a relative step. Only `--set` brings it back.
 - `--clip` together with `--set` is a usage error, and so is a relative `-inf`; use `vol --set -inf`.
 
-**The log and undo.** `cmdabl log` shows what a run did: "asked +9.0 dB, applied +3.0 dB", then
+**The log and undo.** [`cmdabl log`](#logs) shows what a run did: "asked +9.0 dB, applied +3.0 dB", then
 `/Kick: 3.0 → 6.0 dB` and an `undo: vol --set 3.0 /Kick` line per track. `cmdabl log --undo` lists the undo lines.
 
 **Automation.** `vol` overwrites the fader like a hand move. On a track with volume automation, Live treats it as a
@@ -247,7 +247,7 @@ tracks.
   chains and pads of the tagged tracks.
 - Without the Remote Script, `#` answers that the Remote Script is not running. Plain words work as before.
 
-![The find pick list for find #drums: three tracks, Kick, Snare and Perc, each with the tag drums](assets/images/find-tags.png)
+![The find pick list for find #drums: six tracks, Bass, Lead, Guitar, Kick, Snare and Perc, each with the tag drums](assets/images/find-tags.png)
 
 ### The tag board
 
