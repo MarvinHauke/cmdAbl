@@ -416,3 +416,8 @@ test("`;` chains: after `; ` completion starts again at the command, and works o
   // `rest` words of an earlier part do not leak into the next part's value
   assert.deepEqual(at("goto snare; goto dr").replace, { from: 17, to: 19 });
 });
+
+test("chainSegments is exposed through complete.ts for the page (CmdComplete.chainSegments)", async () => {
+  const mod = await import("./complete.js");
+  assert.deepEqual(mod.chainSegments("a; b"), [{ start: 0, end: 1 }, { start: 2, end: 4 }]);
+});

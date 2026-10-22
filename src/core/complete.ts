@@ -11,6 +11,9 @@ import { chainSegments, quoteIfNeeded, tokenize, type Token } from "./tokenize.j
 // It never validates and never throws: the parser decides what is wrong when Enter runs the
 // line, completion only helps typing. `parse()` is not used because it stops at the first problem.
 
+/** The page splits the line into its `;` parts with this (`CmdComplete.chainSegments`), the same rule the host uses. */
+export { chainSegments };
+
 /** Most rows offered at one position. */
 export const MAX_ROWS = 100;
 
