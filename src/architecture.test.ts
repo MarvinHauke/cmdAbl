@@ -61,6 +61,11 @@ const EXCEPTIONS: Exception[] = [
     target: "node:child_process",
     why: "pakabl downloads, unpacks, deletes and reads files by shelling out (curl, unzip, rm, cat; PowerShell on Windows); no port offers file or network access yet",
   },
+  {
+    file: "src/modules/pakabl/platform.ts",
+    target: "node:fs",
+    why: "the id completers run on every palette open and need a one-stat mtime check and an existence test; a shell spawn per open cost ~100 ms; no port offers file stats yet",
+  },
 ];
 
 /** The only Node built-ins a module may import (rule 6). */
