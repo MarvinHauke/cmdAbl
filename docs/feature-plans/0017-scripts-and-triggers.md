@@ -1,7 +1,7 @@
 # Scripts and triggers: `.cmdabl` files, run from clips and scenes
 
-**Status:** Draft (2026-10-23). First in the order after 0.1.4 (user): `;` chains first: core built (`cfe1e4f`),
-palette follow-up in work on `feat/chain`. The bridge protocol addition
+**Status:** Draft (2026-10-23). First in the order after 0.1.4 (user): `;` chains built and Live-tested through MCP
+(core `cfe1e4f`, `2de2b27`; ui `9afa466`; branch `feat/chain`). The bridge protocol addition
 (phase 2) is not decided yet: the user decides after reading this plan. Trigger: run command scripts from
 clips and scenes, so Live's Session grid works as a grid of commands.
 
