@@ -90,6 +90,32 @@ agent ──MCP (stdio)──> tools/mcp/cmdabl-mcp ──HTTP 127.0.0.1:27184�
 - Cmd+Z can't be pressed through MCP. Undo checks stay with the user, or use the log's `undo:`
   lines (`cmdabl log --undo`).
 
+### 5. Screenshots for the docs (user, 2026-10-22)
+
+The agents can make documentation images themselves, so images follow the code in the same change.
+
+- **`POST /show {line}`** (development builds only, same guards and token as `/run`): runs one line
+  *interactively*, the same as typing it in the palette, so its dialogs open. It answers at once with
+  `{ started: true }` and does not wait for the dialog to close. `{ line: "" }` opens the empty
+  palette. 409 while a dialog is open or a run is going.
+- **MCP tools** (`tools/mcp/`):
+
+  | Tool | What it does |
+  |---|---|
+  | `cmdabl_show(line)` | `POST /show` |
+  | `cmdabl_keys(text?, key?)` | Brings Live to the front and types `text` and/or presses one `key` (`escape`, `return`, `tab`, `up`, `down`, `cmd+s`, …) through System Events. Needs Accessibility for the terminal app. |
+  | `cmdabl_capture(name, target)` | Captures one window with `screencapture -l <window id>`: `target` `dialog` is the frontmost cmdAbl dialog, `live` is Live's main window. Window ids come from `CGWindowListCopyWindowInfo` (via `osascript -l JavaScript`), filtered by Live's process. It writes `captures/<name>.png` (gitignored), never the full screen, and returns the path and size. |
+
+- **Never the full screen**, and only windows owned by Live. If no matching window is found, the tool
+  says so and captures nothing.
+- **Editing and review:** `cmdabl-docs` crops, covers hardware or private names with opaque boxes
+  (ImageMagick), moves the image to `docs/assets/images/`, and the reviewer checks every image
+  before a commit (the rules in `.claude/agents/docs.md`).
+- **One-time setup (user):**
+  - Screen Recording for the terminal app (already granted);
+  - Accessibility for the terminal app (System Settings → Privacy & Security → Accessibility);
+  - the first `cmdabl_keys` call asks to allow control of "System Events" (Automation).
+
 ## Risks
 
 | Risk | Fix |
@@ -98,6 +124,8 @@ agent ──MCP (stdio)──> tools/mcp/cmdabl-mcp ──HTTP 127.0.0.1:27184�
 | Agents change the user's Set. | Only on the user's go, in a test Set; every run is logged; one Cmd+Z per run. |
 | A command waits for a dialog forever. | The headless `Ui` never opens one; the route has a timeout (about 10 s) and answers 504. |
 | A run hangs past the timeout and keeps the gate closed. | `POST /reset` releases the run gate and the route ("run gate released", core `a952068`). Known edge: a released run that wakes up later may open a real dialog or land in a newer run's capture; rare, fixed only if it shows up. |
+| A capture shows something private. | Only Live's own windows by id; images go through docs (opaque boxes) and the reviewer before a commit; `captures/` is gitignored. |
+| Keys reach the wrong app. | `cmdabl_keys` activates Live first and refuses when Live isn't frontmost afterwards. |
 | Two agents run at once. | 409 while a run is going; the MCP tool says "busy". |
 | The route drifts from the palette's behaviour. | Both call `runLine`; only the deps differ. Tests run the same lines through both. |
 
