@@ -109,17 +109,17 @@ test("stop: a fader at -inf stays, does not block the others, and is not mention
 test("--clip: every fader follows the step, the ones past an end stop there and are named", async () => {
   const { run, db, fake } = setup({ Kick: 5, Perc: -60 });
   const r = await run("3", [kick, perc], { clip: true });
-  assert.equal(r.message, "limit reached: /Kick at +6 dB (the maximum)");
+  assert.equal(r.message, "limit reached at +6 dB (the maximum): /Kick");
   assert.equal(fake.volumes.get("Kick"), 1);
   assert.ok(Math.abs(db(perc) - -57) <= 0.1);
   const low = await run("-20", [perc], { clip: true });
-  assert.equal(low.message, "limit reached: /Perc at -inf");
+  assert.equal(low.message, "limit reached at -inf: /Perc");
   assert.equal(fake.volumes.get("Perc"), 0);
 });
 
 test("--set never shortens and never asks; a level past an end is named", async () => {
   const { run, fake } = setup({ Kick: 5 });
-  assert.equal((await run("20", [kick], { set: true })).message, "limit reached: /Kick at +6 dB (the maximum)");
+  assert.equal((await run("20", [kick], { set: true })).message, "limit reached at +6 dB (the maximum): /Kick");
   assert.equal((await run("-inf", [kick], { set: true })).code, ExitCode.OK);
   assert.equal(fake.volumes.get("Kick"), 0);
   assert.equal(fake.confirms.length, 0);
@@ -186,4 +186,24 @@ test("the line parses as intended: vol -1.5 /x, vol -c -3 #x, vol --set -inf /x"
   assert.deepEqual(args("vol -c -3 #x"), { options: { clip: true }, args: [["-3"], ["#x"]] });
   assert.deepEqual(args("vol --set -inf /x"), { options: { set: true }, args: [["-inf"], ["/x"]] });
   assert.deepEqual(args("vol +2 /x /y"), { options: {}, args: [["+2"], ["/x", "/y"]] });
+});
+
+test("limits are grouped by end: one line per end, five tracks named, the log has them all", async () => {
+  const names = ["A", "B", "C", "D", "E", "F", "G"];
+  const many = names.map((n, i) => track(n, i));
+  const fake = createFakeApi({ nodes: many });
+  for (const n of many) fake.volumes.set(n.handleId, dbToValue(5).value);
+  fake.volumes.set("G", dbToValue(-60).value);
+  activate(fake.api);
+  const r = (await fake.commands[0]!.run!({ path: ["vol"], options: { clip: true }, args: [["10"], many] } as never, undefined as never)) as Result;
+  assert.equal(r.message, "limit reached at +6 dB (the maximum): /A, /B, /C, /D, /E, +1 more");
+  assert.match(r.log!.join("\n"), /limit reached at \+6 dB \(the maximum\): \/A, \/B, \/C, \/D, \/E, \/F$/m);
+  const two = await (async () => {
+    const f = createFakeApi({ nodes: many });
+    f.volumes.set("A", dbToValue(5).value);
+    f.volumes.set("G", 0); // at -inf: a step up leaves it there
+    activate(f.api);
+    return (await f.commands[0]!.run!({ path: ["vol"], options: { clip: true }, args: [["3"], [many[0]!, many[6]!]] } as never, undefined as never)) as Result;
+  })();
+  assert.equal(two.message, "limit reached at +6 dB (the maximum): /A\nlimit reached at -inf: /G");
 });

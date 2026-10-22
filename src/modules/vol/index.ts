@@ -14,6 +14,8 @@ import { faderMove, formatDb, formatSigned, parseDb, planAbsolute, type FaderPla
  * Live; the change and the line that puts it back go to the log. Plan 0012.
  */
 export function activate(api: ModuleApi): void {
+  /** At most five paths, then ", +N more". */
+  const names = (paths: string[]) => (paths.length > 5 ? `${paths.slice(0, 5).join(", ")}, +${paths.length - 5} more` : paths.join(", "));
   const atEnd = (db: number) => (db === -Infinity ? "-inf" : db >= MAX_DB ? "+6 dB (the maximum)" : `${formatDb(db)} dB (the lowest step)`);
 
   api.commands.add({
@@ -65,7 +67,7 @@ export function activate(api: ModuleApi): void {
       const olds = await Promise.all(targets.map((n) => api.tracks.volume(n)));
       const outcomes: TargetOutcome[] = [];
       const lines: string[] = [];
-      const limits: string[] = []; // faders that stopped at an end (visible)
+      const limits: Array<{ path: string; end: string }> = []; // faders that stopped at an end (shown, grouped by end)
       const readable = targets.flatMap((node, i) => {
         const old = olds[i];
         if (old === null || old === undefined) {
@@ -82,7 +84,7 @@ export function activate(api: ModuleApi): void {
       if (absolute) {
         for (const { node, old } of readable) {
           const plan = planAbsolute(old, db);
-          if (plan.limit) limits.push(`${node.path} at ${plan.limit === "max" ? "+6 dB (the maximum)" : "-inf"}`);
+          if (plan.limit) limits.push({ path: node.path, end: plan.limit === "max" ? "+6 dB (the maximum)" : "-inf" });
           if (plan.same) unmoved.push(node);
           else moves.push({ node, plan });
         }
@@ -97,14 +99,14 @@ export function activate(api: ModuleApi): void {
         const reached = result.limited.map((i) => readable[i]!.node.path);
         const end = result.limited.length > 0 ? atEnd(result.newLevels[result.limited[0]!]!) : "";
         if (rule === "clip") {
-          for (const i of result.limited) limits.push(`${readable[i]!.node.path} at ${atEnd(result.newLevels[i]!)}`);
+          for (const i of result.limited) limits.push({ path: readable[i]!.node.path, end: atEnd(result.newLevels[i]!) });
         } else if (db !== 0 && Math.abs(result.applied) < 0.05) {
           const stuck = readable.filter((r) => r.oldDb === -Infinity).map((r) => r.node.path);
           const who = reached.length > 0 ? reached : stuck;
-          notice = `nothing changed: ${who.join(", ")} ${who.length === 1 ? "is" : "are"} at ${reached.length > 0 ? end : "-inf"}`;
+          notice = `nothing changed: ${names(who)} ${who.length === 1 ? "is" : "are"} at ${reached.length > 0 ? end : "-inf"}`;
           if (reached.length > 0 && db < 0) notice += " — use --clip or --set -inf to go lower";
         } else if (Math.abs(result.applied - db) > 1e-9 && result.limited.length > 0) {
-          notice = `vol ${text}: moved ${formatSigned(result.applied)} dB, ${reached.join(", ")} reached ${end}`;
+          notice = `vol ${text}: moved ${formatSigned(result.applied)} dB, ${names(reached)} reached ${end}`;
         }
       }
       for (const node of unmoved) {
@@ -134,7 +136,13 @@ export function activate(api: ModuleApi): void {
         return { ...fail(ExitCode.FAILURE, `vol: ${outcomes.length - failed.length} of ${outcomes.length} done`, failed), log: lines };
       }
       if (notice) return { ...ok(notice), log: lines };
-      if (limits.length > 0) return { ...ok(`limit reached: ${limits.join(", ")}`), log: lines };
+      if (limits.length > 0) {
+        // One line per end, at most five tracks named; the log has them all.
+        const ends = [...new Set(limits.map((l) => l.end))];
+        const shown = ends.map((end) => `limit reached at ${end}: ${names(limits.filter((l) => l.end === end).map((l) => l.path))}`);
+        for (const end of ends) lines.push(`limit reached at ${end}: ${limits.filter((l) => l.end === end).map((l) => l.path).join(", ")}`);
+        return { ...ok(shown.join("\n")), log: lines };
+      }
       if (moves.length === 0) return { ...ok("nothing changed"), log: lines };
       return { ...ok(), log: lines };
     },
