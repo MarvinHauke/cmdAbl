@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="color-scheme" content="dark" />
   <title>note</title>
-  <!-- Module page of `note` (plan 0013). In: NOTE_PLACEHOLDER = { text: string, mode: "view" | "edit", setName?: string }.
+  <!-- Module page of `note` (plan 0013). In: NOTE_PLACEHOLDER = { text: string, mode: "view" | "edit", setName?: string, changed?: boolean } (changed: the text is not saved yet, e.g. after a failed save, so Cmd+S / Save send it even when unedited; Esc still sends '' for an unedited text).
        view draws the Markdown (own small renderer below: headings, paragraphs, nested lists, checkboxes (read-only),
        tables, quotes, inline and fenced code, bold, italic, strike, links (drawn as text, never followed), rules; no raw
        HTML, all text goes in with textContent); edit is a plain textarea. An empty text opens in edit.
@@ -222,8 +222,8 @@
       setWarn(false);
     }
 
-    function finish() { send(saved === orig ? '' : (saved === '' ? '\n' : saved)); }
-    function save() { saved = edit.value; finish(); }   // saves and closes: no text is held only in the page
+    function finish(force) { send(saved === orig && !force ? '' : (saved === '' ? '\n' : saved)); }   // force: the text on the page is not on disk yet
+    function save() { saved = edit.value; finish(NOTE?.changed === true); }   // saves and closes: no text is held only in the page
     function back() {   // Esc / Cancel in edit
       if (!dirty()) { finish(); return; }
       if (!warned) { setWarn(true); return; }
