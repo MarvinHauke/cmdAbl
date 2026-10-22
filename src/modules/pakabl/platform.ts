@@ -1,3 +1,4 @@
+import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 import { childEnv } from "../../core/childEnv.js";
@@ -107,5 +108,23 @@ export function readJsonFile<T>(filePath: string): T | undefined {
     return JSON.parse(text) as T;
   } catch {
     return undefined;
+  }
+}
+
+/** The modification time of a file in ms (one in-process stat, no shell), or undefined when it is not there. */
+export function fileStamp(filePath: string): number | undefined {
+  try {
+    return fs.statSync(filePath).mtimeMs;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Whether a file exists (in-process, no shell). */
+export function fileExists(filePath: string): boolean {
+  try {
+    return fs.existsSync(filePath);
+  } catch {
+    return false;
   }
 }

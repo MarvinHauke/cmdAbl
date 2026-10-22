@@ -1,6 +1,7 @@
 import * as path from "node:path";
+import { createIdRows } from "./idRows.js";
 import type { ModuleApi } from "../types.js";
-import { EXTENSIONS_DIR, downloadFile, unzipInto, readJsonFile, openUrl, removeDir } from "./platform.js";
+import { EXTENSIONS_DIR, fileExists, fileStamp, downloadFile, unzipInto, readJsonFile, openUrl, removeDir } from "./platform.js";
 import { buildListPage } from "./listPage.js";
 import { indexRelation, installedRelation, type IndexRelation } from "./version.js";
 import { pakablCommand } from "./command.js";
@@ -250,23 +251,25 @@ async function upgrade(api: ModuleApi, ref: string | undefined): Promise<Command
   return ok(`pakabl: upgraded ${entry.name} to v${entry.version} — restart Live to reload it`);
 }
 
-/** The ids the cached index lists (the completers read the cache file, never the network); `installedOnly` keeps those installed. */
-export function indexIdRows(installedOnly: boolean): Array<{ label: string; description: string }> {
-  const loaded = loadIndex();
-  if (!loaded) return [];
-  return loaded.entries
-    .filter((e) => !installedOnly || installedManifest(e.id) !== undefined)
-    .map((e) => ({ label: e.id, description: `${e.name} v${e.version}` }));
-}
+// The completers run on every palette open: the parsed index stays in memory (re-read only when the
+// file's mtime changes or a command below changed it) and "installed" is one existence test per entry.
+const idRows = createIdRows({
+  stamp: () => fileStamp(INDEX_CACHE_PATH),
+  load: () => loadIndex()?.entries,
+  installed: (id) => {
+    const dir = extensionDir(EXTENSIONS_DIR, id);
+    return dir !== undefined && fileExists(path.join(dir, "manifest.json"));
+  },
+});
 
 export function activate(api: ModuleApi): void {
-  api.commands.completer("pakabl-index-ids", () => indexIdRows(false));
-  api.commands.completer("pakabl-installed-ids", () => indexIdRows(true));
+  api.commands.completer("pakabl-index-ids", () => idRows.rows(false));
+  api.commands.completer("pakabl-installed-ids", () => idRows.rows(true));
   api.commands.add(
     pakablCommand({
       install: (id) => install(api, id),
       uninstall: (id) => uninstall(api, id),
-      update: () => update(api),
+      update: () => update(api).finally(() => idRows.invalidate()),
       upgrade: (ref) => upgrade(api, ref),
       list: () => list(api),
     }),
