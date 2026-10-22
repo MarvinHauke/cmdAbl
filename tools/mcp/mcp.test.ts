@@ -155,7 +155,7 @@ test("the token never appears in a returned text", async () => {
   }
 });
 
-test("the MCP server lists the four tools and answers through the client", async () => {
+test("the MCP server lists its tools and answers through the client", async () => {
   const fake = await fakeCmdabl((method, url) => (url === "/run" ? { status: 200, body: JSON.stringify({ code: 0, message: "hi", log: [], dialogs: [], notices: [], ms: 1 }) } : { status: 200, body: "closed" }));
   const [a, b] = InMemoryTransport.createLinkedPair();
   const server = createServer(createClient({ port: fake.port, ...withToken }));
@@ -163,7 +163,7 @@ test("the MCP server lists the four tools and answers through the client", async
   try {
     await Promise.all([server.connect(a), client.connect(b)]);
     const tools = (await client.listTools()).tools.map((t) => t.name).sort();
-    assert.deepEqual(tools, ["cmdabl_bridge", "cmdabl_log", "cmdabl_run", "cmdabl_state"]);
+    assert.ok(["cmdabl_bridge", "cmdabl_log", "cmdabl_run", "cmdabl_state"].every((t) => tools.includes(t)));
     const run = (await client.callTool({ name: "cmdabl_run", arguments: { line: "mute /Bass" } })) as { content: Array<{ text: string }>; isError?: boolean };
     assert.match(run.content[0]!.text, /^exit 0/);
     assert.ok(!run.isError);
@@ -179,4 +179,39 @@ test("the MCP server lists the four tools and answers through the client", async
 test("outcomeText and the token path", () => {
   assert.equal(outcomeText({ code: 0, ms: 5 }), "exit 0 (5 ms)");
   assert.match(runTokenFilePath("/home/x"), /Extensions Data\/marvinhauke\.cmdabl\/run-token$/);
+});
+
+test("show: posts the line with the token and says it started; busy is an answer", async () => {
+  const fake1 = await fakeCmdabl(() => ({ status: 200, body: JSON.stringify({ started: true }) }));
+  try {
+    const out = await createClient({ port: fake1.port, ...withToken }).show("tag -l");
+    assert.equal(out.isError, false);
+    assert.match(out.text, /^started/);
+    assert.equal(fake1.requests[0]!.url, "/show");
+    assert.equal(fake1.requests[0]!.auth, `Bearer ${TOKEN}`);
+    assert.deepEqual(JSON.parse(fake1.requests[0]!.body), { line: "tag -l" });
+  } finally {
+    await fake1.close();
+  }
+  const busy = await fakeCmdabl(() => ({ status: 409, body: JSON.stringify({ error: "busy", reason: "a palette or dialog is open" }) }));
+  try {
+    const out = await createClient({ port: busy.port, ...withToken }).show("");
+    assert.equal(out.isError, true);
+    assert.match(out.text, /^HTTP 409: busy/);
+  } finally {
+    await busy.close();
+  }
+});
+
+test("the MCP server lists the seven tools", async () => {
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  const server = createServer(createClient({ port: 1, ...withToken }));
+  const client = new Client({ name: "test", version: "0" });
+  try {
+    await Promise.all([server.connect(a), client.connect(b)]);
+    assert.deepEqual((await client.listTools()).tools.map((t) => t.name).sort(), ["cmdabl_bridge", "cmdabl_capture", "cmdabl_keys", "cmdabl_log", "cmdabl_run", "cmdabl_show", "cmdabl_state"]);
+  } finally {
+    await client.close();
+    await server.close();
+  }
 });

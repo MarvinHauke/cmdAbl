@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { createClient, type ToolText } from "./client.js";
+import { KEYS, createDesktop, type Desktop } from "./desktop.js";
 
 // The cmdAbl MCP server (plan 0016): four tools over the local test routes of a running
 // development build. Read docs/feature-plans/0016-test-mcp.md.
@@ -9,7 +10,7 @@ type Client = ReturnType<typeof createClient>;
 
 const reply = (t: ToolText) => ({ content: [{ type: "text" as const, text: t.text }], ...(t.isError ? { isError: true } : {}) });
 
-export function createServer(client: Client = createClient()): McpServer {
+export function createServer(client: Client = createClient(), desktop: Desktop = createDesktop()): McpServer {
   const server = new McpServer({ name: "cmdabl", version: "0.1.0" });
   server.registerTool(
     "cmdabl_run",
@@ -37,6 +38,38 @@ export function createServer(client: Client = createClient()): McpServer {
     "cmdabl_state",
     { description: "Is a palette or dialog open in Live (then cmdabl_run answers busy), or is it free. Read-only." },
     async () => reply(await client.state()),
+  );
+  server.registerTool(
+    "cmdabl_show",
+    {
+      description:
+        'Start a cmdAbl line interactively in Live, as if typed in the palette: its dialogs really open (for screenshots and hand checks). Returns at once, without waiting for the dialog. An empty line opens the empty palette. Not added to the history. Answers busy while a dialog is open or a run is going. Close the dialog with cmdabl_keys (escape) when done.',
+      inputSchema: { line: z.string().describe('the line, e.g. "tag -l"; empty opens the palette') },
+    },
+    async ({ line }) => reply(await client.show(line)),
+  );
+  server.registerTool(
+    "cmdabl_keys",
+    {
+      description: `Bring Live to the front and type text and/or press one key there (through System Events). Allowed keys: ${Object.keys(KEYS).join(", ")}. Refuses when Live is not frontmost afterwards. Needs Accessibility for the terminal app.`,
+      inputSchema: {
+        text: z.string().max(200).optional().describe("printable text to type"),
+        key: z.enum(Object.keys(KEYS) as [string, ...string[]]).optional().describe("one key to press after the text"),
+      },
+    },
+    async ({ text, key }) => reply(await desktop.keys({ text, key })),
+  );
+  server.registerTool(
+    "cmdabl_capture",
+    {
+      description:
+        'Capture ONE Live window to captures/<name>.png (gitignored; never the full screen). target "dialog" is the frontmost smaller Live window (a cmdAbl dialog), "live" is Live\'s main window. Answers the path and size, or says no window matched and captures nothing. The image may show private names: it goes through the docs agent (opaque boxes) and the reviewer before it is committed.',
+      inputSchema: {
+        name: z.string().regex(/^[a-z0-9-]{1,60}$/).describe("file name without extension: a-z, 0-9 and - only"),
+        target: z.enum(["dialog", "live"]),
+      },
+    },
+    async ({ name, target }) => reply(await desktop.capture({ name, target })),
   );
   return server;
 }

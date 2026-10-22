@@ -41,6 +41,11 @@ export interface DevRouteDeps {
   run: (line: string) => Promise<HeadlessOutcome>;
   /** Why a run cannot start now (a palette or dialog is open), or null. */
   blocked: () => string | null;
+  /**
+   * Start `line` interactively, as if typed in the palette (real dialogs, not remembered in the history);
+   * an empty line opens the empty palette. Returns at once: it does not wait for any dialog. Absent: no /show.
+   */
+  show?: (line: string) => void;
   /** The last `count` log lines. */
   logLines: (count: number) => string[];
   timeoutMs?: number;
@@ -144,6 +149,25 @@ export function createDevRoutes(deps: DevRouteDeps): DevRoutes {
     }
   }
 
+  async function handleShow(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    if (req.method !== "POST") return void res.writeHead(405, { Allow: "POST" }).end();
+    if (fromBrowserPage(req)) return void res.writeHead(403).end("forbidden");
+    if (!authorized(req, deps.token)) return void json(res, 401, { error: "unauthorized" });
+    const raw = await readBody(req);
+    let line: unknown;
+    try {
+      line = raw === null ? undefined : (JSON.parse(raw) as { line?: unknown }).line;
+    } catch {
+      line = undefined;
+    }
+    if (typeof line !== "string") return void json(res, 400, { error: 'body must be JSON like {"line": "tag -l"} (an empty line opens the palette)' });
+    if (running) return void json(res, 409, { error: "busy", reason: "another run is going" });
+    const blocked = deps.blocked();
+    if (blocked) return void json(res, 409, { error: "busy", reason: blocked });
+    deps.show!(line); // the host marks itself busy at once, so a second /show or /run answers 409
+    json(res, 200, { started: true });
+  }
+
   function handleLog(req: http.IncomingMessage, res: http.ServerResponse, query: string): void {
     if (req.method !== "GET") return void res.writeHead(405, { Allow: "GET" }).end();
     if (fromBrowserPage(req)) return void res.writeHead(403).end("forbidden");
@@ -156,7 +180,7 @@ export function createDevRoutes(deps: DevRouteDeps): DevRoutes {
   const handler = (req: http.IncomingMessage, res: http.ServerResponse): boolean => {
     // No URL / URLSearchParams: Live's Extension Host has neither (startup log "host globals").
     const [pathname = "", query = ""] = splitUrl(req.url);
-    if (pathname !== "/run" && pathname !== "/log") return false;
+    if (pathname !== "/run" && pathname !== "/log" && !(pathname === "/show" && deps.show)) return false;
     const fail = (): void => {
       try {
         json(res, 500, { error: "internal error" });
@@ -166,6 +190,7 @@ export function createDevRoutes(deps: DevRouteDeps): DevRoutes {
     };
     try {
       if (pathname === "/log") handleLog(req, res, query);
+      else if (pathname === "/show") void handleShow(req, res).catch(fail);
       else void handleRun(req, res).catch(fail);
     } catch {
       fail();

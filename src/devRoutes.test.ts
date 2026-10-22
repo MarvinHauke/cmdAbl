@@ -154,9 +154,12 @@ test("the production bundle has no dev routes; the development bundle has them",
       assert.equal(run.status, 0, run.stderr);
       return fs.readFileSync(out, "utf8");
     };
-    const marker = "run-token";
-    assert.ok(!build(["--production"]).includes(marker), "the production bundle must not contain the dev routes");
-    assert.ok(build([]).includes(marker), "the development bundle must contain them");
+    const prod = build(["--production"]);
+    const dev = build([]);
+    for (const marker of ["run-token", '"/show"']) {
+      assert.ok(!prod.includes(marker), `the production bundle must not contain the dev routes (${marker})`);
+      assert.ok(dev.includes(marker), `the development bundle must contain them (${marker})`);
+    }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -211,4 +214,40 @@ test("splitUrl and queryValue", () => {
   assert.equal(queryValue("a=1&n=7", "n"), "7");
   assert.equal(queryValue("n", "n"), "");
   assert.equal(queryValue("m=1", "n"), undefined);
+});
+
+test("POST /show starts the line at once, with the same guards as /run; an empty line is allowed", async () => {
+  const shown: string[] = [];
+  let reason: string | null = null;
+  await withServer({ show: (line) => void shown.push(line), blocked: () => reason }, async (call) => {
+    const ok = await call("POST", "/show", { body: '{"line":"tag -l"}' });
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.body, { started: true });
+    assert.equal((await call("POST", "/show", { body: '{"line":""}' })).status, 200);
+    assert.deepEqual(shown, ["tag -l", ""]);
+    assert.equal((await call("GET", "/show")).status, 405);
+    assert.equal((await call("POST", "/show", { body: '{"line":"x"}', headers: { Origin: "https://evil.example" } })).status, 403);
+    assert.equal((await call("POST", "/show", { body: '{"line":"x"}', token: null })).status, 401);
+    assert.equal((await call("POST", "/show", { body: '{"line":"x"}', token: "wrong" })).status, 401);
+    assert.equal((await call("POST", "/show", { body: "nope" })).status, 400);
+    assert.equal((await call("POST", "/show", { body: '{"line":5}' })).status, 400);
+    reason = "a palette or dialog is open";
+    assert.equal((await call("POST", "/show", { body: '{"line":"x"}' })).status, 409);
+    assert.deepEqual(shown, ["tag -l", ""]); // nothing started while blocked
+  });
+});
+
+test("POST /show answers 409 while a /run is going, and does not exist without a show handler", async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((r) => (release = r));
+  await withServer({ show: () => {}, run: async () => (await gate, outcome()) }, async (call) => {
+    const run = call("POST", "/run", { body: '{"line":"a"}' });
+    await new Promise((r) => setTimeout(r, 30));
+    assert.equal((await call("POST", "/show", { body: '{"line":"x"}' })).status, 409);
+    release();
+    await run;
+  });
+  await withServer({}, async (call) => {
+    assert.equal((await call("POST", "/show", { body: '{"line":"x"}' })).status, 404);
+  });
 });

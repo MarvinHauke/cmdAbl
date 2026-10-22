@@ -126,6 +126,17 @@ export function createClient(options: ClientOptions = {}) {
       const body = parse(res.text);
       return body ? ok(outcomeText(body)) : bad("cmdAbl answered something unreadable");
     },
+    async show(line: string): Promise<ToolText> {
+      const res = await call("POST", "/show", { auth: true, body: { line } });
+      if ("isError" in res) return res;
+      const refused = refusal(res.status, res.text);
+      if (refused) return refused;
+      return ok(
+        line.trim() === ""
+          ? "started: the palette is opening in Live (not waiting for it). Use cmdabl_capture to see it, cmdabl_keys to type."
+          : "started: the line is running interactively in Live (not waiting for its dialog). Use cmdabl_capture to see it, cmdabl_keys to answer it.",
+      );
+    },
     async log(n = 50): Promise<ToolText> {
       const count = Math.max(1, Math.min(500, Math.floor(Number.isFinite(n) ? n : 50)));
       const res = await call("GET", `/log?n=${count}`, { auth: true });

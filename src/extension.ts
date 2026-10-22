@@ -222,6 +222,8 @@ export function activate(activation: ActivationContext) {
         run: (line) => runHeadless(line, runBase, gate),
         blocked: () => (isOpen || dialogs.describe() !== null ? "a palette or dialog is open" : null),
         logLines: (count) => appLog.lines(count),
+        // POST /show (plan 0016 §5): the line runs as in the palette, with real dialogs, and is not remembered.
+        show: (line) => void showLine(line),
       });
       logger("host").info(`development routes on: POST /run, GET /log (Bearer token in ${file})`);
     } else {
@@ -271,7 +273,7 @@ export function activate(activation: ActivationContext) {
   // ── open command mode ────────────────────────────────────────────────────
   // Act on what the prompt surface returned.
   /** Runs what the palette returned; resolves with text to open the palette with again (Tab on a pick list), if any. */
-  async function dispatch(result: PaletteResult): Promise<string | undefined> {
+  async function dispatch(result: PaletteResult, remember = true): Promise<string | undefined> {
     pendingFill = undefined; // a fill left over from a pick outside a run must not end this command
     let line: string;
     if (result.type === "command") {
@@ -301,7 +303,7 @@ export function activate(activation: ActivationContext) {
     // History gets successful invocations that carry arguments, in their
     // resolved form ("mute /Bass"), so a re-run is never ambiguous.
     const invocation = outcome.line ?? line;
-    if (outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
+    if (remember && outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
       for (const listener of commandRunListeners) listener(invocation);
     }
     return undefined;
@@ -314,7 +316,28 @@ export function activate(activation: ActivationContext) {
     );
   }
 
-  async function openPalette(): Promise<void> {
+  /** Run `line` as the palette would (real dialogs) without remembering it; an empty line opens the palette. Never throws. */
+  async function showLine(line: string): Promise<void> {
+    if (line.trim() === "") {
+      void openPalette();
+      return;
+    }
+    if (isOpen || dialogs.describe() !== null || gate.active()) return;
+    isOpen = true; // the palette trigger and /run answer "busy" meanwhile
+    setKarabinerPaletteOpen(true);
+    let fill: string | undefined;
+    try {
+      fill = await dispatch({ type: "command", id: line, line }, false);
+    } catch (e: unknown) {
+      logger("host").error(e instanceof Error ? e.message : String(e));
+    } finally {
+      isOpen = false;
+      if (dialogs.describe() === null) setKarabinerPaletteOpen(false);
+    }
+    if (fill !== undefined) void openPalette(fill);
+  }
+
+  async function openPalette(initial?: string): Promise<void> {
     const shown = dialogs.describe();
     if (gate.active()) {
       logger("host").info("trigger ignored: a headless run is going");
@@ -334,7 +357,6 @@ export function activate(activation: ActivationContext) {
       const items = (await Promise.all(ordered.map((p) => p.provider.getItems()))).flat();
       paletteItems = items;
       // Tab on a pick list puts an object into the prompt: reopen with it (same queue, same guard).
-      let initial: string | undefined;
       for (;;) {
         const result = await ui.prompt({ items, ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
         initial = result ? await dispatch(result) : undefined;
