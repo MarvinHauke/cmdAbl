@@ -1,7 +1,8 @@
 # Test access for agents: a `/run` route and a cmdAbl MCP server
 
-**Status:** Built (core `d8fd4b9`, `3512336`, `a952068`), Live-tested 2026-10-22 (after `0812943`: Live's host has no global `URL`), on `feat/test-mcp` (based on `feat/vol`). Trigger: every Live test needs the user to type the commands; the
-user wants the agents to run test lists themselves.
+**Status:** Released in 0.1.3 (2026-10-22, PR #17), development builds only. §1–§4 run and log, §5
+screenshots, §6 recordings; all used in Live. Trigger: every Live test needed
+the user to type the commands; the user wants the agents to run test lists themselves.
 
 **Parent:** [0004](0004-command-platform.md)
 **Related:**

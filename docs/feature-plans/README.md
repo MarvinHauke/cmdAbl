@@ -24,47 +24,80 @@ tweaks, or single-file changes — those don't need a design doc, just a commit 
   surfaces new constraints, edit the doc — that's the point of keeping it in the repo next to
   the code instead of in a chat transcript.
 
-Progress across all plans — what is merged, what awaits a test in Live, what is next — is
-tracked in [`STATUS.md`](STATUS.md).
+Progress across all plans is tracked in [`STATUS.md`](STATUS.md): what is on which branch, what
+waits for a Live test, and known issues. This page is the map: what exists, and what comes next in
+which order.
+
+## Where each plan stands (2026-10-22, after 0.1.3)
+
+### Released
+
+| # | Plan | Released in | What exists |
+|---|---|---|---|
+| [0002](0002-command-feedback-pattern.md) | Command feedback | 0.1.0 | Phases A and C: `CommandResult` with exit codes, one presenter, ✓/× for several targets. Phase B (a lighter message channel) is open. |
+| [0003](0003-pakabl-extension-system.md) | pakabl | 0.1.0 | `pakabl install/update/upgrade/list/uninstall` from a curated index. The in-process plugin idea is concluded (blocked on the SDK). |
+| [0005](0005-command-tree-and-module-authoring.md) | Command tree, modules | 0.1.0 | The tree, parser, resolver, pick list, modules, authoring guide. Open: completer snapshots for the palette (step 3, needed by 0006). |
+| [0007](0007-ui-surfaces.md) | UI surfaces | 0.1.0 | The `Ui` contract, `board` and module pages. Open: themes, replacement pages, `api.ui.register`. |
+| [0008](0008-tags-and-aliases.md) | Tags and aliases | 0.1.1 | Tags on tracks, `#tag`, `!#tag`, `--pick`. Open: the store, aliases, history across restarts, tags on chains and pads. |
+| [0010](0010-tag-editing.md) | Tag editing | 0.1.2 | Tag board, `tag -e`, `tag -r`. |
+| [0011](0011-logging.md) | Logging | 0.1.2 | Core logger, `cmdabl log`, quiet writes with undo lines. |
+| [0012](0012-vol-and-dca.md) | `vol` and `dca` | 0.1.3 (`vol`) | `vol` relative and `--set`, `stop`/`--clip` at limits. `dca` is a draft. |
+| [0013](0013-set-note.md) | Set note | 0.1.3 | `note`, `note -e`; the Set id in the Set; `api.files`. |
+| [0016](0016-test-mcp.md) | Test access for agents | 0.1.3 (dev builds) | `/run`, `/show`, `/log`; MCP tools to run, screenshot and record. |
+
+[0001](0001-path-addressed-objects-and-commands.md) (path-addressed objects) and
+[0004](0004-command-platform.md) (the platform umbrella) are mostly built through the plans above.
+Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
+
+### Next, in dependency order
+
+```
+                       ┌─> 0006 completion (arguments, paths, ghost text)
+0005 step 3 snapshots ─┘
+0008 store ──> aliases ──> 0009 `;` action lists ──> 0009 triggers (later)
+0015 link ──┬─> pan / send (0009 value changes, same rules as vol)
+            └─> 0012 dca (needs the insert_device / macro spike too)
+0007 themes and replacement pages (independent)
+0002 phase B, 0001 rm/select (independent, small)
+```
+
+1. **Argument completion** ([0006](0006-completion-engine.md) steps 1–2, on [0005](0005-command-tree-and-module-authoring.md)
+   step 3). The palette completes command names today but not their arguments; every command
+   gets better from it. First: the tree and completer snapshots in the palette payload.
+2. **The store and aliases** ([0008](0008-tags-and-aliases.md) 0.1.x part). A settings file in the
+   data folder (`api.files` exists since 0.1.3), aliases as saved command lines, history that
+   survives a restart. Prerequisite for `;` action lists.
+3. **`link`** ([0015](0015-link.md)). Named controls with rules at the limits; `relative.ts` from
+   `vol` moves into it, and the Set data it needs is proven by `note`. Prerequisite for `pan`/`send`
+   with the same rules and for `dca`.
+4. **`pan` and `send`** ([0009](0009-ideas-from-clyphx.md) value changes) on top of `link`.
+5. **`dca`** ([0012](0012-vol-and-dca.md)), with its own detailed plan and a spike first.
+
+### Later and ideas
+
+- [0006](0006-completion-engine.md) steps 3–4: hierarchical path completion, ghost text, fuzzy finding (0.2.0).
+- [0007](0007-ui-surfaces.md): themes, replacement pages, `api.ui.register`.
+- [0008](0008-tags-and-aliases.md): tags on chains and pads (0.2.0).
+- [0009](0009-ideas-from-clyphx.md): index/range/`all` targets, snapshots, triggers in clip and locator names.
+- [0002](0002-command-feedback-pattern.md) phase B; [0001](0001-path-addressed-objects-and-commands.md) `rm`, `select`, `-d`/`-c`.
+- Small items and known issues: see [`STATUS.md`](STATUS.md).
 
 ## Hierarchy
 
 ```
 0004  Command platform (umbrella)
- ├─ 0002  Structured command-feedback pattern
+ ├─ 0002  Command feedback pattern
  ├─ 0005  Command tree & module authoring
- ├─ 0006  Completion engine
- ├─ 0007  UI surfaces (replaceable palette, pick list, messages)
- ├─ 0008  Tags and aliases (0.1.1, 0.1.3)
- ├─ 0009  Ideas from ClyphX
- ├─ 0010  Tag editing (0.1.2: board, tag --edit)
- ├─ 0011  Logging (what goes where, logger, cmdabl log)
- ├─ 0012  vol and dca (fader levels, DCA groups on tags)
- ├─ 0013  note (one Markdown note per Set)
+ │   └─ 0006  Completion engine
+ ├─ 0007  UI surfaces
+ ├─ 0008  Tags and aliases
+ │   ├─ 0010  Tag editing
+ │   └─ 0009  Ideas from ClyphX
+ ├─ 0011  Logging
+ ├─ 0012  vol and dca
+ ├─ 0013  note
  ├─ 0015  link (named controls with rules for numeric values)
- └─ 0016  Test access for agents (/run route, cmdAbl MCP server)
-0001  Path-addressed objects & commands   (consumer of 0004: path arguments, rm/select)
-0003  pakabl extension system             (consumer of 0005: subcommands migrate)
+ └─ 0016  Test access for agents
+0001  Path-addressed objects & commands   (consumer of 0004)
+0003  pakabl extension system             (consumer of 0005)
 ```
-
-Build order: 0002 Phase A → 0005 → migrate commands → 0006 → 0001 Phase 3/4.
-
-## Index
-
-| # | Title | Status | Summary |
-|---|---|---|---|
-| [0001](0001-path-addressed-objects-and-commands.md) | Path-addressed objects & Linux-style commands | In Progress | Address any Live object (tracks, devices, Drum Rack chains, …) by path (`/vermona/kick`), drive them with Linux-style commands (`mute`, `rm`, `select`, …) supporting flags and multiple targets, and a bidirectional bridge so the palette can read data the Extensions SDK doesn't expose. Phase 2 (tree + path resolution) and a slice of Phase 3 (`mute`/`solo` multi-target) have shipped; `rm`, generalized `select`, `-d`/`-c` flags, and Phase 4 (chains + bidirectional bridge) remain. |
-| [0002](0002-command-feedback-pattern.md) | Structured command-feedback pattern | In Progress (Phase A shipped) | Give every command a structured, exit-code-like result (`CommandResult`) rendered through one consistent policy — replacing today's scattered modal/console/throw mix — and generalize it to multi-target commands' partial-success reporting. Phase A (`CommandResult` with named exit codes, single presenter) is implemented; Phase B/C open. |
-| [0003](0003-pakabl-extension-system.md) | pakabl — extension/package system | In Progress (pivoted) | Originally planned as in-process loading of third-party code through a `CmdAblAPI` facade over `CommandRegistry`/`Provider`. What shipped instead: `pakabl install/update/upgrade/list/uninstall` downloads and unpacks independently-built `.ablx` packages from a curated index (`pakabl/index.json`) — a simpler, separate-process model that sidesteps the runtime-code-loading question entirely. |
-| [0004](0004-command-platform.md) | Command platform (umbrella) | Draft | Umbrella for a declarative command tree, one result type and a completion engine; lists the migration of existing commands and the build order of its children (0002, 0005, 0006). |
-| [0005](0005-command-tree-and-module-authoring.md) | Command tree & module authoring | In Progress (tree registration, resolver and pick list shipped) | Strict command → subcommand → option/argument hierarchy (POSIX/GNU style), platform-owned parsing, registration API with validation, completer snapshots, and the module-authoring concept that will become a guide. Parent: 0004. |
-| [0006](0006-completion-engine.md) | Completion engine | Draft | Client-side, tree-driven completion for every token position: Tab descends one level, ghost text for the best match, fuzzy search scoped to the current level. Replaces the flat fuzzy palette. Parent: 0004. |
-| [0007](0007-ui-surfaces.md) | UI surfaces | In Progress (contract shipped) | The platform talks to three surfaces — `prompt`, `select`, `notify` — defined by data in / one value out, so the palette, pick list and messages can be themed or replaced (Neovim's `vim.ui.select` idea). Parent: 0004. |
-| [0008](0008-tags-and-aliases.md) | Tags and aliases | In Progress (0.1.1 tags shipped; 0.1.3 aliases) | Tags stored in the Live Set (`mute #fx`, tag rows in the pick list) and aliases as saved command lines in cmdAbl's own store. Parent: 0004. |
-| [0009](0009-ideas-from-clyphx.md) | Ideas from ClyphX | Draft | Concepts from the ClyphX action language worth adopting: action lists with `;`, selected/index/range targets, value changes, snapshots, and triggers (commands in clip, locator and pad names). Parent: 0004. |
-| [0010](0010-tag-editing.md) | Tag editing | Released (0.1.2) | `tag -l` as an editable overview on a new generic `board` surface, like the tag bar in Live's browser: tracks as chips with ×, an `add…` input with suggestions per tag, new tag…, Apply; also the `ui/` pattern (core surfaces vs module pages). Parent: 0004. |
-| [0011](0011-logging.md) | Logging | Released (0.1.2) | Three channels (dialog for failures and asked-for output, silence for successful writes, log for the rest); `CommandResult.log`; a core logger with levels and a ring buffer; `cmdabl log`; no `console.` outside `log.ts`; no secrets in logs. Parent: 0004. |
-| [0012](0012-vol-and-dca.md) | vol and dca | vol built (0.1.3), dca Draft | `vol` sets or changes track faders (absolute or relative); `dca` gives tags a DCA: one Utility per DCA in a "cmdAbl DCA" rack on each member, gain and mute like a desk; desk bridges over OSC/TCP (X32 first). Parent: 0004. |
-| [0013](0013-set-note.md) | Set note | Draft | `note`: one Markdown note per Set, view first, `-e` to edit; the file lives in cmdAbl's folder, linked by an id stored in the Set with `Song.set_data`. Parent: 0004. |
-| [0015](0015-link.md) | link | Draft (idea) | Named controls (`@drums`) that bind a parameter of a tag's members with a rule at the limits — `keep` (remembers overflow), `stop`, `clip`; limits can be controls too. Numeric values need links, on/off states don't. Parent: 0004. |
-| [0016](0016-test-mcp.md) | Test access for agents | In Progress | A development-only `POST /run` route that runs one command line headless (no dialogs; ambiguous gives exit 4) and an MCP server in `tools/mcp/`, so agents can run Live test lists against a test Set on the user's go. Parent: 0004. |

@@ -1,7 +1,7 @@
 # `vol` and `dca`: fader levels and DCA groups on tags
 
-**Status:** `vol` built (2026-10-22, `feat/vol`: bridge `5d0b1b5`, core `540fe62`, modules `8537d24`), Live
-test pending, target 0.1.3. `dca` stays a draft and gets its own plan. Trigger: the user wants the
+**Status:** `vol` released in 0.1.3 (2026-10-22, PR #17). `dca` is a draft and gets its own
+detailed plan, after [0015](0015-link.md). Trigger: the user wants the
 DCA workflow of large mixing desks, built on tags (0008).
 
 **Parent:** [0004](0004-command-platform.md)
