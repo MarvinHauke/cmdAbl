@@ -80,12 +80,19 @@ const json = (res: http.ServerResponse, status: number, body: unknown, headers: 
   res.writeHead(status, { "Content-Type": "application/json", ...headers }).end(JSON.stringify(body));
 };
 
+/** The trigger server's `extra` hook, plus `release` for a run that never ended (POST /reset). */
+export type DevRoutes = ((req: http.IncomingMessage, res: http.ServerResponse) => boolean) & {
+  /** Let the next `/run` start although the last one has not ended. True when a run was holding the route. */
+  release(): boolean;
+};
+
 /**
  * The handler for the trigger server's `extra` hook: answers `/run` and `/log` and returns true,
  * or returns false for any other URL. Never throws.
  */
-export function createDevRoutes(deps: DevRouteDeps): (req: http.IncomingMessage, res: http.ServerResponse) => boolean {
+export function createDevRoutes(deps: DevRouteDeps): DevRoutes {
   let running = false;
+  let runId = 0; // a run released by `release` must not free a newer run when it ends late
   const timeoutMs = deps.timeoutMs ?? RUN_TIMEOUT_MS;
 
   async function handleRun(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
@@ -104,8 +111,9 @@ export function createDevRoutes(deps: DevRouteDeps): (req: http.IncomingMessage,
     const blocked = deps.blocked();
     if (blocked) return void json(res, 409, { error: "busy", reason: blocked });
     running = true;
+    const id = ++runId;
     const done = Promise.resolve().then(() => deps.run(line)).finally(() => {
-      running = false; // free only when the run really ended, also after a timeout answer
+      if (runId === id) running = false; // free only when the run really ended, also after a timeout answer
     });
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timedOut = new Promise<"timeout">((resolve) => {
@@ -129,7 +137,7 @@ export function createDevRoutes(deps: DevRouteDeps): (req: http.IncomingMessage,
     json(res, 200, { lines: deps.logLines(count) });
   }
 
-  return (req, res) => {
+  const handler = (req: http.IncomingMessage, res: http.ServerResponse): boolean => {
     let url: URL;
     try {
       url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -152,4 +160,12 @@ export function createDevRoutes(deps: DevRouteDeps): (req: http.IncomingMessage,
     }
     return true;
   };
+  return Object.assign(handler, {
+    release: (): boolean => {
+      const was = running;
+      running = false;
+      runId++;
+      return was;
+    },
+  });
 }

@@ -131,3 +131,22 @@ test("log marks: since() returns only the lines written after the mark, also whe
   assert.equal(log.since(mark).length, 3); // capped by the buffer
   assert.deepEqual(log.since(log.mark()), []);
 });
+
+test("release opens the surfaces again while a run is stuck; the late end does not close a newer capture", async () => {
+  const s = setup();
+  let finishOld: () => void = () => {};
+  const old = s.gate.within({ dialogs: [], notices: [] }, () => new Promise<void>((r) => (finishOld = r)));
+  assert.equal(s.gate.active(), true);
+  assert.equal(s.gate.release(), true);
+  assert.equal(s.gate.active(), false);
+  assert.equal(s.gate.release(), false);
+  const newer = { dialogs: [] as string[], notices: [] as string[] };
+  let finishNew: () => void = () => {};
+  const second = s.gate.within(newer, () => new Promise<void>((r) => (finishNew = r)));
+  finishOld();
+  await old;
+  assert.equal(s.gate.active(), true); // the newer run keeps its capture
+  finishNew();
+  await second;
+  assert.equal(s.gate.active(), false);
+});

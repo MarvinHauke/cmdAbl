@@ -24,7 +24,7 @@ import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/ui.js";
 import { createUiGate, runHeadless } from "./core/headless.js";
-import { createDevRoutes, runTokenFilePath, writeRunToken } from "./devRoutes.js";
+import { createDevRoutes, runTokenFilePath, type DevRoutes, writeRunToken } from "./devRoutes.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
 import { readVolume, writeVolume, type VolumeTrack } from "./core/volume.js";
 import { trackFor } from "./ableton/trackLookup.js";
@@ -200,7 +200,7 @@ export function activate(activation: ActivationContext) {
   // open|closed; POST /reset is the supported recovery for a hung dialog and
   // GET /bridge a diagnostic for measuring round trips.
   // Development builds only (plan 0016): POST /run and GET /log for the agents' test access.
-  let devRoutes: ReturnType<typeof createDevRoutes> | undefined;
+  let devRoutes: DevRoutes | undefined;
   if (CMDABL_DEV_ROUTES) {
     const file = runTokenFilePath();
     const token = writeRunToken(file);
@@ -220,7 +220,12 @@ export function activate(activation: ActivationContext) {
     context.commands.executeCommand("cmdabl.open");
   }, () => isOpen || dialogs.describe() !== null, () => {
     const was = dialogs.reset();
-    if (was) return `dialog queue reset (was: ${was.name})`;
+    // A headless run that never ended (plan 0016) holds the dialogs shut and the /run route busy.
+    const released = devRoutes?.release() === true;
+    const gateReleased = gate.release() || released;
+    const note = gateReleased ? "; run gate released" : "";
+    if (was) return `dialog queue reset (was: ${was.name})${note}`;
+    if (gateReleased) return "run gate released";
     return isOpen ? "no dialog open; a command is still running" : "no dialog was open";
   }, async () => (await reportBridge(getBridge())).line, devRoutes);
 

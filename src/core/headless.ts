@@ -37,6 +37,8 @@ export interface UiGate {
   active(): boolean;
   /** Run `fn` with every surface headless; dialogs and notices go to `capture`. */
   within<T>(capture: Capture, fn: () => Promise<T>): Promise<T>;
+  /** Open the surfaces again although a run has not ended (POST /reset after a stuck run). True when a run was holding them. */
+  release(): boolean;
 }
 
 const SHOWN = 6;
@@ -68,8 +70,13 @@ export function createUiGate(real: Ui): UiGate {
       try {
         return await fn();
       } finally {
-        capture = null;
+        if (capture === into) capture = null; // a released run that ends late must not close a newer run's capture
       }
+    },
+    release() {
+      const held = capture !== null;
+      capture = null;
+      return held;
     },
   };
 }

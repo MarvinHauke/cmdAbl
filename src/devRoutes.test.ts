@@ -9,10 +9,12 @@ import { createDevRoutes, runTokenFilePath, writeRunToken, type DevRouteDeps } f
 import type { HeadlessOutcome } from "./core/headless.js";
 
 const TOKEN = "fake-token";
+let lastRoutes: ReturnType<typeof createDevRoutes> | undefined;
 const outcome = (over: Partial<HeadlessOutcome> = {}): HeadlessOutcome => ({ code: 0, message: "", log: ["l1"], dialogs: [], notices: [], ms: 1, ...over });
 
 async function withServer(over: Partial<DevRouteDeps>, fn: (call: (method: string, url: string, init?: { token?: string | null; body?: string; headers?: Record<string, string> }) => Promise<{ status: number; body: any }>) => Promise<void>): Promise<void> {
   const routes = createDevRoutes({ token: TOKEN, run: async () => outcome(), blocked: () => null, logLines: (n) => Array.from({ length: Math.min(n, 3) }, (_, i) => `line ${i}`), ...over });
+  lastRoutes = routes;
   const server = http.createServer((req, res) => {
     if (!routes(req, res)) res.writeHead(404).end();
   });
@@ -158,4 +160,20 @@ test("the production bundle has no dev routes; the development bundle has them",
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("release frees the route after a stuck run; the stuck run ending late does not free a newer one", async () => {
+  const stuck: Array<() => void> = [];
+  await withServer({ timeoutMs: 30, run: (line) => new Promise((r) => { if (line === "stuck") stuck.push(() => r(outcome())); else setTimeout(() => r(outcome()), 80); }) }, async (call) => {
+    assert.equal((await call("POST", "/run", { body: '{"line":"stuck"}' })).status, 504);
+    assert.equal((await call("POST", "/run", { body: '{"line":"next"}' })).status, 409);
+    assert.equal(lastRoutes!.release(), true);
+    assert.equal(lastRoutes!.release(), false); // nothing left to release
+    const next = call("POST", "/run", { body: '{"line":"slow"}' });
+    await new Promise((r) => setTimeout(r, 10));
+    stuck[0]!(); // the old run ends now; the new one must still count as running
+    await new Promise((r) => setTimeout(r, 5));
+    assert.equal((await call("POST", "/run", { body: '{"line":"third"}' })).status, 409);
+    assert.equal((await next).status, 504); // 30 ms limit, the run needs 80
+  });
 });
