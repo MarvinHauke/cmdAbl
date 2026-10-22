@@ -2,7 +2,7 @@
 
 **Status:** Draft (2026-10-23). First in the order after 0.1.4 (user). The bridge protocol addition
 (phase 2) is not decided yet: the user decides after reading this plan. Trigger: run command scripts from
-clips and scenes, so Live's Session grid works as a matrix of commands.
+clips and scenes, so Live's Session grid works as a grid of commands.
 
 **Parent:** [0004](0004-command-platform.md)
 **Related:**
@@ -19,7 +19,7 @@ clips and scenes, so Live's Session grid works as a matrix of commands.
 - The Remote Script sees Live's events (clip playing status, scene triggered), but the bridge only goes
   cmdAbl → script.
 - In Live's Session view, tracks are columns, scenes are rows, and every clip slot is a cell. If a
-  launch can run a script, the grid becomes a matrix of commands, with launch quantization, follow
+  launch can run a script, the grid becomes a grid of commands, with launch quantization, follow
   actions, Launchpad control and the visual layout coming from Live.
 
 **Done means:**

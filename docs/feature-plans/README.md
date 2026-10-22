@@ -61,7 +61,7 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
 
 1. **Scripts and triggers** ([0017](0017-scripts-and-triggers.md)), first (user, 2026-10-23):
    `.cmdabl` files run with `run`; then clips and scenes run them on launch, so the Session grid works
-   as a matrix of commands. Phase 2 needs a bridge addition (script → cmdAbl), still to be decided.
+   as a grid of commands. Phase 2 needs a bridge addition (script → cmdAbl), still to be decided.
 2. **`;` action lists and aliases** ([0009](0009-ideas-from-clyphx.md), [0008](0008-tags-and-aliases.md));
    the store exists since 0.1.4.
 3. **Paths level by level** ([0006](0006-completion-engine.md) step 3): the hierarchy in lists such as
