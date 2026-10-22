@@ -109,7 +109,7 @@ operation, it checks a token that the extension sends with the request.
   change is refused, restart Live. After an update, run `cmdabl setup` first.
 
 The token guards against other users on the Mac and against stray messages. It does not guard against programs you
-run yourself, which can change your Set in other ways anyway. Reads and selection need no token.
+run yourself, which can change your Set in other ways anyway. Reads and selection need no token, except `set_id`, which can create the Set's id.
 
 ## How the two talk
 

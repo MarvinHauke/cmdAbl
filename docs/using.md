@@ -377,6 +377,28 @@ shows how cmdAbl's ports and Remote Script operations map to the Live Object Mod
 
 ![The man page for mute inside Live: the summary, usage, arguments and options, with Close and Open in browser buttons](assets/images/man-page.png)
 
+## A note per Set: `note`
+
+`note` opens a note that belongs to the current Live Set, for things like a to-do list or a mix plan. It needs the
+[Remote Script](remote-script.md); without it the command stops with exit code 5.
+
+- `note` shows the note, rendered: headings, lists, checkboxes, tables, code, bold and italic. Links show as text.
+- `note -e` (long form `--edit`) opens it for editing. A Set without a note opens in edit mode on an empty page.
+
+Keys in the note window:
+
+- `e` switches from view to edit.
+- `Cmd+S` or **Save** saves and closes.
+- `Esc` in view closes the note.
+- `Esc` in edit with unsaved changes warns first. A second `Esc` discards the changes.
+
+**Where the note lives.** The note is plain Markdown. It is stored as a file in cmdAbl's data folder (the Extensions
+Data folder in Ableton's Application Support) and linked to the Set by an id that is saved inside the Set. Viewing
+never changes the Set. The first save adds the id, so Live asks you to save the Set. Save it, or the link is lost.
+
+**After a save.** A save is quiet; `cmdabl log` shows "note saved". If saving fails, the message says so, and the next
+`note` opens your text again until cmdAbl restarts.
+
 ## What the palette tells you
 
 After a command runs, cmdAbl shows a short message only when there is something to say:
