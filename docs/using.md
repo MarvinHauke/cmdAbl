@@ -169,13 +169,18 @@ want explicitly, like Cmd-clicking the buttons in Live.
 **Limits.** A fader goes up to +6 dB (Live's maximum) and down to -inf. The lowest level above -inf is -69.6 dB.
 
 - By default, if one fader would cross a limit, the step is shortened for every fader, so the balance stays. The
-  message reads, for example, "vol 9: moved +3.0 dB, /Kick reached +6 dB (the maximum)". If nothing can move, it
-  reads "nothing changed: /Kick is at +6 dB (the maximum)". Going down, that message adds "use --clip or --set -inf
-  to go lower".
+  message reads, for example, "vol 9: moved +3.0 dB, /Kick reached +6 dB (the maximum)".
+
+  ![A message window: vol 9: moved +3.0 dB, /Kick reached +6 dB (the maximum)](assets/images/vol-stop.png)
+
+  If nothing can move, it reads "nothing changed: /Kick is at +6 dB (the maximum)". Going down, that message adds
+  "use --clip or --set -inf to go lower".
 - With `--clip` (short `-c`), each fader moves by the full step. The faders at a limit stop there and lose their
   balance. Below -69.6 dB a fader goes to -inf. The message reads "limit reached at +6 dB (the maximum): /Bass,
   /Lead, …". It names at most five tracks, then "+N more"; the log has them all. A fader already at -inf is left
   out.
+
+  ![A message window: limit reached at +6 dB (the maximum): /Bass, /Lead, /Guitar, /Kick, /Snare, +1 more](assets/images/vol-clip.png)
 - A fader at -inf stays there with a relative step. Only `--set` brings it back.
 - `--clip` together with `--set` is a usage error, and so is a relative `-inf`; use `vol --set -inf`.
 
@@ -386,6 +391,10 @@ shows how cmdAbl's ports and Remote Script operations map to the Live Object Mod
 
 - `note` shows the note, rendered: headings, lists, checkboxes, tables, code, bold and italic. Links show as text.
 - `note -e` (long form `--edit`) opens it for editing. A Set without a note opens in edit mode on an empty page.
+
+![The note window in view mode: the heading Mix notes, a table with Track and Todo columns, and a checklist with one open and one done item. The footer says e edit, Esc close, with Edit and Close buttons](assets/images/note-view.png)
+
+![The same note in edit mode: the Markdown source with its heading, table and checklist. The footer says Cmd+S save and close, Esc close (warns when unsaved), with Save and Cancel buttons](assets/images/note-edit.png)
 
 Keys in the note window:
 
