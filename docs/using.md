@@ -396,6 +396,9 @@ Keys in the note window:
 Data folder in Ableton's Application Support) and linked to the Set by an id that is saved inside the Set. Viewing
 never changes the Set. The first save adds the id, so Live asks you to save the Set. Save it, or the link is lost.
 
+**Save As and Collect All and Save.** The note stays with the Set's id. After Save As, both Sets show the same note,
+and editing it in one changes it for both. Collect All and Save keeps the note.
+
 **After a save.** A save is quiet; `cmdabl log` shows "note saved". If saving fails, the message says so, and the next
 `note` opens your text again until cmdAbl restarts.
 
