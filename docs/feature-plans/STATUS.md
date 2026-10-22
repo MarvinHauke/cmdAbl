@@ -58,6 +58,10 @@ Older checks that were never reported; most can now run through MCP.
 
 ## Backlog (not ordered)
 
+- Device mute (user, 2026-10-22): `mute <device>` switches the device's "Device On" off (SDK `parameters[0]`,
+  no Remote Script). Deferred until the `mute` listing has a hierarchy (tracks, then their chains and
+  devices: plan 0006 step 3); order set by the user.
+
 - A `cmdabl settings` page (user, 2026-10-22): one place for cmdAbl's settings (`settings.json`); the
   palette's "above the prompt" switch likely moves there. Builds on the store from 0.1.4 (plan 0008).
 
