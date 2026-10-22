@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). Out (close_and_send): JSON PaletteResult, or '' when dismissed. -->
+<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. Two zones: tool rows (commands, subcommands, options) above the prompt, Set rows (paths, tags, values, history) below. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -50,7 +50,13 @@
       caret-color: var(--accent);
     }
 
-    /* ── dropdown ── */
+    /* ── tool zone (above the prompt): best match at the bottom, next to the prompt; ~5 rows, then it scrolls ── */
+    #tools { flex: 0 0 auto; max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
+    #tools.hidden { display: none; }
+    #tools > :first-child { margin-top: auto; }   /* sits at the bottom while the zone is short (safe with overflow) */
+    #tools .row { flex-shrink: 0; }
+
+    /* ── dropdown (Set zone, below the prompt) ── */
     #dropdown { flex: 1; overflow-y: auto; }
     #dropdown.hidden { display: none; }
 
@@ -71,6 +77,8 @@
   </style>
 </head>
 <body>
+
+  <div id="tools"></div>
 
   <div id="bar">
     <span id="colon">:</span>
@@ -98,6 +106,7 @@
 
     const input     = document.getElementById('input');
     const dropdown  = document.getElementById('dropdown');
+    const tools     = document.getElementById('tools');
     const ghostMirror = document.querySelector('#ghost .mirror');
     const ghostHint   = document.querySelector('#ghost .hint');
 
@@ -157,7 +166,9 @@
         if (!COMPLETION) return [];
         const res = CmdComplete.complete(raw, caret, COMPLETION);
         view = { replace: res.replace, usage: res.usage ?? null };
-        return res.items.map(r => ({ type: r.kind, title: r.label, subtitle: r.description, insert: r.insert }));
+        const rows = res.items.map(r => ({ type: r.kind, zone: r.zone, title: r.label, subtitle: r.description, insert: r.insert }));
+        const tool = rows.filter(r => r.zone === 'tool'), set = rows.filter(r => r.zone !== 'tool');
+        return [...tool, ...recentLines(raw, caret), ...set];
       }
       const part = wordAtCaret();
       // The word before the caret is a complete command name: its arguments follow, no completion.
@@ -174,7 +185,7 @@
       const rows = part ? newLine.rows : ITEMS;
       const rank = part ? newLine.rank : itemRank;
 
-      if (!query) return rows;
+      if (!query) return zoned(rows);
 
       // Drop "canned full invocation" items (command-type, multi-word id —
       // e.g. a history entry "mute A, B") that the user has already typed
@@ -182,15 +193,51 @@
       // otherwise leave the shorter, stale row fuzzy-matched and active, so
       // Enter would silently run the old invocation instead of the new one.
       // Forward-completable matches (entry.startsWith(query)) stay.
-      return rank(query).filter(item =>
+      return zoned(rank(query).filter(item =>
         !(item.type === 'command' && item.id.includes(' ')
-          && query.length > item.id.length && query.startsWith(item.id)));
+          && query.length > item.id.length && query.startsWith(item.id))));
+    }
+
+    // Word 0: commands go in the tool zone, history and Live objects in the Set zone. The
+    // ranking order is kept (index 0 is the best row overall, the default highlight).
+    function zoned(rows) {
+      return rows.map(i => i.zone ? i : Object.assign({}, i, { zone: i.type === 'command' && !i.id.includes(' ') ? 'tool' : 'set' }));
+    }
+
+    // Arguments: stored lines that start with what is typed lead the Set zone (newest first, at most 3).
+    function recentLines(raw, caret) {
+      if (caret !== raw.length) return [];
+      const typed = raw.trimStart().toLowerCase();
+      return ITEMS.filter(i => i.type === 'command' && i.id.includes(' ') && i.id.length > typed.length && i.id.toLowerCase().startsWith(typed))
+        .slice(0, 3).map(i => ({ type: 'history', zone: 'set', title: i.id, subtitle: 'recent', line: i.id }));
+    }
+
+    // The highlight with nothing chosen: the best word-0 row; in arguments the Set row nearest
+    // the prompt, or the best tool row when the Set zone is empty (`pakabl ` + Tab = best subcommand).
+    function defaultIdx() {
+      if (mode !== 'args') return 0;
+      const i = items.findIndex(r => r.zone === 'set');
+      if (i !== -1) return i;
+      // Nothing in the Set zone: a group position's subcommands (commands) still get a highlight; options
+      // are matched by name and are only ever reached with ↑ (-1 = nothing highlighted).
+      return items[0]?.type === 'command' ? 0 : -1;
+    }
+
+    // Rows top to bottom as drawn: the tool zone reversed (best next to the prompt), then the Set zone.
+    function displayOrder() {
+      const idx = items.map((_, i) => i);
+      return [...idx.filter(i => items[i].zone === 'tool').reverse(), ...idx.filter(i => items[i].zone !== 'tool')];
     }
 
     // Splice a completion row into the line (args mode). `descend` (Tab, click) adds the
     // space that starts the next word; Enter inserts as is and runs the line.
     function applyRow(item, descend) {
       const v = input.value;
+      if (item.line !== undefined) {   // a stored line replaces the whole prompt
+        input.value = item.line;
+        input.setSelectionRange(item.line.length, item.line.length);
+        return true;
+      }
       // The rows belong to the caret position they were built for; a caret that moved some
       // other way (select all, a drag) must not make them splice over another word.
       const now = COMPLETION && CmdComplete.complete(v, input.selectionStart ?? v.length, COMPLETION).replace;
@@ -279,19 +326,13 @@
     // ── render ─────────────────────────────────────────────────────────────
     function render() {
       items     = computeItems(input.value);
+      activeIdx = chosen ? Math.min(activeIdx, items.length - 1) : defaultIdx();
       updateGhost();
-      activeIdx = Math.min(activeIdx, Math.max(items.length - 1, 0));
 
       dropdown.innerHTML = '';
+      tools.innerHTML = '';
 
-      if (!items.length) {
-        dropdown.classList.add('hidden');
-        return;
-      }
-
-      dropdown.classList.remove('hidden');
-
-      items.forEach((item, i) => {
+      const draw = (item, i) => {
         const row = document.createElement('div');
         row.className = 'row' + (i === activeIdx ? ' active' : '');
         // textContent, not innerHTML: item titles may be user data (track names).
@@ -307,10 +348,17 @@
           if (mode === 'args') { applyRow(item, true); activeIdx = 0; chosen = false; render(); input.focus(); }
           else send(resultFor(item));
         });
-        dropdown.appendChild(row);
-      });
+        return row;
+      };
 
-      dropdown.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
+      const order = displayOrder();
+      for (const i of order) (items[i].zone === 'tool' ? tools : dropdown).appendChild(draw(items[i], i));
+      tools.classList.toggle('hidden', !tools.firstChild);
+      dropdown.classList.toggle('hidden', !dropdown.firstChild);
+
+      // Keep the tool zone's best row (the bottom one) in view unless the highlight is elsewhere.
+      tools.scrollTop = tools.scrollHeight;
+      document.querySelector('.row.active')?.scrollIntoView({ block: 'nearest' });
     }
 
     // ── keyboard ───────────────────────────────────────────────────────────
@@ -322,6 +370,22 @@
     input.addEventListener('keyup', e => {
       if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) { activeIdx = 0; chosen = false; render(); }
     });
+
+    // ↑/↓ walk the rows as drawn (tool zone top, Set zone bottom); the ends stop.
+    function moveSel(d) {
+      const order = displayOrder();
+      if (!order.length) return;
+      if (activeIdx < 0) {   // nothing highlighted: ↑ goes to the best tool row, ↓ to the first Set row
+        const next = d < 0 ? items.findIndex(r => r.zone === 'tool') : items.findIndex(r => r.zone !== 'tool');
+        if (next === -1) return;
+        activeIdx = next; chosen = true; render();
+        return;
+      }
+      const pos = Math.max(0, Math.min(order.indexOf(activeIdx) + d, order.length - 1));
+      activeIdx = order[pos];
+      chosen = true;
+      render();
+    }
 
     input.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
@@ -370,13 +434,13 @@
         activeIdx = 0;
         chosen = true;
         render();
-        if (mode === 'args') chosen = false;   // Tab landed in arguments: nothing is chosen there yet
+        if (mode === 'args') { chosen = false; render(); }   // Tab landed in arguments: nothing is chosen there yet
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        if (items.length) { activeIdx = (activeIdx + 1) % items.length; chosen = true; render(); }
+        moveSel(+1);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        if (items.length) { activeIdx = (activeIdx - 1 + items.length) % items.length; chosen = true; render(); }
+        moveSel(-1);
       }
     });
 
