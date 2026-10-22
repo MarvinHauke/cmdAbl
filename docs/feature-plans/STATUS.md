@@ -50,14 +50,14 @@ Open from the releases:
   `f40a89a` (history no longer quotes numbers); modules (limit messages grouped by end, 5 tracks max).
 - Docs done: docs `6b01c88` (using.md "Fader levels: `vol`", authoring guide `volume`/`setVolume`).
 
-## Built, Live test pending: agent test access (branch `feat/test-mcp`, plan 0016)
+## Built, Live-tested 2026-10-22: agent test access (branch `feat/test-mcp`, plan 0016)
 
 - core `d8fd4b9` (headless run, dev-only `POST /run`/`GET /log`, run-token), `3512336` (MCP server
   `tools/mcp/`, `.mcp.json`), `a952068` (`/reset` releases a stuck run).
 - Agent rules: `CLAUDE.md` and builder files (`dafe861`). Docs: develop.md "Testing in Live with
   MCP" (`326cefc`).
 - First MCP run 2026-10-22: works after core `0812943` (Live's host has no global `URL`). State,
-  bridge, 19 `vol`/`goto` lines ran headless. Open: busy check, not-running check.
+  bridge, 19 `vol`/`goto` lines ran headless. Busy (palette open) and not running checked too.
 - First run (user): test Set open, `npm start`, restart the agent sessions, allow the `cmdabl` MCP
   server; then the architect runs core's checks and the rest of the `vol` list.
 
