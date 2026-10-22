@@ -11,7 +11,7 @@ shows as help. Type a command in the palette; `<command> --help` prints the same
 - Find and select: `goto`, `find`, `next`, `prev`
 - Mix: `mute`, `solo`, `arm`, `vol`
 - Tags: `tag`
-- Look things up: `help`, `man`, `lom`
+- Look things up: `help`, `man`, `lom`, `note`
 - Recent commands: `history`
 - Extensions: `pakabl`
 - cmdAbl itself: `cmdabl`
@@ -567,6 +567,34 @@ lom snare
 ```
 
 the object with "snare" in its name
+
+### `note`
+
+open the note of this Live Set
+
+Opens the Markdown note that belongs to this Live Set, for reminders: headings, lists, checkboxes, tables and code are drawn, links are shown as text. note opens it to read; note -e opens it to edit, and so does a Set that has no note yet. In the page, e switches to editing, Cmd+S saves and closes, and Esc closes (with unsaved changes it warns first). The note is a plain Markdown file in cmdAbl's data folder, linked to the Set by an id stored inside the Set, so it follows the Set when it is renamed or saved under another name (both copies then share one note). The Set gets its id the first time a note is saved, which marks the Set as changed: save it so the link is kept. Needs the cmdAbl Remote Script. A saved note shows nothing; the log has one line.
+
+**Usage:** `note [--edit]`
+
+| Option | Description |
+| --- | --- |
+| `-e, --edit` | open the note to edit instead of to read |
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+note
+```
+
+read the note of this Set
+
+```
+note -e
+```
+
+open the note to edit
 
 ## Recent commands
 
