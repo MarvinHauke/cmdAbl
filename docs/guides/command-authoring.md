@@ -114,6 +114,29 @@ fakes (`createFakeApi` in `src/modules/testPorts.ts`, which fakes `set.id` and `
 A module that has its own page puts the HTML in `ui/modules/<module>/`. A module may import a page only from its own
 folder.
 
+## Completing arguments
+
+`#tag` targets and Live paths are built in, so a target needs no completer. For other values, such as an extension id or a tag name, give the argument or
+option a completer:
+
+1. In `activate`, register a source: `api.commands.completer(key, source)`.
+2. Name the key in `ArgDef.complete` or `OptionDef.complete`.
+
+An option with `complete` must take a value, and cannot also have `choices` or `number`. For an enum whose values
+change at run time, use `kind: "enum"` without `choices`, and name the completer in `complete`.
+
+`source(ctx)` returns a list of `string | { label, insert?, description? }`, directly or as a promise. `insert` is the
+raw value; the platform quotes it when needed.
+
+- The platform calls `source` once each time the palette opens, with no tokens. It filters the rows while the user
+  types and shows at most about 100 rows per position.
+- A source is read-only: no writes, no dialogs, no bridge calls. Read from caches (the platform refreshes tags and
+  chains when the palette opens).
+- Stay within about 100 ms. If `source` throws or times out, the user sees no rows and a debug log line is written.
+  Work that is not async cannot be interrupted, so keep it cheap.
+- A key that is not registered gives a warning at activation. Module tests assert that `fake.unknownCompleters()` is
+  empty.
+
 ## Logging
 
 Never call `console.` in a module; the architecture test fails on it. Log through `api.log` or `api.logger`. Never

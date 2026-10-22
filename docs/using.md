@@ -26,6 +26,24 @@ The palette shows two kinds of rows:
 
 After a command runs, the palette closes. Only a message or a pick list can stay open.
 
+### Suggestions for arguments
+
+After a command name, the palette suggests what fits at the cursor:
+
+- options, after you type `-`, and the values an option takes;
+- tracks and other Live objects, where the command takes a target;
+- `#` tags, with the number of tracks each one has;
+- extension ids for `pakabl install`, tag names for `tag -r` and `tag -e`, and commands for `man`.
+
+A grey hint after the cursor shows what the command expects next, such as `<target>…`, `<old>` or `<id>`.
+
+- `Tab` takes the highlighted suggestion and moves on: it adds the space.
+- `↑` and `↓` pick a different row.
+- `Enter` runs exactly what you typed. It never takes the top row on its own; it takes a suggestion only if you
+  moved to that row with the arrow keys first.
+
+A name with spaces is quoted for you.
+
 ## Name the objects
 
 A command takes objects as text. cmdAbl reads that text as follows:
