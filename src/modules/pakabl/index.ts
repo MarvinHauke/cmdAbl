@@ -250,7 +250,18 @@ async function upgrade(api: ModuleApi, ref: string | undefined): Promise<Command
   return ok(`pakabl: upgraded ${entry.name} to v${entry.version} — restart Live to reload it`);
 }
 
+/** The ids the cached index lists (the completers read the cache file, never the network); `installedOnly` keeps those installed. */
+export function indexIdRows(installedOnly: boolean): Array<{ label: string; description: string }> {
+  const loaded = loadIndex();
+  if (!loaded) return [];
+  return loaded.entries
+    .filter((e) => !installedOnly || installedManifest(e.id) !== undefined)
+    .map((e) => ({ label: e.id, description: `${e.name} v${e.version}` }));
+}
+
 export function activate(api: ModuleApi): void {
+  api.commands.completer("pakabl-index-ids", () => indexIdRows(false));
+  api.commands.completer("pakabl-installed-ids", () => indexIdRows(true));
   api.commands.add(
     pakablCommand({
       install: (id) => install(api, id),

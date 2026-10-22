@@ -1,7 +1,7 @@
 import type { ModuleApi } from "../types.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
 import { openUrl } from "../../core/openUrl.js";
-import { findTopic } from "./topics.js";
+import { findTopic, topicNames } from "./topics.js";
 import { closeMatches, findNode, manPage, webUrl } from "./page.js";
 
 /**
@@ -11,6 +11,12 @@ import { closeMatches, findNode, manPage, webUrl } from "./page.js";
  * subcommand. The page goes through the message surface (multi-line text) with a button that opens its section of the reference.
  */
 export function activate(api: ModuleApi): void {
+  // Top-level command names plus the two web manuals; a subcommand is typed after its group.
+  api.commands.completer("man-topics", () => [
+    ...api.commands.roots().map((c) => ({ label: c.name, description: c.summary })),
+    ...topicNames().map((t) => ({ label: t, description: t === "ableton" ? "open the Live manual" : "open the cmdAbl documentation" })),
+  ]);
+
   api.commands.add({
     name: "man",
     topic: "Look things up",
@@ -33,6 +39,7 @@ export function activate(api: ModuleApi): void {
         name: "command",
         kind: "text",
         variadic: true,
+        complete: "man-topics",
         summary: "A command, with its subcommand if it has one (man history clear); ableton [words] or cmdabl alone open the web manuals",
       },
     ],

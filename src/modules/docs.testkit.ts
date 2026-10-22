@@ -13,7 +13,7 @@ import type { ModuleApi } from "./types.js";
 export function declaredBy(activate: (api: ModuleApi) => void): Command[] {
   const registry = new CommandRegistry();
   const api = {
-    commands: { add: (c: Command) => registry.add(c) },
+    commands: { add: (c: Command) => registry.add(c), completer: () => {} },
     registerProvider: () => {},
     onPick: () => {},
     onCommandRun: () => {},
