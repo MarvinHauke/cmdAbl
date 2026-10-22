@@ -116,14 +116,15 @@ The agents can make documentation images themselves, so images follow the code i
   - Accessibility for the terminal app (System Settings → Privacy & Security → Accessibility);
   - the first `cmdabl_keys` call asks to allow control of "System Events" (Automation).
 
-### 6. Recordings for the docs (user, 2026-10-22)
+### 6. Recordings for the docs (user, 2026-10-22; built: core `6f5287d`)
 
 - **`cmdabl_record(name, seconds)`** (1–30 s): brings Live to the front, reads the bounds of Live's main
   window (as `cmdabl_capture` does), and starts `screencapture -v -V <seconds> -R x,y,w,h
   captures/<name>.mov` in the background. It answers at once; the actions follow with `cmdabl_show` and
   `cmdabl_keys`. `cmdabl_record_status(name)` says whether it is still recording and the file size.
 - **Pacing:** `cmdabl_keys` gets an optional `delayMs` per character (0–300, default 0), so typing can
-  be followed in a recording.
+  be followed in a recording. Before every character and the final key it checks again that a cmdAbl
+  dialog is in front; otherwise it stops and reports how many characters went in.
 - **Conversion:** `cmdabl_convert(name, format: "mp4"|"gif", width?, crop?)` runs `ffmpeg` on
   `captures/<name>.mov` → `captures/<name>.mp4|gif` (mp4: H.264, CRF about 24, no audio; gif: a palette
   pass, about 12 fps). The output stays in `captures/`; docs moves the final file.
