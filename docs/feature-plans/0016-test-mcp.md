@@ -90,7 +90,7 @@ agent ──MCP (stdio)──> tools/mcp/cmdabl-mcp ──HTTP 127.0.0.1:27184�
 - Cmd+Z can't be pressed through MCP. Undo checks stay with the user, or use the log's `undo:`
   lines (`cmdabl log --undo`).
 
-### 5. Screenshots for the docs (user, 2026-10-22)
+### 5. Screenshots for the docs (user, 2026-10-22; built: core `f865d5f`)
 
 The agents can make documentation images themselves, so images follow the code in the same change.
 
@@ -103,7 +103,7 @@ The agents can make documentation images themselves, so images follow the code i
   | Tool | What it does |
   |---|---|
   | `cmdabl_show(line)` | `POST /show` |
-  | `cmdabl_keys(text?, key?)` | Brings Live to the front and types `text` and/or presses one `key` (`escape`, `return`, `tab`, `up`, `down`, `cmd+s`, …) through System Events. Needs Accessibility for the terminal app. |
+  | `cmdabl_keys(text?, key?)` | Brings Live to the front and, in one script, types `text` (printable, 1–200 characters) and/or presses one `key` from the allow-list `escape`, `return`, `tab`, `up`, `down`, `left`, `right`, `delete`, `space`, `cmd+s`, `cmd+z` through System Events. Nothing is typed unless Live is frontmost **and** its topmost window is a cmdAbl dialog (not the main window), so keys never reach the Set. Needs Accessibility for the terminal app. |
   | `cmdabl_capture(name, target)` | Captures one window with `screencapture -l <window id>`: `target` `dialog` is the frontmost cmdAbl dialog, `live` is Live's main window. Window ids come from `CGWindowListCopyWindowInfo` (via `osascript -l JavaScript`), filtered by Live's process. It writes `captures/<name>.png` (gitignored), never the full screen, and returns the path and size. |
 
 - **Never the full screen**, and only windows owned by Live. If no matching window is found, the tool
@@ -125,7 +125,7 @@ The agents can make documentation images themselves, so images follow the code i
 | A command waits for a dialog forever. | The headless `Ui` never opens one; the route has a timeout (about 10 s) and answers 504. |
 | A run hangs past the timeout and keeps the gate closed. | `POST /reset` releases the run gate and the route ("run gate released", core `a952068`). Known edge: a released run that wakes up later may open a real dialog or land in a newer run's capture; rare, fixed only if it shows up. |
 | A capture shows something private. | Only Live's own windows by id; images go through docs (opaque boxes) and the reviewer before a commit; `captures/` is gitignored. |
-| Keys reach the wrong app. | `cmdabl_keys` activates Live first and refuses when Live isn't frontmost afterwards. |
+| Keys reach the wrong app or the Set. | `cmdabl_keys` types only when Live is frontmost and its top window is a cmdAbl dialog. Known edge: another small Live window on top (a plug-in window, Settings) also passes; low risk. |
 | Two agents run at once. | 409 while a run is going; the MCP tool says "busy". |
 | The route drifts from the palette's behaviour. | Both call `runLine`; only the deps differ. Tests run the same lines through both. |
 
