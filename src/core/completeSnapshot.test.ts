@@ -201,3 +201,30 @@ test("validateTree: an option's complete key needs a value option and no fixed c
   assert.match(validateTree(leaf([{ name: "a", takesValue: true, number: {}, complete: "k", summary: "s" }])).join("\n"), /complete together with choices or number/);
   assert.match(validateTree(leaf([{ name: "a", takesValue: true, complete: " ", summary: "s" }])).join("\n"), /empty complete key/);
 });
+
+test("per-completer timing is logged, and a synchronous completer over its budget is a warning", async () => {
+  const debug: string[] = [];
+  const warn: string[] = [];
+  const spin = (ms: number): string[] => {
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+      /* a blocking body */
+    }
+    return ["x"];
+  };
+  const data = await buildCompletionData({
+    roots,
+    completers: new Map<string, Completer>([["tags", () => spin(30)], ["words", () => ["w"]], ["ids", async () => ["i"]]]),
+    nodes: () => [],
+    completerBudgetMs: 10,
+    debug: (l) => debug.push(l),
+    warn: (l) => warn.push(l),
+  });
+  assert.deepEqual(data.completions.tags, [{ label: "x" }]); // sync work finished before the timer could fire: its rows stay
+  assert.equal(warn.length, 1);
+  assert.match(warn[0]!, /^completer "tags" blocked for \d+ ms \(over its 10 ms budget\)/);
+  const line = debug.find((l) => l.startsWith("completion completers: "))!;
+  assert.match(line, /tags \d+ ms \(\d+ ms synchronous\)/);
+  assert.match(line, /words \d+ ms/);
+  assert.match(line, /ids \d+ ms/);
+});

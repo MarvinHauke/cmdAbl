@@ -343,6 +343,7 @@ export function activate(activation: ActivationContext) {
   }
 
   /** What the palette completes arguments from (plan 0006), taken once at open. Never throws. */
+  const warnedCompleters = new Set<string>();
   let tagsAwaited = false; // the cold tag cache is awaited once per session, never again
   async function snapshotCompletion(): Promise<CompletionData | undefined> {
     const started = Date.now();
@@ -368,6 +369,12 @@ export function activate(activation: ActivationContext) {
           return Promise.resolve(); // building the tree schedules the background refresh
         },
         debug: (line) => logger("completion").debug(line),
+        // A slow synchronous completer would warn at every open: once per line per session, the numbers stay at debug.
+        warn: (line) => {
+          if (warnedCompleters.has(line.split(" blocked for ")[0]!)) return logger("completion").debug(line);
+          warnedCompleters.add(line.split(" blocked for ")[0]!);
+          logger("completion").warn(line);
+        },
       });
       logger("completion").debug(
         `snapshot: ${data.paths.length} paths, ${data.tags.length} tags, ${Object.keys(data.completions).length} completers, ${JSON.stringify(data).length} bytes, ${Date.now() - started} ms`,

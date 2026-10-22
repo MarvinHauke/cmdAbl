@@ -29,6 +29,8 @@ export interface SnapshotDeps {
   refreshBudgetMs?: number;
   /** Debug lines (never a token or secret). */
   debug?: (line: string) => void;
+  /** Warnings: a completer whose synchronous part is over its budget (sync work cannot be cut off). */
+  warn?: (line: string) => void;
 }
 
 /** The answer of `work`, or `fallback` when it throws, rejects or takes over `ms`. Never rejects; the timer is cleared. */
@@ -109,6 +111,9 @@ export function tagRows(nodes: readonly ObjectNode[], cap = MAX_TAGS): TagRow[] 
  */
 export async function buildCompletionData(deps: SnapshotDeps): Promise<CompletionData> {
   const debug = deps.debug ?? (() => {});
+  const warn = deps.warn ?? debug;
+  /** Per completer: how long the whole call took and how long its synchronous part blocked. */
+  const timings: Array<{ key: string; ms: number; syncMs: number }> = [];
   const keys = completerKeys(deps.roots);
   const completerMs = deps.completerBudgetMs ?? COMPLETER_BUDGET_MS;
 
@@ -117,7 +122,23 @@ export async function buildCompletionData(deps: SnapshotDeps): Promise<Completio
     keys.map(async (key): Promise<[string, Candidate[]]> => {
       const source = deps.completers.get(key);
       if (!source) return [key, []];
-      const raw = await withBudget(() => source({}), completerMs, [], (why) => debug(`completer "${key}" gave no rows: ${why}`));
+      const started = Date.now();
+      let syncMs = 0;
+      const raw = await withBudget(
+        () => {
+          const entered = Date.now();
+          try {
+            return source({});
+          } finally {
+            syncMs = Date.now() - entered; // a synchronous body blocks the host: the timeout cannot cut it off
+          }
+        },
+        completerMs,
+        [],
+        (why) => debug(`completer "${key}" gave no rows: ${why}`),
+      );
+      timings.push({ key, ms: Date.now() - started, syncMs });
+      if (syncMs > completerMs) warn(`completer "${key}" blocked for ${syncMs} ms (over its ${completerMs} ms budget); cache what it reads`);
       return [key, normalizeCandidates(raw)];
     }),
   );
@@ -140,6 +161,7 @@ export async function buildCompletionData(deps: SnapshotDeps): Promise<Completio
   const paths = pathRows(nodes);
   const tags = tagRows(nodes);
   debug(`completion timing: cache refresh ${t1 - t0} ms, completers ${t2 - t1} ms more, reading the Set ${t3 - t2} ms, rows ${Date.now() - t3} ms`);
+  if (timings.length) debug(`completion completers: ${timings.map((t) => `${t.key} ${t.ms} ms${t.syncMs > 0 ? ` (${t.syncMs} ms synchronous)` : ""}`).join(", ")}`);
   if (nodes.length > MAX_PATHS) debug(`completion: paths capped (${MAX_PATHS} of ${nodes.length}); devices are dropped first`);
   return {
     tree,
