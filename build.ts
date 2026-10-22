@@ -3,6 +3,8 @@ import * as fs from "node:fs";
 
 const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
 const production = process.argv.includes("--production");
+// `--outfile=<path>` builds elsewhere than manifest.entry (the test that inspects the production bundle).
+const outfile = process.argv.find((a) => a.startsWith("--outfile="))?.slice("--outfile=".length) ?? manifest.entry;
 
 // The dialog pages are standalone data: URLs with no module loader, so nothing
 // can be `import`ed there.
@@ -46,7 +48,7 @@ const htmlInlinePlugin: esbuild.Plugin = {
 
 await esbuild.build({
   entryPoints: ["src/extension.ts"],
-  outfile: manifest.entry,
+  outfile,
   bundle: true,
   format: "cjs",
   platform: "node",
@@ -55,4 +57,7 @@ await esbuild.build({
   minify: production,
   sourcemap: !production,
   plugins: [htmlInlinePlugin],
+  // The development-only routes (plan 0016: POST /run, GET /log) exist only without --production;
+  // the code behind the constant is removed from a production bundle.
+  define: { CMDABL_DEV_ROUTES: String(!production) },
 });
