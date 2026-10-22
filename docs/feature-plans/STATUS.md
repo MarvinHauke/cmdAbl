@@ -24,7 +24,9 @@ All releases were tested in Live, including the installed `.ablx`.
   `gitleaks`, no force push). The private mirror's `main` follows it.
 - Built, Live-tested through MCP (2026-10-22): argument completion (plan 0006 steps 1–2, 0.1.4,
   branch `feat/completion`). Snapshot at palette open: 3 ms warm, about 220 ms on the first open of a
-  session (cold tag cache). Next: release 0.1.4.
+  session (cold tag cache). Plus the palette switch "Above the prompt: Off · Hints · Options"
+  (`palette.above` in `settings.json`, the first piece of the store), Live-tested. Docs and images
+  done. Next: release 0.1.4.
 - How testing works since 0.1.3: the architect runs Live test lists through the `cmdabl_*` MCP tools
   (plan 0016) once the user has started `npm start` with a test Set; the user gets a short list of
   the core features to try by hand (`CLAUDE.md`, "Agent team").
