@@ -36,7 +36,7 @@ Tag tracks by what they are: `tag /Lead fx synth`. After that, `mute #fx` reache
 opens the tag board, where you add and remove the tags of every track. Tags are saved with the Set, and they need
 the [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/).
 
-![Screen recording of the tag board: tag -l opens it; Guitar is typed and added to drums, B-Reverb and A-Delay to effect; the arrow keys move to the lead chip and mark it for removal; Enter applies the 3 changes; cmdabl log then lists each change with its undo command](docs/assets/images/tags.gif)
+![Screen recording of the tag board: tag -l opens it; Synth is typed and added to drums; the arrow keys move to the Lead chip under fx and mark it for removal; Enter applies the 2 changes](docs/assets/images/tags.gif)
 
 ### A pick list you control
 

@@ -4,6 +4,8 @@
 
 ![Screen recording of the palette: mute drums mutes the drum tracks, solo !#drums solos the other tracks, and mute --pick #drums opens a pick list where rows are marked and Enter applies](assets/images/hero.gif)
 
+![Screen recording: vol 9 #drums raises the drum faders and stops at +6 dB with a message that names the tracks, then note opens the Mix notes of the Set](assets/images/vol-note.gif)
+
 ## Why cmdAbl
 
 - **Tags that group your tracks.** `tag /Lead fx synth` tags a track. Then `mute #fx` reaches every `fx` track at
