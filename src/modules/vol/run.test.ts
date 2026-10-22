@@ -4,6 +4,7 @@ import { ExitCode } from "../../core/types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { createFakeApi } from "../testPorts.js";
 import { dbToValue, valueToDb } from "../mixValue.js";
+import { parse } from "../../core/parse.js";
 import { activate } from "./index.js";
 
 const track = (name: string, i: number, kind = "track") =>
@@ -57,61 +58,80 @@ test("one transaction per run", async () => {
   assert.equal(fake.transactions, 1);
 });
 
-test("a relative step past a limit asks first, listing only the affected tracks; Cancel writes nothing and is quiet", async () => {
-  const { run, fake } = setup({ Kick: 5, Perc: -6 });
+test("stop (default): a step that would pass +6 dB is shortened for every fader; the balance stays", async () => {
+  const { run, db, fake } = setup({ Kick: 3, Perc: -3 });
+  const r = await run("9", [kick, perc]);
+  assert.equal(r.code, ExitCode.OK);
+  assert.equal(r.message, "vol 9: moved +3.0 dB, /Kick reached +6 dB (the maximum)");
+  assert.ok(Math.abs(db(kick) - 6) <= 0.1);
+  assert.ok(Math.abs(db(perc) - 0) <= 0.1);
+  assert.equal(fake.confirms.length, 0);
+  assert.equal(fake.transactions, 1);
+  assert.match(r.log![0]!, /^vol 9: asked \+9\.0 dB, applied \+3\.0 dB$/);
+});
+
+test("stop downward: the floor is the lowest level, not -inf", async () => {
+  const { run, fake } = setup({ Perc: -65, Kick: -20 });
+  const r = await run("-30", [perc, kick]);
+  assert.match(r.message ?? "", /^vol -30: moved -4\.\d dB, \/Perc reached -69\.6 dB \(the lowest step\)$/);
+  assert.ok(fake.volumes.get("Perc")! > 0);
+});
+
+test("stop: a step shortened to nothing says nothing changed and names the fader at the end", async () => {
+  const { run, fake } = setup({ Kick: 6, Perc: 0 });
   const before = new Map(fake.volumes);
   const r = await run("3", [kick, perc]);
-  assert.equal(r.code, ExitCode.OK);
-  assert.equal(r.message, undefined);
-  assert.deepEqual(fake.volumes, before); // nothing written for any track
+  assert.equal(r.message, "nothing changed: /Kick is at +6 dB (the maximum)");
+  assert.deepEqual(fake.volumes, before);
   assert.equal(fake.transactions, 0);
-  assert.equal(fake.confirms.length, 1);
-  assert.equal(fake.confirms[0], "vol 3: 1 fader would hit a limit and lose its balance — /Kick → +6.0 dB");
-  assert.doesNotMatch(fake.confirms[0]!, /Perc|\n/);
 });
 
-test("Apply anyway writes everything in one transaction; the limit goes to the log, not to a dialog", async () => {
-  const { run, fake } = setup({ Kick: 5, Perc: -6 }, true);
-  const r = await run("3", [kick, perc]);
-  assert.equal(r.code, ExitCode.OK);
+test("stop: a step of less than half a display step counts as nothing; at the floor the way out is named", async () => {
+  const { run, fake } = setup({ Kick: 5.97 });
+  assert.equal((await run("9", [kick])).message, "nothing changed: /Kick is at +6 dB (the maximum)");
+  const floor = setup({ Perc: -69.6 });
+  const r = await floor.run("-3", [perc]);
+  assert.equal(r.message, "nothing changed: /Perc is at -69.6 dB (the lowest step) — use --clip or --set -inf to go lower");
+  assert.equal(fake.confirms.length, 0);
+});
+
+test("stop: a fader at -inf stays, does not block the others, and is not mentioned", async () => {
+  const { run, db, fake } = setup({ Perc: -6 });
+  fake.volumes.set("Kick", 0);
+  const r = await run("4", [kick, perc]);
   assert.equal(r.message, undefined);
-  assert.equal(fake.volumes.get("Kick"), 1);
-  assert.ok(Math.abs(valueToDb(fake.volumes.get("Perc")!) - -3) <= 0.1);
-  assert.equal(fake.transactions, 1);
-  assert.match(r.log!.join("\n"), /limit reached: \/Kick: \+5\.0 → \+6\.0 dB \(asked \+8\.0\)/);
+  assert.equal(fake.volumes.get("Kick"), 0);
+  assert.ok(Math.abs(db(perc) - -2) <= 0.1);
+  const only = await run("4", [kick]);
+  assert.equal(only.message, "nothing changed: /Kick is at -inf");
 });
 
-test("a step down past the bottom asks and shows -inf; the confirm label is Apply anyway", async () => {
-  const { run, fake } = setup({ Perc: -65 }, true);
-  await run("-6", [perc]);
-  assert.match(fake.confirms[0]!, /^vol -6: 1 fader would hit a limit and lose its balance — \/Perc → -inf$/);
+test("--clip: every fader follows the step, the ones past an end stop there and are named", async () => {
+  const { run, db, fake } = setup({ Kick: 5, Perc: -60 });
+  const r = await run("3", [kick, perc], { clip: true });
+  assert.equal(r.message, "limit reached: /Kick at +6 dB (the maximum)");
+  assert.equal(fake.volumes.get("Kick"), 1);
+  assert.ok(Math.abs(db(perc) - -57) <= 0.1);
+  const low = await run("-20", [perc], { clip: true });
+  assert.equal(low.message, "limit reached: /Perc at -inf");
   assert.equal(fake.volumes.get("Perc"), 0);
 });
 
-test("the question is one line: three tracks, the rest counted", async () => {
-  const many = ["A", "B", "C", "D", "E"].map((n, i) => track(n, i));
-  const fake = createFakeApi({ nodes: many, confirmAnswer: false });
-  for (const n of many) fake.volumes.set(n.handleId, dbToValue(5).value);
-  activate(fake.api);
-  await fake.commands[0]!.run!({ path: ["vol"], options: {}, args: [["4"], many] } as never, undefined as never);
-  assert.equal(fake.confirms[0], "vol 4: 5 faders would hit a limit and lose their balance — /A → +6.0 dB, /B → +6.0 dB, /C → +6.0 dB, +2 more");
-});
-
-test("a fader already at the top gets no question (nothing could move); it keeps the limit message", async () => {
-  const { run, fake } = setup({ Kick: 6 });
-  const r = await run("2", [kick]);
-  assert.equal(fake.confirms.length, 0);
-  assert.equal(r.message, "limit reached: /Kick at +6 dB (the maximum)");
-});
-
-test("no question without a limit, with --set, or for a fader already at -inf (that keeps its message)", async () => {
-  const { run, fake } = setup({ Kick: 5, Perc: -60 });
-  assert.equal((await run("-3", [kick])).message, undefined);
+test("--set never shortens and never asks; a level past an end is named", async () => {
+  const { run, fake } = setup({ Kick: 5 });
   assert.equal((await run("20", [kick], { set: true })).message, "limit reached: /Kick at +6 dB (the maximum)");
-  assert.equal((await run("-inf", [perc], { set: true })).code, ExitCode.OK);
-  const stuck = await run("3", [perc]);
-  assert.equal(stuck.message, "limit reached: /Perc at -inf");
+  assert.equal((await run("-inf", [kick], { set: true })).code, ExitCode.OK);
+  assert.equal(fake.volumes.get("Kick"), 0);
   assert.equal(fake.confirms.length, 0);
+});
+
+test("--clip with --set, and a relative step of -inf, are usage errors", async () => {
+  const { run, fake } = setup();
+  assert.equal((await run("-3", [kick], { set: true, clip: true })).code, ExitCode.USAGE);
+  const inf = await run("-inf", [kick]);
+  assert.equal(inf.code, ExitCode.USAGE);
+  assert.match(inf.message ?? "", /use vol --set -inf/);
+  assert.equal(fake.volumes.size, 0);
 });
 
 test("nothing moved says so", async () => {
@@ -147,9 +167,23 @@ test("the same track twice is changed once", async () => {
   assert.ok(Math.abs(db(kick) - -3) <= 0.1);
 });
 
-test("the command has no digit as a short option (so -1 stays a number) and sits in Mix", () => {
+test("the command has no digit as a short option (so -1 stays a number), -c is --clip, and it sits in Mix", () => {
   const { fake } = setup();
   const vol = fake.commands[0]!;
   assert.equal(vol.topic, "Mix");
   for (const o of vol.options ?? []) assert.doesNotMatch(o.short ?? "", /\d/);
+  assert.deepEqual((vol.options ?? []).map((o) => [o.name, o.short]), [["set", "s"], ["clip", "c"]]);
+});
+
+test("the line parses as intended: vol -1.5 /x, vol -c -3 #x, vol --set -inf /x", () => {
+  const { fake } = setup();
+  const args = (line: string) => {
+    const r = parse(line, fake.commands);
+    assert.equal(r.kind, "run", line);
+    return r.kind === "run" ? { options: r.invocation.options, args: r.invocation.args } : undefined;
+  };
+  assert.deepEqual(args("vol -1.5 /x"), { options: {}, args: [["-1.5"], ["/x"]] });
+  assert.deepEqual(args("vol -c -3 #x"), { options: { clip: true }, args: [["-3"], ["#x"]] });
+  assert.deepEqual(args("vol --set -inf /x"), { options: { set: true }, args: [["-inf"], ["/x"]] });
+  assert.deepEqual(args("vol +2 /x /y"), { options: {}, args: [["+2"], ["/x", "/y"]] });
 });

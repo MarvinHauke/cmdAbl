@@ -330,18 +330,19 @@ disarm both
 
 change the fader level of tracks, in dB
 
-Moves the volume fader of each target track by the given number of dB: vol -6 /Bass lowers it by 6 dB from where it is, vol 2 #drums raises every drums fader by 2 dB, so the balance between them stays. With --set the level is absolute: vol --set -6 #drums puts every fader at -6 dB, vol --set -inf /Bass silences it. A fader stops at Live's maximum, +6 dB, and at -inf. When a relative step would push a fader past one of them, vol lists those tracks and asks first, because the balance changes there; Cancel writes nothing. A fader already at -inf stays there on a relative step, use --set to bring it back. This overwrites the fader and works against volume automation. It works on tracks (including the return and main tracks, /Main), not yet on chains. A successful change shows nothing: the old and new level and the command that puts it back go to the log, and Cmd+Z undoes the whole command in one step. Works without the Remote Script.
+Moves the volume fader of each target track by the given number of dB: vol -6 /Bass lowers it by 6 dB from where it is, vol 2 #drums raises every drums fader by 2 dB, so the balance between them stays. If a step would push a fader past Live's maximum, +6 dB, or below the lowest level, the step is shortened for every target, so they all move by the same amount and keep their balance; the result then says how far they moved and which fader reached the end. With --clip every fader follows the full step instead and the ones past an end stop there (below the lowest level a fader goes to -inf). With --set the level is absolute: vol --set -6 #drums puts every fader at -6 dB, vol --set -inf /Bass silences it. A fader at -inf stays there on a relative step, use --set to bring it back. This overwrites the fader and works against volume automation. It works on tracks (including the return and main tracks, /Main), not yet on chains. A change that went as typed shows nothing: the old and new level and the command that puts it back go to the log, and Cmd+Z undoes the whole command in one step. Works without the Remote Script.
 
-**Usage:** `vol [--set] [--pick] <dB> <target>…`
+**Usage:** `vol [--set] [--clip] [--pick] <dB> <target>…`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
-| `<dB>` | text | yes | Level or step in dB: -6, +2, 0.5, or -inf (with --set) |
+| `<dB>` | text | yes | Level or step in dB: -6, +2, 0.5; -inf only with --set |
 | `<target>…` | path (track / chain) | yes | Tracks to change; separate several with commas, or use #tag |
 
 | Option | Description |
 | --- | --- |
 | `-s, --set` | treat the number as the level to set, not a step from where the fader is |
+| `-c, --clip` | let each fader follow the whole step and stop at an end alone, instead of shortening the step for all |
 | `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
 **Examples**
@@ -356,7 +357,13 @@ lower the Bass fader by 6 dB
 vol 2 #drums
 ```
 
-raise every drums fader by 2 dB
+raise every drums fader by 2 dB, or by less if one of them reaches +6 dB
+
+```
+vol --clip 9 #drums
+```
+
+raise every drums fader by 9 dB, each stopping at +6 dB
 
 ```
 vol --set -6 #drums

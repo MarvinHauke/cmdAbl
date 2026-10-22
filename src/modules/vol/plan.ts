@@ -30,31 +30,26 @@ export interface FaderPlan {
   oldDb: number;
   newValue: number;
   newDb: number;
-  /** The requested level was past the fader's end. */
-  limit?: FaderLimit;
-  /** The level the step asked for before the fader's ends cut it (relative: old + step; absolute: the level). */
-  askedDb: number;
-  /** The fader does not move. */
+  /** The fader does not move (to the level Live shows, 0.1 dB). */
   same: boolean;
 }
 
-/**
- * What one fader does for `vol`: `absolute` sets it to `db`, otherwise `db` is added to where it is now.
- * A fader at -inf has nothing to add to: a relative step leaves it there and reports the -inf limit
- * (`vol --set` gets it out). A step of 0 changes nothing and reports nothing.
- */
-export function planFader(oldValue: number, db: number, absolute: boolean): FaderPlan {
+/** A fader's move to the new level `newDb` (already within the fader's range, or -Infinity). */
+export function faderMove(oldValue: number, newDb: number): FaderPlan {
   const oldDb = valueToDb(oldValue);
-  if (!absolute && db === 0) return { oldValue, oldDb, newValue: oldValue, newDb: oldDb, askedDb: oldDb, same: true };
-  const askedDb = absolute ? db : oldDb + db;
-  const { value, limit } = dbToValue(askedDb);
+  const { value } = dbToValue(newDb);
+  const newValue = value;
   return {
-    askedDb,
     oldValue,
     oldDb,
-    newValue: value,
-    newDb: valueToDb(value),
-    ...(limit ? { limit } : {}),
-    same: Math.abs(value - oldValue) < 1e-9 || formatDb(valueToDb(value)) === formatDb(oldDb),
+    newValue,
+    newDb: valueToDb(newValue),
+    same: Math.abs(newValue - oldValue) < 1e-9 || formatDb(valueToDb(newValue)) === formatDb(oldDb),
   };
+}
+
+/** `vol --set <db>`: the fader goes to `db`; `limit` says the level was past an end (above +6 dB, or -inf / below the lowest step). */
+export function planAbsolute(oldValue: number, db: number): FaderPlan & { limit?: FaderLimit } {
+  const { limit } = dbToValue(db);
+  return { ...faderMove(oldValue, db), ...(limit ? { limit } : {}) };
 }
