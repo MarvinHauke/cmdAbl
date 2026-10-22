@@ -156,6 +156,7 @@
 
     let items     = [];   // current completion candidates
     let activeIdx = 0;
+    let chainCmds = null;  // command rows (no Live objects) for the parts of a `;` chain, built on first use
     let newLine   = null;  // rows + ranker without history lines, built on first use
     let chosen    = false; // the user moved the selection (arrows, Tab) since the last keystroke
     let mode      = 'word0'; // 'word0': fuzzy rows for the first word; 'args': CmdComplete rows
@@ -165,6 +166,7 @@
     let hintRows  = [];     // the panel's rows (read-only): the command's options and subcommands
     let dashed    = false;  // the word at the caret starts with `-`: the options are the list
     let view      = null;    // args mode: { replace: {from, to}, usage }
+    let segView   = null;    // the `;` part the caret is in ({ start, end }), null when the line is no chain
 
     // ── messaging ──────────────────────────────────────────────────────────
     // Returns a structured PaletteResult to the host as a JSON string (the
@@ -196,16 +198,31 @@
     // A line like ` "/path"` (a path put in the prompt) leaves the caret in front of
     // a space-led rest: the user types the command there. Only the word before the
     // caret is then ranked and completed; the rest stays untouched.
-    function wordAtCaret() {
-      const v = input.value, caret = input.selectionStart ?? v.length;
+    function wordAtCaret(v = input.value, caret = input.selectionStart ?? v.length) {
       const head = v.slice(0, caret), tail = v.slice(caret);
       return !head.includes(' ') && tail.startsWith(' ') ? { head, tail } : null;
     }
 
+    // ── `;` chains (plan 0017) ─────────────────────────────────────────────
+    // The part of the line the caret is in is its own line: it gets the word-0 rows or the argument
+    // completion by itself. null when the line is no chain. The split is core's (CmdComplete.chainSegments),
+    // so `;` in quotes is no separator here either.
+    function segmentAt(raw, caret) {
+      const segs = CmdComplete.chainSegments ? CmdComplete.chainSegments(raw) : [];
+      if (segs.length < 2) return null;
+      return segs.find(g => g.start <= caret && caret <= g.end) ?? segs[segs.length - 1];
+    }
+
     // ── build completion list ──────────────────────────────────────────────
     function computeItems(raw) {
-      const caret = input.selectionStart ?? raw.length;
-      mode = modeAt(raw, caret);
+      const caretAll = input.selectionStart ?? raw.length;
+      segView = segmentAt(raw, caretAll);
+      const caret = caretAll;
+      // Word-0 ranking works on the part's own text; the argument completion gets the whole line (core
+      // completes the part the caret is in and returns offsets into the whole line).
+      const segRaw = segView ? raw.slice(segView.start, segView.end) : raw;
+      const segCaret = caretAll - (segView ? segView.start : 0);
+      mode = modeAt(segRaw, segCaret);
       view = null;
       hintRows = [];
       dashed = false;
@@ -229,20 +246,27 @@
         hintRows = above === 'hints' ? fullTool(raw, res, tool) : [];
         return [...hist, ...set, ...(toolInList ? tool : [])];
       }
-      const part = wordAtCaret();
+      const part = wordAtCaret(segRaw, segCaret);
       // The word before the caret is a complete command name: its arguments follow, no completion.
       if (part && itemsById[part.head]?.type === 'command') return [];
-      const query = (part ? part.head : raw).trim();
+      const query = (part ? part.head : segRaw).trim();
       // The first word is a command and text follows it: arguments, caret in the name — nothing to rank.
-      if (!part && /^\s*\S+\s/.test(raw) && itemsById[raw.trim().split(/\s/)[0]]?.type === 'command') return [];
+      if (!part && /^\s*\S+\s/.test(segRaw) && itemsById[segRaw.trim().split(/\s/)[0]]?.type === 'command') return [];
       // Around a path put in the prompt the user builds a new line: a stored full
       // invocation (history row) would run on an old target and drop that path.
       if (part && !newLine) newLine = (() => {
         const rows = ITEMS.filter(i => !(i.type === 'command' && i.id.includes(' ')));
         return { rows, rank: CmdMatch.ranker(rows, ['title', 'subtitle', 'keywords', 'path']) };
       })();
-      const rows = part ? newLine.rows : ITEMS;
-      const rank = part ? newLine.rank : itemRank;
+      // In a chain a part is a command line: only command rows (and stored lines) are offered. A Live-object
+      // row would put a bare path where a command belongs (outside a chain the host turns it into `goto`).
+      if (segView && !chainCmds) {
+        const mk = rows => ({ rows, rank: CmdMatch.ranker(rows, ['title', 'subtitle', 'keywords', 'path']) });
+        const cmds = ITEMS.filter(i => i.type === 'command');
+        chainCmds = { all: mk(cmds), plain: mk(cmds.filter(i => !i.id.includes(' '))) };   // `plain`: without stored lines
+      }
+      const src = segView ? (part ? chainCmds.plain : chainCmds.all) : part ? newLine : { rows: ITEMS, rank: itemRank };
+      const rows = src.rows, rank = src.rank;
 
       if (!query) return zoned(rows);
 
@@ -274,7 +298,7 @@
 
     // Arguments: stored lines that start with what is typed lead the Set zone (newest first, at most 3).
     function recentLines(raw, caret) {
-      if (caret !== raw.length) return [];
+      if (caret !== raw.length || segView) return [];   // a stored line would replace the whole chain
       const typed = raw.trimStart().toLowerCase();
       return ITEMS.filter(i => i.type === 'command' && i.id.includes(' ') && i.id.length > typed.length && i.id.toLowerCase().startsWith(typed))
         .slice(0, 3).map(i => ({ type: 'history', zone: 'set', title: i.id, subtitle: 'recent', line: i.id }));
@@ -294,6 +318,24 @@
     function displayOrder() {
       const idx = items.map((_, i) => i);
       return [...idx.filter(i => items[i].pane === 'tool').reverse(), ...idx.filter(i => items[i].pane !== 'tool')];
+    }
+
+    // Take a word-0 row inside a `;` chain: it replaces the part's first word (or the whole part) and
+    // leaves the rest of the chain alone. `descend` adds the space after a command, like Tab does.
+    function applyWord0(item, descend) {
+      const v = input.value, { start, end } = segView;
+      const segText = v.slice(start, end);
+      const caretSeg = Math.min(input.selectionStart ?? v.length, end) - start;
+      const lead = segText.length - segText.trimStart().length;
+      const part = wordAtCaret(segText, caretSeg);
+      const word = item.type === 'command' ? item.id : (item.path ?? item.title);
+      const from = start + lead;
+      let to, text = word;
+      if (part) to = start + caretSeg;   // the caret ends the first word: its tail stays
+      else { to = end; if (descend && item.type === 'command' && !item.id.includes(' ')) text += ' '; }
+      input.value = v.slice(0, from) + text + v.slice(to);
+      const at = from + text.length;
+      input.setSelectionRange(at, at);
     }
 
     // Splice a completion row into the line (args mode). `descend` (Tab, click) adds the
@@ -423,7 +465,7 @@
     // The heading and the note of an area above the prompt (textContent only). The heading names the
     // recognized command; the note shows while the area has no rows.
     function fillZone(zone, name, tail, empty, wordZeroNote) {
-      const cmd = mode === 'args' ? /^\s*(\S+)/.exec(input.value)?.[1] : null;
+      const cmd = mode === 'args' ? /^\s*(\S+)/.exec(segView ? input.value.slice(segView.start, segView.end) : input.value)?.[1] : null;
       zone.querySelector('.zhead').textContent = name + (cmd ? ' · ' + cmd + tail : '');
       zone.querySelector('.znote').textContent = !empty ? '' : mode === 'args' ? 'No options here' : wordZeroNote;
     }
@@ -452,6 +494,7 @@
         row.addEventListener('mousedown', e => {
           e.preventDefault();
           if (mode === 'args') { applyRow(item, true); activeIdx = 0; chosen = false; render(); input.focus(); }
+          else if (segView) { applyWord0(item, true); activeIdx = 0; chosen = false; render(); input.focus(); }
           else send(resultFor(item));
         });
         return row;
@@ -532,6 +575,12 @@
           if (result) send(result);
           return;
         }
+        if (segView) {   // a chain runs as a whole: a row only when the user chose it
+          if (item && chosen) applyWord0(item, false);
+          const result = rawResult();
+          if (result) send(result);
+          return;
+        }
         const result = item && !typedLineWins(item) ? resultFor(item) : rawResult();
         if (result) send(result);
       } else if (e.key === 'Tab') {
@@ -543,6 +592,14 @@
           activeIdx = 0;
           chosen = false;         // the next position's top row is not chosen
           render();
+          return;
+        }
+        if (segView) {   // inside a chain: replace the part's word, keep the rest
+          applyWord0(item, true);
+          activeIdx = 0;
+          chosen = true;
+          render();
+          if (mode === 'args') { chosen = false; render(); }
           return;
         }
         // Tab only autocompletes the highlighted item into the input — it never
