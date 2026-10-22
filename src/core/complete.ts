@@ -110,6 +110,8 @@ export type Where =
    * `given` = the options already typed; `ended` = a `--` came before (no more options).
    */
   | { at: "arg"; node: Node; path: string[]; arg: ArgDef; prior: Token[]; given: ReadonlySet<string>; ended: boolean }
+  /** After the last argument, or on a command without arguments: only the options not used yet (unless `--` came before). */
+  | { at: "options"; node: Node; path: string[]; given: ReadonlySet<string>; ended: boolean }
   /** Nothing to offer: an unknown command, an extra argument, after the end. */
   | { at: "none" };
 
@@ -255,7 +257,7 @@ export function locate(input: string, tokens: readonly Token[], cursor: number, 
     }
     p++;
   }
-  if (!target) return none(prefix);
+  if (!target) return { where: { at: "options", node, path, given, ended }, token: range, prefix, from: token.start };
   const prior = target.rest ? positionals.slice(first) : [];
   if (target.rest && prior.length > 0) {
     // One value made of several words: the prefix and the range start at the first of them.
@@ -433,6 +435,8 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
       return reply(commandRows(w.nodes, here.prefix), w.sub ? "<command>" : undefined);
     case "option":
       return reply(optionRows(w.node, w.given, here.prefix));
+    case "options":
+      return reply(w.ended || /\s/.test(here.prefix) ? [] : optionRows(w.node, w.given, here.prefix));
     case "optionValue": {
       const opt = w.option;
       const label = opt.values !== undefined ? valueNames(opt)[w.index] ?? "value" : valueLabel(opt);

@@ -6,6 +6,9 @@ import { tokenize } from "./tokenize.js";
 
 const run = () => undefined;
 const tree: CommandNode<any, any>[] = [
+  { name: "note", summary: "a note", options: [{ name: "edit", short: "e", summary: "edit it" }], run },
+  { name: "plain", summary: "no options, no args", run },
+  { name: "grp", summary: "a group", children: [{ name: "clear", summary: "clear it", run }] },
   {
     name: "mute",
     summary: "mute tracks",
@@ -92,7 +95,7 @@ const where = (text: string) => {
 };
 
 test("an empty line lists the commands; a prefix filters them, names first", () => {
-  assert.deepEqual(at("").labels, ["mute", "goto", "tag", "vol", "pakabl", "mode"]);
+  assert.deepEqual(at("").labels, ["note", "plain", "grp", "mute", "goto", "tag", "vol", "pakabl", "mode"]);
   assert.deepEqual(at("mo").labels, ["mode"]);
   assert.deepEqual(at("m").labels, ["mute", "mode"]);
   assert.equal(at("m").items[0]!.kind, "command");
@@ -202,8 +205,9 @@ test("enum arguments: choices, case ignored, quoted when they need it", () => {
 });
 
 test("an extra argument offers nothing", () => {
-  assert.deepEqual(at("mode fast ").items, []);
-  assert.deepEqual(at("mode fast x").items, []);
+  assert.deepEqual(at("mode fast ").setLabels, []);
+  assert.deepEqual(at("mode fast ").toolLabels, ["--help"]); // only the options are left to offer
+  assert.deepEqual(at("mode fast x").setLabels, []);
 });
 
 test("paths: whole-path match, own-name prefix first, unique paths inserted and quoted", () => {
@@ -269,7 +273,7 @@ test("a cursor in the middle: the word under it is replaced whole, matched by wh
 test("before the first word: a new word is started in front of the line", () => {
   const r = at("| mute");
   assert.deepEqual(r.replace, { from: 0, to: 0 });
-  assert.equal(r.items.length, 6);
+  assert.equal(r.items.length, 9);
 });
 
 test("`--` ends the options: the rest is positional text", () => {
@@ -298,7 +302,7 @@ test("caps: at most MAX_ROWS rows per level, best first", () => {
 
 test("nothing throws: junk data and odd input give an empty result", () => {
   const junk = { tree: [{ name: "x", summary: "y" }], completions: {}, paths: [], tags: [] } as unknown as CompletionData;
-  assert.deepEqual(at("x ", junk).items, []);
+  assert.deepEqual(at("x ", junk).setLabels, []);
   assert.deepEqual(complete("mute ", 99, data).replace, { from: 5, to: 5 });
   assert.deepEqual(complete("mute ", -4, data).replace.from, 0);
   assert.doesNotThrow(() => complete("\\", 1, data));
@@ -372,4 +376,17 @@ test("two zones: a group offers its subcommands (tool zone); the cap is per zone
   const big = at("mute ", { ...data, paths: many });
   assert.equal(big.setLabels.length, MAX_ROWS);
   assert.ok(big.toolLabels.length > 0 && big.toolLabels.length <= MAX_ROWS);
+});
+
+test("a command without arguments (or after its last one) still offers its unused options", () => {
+  assert.deepEqual(at("note ").toolLabels, ["--edit", "--help"]);
+  assert.deepEqual(at("note ").setLabels, []);
+  assert.equal(at("note ").usage, undefined);
+  assert.deepEqual(at("note -e ").toolLabels, ["--help"]); // --edit is used
+  assert.deepEqual(at("note --e").toolLabels, ["--edit", "--help"]); // prefix first, "help" holds an e
+  assert.deepEqual(at("plain ").toolLabels, ["--help"]); // no options of its own
+  assert.deepEqual(at("grp clear ").toolLabels, ["--help"]); // a leaf below a group
+  assert.deepEqual(at("note -- ").items, []); // after `--` none
+  assert.deepEqual(at("mode fast ").toolLabels, ["--help"]); // after its last argument
+  assert.equal(where("note ").where.at, "options");
 });
