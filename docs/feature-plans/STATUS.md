@@ -66,6 +66,8 @@ Open from the releases:
 - `vol`, `note`, MCP test access and screenshot tools (dev only), Remote Script 0.1.8.
 - Release docs review done: docs `01aa92b`; screenshots `71bb32d` (note view/edit, vol stop/clip,
   bridge 0.1.8), taken by cmdabl-docs through MCP.
+- Images redone through MCP: audit and stills `b2331dc` (palette.png had hardware names, replaced);
+  GIFs `a824320` (hero, tags, new vol-note on the home page); recording tools core `6f5287d`, `126f3dc`.
 - Release notes: run `cmdabl setup` once and restart Live.
 
 ## Built, Live-tested 2026-10-22: `note` (branch `feat/note`, plan 0013, joins 0.1.3)
