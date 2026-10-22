@@ -56,6 +56,9 @@ Older checks that were never reported; most can now run through MCP.
 
 ## Backlog (not ordered)
 
+- A `cmdabl settings` page (user, 2026-10-22): one place for cmdAbl's settings (`settings.json`); the
+  palette's "above the prompt" switch likely moves there. Builds on the store from 0.1.4 (plan 0008).
+
 - Ideas from ClyphX (2026-10-20): plan 0009 — `;` action lists with aliases (0.1.3); `.`,
   index, range and `all` targets, `vol`/`pan`/`send` (0.1.x); snapshots (0.2.x); triggers from
   clip, locator and pad names (spike after 0.2.0).
