@@ -1,5 +1,5 @@
 import { appLog, type Log } from "./log.js";
-import { runLine, type RunDeps } from "./run.js";
+import { runLine, type RunDeps, type RunOutcome } from "./run.js";
 import { presentResult } from "./present.js";
 import { uniquePath } from "../ableton/resolvePath.js";
 import { ExitCode, fail, type CommandResult } from "./types.js";
@@ -120,10 +120,12 @@ export async function runHeadless(
     },
   };
 
-  let result: CommandResult;
-  try {
-    const outcome = await gate.within(capture, () => runLine(line, runDeps));
-    result = outcome.result;
+  /**
+   * What a person would have been asked becomes the part's own answer: a pick nobody can answer is exit 4 with the
+   * candidates, any other cancel is a failure, a suggestion list keeps its failure and lists the candidates.
+   */
+  const settle = (outcome: RunOutcome): RunOutcome => {
+    let result = outcome.result;
     if (asked.length > 0) {
       if (outcome.cancelled) {
         result = fail(ExitCode.AMBIGUOUS, `ambiguous: ${asked.join("\n")}`);
@@ -134,6 +136,16 @@ export async function runHeadless(
     } else if (outcome.cancelled) {
       result = fail(ExitCode.FAILURE, "cancelled: the command needed an answer");
     }
+    asked.length = 0;
+    const { cancelled: _cancelled, fill: _fill, ...rest } = outcome;
+    return { ...rest, result };
+  };
+  const chainDeps: RunDeps = { ...runDeps, settle }; // a `;` chain settles each part; a single line is settled below
+
+  let result: CommandResult;
+  try {
+    const outcome = await gate.within(capture, () => runLine(line, chainDeps));
+    result = settle(outcome).result;
   } catch (e: unknown) {
     result = fail(ExitCode.FAILURE, `run failed: ${e instanceof Error ? e.message : String(e)}`);
   }

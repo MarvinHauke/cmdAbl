@@ -1,6 +1,6 @@
 import { effectiveOptions, valueLabel, valueNames, type ArgDef, type CommandNode, type OptionDef } from "./commandTree.js";
 import { findChild, startsOption } from "./parse.js";
-import { quoteIfNeeded, tokenize, type Token } from "./tokenize.js";
+import { chainSegments, quoteIfNeeded, tokenize, type Token } from "./tokenize.js";
 
 // Argument completion (plan 0006, "0.1.4: argument completion"): what the palette offers at the
 // cursor, as one pure function over a snapshot. `locate` finds the position (a command word, an
@@ -416,6 +416,14 @@ export function complete(line: string, cursor: number, data: CompletionData): Co
 }
 
 function completeInner(line: string, cursor: number, data: CompletionData): CompletionResult {
+  // A `;` chain (plan 0017): complete the part the caret is in, as if it were the whole line.
+  const segments = chainSegments(line);
+  if (segments.length > 1) {
+    const at = Math.max(0, Math.min(cursor, line.length));
+    const seg = segments.find((s) => s.start <= at && at <= s.end) ?? segments[segments.length - 1]!;
+    const inner = completeInner(line.slice(seg.start, seg.end), at - seg.start, data);
+    return { ...inner, replace: { from: inner.replace.from + seg.start, to: inner.replace.to + seg.start } };
+  }
   const tokens = tokenize(line).tokens;
   const here = locate(line, tokens, cursor, data.tree);
   const w = here.where;

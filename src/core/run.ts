@@ -1,5 +1,5 @@
 import { appLog } from "./log.js";
-import { ExitCode, fail, ok, type CommandResult } from "./types.js";
+import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "./types.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
 import type { CommandRegistry } from "./commandRegistry.js";
@@ -7,7 +7,7 @@ import { shortHelpIn, type CommandNode, type Invocation, type PickState } from "
 import { commandListText } from "./topics.js";
 import { parse } from "./parse.js";
 import { applyPick, lookupTarget, normalizeTargets, resolveTargets, tagTargetOf, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
-import { NUMBERISH, quoteIfNeeded, tokenize } from "./tokenize.js";
+import { NUMBERISH, quoteIfNeeded, splitChain, tokenize } from "./tokenize.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { PickPreview, StateChange } from "./ui.js";
 import { isTagWord, nodesForTag, nodesWithTag, parseTagTarget, type TagCount } from "./tags.js";
@@ -63,6 +63,12 @@ export interface RunDeps {
   refreshStructure?: () => Promise<void>;
   /** Ask the user to choose among the Set's tags (a bare `#` target); null = cancelled. Absent: `#` answers exit 5. */
   pickTags?: (request: { title: string; tags: TagCount[]; multi: boolean; preview: PickPreview }) => Promise<string[] | null>;
+  /**
+   * `;` chains only: called with each part's outcome. A caller that never has a person to ask (headless)
+   * turns a cancelled pick into that part's failure here, so the chain goes on; it must return an outcome
+   * that is not `cancelled`. Absent: a cancelled pick STOPS the chain (the parts before it stay done).
+   */
+  settle?: (outcome: RunOutcome) => RunOutcome;
 }
 
 export interface RunOutcome {
@@ -199,11 +205,76 @@ function previewFor(
 }
 
 /**
- * Run one typed line and log it: the canonical command line, the exit code and
+ * Run one typed line. A line may hold several commands separated by `;` (plan 0017): they run in
+ * order, a failing one does not stop the rest (like `;` in a shell), and a pick the user cancels does.
+ * One command: exactly `runPart`.
+ */
+export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome> {
+  const parts = splitChain(input);
+  if (parts.length <= 1) return runPart(parts[0]?.text ?? "", deps); // a trailing `;` or only `;`: the one part, or the empty line
+  return runChain(input.trim(), parts.map((p) => p.text), deps);
+}
+
+/** The part as it is named in a chain's messages: `part 2 (vol -6 #bass)`. */
+const partName = (index: number, text: string): string => `part ${index + 1} (${text.length > 60 ? `${text.slice(0, 59)}…` : text})`;
+
+async function runChain(whole: string, parts: string[], deps: RunDeps): Promise<RunOutcome> {
+  const log = deps.log ?? ((line: string) => appLog.record(line));
+  const now = deps.now ?? (() => Date.now());
+  const started = now();
+  log(`cmdAbl [run] info: start: ${whole} (${parts.length} parts)`);
+  const done: Array<{ text: string; outcome: RunOutcome }> = [];
+  let stoppedAt = -1;
+  let summary = "threw";
+  try {
+    for (const [index, text] of parts.entries()) {
+      let outcome = await runPart(text, deps);
+      if (outcome.fill !== undefined) {
+        // Tab on a pick list: the palette reopens with that text; the parts before stay done, the rest is not run.
+        summary = "filled";
+        return { result: ok(), cancelled: true, fill: outcome.fill };
+      }
+      if (deps.settle) {
+        try {
+          outcome = deps.settle(outcome);
+        } catch {
+          // a failing settle leaves the outcome as it was
+        }
+      }
+      if (outcome.cancelled) {
+        stoppedAt = index; // the person backed out of a pick: stop here
+        break;
+      }
+      done.push({ text, outcome });
+    }
+    const failures = done.filter((d) => d.outcome.result.code !== ExitCode.OK);
+    const line = done.map((d) => d.outcome.line ?? d.text).join("; ");
+    if (failures.length === 0) {
+      summary = stoppedAt >= 0 ? "cancelled" : "0";
+      // All ok: quiet (each part logged itself); the whole line is remembered with every part's unique paths.
+      return stoppedAt >= 0 ? { result: ok(), cancelled: true } : { result: ok(), line };
+    }
+    const details: TargetOutcome[] = done.map((d, i) => ({
+      path: partName(i, d.text),
+      ok: d.outcome.result.code === ExitCode.OK,
+      ...(d.outcome.result.code !== ExitCode.OK ? { code: d.outcome.result.code, message: d.outcome.result.message ?? `exit ${d.outcome.result.code}` } : {}),
+    }));
+    if (stoppedAt >= 0) details.push({ path: partName(stoppedAt, parts[stoppedAt]!), ok: false, message: "cancelled: the chain stopped here" });
+    const first = failures[0]!.outcome.result.code;
+    summary = String(first);
+    const headline = `${failures.length} of ${parts.length} parts failed${stoppedAt >= 0 ? ` (cancelled at part ${stoppedAt + 1})` : ""}`;
+    return { result: fail(first as Exclude<CommandResult["code"], 0>, headline, details), line };
+  } finally {
+    log(`cmdAbl [run] info: ${whole} -> ${summary} (${now() - started} ms)`);
+  }
+}
+
+/**
+ * Run one command and log it: the canonical command line, the exit code and
  * how long it took (a pick the user answers is included). Evidence for "what
  * ran right before the dialog hung".
  */
-export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome> {
+async function runPart(input: string, deps: RunDeps): Promise<RunOutcome> {
   const log = deps.log ?? ((line: string) => appLog.record(line));
   const now = deps.now ?? (() => Date.now());
   const started = now();

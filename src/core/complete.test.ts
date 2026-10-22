@@ -390,3 +390,29 @@ test("a command without arguments (or after its last one) still offers its unuse
   assert.deepEqual(at("mode fast ").toolLabels, ["--help"]); // after its last argument
   assert.equal(where("note ").where.at, "options");
 });
+
+test("`;` chains: after `; ` completion starts again at the command, and works on the part the caret is in", () => {
+  const after = at("mute /Lead; ");
+  assert.deepEqual(after.toolLabels, ["note", "plain", "grp", "mute", "goto", "tag", "vol", "pakabl", "mode"]);
+  assert.deepEqual(after.replace, { from: 12, to: 12 });
+  assert.deepEqual(at("mute /Lead;to").toolLabels, ["goto"]); // no space needed after the `;`
+  assert.deepEqual(at("mute /Lead; mo").toolLabels, ["mode"]);
+  assert.deepEqual(at("mute /Lead; mo").replace, { from: 12, to: 14 });
+  // arguments and usage follow the part
+  const second = at("mute /Lead; tag ");
+  assert.equal(second.usage, "<tag>");
+  assert.deepEqual(second.setLabels, ["fx", "drums", "bass line"]);
+  assert.deepEqual(second.replace, { from: 16, to: 16 });
+  // a caret in the first part of a longer line
+  const first = at("mute ki|ck; tag fx");
+  assert.deepEqual(first.setLabels.slice(0, 2), ["/Drums/Kick#1", "/Drums/Kick#2"]);
+  assert.deepEqual(first.replace, { from: 5, to: 9 });
+  // right before the `;` still belongs to the first part, right after it to the next
+  assert.equal(at("mute /Lead|; tag fx").replace.from, 5);
+  assert.equal(at("mute /Lead;| tag fx").replace.from, 11);
+  // a `;` in quotes is text, not a separator
+  assert.deepEqual(at('mute "a;b" ').toolLabels.includes("note"), false);
+  assert.equal(at('mute "/2-808 Co').replace.from, 5);
+  // `rest` words of an earlier part do not leak into the next part's value
+  assert.deepEqual(at("goto snare; goto dr").replace, { from: 17, to: 19 });
+});
