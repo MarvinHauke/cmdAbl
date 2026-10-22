@@ -52,6 +52,9 @@ settings store yet; `note` brings the small file access it needs (below).
 
 ### The page: `ui/modules/note/note.html` (a module page)
 
+Built: ui `8f47aab`; own renderer of about 6 KB. Output: `""` unchanged, `"\n"` cleared, otherwise the
+full text.
+
 **Modes:**
 
 | Mode | What it does |
@@ -64,7 +67,7 @@ settings store yet; `note` brings the small file access it needs (below).
 | Key | What it does |
 |---|---|
 | `e` | Switches from view to edit. |
-| Cmd+S or Save | Keeps the text and returns to view. |
+| Cmd+S or Save | Saves and closes the page (architect, 2026-10-22: a page cannot write, so a save held only in the page would be lost on a host-side close). `note` reopens in view. |
 | Esc in view | Closes the page. |
 | Esc in edit, with changes | The guard from the board (0010): first a warning, the second Esc discards. |
 
