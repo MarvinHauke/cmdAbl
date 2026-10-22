@@ -93,6 +93,9 @@ settings store yet; `note` brings the small file access it needs (below).
 - **Bridge:** a new op `set_id {create}` → `{id}` or `{id: null}`. It reads `Song.get_data("cmdabl.set-id")`;
   with `create` it writes a new random id first. The write uses the same "mark the Set as modified"
   trick as tags. Script 0.1.8.
+  Built: bridge `f9c1f76`. `set_id` counts as a write op, so the bridge token is needed even for a
+  read (the protocol decides by op name). Accepted (architect, 2026-10-22): `note` can't save without
+  the token anyway; docs say "reads need no token, except `set_id`".
 - **`ModuleApi`:**
   - `api.set.id(create?: boolean): Promise<string | null>`, backed by the op above; null without the
     script;
