@@ -65,9 +65,20 @@ export interface CompletionData {
 
 export type RowKind = "command" | "option" | "value" | "path" | "tag";
 
+/**
+ * Which part of the palette a row belongs to (plan 0006, "Two zones"): the tool zone (commands,
+ * subcommands, options) sits above the prompt, the Set zone (paths, tags, values) below it.
+ */
+export type Zone = "tool" | "set";
+
+/** The zone of a row kind: `command` and `option` are the tool's, `path`, `tag` and `value` the Set's. */
+export const zoneOf = (kind: RowKind): Zone => (kind === "command" || kind === "option" ? "tool" : "set");
+
 /** One row of the list. */
 export interface CompletionItem {
   label: string;
+  /** See `Zone`. Rows come tool zone first, then Set zone; each zone is ranked on its own, best first. */
+  zone: Zone;
   /** Ready to put in the line: quoted when it needs it. */
   insert: string;
   description?: string;
@@ -94,8 +105,11 @@ export type Where =
   | { at: "option"; node: Node; path: string[]; given: ReadonlySet<string> }
   /** The value (the `index`-th of several) of `option`; `inline` = typed as `--name=`. */
   | { at: "optionValue"; node: Node; path: string[]; option: OptionDef; index: number; inline: boolean }
-  /** A positional argument. `prior` = the words of this argument before the cursor (a `rest` argument spans several). */
-  | { at: "arg"; node: Node; path: string[]; arg: ArgDef; prior: Token[] }
+  /**
+   * A positional argument. `prior` = the words of this argument before the cursor (a `rest` argument spans several);
+   * `given` = the options already typed; `ended` = a `--` came before (no more options).
+   */
+  | { at: "arg"; node: Node; path: string[]; arg: ArgDef; prior: Token[]; given: ReadonlySet<string>; ended: boolean }
   /** Nothing to offer: an unknown command, an extra argument, after the end. */
   | { at: "none" };
 
@@ -247,9 +261,9 @@ export function locate(input: string, tokens: readonly Token[], cursor: number, 
     // One value made of several words: the prefix and the range start at the first of them.
     const start = prior[0]!.start;
     const text = [...prior.map((w) => w.value), prefix].join(" ");
-    return { where: { at: "arg", node, path, arg: target, prior }, token: range, prefix: text, from: start };
+    return { where: { at: "arg", node, path, arg: target, prior, given, ended }, token: range, prefix: text, from: start };
   }
-  return { where: { at: "arg", node, path, arg: target, prior }, token: range, prefix, from: token.start };
+  return { where: { at: "arg", node, path, arg: target, prior, given, ended }, token: range, prefix, from: token.start };
 }
 
 // ── matching and rows ───────────────────────────────────────────────────────────────────────────
@@ -291,7 +305,7 @@ function pick<T>(rows: readonly T[], score: (row: T) => number): T[] {
   return kept.slice(0, MAX_ROWS).map((k) => k.row);
 }
 
-function candidateRows(rows: readonly (Candidate | string)[] | undefined, text: string): CompletionItem[] {
+function candidateRows(rows: readonly (Candidate | string)[] | undefined, text: string): Array<Omit<CompletionItem, "zone">> {
   const list = (rows ?? []).map((r) => (typeof r === "string" ? { label: r } : r)).filter((r) => typeof r?.label === "string" && r.label !== "");
   return pick(list, (r) => nameScore(r.label, text)).map((r) => ({
     label: r.label,
@@ -301,7 +315,7 @@ function candidateRows(rows: readonly (Candidate | string)[] | undefined, text: 
   }));
 }
 
-function choiceRows(choices: readonly string[] | undefined, text: string): CompletionItem[] {
+function choiceRows(choices: readonly string[] | undefined, text: string): Array<Omit<CompletionItem, "zone">> {
   return pick(choices ?? [], (c) => nameScore(c, text)).map((c) => ({ label: c, insert: quoteIfNeeded(c), kind: "value" as const }));
 }
 
@@ -312,12 +326,12 @@ function argHint(arg: ArgDef): string {
   return arg.required === false ? `[${label}]` : label;
 }
 
-function optionRows(node: Node, given: ReadonlySet<string>, text: string): CompletionItem[] {
+function optionRows(node: Node, given: ReadonlySet<string>, text: string): Array<Omit<CompletionItem, "zone">> {
   const long = text.startsWith("--");
   const want = text.replace(/^-+/, "");
-  const rows: Array<{ item: CompletionItem; score: number }> = [];
+  const rows: Array<{ item: Omit<CompletionItem, "zone">; score: number }> = [];
   const add = (name: string, short: string | undefined, summary: string, hasValue: boolean, value: string): void => {
-    const hit = long ? nameScore(name, want) : want.length === 1 && short === want ? 0 : nameScore(name, want);
+    const hit = long ? nameScore(name, want) : want.length === 1 && short === want && text.startsWith("-") ? 0 : nameScore(name, want);
     if (hit < 0) return;
     rows.push({
       score: hit,
@@ -339,13 +353,13 @@ function optionRows(node: Node, given: ReadonlySet<string>, text: string): Compl
 }
 
 /** Option and argument sources shared by the value positions. */
-function valueRows(data: CompletionData, source: { choices?: string[]; complete?: string }, text: string): CompletionItem[] {
+function valueRows(data: CompletionData, source: { choices?: string[]; complete?: string }, text: string): Array<Omit<CompletionItem, "zone">> {
   const rows = [...choiceRows(source.choices, text)];
   if (source.complete) rows.push(...candidateRows(data.completions[source.complete], text));
   return rows.slice(0, MAX_ROWS);
 }
 
-function pathRows(data: CompletionData, arg: ArgDef, text: string): CompletionItem[] {
+function pathRows(data: CompletionData, arg: ArgDef, text: string): Array<Omit<CompletionItem, "zone">> {
   const kinds = arg.kinds;
   const rows = data.paths.filter((p) => !kinds || kinds.includes(p.kind));
   return pick(rows, (r) => pathScore(r, text)).map((r) => ({
@@ -356,7 +370,7 @@ function pathRows(data: CompletionData, arg: ArgDef, text: string): CompletionIt
   }));
 }
 
-function tagRows(data: CompletionData, text: string): CompletionItem[] {
+function tagRows(data: CompletionData, text: string): Array<Omit<CompletionItem, "zone">> {
   const negate = text.startsWith("!");
   const name = text.replace(/^!?#/, "");
   return pick(data.tags, (t) => nameScore(t.name, name)).map((t) => ({
@@ -367,8 +381,8 @@ function tagRows(data: CompletionData, text: string): CompletionItem[] {
   }));
 }
 
-function commandRows(nodes: readonly Node[], text: string): CompletionItem[] {
-  const rows: Array<{ item: CompletionItem; score: number; at: number }> = [];
+function commandRows(nodes: readonly Node[], text: string): Array<Omit<CompletionItem, "zone">> {
+  const rows: Array<{ item: Omit<CompletionItem, "zone">; score: number; at: number }> = [];
   nodes.forEach((node, at) => {
     const hit = nameScore(node.name, text);
     if (hit >= 0) rows.push({ item: { label: node.name, insert: node.name, description: node.summary, kind: "command" }, score: hit, at });
@@ -404,7 +418,13 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
   const here = locate(line, tokens, cursor, data.tree);
   const w = here.where;
   const replace = { from: here.from, to: here.token.to };
-  const reply = (items: CompletionItem[], usage?: string): CompletionResult => ({ items, replace, ...(usage ? { usage } : {}) });
+  // Rows come tool zone first, then Set zone, each in its own ranking; the 100-row cap applies per zone.
+  const reply = (items: Array<Omit<CompletionItem, "zone">>, usage?: string): CompletionResult => {
+    const zoned = items.map((item) => ({ ...item, zone: zoneOf(item.kind) }));
+    const tool = zoned.filter((i) => i.zone === "tool").slice(0, MAX_ROWS);
+    const set = zoned.filter((i) => i.zone === "set").slice(0, MAX_ROWS);
+    return { items: [...tool, ...set], replace, ...(usage ? { usage } : {}) };
+  };
 
   switch (w.at) {
     case "none":
@@ -421,15 +441,17 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
     case "arg": {
       const arg = w.arg;
       const hint = argHint(arg);
+      // The tool zone: the options not used yet, beside the arguments (not after `--`, not inside a `rest` value).
+      const options = w.ended || (arg.rest && w.prior.length > 0) || /\s/.test(here.prefix) ? [] : optionRows(w.node, w.given, here.prefix);
       const tag = !arg.rest && arg.kind === "path" && /^!?#/.test(here.prefix) && !/["']/.test(line[here.from] ?? "");
-      if (tag) return reply(tagRows(data, here.prefix), hint);
+      if (tag) return reply([...options, ...tagRows(data, here.prefix)], hint);
       if (arg.kind === "path") {
         const rows = pathRows(data, arg, here.prefix);
         if (arg.complete) rows.push(...candidateRows(data.completions[arg.complete], here.prefix));
-        return reply(rows.slice(0, MAX_ROWS), hint);
+        return reply([...options, ...rows], hint);
       }
-      if (arg.kind === "number") return reply([], hint);
-      return reply(valueRows(data, arg, here.prefix), hint);
+      if (arg.kind === "number") return reply(options, hint);
+      return reply([...options, ...valueRows(data, arg, here.prefix)], hint);
     }
   }
 }

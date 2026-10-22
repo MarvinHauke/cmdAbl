@@ -43,7 +43,7 @@ test("the snapshot holds the slim tree, completer rows by key, paths and tags", 
   assert.equal("run" in data.tree[0]!, false);
   // and complete() works on exactly this data
   assert.deepEqual(complete("tag --rename ", 13, data).items.map((i) => i.label), ["a", "b"]);
-  assert.deepEqual(complete("pakabl install ", 15, data).items, []);
+  assert.deepEqual(complete("pakabl install ", 15, data).items.filter((i) => i.zone === "set"), []);
 });
 
 test("duplicate names insert the unique path", () => {

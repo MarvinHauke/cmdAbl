@@ -82,7 +82,8 @@ function at(text: string, d: CompletionData = data) {
   const bar = text.indexOf("|");
   const line = bar < 0 ? text : text.slice(0, bar) + text.slice(bar + 1);
   const result = complete(line, bar < 0 ? line.length : bar, d);
-  return { ...result, line, labels: result.items.map((i) => i.label), inserts: result.items.map((i) => i.insert) };
+  const labelsOf = (zone: "tool" | "set") => result.items.filter((i) => i.zone === zone).map((i) => i.label);
+  return { ...result, line, labels: result.items.map((i) => i.label), inserts: result.items.map((i) => i.insert), toolLabels: labelsOf("tool"), setLabels: labelsOf("set") };
 }
 const where = (text: string) => {
   const bar = text.indexOf("|");
@@ -186,18 +187,18 @@ test("a value option with a default: a value or the next option", () => {
 test("positional arguments in order, with kinds and hints", () => {
   const first = at("tag ");
   assert.equal(first.usage, "<tag>");
-  assert.deepEqual(first.labels, ["fx", "drums", "bass line"]);
+  assert.deepEqual(first.setLabels, ["fx", "drums", "bass line"]);
   const second = at("tag fx ");
   assert.equal(second.usage, "[<targets>…]");
-  assert.deepEqual(second.labels, ["/Drums", "/2-808 Core Kit", "/Lead"]); // kinds: ["track"] drops devices and chains
+  assert.deepEqual(second.setLabels, ["/Drums", "/2-808 Core Kit", "/Lead"]); // kinds: ["track"] drops devices and chains
 });
 
 test("enum arguments: choices, case ignored, quoted when they need it", () => {
-  assert.deepEqual(at("mode ").labels, ["fast", "slow", "Safe Mode"]);
-  assert.deepEqual(at("mode SA").labels, ["Safe Mode"]);
+  assert.deepEqual(at("mode ").setLabels, ["fast", "slow", "Safe Mode"]);
+  assert.deepEqual(at("mode SA").setLabels, ["Safe Mode"]);
   assert.equal(at("mode sa").inserts[0], '"Safe Mode"');
   assert.equal(at("mode ").usage, "<fast|slow|Safe Mode>");
-  assert.deepEqual(at("pakabl install ").labels, ["alpha", "beta"]); // a dynamic enum: completer rows
+  assert.deepEqual(at("pakabl install ").setLabels, ["alpha", "beta"]); // a dynamic enum: completer rows
 });
 
 test("an extra argument offers nothing", () => {
@@ -252,16 +253,16 @@ test("a cursor inside an open quote completes the partial word and closes the qu
 
 test("a cursor in the middle: the word under it is replaced whole, matched by what is before the cursor", () => {
   const r = at("mute ki|ck /Lead");
-  assert.deepEqual(r.labels.slice(0, 2), ["/Drums/Kick#1", "/Drums/Kick#2"]);
+  assert.deepEqual(r.setLabels.slice(0, 2), ["/Drums/Kick#1", "/Drums/Kick#2"]);
   assert.deepEqual(r.replace, { from: 5, to: 9 });
   // in whitespace between words: a new word, nothing replaced
   const end = at("mute /Lead| /Drums"); // the end of a word still belongs to it
   assert.deepEqual(end.replace, { from: 5, to: 10 });
   const between = at("mute /Lead |/Drums");
   assert.deepEqual(between.replace, { from: 11, to: 11 });
-  assert.equal(between.items.length, 6); // all paths: nothing typed
+  assert.equal(between.setLabels.length, 6); // all paths: nothing typed
   // the command word in the middle of the line
-  assert.deepEqual(at("mu|te /Lead").labels, ["mute"]);
+  assert.deepEqual(at("mu|te /Lead").toolLabels, ["mute"]);
   assert.deepEqual(at("mu|te /Lead").replace, { from: 0, to: 4 });
 });
 
@@ -286,12 +287,13 @@ test("a word the options consume is not a positional one", () => {
 test("caps: at most MAX_ROWS rows per level, best first", () => {
   const many: PathRow[] = Array.from({ length: 400 }, (_, i) => ({ path: `/T${i}`, name: `T${i}`, kind: "track" as const }));
   const big = { ...data, paths: many };
-  assert.equal(at("mute ", big).items.length, MAX_ROWS);
+  assert.equal(at("mute ", big).setLabels.length, MAX_ROWS);
+  assert.equal(at("mute ", big).toolLabels.length, 5); // the tool zone has its own cap, not shared
   assert.equal(at("mute T1", big).items[0]!.label, "/T1");
   const tags = { ...data, tags: Array.from({ length: 300 }, (_, i) => ({ name: `t${i}`, count: 1 })) };
-  assert.equal(at("mute #", tags).items.length, MAX_ROWS);
+  assert.equal(at("mute #", tags).setLabels.length, MAX_ROWS);
   const rows = { ...data, completions: { tags: Array.from({ length: 300 }, (_, i) => ({ label: `x${i}` })) } };
-  assert.equal(at("tag ", rows).items.length, MAX_ROWS);
+  assert.equal(at("tag ", rows).setLabels.length, MAX_ROWS);
 });
 
 test("nothing throws: junk data and odd input give an empty result", () => {
@@ -307,8 +309,8 @@ test("nothing throws: junk data and odd input give an empty result", () => {
 test("completer rows: strings and objects, insert quoted, bad entries skipped", () => {
   const d = { ...data, completions: { tags: ["a b", { label: "shown", insert: "real value" }, { label: "" }, 3, null] as never } }; // a page gets normalized rows; be forgiving anyway
   const r = at("tag ", d);
-  assert.deepEqual(r.labels, ["a b", "shown"]);
-  assert.deepEqual(r.inserts, ['"a b"', '"real value"']);
+  assert.deepEqual(r.setLabels, ["a b", "shown"]);
+  assert.deepEqual(r.items.filter((i) => i.zone === "set").map((i) => i.insert), ['"a b"', '"real value"']);
 });
 
 test("usage of a multi-value option without a completer still names each value (<old>, then <new>)", () => {
@@ -322,4 +324,52 @@ test("usage of a multi-value option without a completer still names each value (
   // no labels declared: "value" for each
   const bare = completionTree([{ name: "x", summary: "s", options: [{ name: "pair", takesValue: true, values: 2, summary: "p" }], run }]);
   assert.equal(complete("x --pair ", 9, { ...d, tree: bare }).usage, "<value>");
+});
+
+test("two zones: a positional position returns the unused options (tool) and the targets (set), tool rows first", () => {
+  const r = at("tag ");
+  assert.deepEqual(r.toolLabels, ["--rename", "--edit", "--pick", "--help"]);
+  assert.deepEqual(r.setLabels, ["fx", "drums", "bass line"]);
+  assert.deepEqual(r.items.map((i) => i.zone), ["tool", "tool", "tool", "tool", "set", "set", "set"]);
+  assert.deepEqual([...new Set(r.items.map((i) => [i.kind, i.zone].join("/")))], ["option/tool", "value/set"]);
+  assert.equal(at("mute #").items.find((i) => i.kind === "tag")!.zone, "set");
+  assert.equal(at("mute ").items.find((i) => i.kind === "path")!.zone, "set");
+  assert.equal(at("m").items[0]!.zone, "tool");
+});
+
+test("two zones: options already typed are not offered again, and each zone is ranked on its own", () => {
+  assert.deepEqual(at("tag --edit fx ").toolLabels.includes("--edit"), false);
+  assert.deepEqual(at("mute del").toolLabels, ["--delay"]); // an option name that fits the typed text
+  const r = at("mute dr");
+  assert.deepEqual(r.toolLabels, []);
+  assert.equal(r.setLabels[0], "/Drums"); // the paths are ranked without the options
+  assert.deepEqual(at("mute /Dr").toolLabels, []); // a path-like word fits no option
+});
+
+test("two zones: nothing but the value while an option waits for it", () => {
+  assert.deepEqual(at("tag --rename ").toolLabels, []);
+  assert.deepEqual(at("tag --rename ").setLabels, ["fx", "drums", "bass line"]);
+  assert.deepEqual(at("mute --set ").toolLabels, []); // choices only
+  assert.deepEqual(at("mute --set ").setLabels, ["0", "1"]);
+  assert.deepEqual(at("mute --delay ").toolLabels, []);
+});
+
+test("two zones: no options after `--` or inside a rest value; a bare dash narrows to options", () => {
+  assert.deepEqual(at("tag -- ").toolLabels, []);
+  assert.deepEqual(at("tag -- ").setLabels, ["fx", "drums", "bass line"]);
+  assert.deepEqual(at("goto snare ").toolLabels, []); // words already typed belong to the one value
+  assert.deepEqual(at("goto ").toolLabels, ["--pick", "--help"]); // before the first word they are offered
+  const dash = at("tag -");
+  assert.deepEqual(dash.setLabels, []);
+  assert.deepEqual(dash.toolLabels, ["--rename", "--edit", "--pick", "--help"]);
+});
+
+test("two zones: a group offers its subcommands (tool zone); the cap is per zone", () => {
+  const r = at("pakabl ");
+  assert.deepEqual(r.toolLabels, ["install", "list"]);
+  assert.deepEqual(r.items.map((i) => i.zone), ["tool", "tool"]);
+  const many: PathRow[] = Array.from({ length: 400 }, (_, i) => ({ path: `/T${i}`, name: `T${i}`, kind: "track" as const }));
+  const big = at("mute ", { ...data, paths: many });
+  assert.equal(big.setLabels.length, MAX_ROWS);
+  assert.ok(big.toolLabels.length > 0 && big.toolLabels.length <= MAX_ROWS);
 });
