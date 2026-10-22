@@ -1,6 +1,6 @@
 # `note`: one Markdown note per Set
 
-**Status:** In work for 0.1.3 (user, 2026-10-22: `note` joins the 0.1.3 release with `vol`).
+**Status:** Built for 0.1.3 (modules `9cb136a`), Live test pending (user, 2026-10-22: `note` joins the 0.1.3 release with `vol`).
 Trigger: the user wants a note per Set for general reminders, written in Markdown.
 
 **Parent:** [0004](0004-command-platform.md)
