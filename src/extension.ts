@@ -343,6 +343,7 @@ export function activate(activation: ActivationContext) {
   }
 
   /** What the palette completes arguments from (plan 0006), taken once at open. Never throws. */
+  let tagsAwaited = false; // the cold tag cache is awaited once per session, never again
   async function snapshotCompletion(): Promise<CompletionData | undefined> {
     const started = Date.now();
     try {
@@ -352,11 +353,19 @@ export function activate(activation: ActivationContext) {
         nodes: liveNodes,
         // Stale-while-revalidate, like the tree build: building the tree (liveNodes) already schedules a
         // background refresh of the tags and the rack chain names, so an open palette sees what the last
-        // refresh read. Only a cold tag cache (never read) is awaited, so the first `#` is not empty.
+        // refresh read. Only the very first snapshot of a session waits for a cold tag cache (so the
+        // first `#` is not empty); every later open starts a background refresh and never waits.
         refresh: () => {
           if (getBridge().state() === "unavailable") return Promise.resolve();
           const tags = getTagCache();
-          return tags.ready() ? Promise.resolve() : tags.refreshNow(getBridge());
+          if (!tags.ready() && !tagsAwaited) {
+            tagsAwaited = true;
+            return tags.refreshNow(getBridge()).then((read) => {
+              if (!read.ok) logger("completion").debug(`tag cache not read (exit ${read.code}); later opens will not wait for it`);
+              else if (!tags.ready()) logger("completion").debug("tag cache still not ready after the read (a write landed meanwhile); later opens will not wait for it");
+            });
+          }
+          return Promise.resolve(); // building the tree schedules the background refresh
         },
         debug: (line) => logger("completion").debug(line),
       });
