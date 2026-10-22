@@ -45,8 +45,8 @@ Open from the releases:
 - Live test: relative/absolute on `#drums`, decimals, the +6 and -inf limits, `/Main`, a chain gives
   exit 2, one Cmd+Z per run, displayed dB matches the log within 0.1 dB.
 - Live test (2026-10-22): stop, `--clip`, the -69.6 floor, `--set`, usage errors pass. Not shown in the
-  test: Cmd+Z, a fader at -inf next to others (stop), `/Main`, a chain (exit 2). Follow-ups: core —
-  history quotes negative numbers (`vol "-30"`); modules — group the `--clip` message by limit.
+  test: Cmd+Z, a fader at -inf next to others (stop), `/Main`, a chain (exit 2). Follow-ups done: core
+  `f40a89a` (history no longer quotes numbers); modules (limit messages grouped by end, 5 tracks max).
 - Docs still to do: `vol` in using.md, `volume`/`setVolume` in the authoring guide's TracksPort row.
 
 ## Next (user, 2026-10-20/21)
