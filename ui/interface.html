@@ -57,24 +57,30 @@
     #above span + span { border-left: 1px solid var(--border); }
     #above span.on { background: var(--bg-row); color: var(--accent); }
 
-    /* ── selectable tool zone (above = options): best match at the bottom, next to the prompt; ~5 rows, then it scrolls ── */
-    #tools { flex: 0 0 auto; height: 150px; overflow-y: auto; scrollbar-gutter: stable; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
-    #tools.hidden { display: none; }
-    #tools.empty, #hints.empty { border-bottom-color: transparent; }   /* looks absent while empty; the height stays reserved */
-    #tools > :first-child { margin-top: auto; }   /* sits at the bottom while the zone is short (safe with overflow) */
-    #tools .row { flex-shrink: 0; }
+    /* ── the area above the prompt (hints / options mode): a fixed height reserved from open on, so nothing moves.
+          A dim heading at its top says what it is; one dim note in the middle while it has no rows. ── */
+    .zone { flex: 0 0 auto; position: relative; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
+    .zone.hidden { display: none; }
+    #tools { height: 150px; }
+    #hints { height: 100px; }
+    .zhead { flex: 0 0 auto; padding: 3px 12px 2px; font-size: 10px; line-height: 14px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; }
+    .znote { position: absolute; left: 0; right: 0; top: 55%; transform: translateY(-50%); text-align: center; font-size: 11px; color: var(--dim); pointer-events: none; }
+    .znote:empty { display: none; }
+    .zbody { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
 
-    /* ── hint panel (above the prompt, which-key style): read-only, never takes a key ── */
-    #hints {
-      flex: 0 0 auto; height: 100px; overflow-y: auto; align-content: start; scrollbar-gutter: stable;
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0 12px;
-      padding: 4px 12px; border-bottom: 1px solid var(--border);
-      font-size: 11px; line-height: 16px; user-select: none; cursor: default;
+    /* selectable tool zone (above = options): best match at the bottom, next to the prompt; then it scrolls */
+    #toolsBody { display: flex; flex-direction: column; }
+    #toolsBody > :first-child { margin-top: auto; }   /* sits at the bottom while the zone is short (safe with overflow) */
+    #toolsBody .row { flex-shrink: 0; }
+
+    /* hint panel (which-key style): read-only, never takes a key */
+    #hintsBody {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0 12px; align-content: start;
+      padding: 2px 12px; font-size: 11px; line-height: 16px; user-select: none; cursor: default;
     }
-    #hints.hidden { display: none; }
-    #hints .hint { display: flex; gap: 6px; min-width: 0; white-space: nowrap; }
-    #hints .hk { flex: 0 0 auto; color: var(--accent); font-weight: 600; }
-    #hints .hd { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
+    #hintsBody .hint { display: flex; gap: 6px; min-width: 0; white-space: nowrap; }
+    #hintsBody .hk { flex: 0 0 auto; color: var(--accent); font-weight: 600; }
+    #hintsBody .hd { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
 
     /* ── dropdown (Set zone, below the prompt) ── */
     #dropdown { flex: 1; overflow-y: auto; }
@@ -97,8 +103,8 @@
 </head>
 <body>
 
-  <div id="tools"></div>
-  <div id="hints"></div>
+  <div id="tools" class="zone hidden"><div class="zhead"></div><div class="zbody" id="toolsBody"></div><div class="znote"></div></div>
+  <div id="hints" class="zone hidden"><div class="zhead"></div><div class="zbody" id="hintsBody"></div><div class="znote"></div></div>
 
   <div id="bar">
     <span id="colon">:</span>
@@ -130,8 +136,10 @@
 
     const input     = document.getElementById('input');
     const dropdown  = document.getElementById('dropdown');
-    const hintsEl   = document.getElementById('hints');
-    const tools     = document.getElementById('tools');
+    const hintsZone = document.getElementById('hints');
+    const toolsZone = document.getElementById('tools');
+    const hintsEl   = document.getElementById('hintsBody');
+    const tools     = document.getElementById('toolsBody');
     const ghostMirror = document.querySelector('#ghost .mirror');
     const ghostHint   = document.querySelector('#ghost .hint');
 
@@ -150,6 +158,7 @@
     const startAbove = ABOVE.includes(SETTINGS?.above) ? SETTINGS.above : 'off';
     let above     = startAbove;   // what sits above the prompt (args mode only): nothing, a hint panel, or a selectable tool zone
     let hintRows  = [];     // the panel's rows (read-only): the command's options and subcommands
+    let inList    = false;  // the tool rows are in the list below (after `-`, or subcommands at a group position)
     let dashed    = false;  // the word at the caret starts with `-`: the options are the list
     let view      = null;    // args mode: { replace: {from, to}, usage }
 
@@ -196,6 +205,7 @@
       view = null;
       hintRows = [];
       dashed = false;
+      inList = false;
       if (mode === 'args') {
         if (!COMPLETION) return [];
         const res = CmdComplete.complete(raw, caret, COMPLETION);
@@ -213,6 +223,7 @@
           return [...tool, ...hist, ...set];
         }
         const toolInList = dashed || (!set.length && tool[0]?.type === 'command');
+        inList = toolInList && tool.length > 0;
         hintRows = above === 'hints' && !toolInList ? tool : [];
         return [...hist, ...set, ...(toolInList ? tool : [])];
       }
@@ -368,6 +379,14 @@
       ghostMirror.style.marginLeft = hint ? -input.scrollLeft + 'px' : '0';
     }
 
+    // The heading and the note of an area above the prompt (textContent only). The heading names the
+    // recognized command; the note shows while the area has no rows.
+    function fillZone(zone, name, tail, empty, wordZeroNote) {
+      const cmd = mode === 'args' ? /^\s*(\S+)/.exec(input.value)?.[1] : null;
+      zone.querySelector('.zhead').textContent = name + (cmd ? ' · ' + cmd + tail : '');
+      zone.querySelector('.znote').textContent = !empty ? '' : mode === 'args' ? (inList ? 'Listed below' : 'No options here') : wordZeroNote;
+    }
+
     // ── render ─────────────────────────────────────────────────────────────
     function render() {
       items     = computeItems(input.value);
@@ -400,8 +419,8 @@
       for (const i of displayOrder()) (items[i].pane === 'tool' ? tools : dropdown).appendChild(draw(items[i], i));
       // The area above the prompt is reserved at a fixed height for the whole session in hints/options
       // mode (empty at word 0), so the prompt and the list never move while typing.
-      tools.classList.toggle('hidden', above !== 'options');
-      tools.classList.toggle('empty', !tools.firstChild);
+      toolsZone.classList.toggle('hidden', above !== 'options');
+      fillZone(toolsZone, 'Options', ' — ↑ to choose', !tools.firstChild, 'Type a command to see its options');
       tools.scrollTop = tools.scrollHeight;   // the best row (the bottom one) in view
       // The list keeps its place (and the footer its position) even when it is empty.
 
@@ -414,8 +433,8 @@
         cell.append(k, d);
         hintsEl.appendChild(cell);
       }
-      hintsEl.classList.toggle('hidden', above !== 'hints');
-      hintsEl.classList.toggle('empty', !hintsEl.firstChild);
+      hintsZone.classList.toggle('hidden', above !== 'hints');
+      fillZone(hintsZone, 'Hints', '', !hintsEl.firstChild, 'Type a command to see what it can do');
 
       document.querySelector('.row.active')?.scrollIntoView({ block: 'nearest' });
     }
