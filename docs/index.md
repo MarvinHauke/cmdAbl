@@ -4,7 +4,7 @@
 
 ![Screen recording of the palette: mute drums mutes the drum tracks, solo !#drums solos the other tracks, and mute --pick #drums opens a pick list where rows are marked and Enter applies](assets/images/hero.gif)
 
-![Screen recording: vol 9 #drums raises the drum faders and stops at +6 dB with a message that names the tracks, then note opens the Mix notes of the Set](assets/images/vol-note.gif)
+![Screen recording: the drum tracks sit at different levels; vol -6 #drums lowers all their faders by 6 dB and vol 4 #drums raises them by 4 dB, so they move like one fader and the balance stays; then note opens the Mix notes of the Set](assets/images/vol-note.gif)
 
 ## Why cmdAbl
 
