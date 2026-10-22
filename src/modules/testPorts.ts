@@ -4,6 +4,7 @@ import type { Command } from "../core/commandRegistry.js";
 import { helpForPath, usageForPath } from "../core/commandTree.js";
 import type { Provider } from "../core/types.js";
 import type { BoardAnswer, BoardRequest, StateChange } from "../core/ui.js";
+import { MAX_FILE_BYTES, validFileName } from "../core/files.js";
 import type { ModuleApi, TagRow, TrackHandle } from "./types.js";
 
 // A ModuleApi made of fakes, so a module's `activate` and its commands' `run`
@@ -25,6 +26,10 @@ export interface FakeApiOptions {
   pickTagsAnswer?: (rows: TagRow[]) => string[] | null;
   /** Tags per node (by `handleId`) the fake `api.tags` starts with; writes land in `fake.tagStore`. */
   tags?: Record<string, string[]>;
+  /** The Set's id the fake `api.set.id` starts with (default: none yet; `id(true)` then makes "fake-set-id"). */
+  setId?: string | null;
+  /** Files the fake `api.files` starts with, by name. */
+  files?: Record<string, string>;
 }
 
 export interface FakeApi {
@@ -54,6 +59,10 @@ export interface FakeApi {
   volumes: Map<string, number>;
   /** How many transactions were opened. */
   transactions: number;
+  /** The fake `api.files`, by name; writes land here. */
+  fileStore: Map<string, string>;
+  /** The Set's id now (`api.set.id(true)` fills it when empty). */
+  setId: string | null;
 }
 
 export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
@@ -77,6 +86,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     tracks: new Map(),
     volumes: new Map(),
     transactions: 0,
+    fileStore: new Map(Object.entries(options.files ?? {})),
+    setId: options.setId ?? null,
   };
   fake.api = {
     bridge,
@@ -101,6 +112,20 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
           fake.tracks.set(node.handleId, handle);
         }
         return handle ?? null;
+      },
+    },
+    set: {
+      id: async (create) => {
+        if (fake.setId === null && create === true) fake.setId = "fake-set-id";
+        return fake.setId;
+      },
+    },
+    files: {
+      read: async (name) => (validFileName(name) ? (fake.fileStore.get(name) ?? null) : null),
+      write: async (name, text) => {
+        if (!validFileName(name) || typeof text !== "string" || Buffer.byteLength(text, "utf8") > MAX_FILE_BYTES) return false;
+        fake.fileStore.set(name, text);
+        return true;
       },
     },
     log: (line) => void fake.logs.push(line),

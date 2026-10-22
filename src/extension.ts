@@ -12,7 +12,7 @@ import { registerBuiltins } from "./core/builtins.js";
 import { reportBridge } from "./core/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { getTagCache } from "./ableton/tagCache.js";
-import { paramDisplay } from "./ableton/bridgeOps.js";
+import { paramDisplay, setId } from "./ableton/bridgeOps.js";
 import { findRacks, getChainNameCache } from "./ableton/chainNames.js";
 import { presentResult } from "./core/present.js";
 import { runLine } from "./core/run.js";
@@ -23,6 +23,9 @@ import { quoteIfNeeded } from "./core/tokenize.js";
 import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/ui.js";
+import { createModuleFiles } from "./core/files.js";
+import { tokenFilePath } from "./ableton/bridgeToken.js";
+import * as path from "node:path";
 import { createUiGate, runHeadless } from "./core/headless.js";
 import { createDevRoutes, runTokenFilePath, type DevRoutes, writeRunToken } from "./devRoutes.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
@@ -120,6 +123,9 @@ export function activate(activation: ActivationContext) {
   });
 
   // ── default modules ──────────────────────────────────────────────────────
+  // The extension's data folder: the SDK's storageDirectory when it answers (it is undefined in practice today),
+  // else the macOS path the tokens use. A module's files go under modules/<its name>/ there.
+  const dataFolder = context.environment.storageDirectory ?? path.dirname(tokenFilePath());
   const moduleApi: ModuleApi = {
     get bridge() {
       return getBridge();
@@ -139,6 +145,11 @@ export function activate(activation: ActivationContext) {
       // Only a track node has a track; a device or chain would give its CONTAINING track.
       track: (node) => (node.kind === "track" ? trackFor(context, node) : null),
     },
+    // The Set's id lives in the Set, written and read by the Remote Script (operation set_id).
+    set: { id: (create) => setId(getBridge(), create === true) },
+    // Replaced per module below (a module sees its own folder only). Before a module's first command names it,
+    // this folder is modules/module/; modules call files from a run, after activation.
+    files: createModuleFiles({ base: dataFolder, module: () => "module", warn: (text) => logger("module").warn(text) }),
     log: (line) => logger("module").info(line), // replaced per module below
     logger: logger("module") as ModuleApi["logger"],
     dialog: (html, width, height, name = "module page") => ui.page(name, html, width, height),
@@ -171,6 +182,7 @@ export function activate(activation: ActivationContext) {
     let named = mod.name !== undefined;
     const tagged = () => logger(source);
     return Object.assign(Object.create(moduleApi) as ModuleApi, {
+      files: createModuleFiles({ base: dataFolder, module: () => source, warn: (text) => tagged().warn(text) }),
       log: (line: string) => tagged().info(line),
       logger: {
         debug: (text: string) => tagged().debug(text),

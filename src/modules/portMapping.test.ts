@@ -70,3 +70,14 @@ test("fake tracks.volume and setVolume: 0.85 by default, clamped writes, only tr
   await done;
   assert.equal(fake.volumes.get("t1"), 0.5);
 });
+
+test("fake api.set.id and api.files: id(true) creates once, files round-trip, bad names refused", async () => {
+  const fake = createFakeApi({ nodes: [] });
+  assert.equal(await fake.api.set.id(), null);
+  assert.equal(await fake.api.set.id(true), "fake-set-id");
+  assert.equal(await fake.api.set.id(), "fake-set-id");
+  assert.equal(await fake.api.files.write("x.md", "hi"), true);
+  assert.equal(await fake.api.files.read("x.md"), "hi");
+  assert.equal(await fake.api.files.write("../x", "hi"), false);
+  assert.equal(await fake.api.files.read("nope"), null);
+});

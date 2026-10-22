@@ -90,6 +90,29 @@ export const PORT_MAPPING: readonly PortMapping[] = [
     note: "Live refuses some tracks silently; `can_be_armed` and the verification come from the script (operation `track_facts`).",
   },
 
+  // the Set's identity and the module's files
+  {
+    port: "set.id",
+    via: "script",
+    call: "operation `set_id` (reads `cmdabl.set-id`; with create, stores a new random id first)",
+    lom: ["Song.get_data", "Song.set_data"],
+    note: "Stored in the Set with Song.set_data (whether it survives save, reload and Save As is still to be checked in Live). Null without the script.",
+  },
+  {
+    port: "files.read",
+    via: "platform",
+    call: "reads `<Extensions Data>/<extension id>/modules/<module>/<name>` (UTF-8)",
+    lom: [],
+    note: "Plain file names only; a module sees its own folder.",
+  },
+  {
+    port: "files.write",
+    via: "platform",
+    call: "writes a temporary file and renames it to `<Extensions Data>/<extension id>/modules/<module>/<name>`",
+    lom: [],
+    note: "The folder is created on the first write; at most 1 MB.",
+  },
+
   // dialog, log and the platform-only ports
   { port: "dialog", via: "sdk", call: "the SDK's modal dialog (`context.ui`, a data: URL page) through the dialog queue", lom: [] },
   { port: "log", via: "platform", call: "an info line in the log, tagged with the module (cmdabl log)", lom: [] },

@@ -71,6 +71,33 @@ export interface TagsPort {
   write(node: ObjectNode, tags: string[]): Promise<BridgeResult<TagsWritten>>;
 }
 
+/** The Live Set's own identity (plan 0013). */
+export interface SetPort {
+  /**
+   * The id stored in the Set (`cmdabl.set-id`, kept with Song.set_data; whether it survives save, reload and
+   * Save As is still to be checked in Live), so it can name things that belong to this Set). `create: true` stores a new random id when the Set has none.
+   * Null: the Set has no id yet (and `create` was not given), or the Remote Script is not running
+   * or too old. Never throws.
+   */
+  id(create?: boolean): Promise<string | null>;
+}
+
+/** A module's own small text files in the extension's data folder (plan 0013). */
+export interface FilesPort {
+  /**
+   * The text of the file, or null when it does not exist, the name is refused or the read fails.
+   * Names are plain file names (no "/" or "\\" or "..", no leading dot, at most 100 characters); a
+   * module sees only its own folder `<data folder>/modules/<module name>/`.
+   */
+  read(name: string): Promise<string | null>;
+  /**
+   * Write the file (UTF-8, at most 1 MB), creating the folder on the first write; the file appears
+   * whole or not at all. True when written, false for a refused name, too much text or a failing
+   * disk (a warning is logged). Never throws.
+   */
+  write(name: string, text: string): Promise<boolean>;
+}
+
 export interface LiveSetPort {
   /** The addressable objects of the current Set, flattened (tracks, devices, chains), with unique-able paths. */
   nodes(): ObjectNode[];
@@ -83,6 +110,10 @@ export interface ModuleApi {
   liveSet: LiveSetPort;
   /** Track writes through the SDK. */
   tracks: TracksPort;
+  /** The Set's identity (plan 0013). */
+  set: SetPort;
+  /** The module's own files (plan 0013). */
+  files: FilesPort;
   /** One info line in the log, tagged with the module's name (`cmdAbl [name] info: …`); no prefix of your own. */
   log(line: string): void;
   /**

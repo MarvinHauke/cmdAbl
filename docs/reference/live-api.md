@@ -47,6 +47,9 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `tracks.volume` | sdk | `track.mixer.volume.getValue()` | [`MixerDevice.volume`](https://docs.cycling74.com/apiref/lom/mixerdevice/) | 0..1 (0.85 is 0 dB), regular, return, group and main tracks. Live's display text for a value comes from the script (operation `param_display`). |
 | `tracks.setVolume` | sdk | `track.mixer.volume.setValue(v)` | [`MixerDevice.volume`](https://docs.cycling74.com/apiref/lom/mixerdevice/) | Clamped to 0..1; inside `tracks.transaction` it joins the undo step. |
 | `tracks.track().arm` | sdk | `track.arm` | [`Track.arm`](https://docs.cycling74.com/apiref/lom/track/) | Live refuses some tracks silently; `can_be_armed` and the verification come from the script (operation `track_facts`). |
+| `set.id` | script | operation `set_id` (reads `cmdabl.set-id`; with create, stores a new random id first) | [`Song.get_data`](https://docs.cycling74.com/apiref/lom/song/), [`Song.set_data`](https://docs.cycling74.com/apiref/lom/song/) | Stored in the Set with Song.set_data (whether it survives save, reload and Save As is still to be checked in Live). Null without the script. |
+| `files.read` | platform | reads `<Extensions Data>/<extension id>/modules/<module>/<name>` (UTF-8) | – | Plain file names only; a module sees its own folder. |
+| `files.write` | platform | writes a temporary file and renames it to `<Extensions Data>/<extension id>/modules/<module>/<name>` | – | The folder is created on the first write; at most 1 MB. |
 | `dialog` | sdk | the SDK's modal dialog (`context.ui`, a data: URL page) through the dialog queue | – |  |
 | `log` | platform | an info line in the log, tagged with the module (cmdabl log) | – |  |
 | `pick` | platform | the platform's pick list | – |  |
