@@ -277,6 +277,16 @@ self-explanation. The user also wants recent commands first.
 - The footer control is a small three-way switch (Off · Hints · Options) instead of the checkbox. It is
   clicked; no key, and focus stays in the input.
 
+**Layout without jumping (user, 2026-10-22):**
+- The prompt keeps one position for the whole time the palette is open (ui `05ff390`).
+- In "hints" and "options" mode the palette opens **taller** (core, `src/core/ui.ts`), so the area above
+  the prompt is bigger and at least 5 target rows stay visible below it.
+- That area has **no frame, background or divider while it is empty**, so it looks absent until there is
+  content. The prompt still doesn't move.
+- A separate hint window is not possible: the SDK has only modal dialogs, one at a time, with a fixed
+  size. Live's status bar (`show_message`) would need the palette to reach cmdAbl while open; it depends
+  on the server spike above.
+
 ## Open questions
 
 - Prototype ghost text on a plain `<input>` overlay vs. a `contenteditable`; settle by trying.
