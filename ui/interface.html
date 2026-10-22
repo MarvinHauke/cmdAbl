@@ -82,6 +82,8 @@
     #hintsBody .hk { position: relative; color: var(--accent); font-weight: 600; white-space: nowrap; }
     #hintsBody .cur .hk::before { content: '▸'; position: absolute; left: -10px; }
     #hintsBody .cur .hv, #hintsBody .cur .hd { color: var(--text); }
+    #hintsBody .hdt { display: inline-block; white-space: nowrap; }
+    #hintsBody .cur .hd { text-overflow: clip; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent); }
     #hintsBody .hv { color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #hintsBody .hd { color: var(--dim); opacity: .75; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -388,6 +390,36 @@
       ghostMirror.style.marginLeft = hint ? -input.scrollLeft + 'px' : '0';
     }
 
+    // The marked row's summary, when clipped, scrolls sideways like a marquee: it starts after 700 ms on the
+    // row, moves at 40 px/s (a transform on an inner span, so nothing reflows), waits 1 s at the end, jumps
+    // back and goes again. Any render (another row, another key) stops it. Reduced motion: a title instead.
+    let marqueeTimer = null, marqueeAnim = null;
+    function stopMarquee() {
+      clearTimeout(marqueeTimer); marqueeTimer = null;
+      if (marqueeAnim) { marqueeAnim.cancel(); marqueeAnim = null; }
+    }
+    function armMarquee() {
+      stopMarquee();
+      const hd = hintsEl.querySelector('.cur .hd');
+      const t = hd?.firstChild;
+      if (!t || !t.animate) return;
+      const dist = Math.ceil(t.offsetWidth - hd.clientWidth);
+      if (dist <= 1) return;   // fits: nothing to read
+      const travel = dist + 18;   // the end of the text clears the fade at the right edge
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { hd.title = t.textContent; return; }
+      const run = () => {
+        marqueeAnim = t.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-travel) + 'px)' }],
+                                { duration: travel / 0.04, easing: 'linear', fill: 'forwards' });
+        marqueeAnim.onfinish = () => {
+          marqueeTimer = setTimeout(() => {   // 1 s at the end, then jump back and go again
+            if (marqueeAnim) { marqueeAnim.cancel(); marqueeAnim = null; }
+            marqueeTimer = setTimeout(run, 700);
+          }, 1000);
+        };
+      };
+      marqueeTimer = setTimeout(run, 700);
+    }
+
     // The heading and the note of an area above the prompt (textContent only). The heading names the
     // recognized command; the note shows while the area has no rows.
     function fillZone(zone, name, tail, empty, wordZeroNote) {
@@ -445,10 +477,15 @@
         cell.className = 'hint' + (cur && cur.zone === 'tool' && cur.title === h.title ? ' cur' : '');   // the row highlighted in the list
         const k = document.createElement('span'); k.className = 'hk'; k.textContent = h.title;
         const v = document.createElement('span'); v.className = 'hv'; v.textContent = words.slice(0, n).join(' ');
-        const d = document.createElement('span'); d.className = 'hd'; d.textContent = words.slice(n).join(' ');
+        const d = document.createElement('span'); d.className = 'hd';
+        const summary = words.slice(n).join(' ');
+        if (cell.classList.contains('cur')) {   // the marked row only: an inner span the marquee can move
+          const t = document.createElement('span'); t.className = 'hdt'; t.textContent = summary; d.appendChild(t);
+        } else d.textContent = summary;
         cell.append(k, v, d);
         hintsEl.appendChild(cell);
       }
+      armMarquee();
       hintsZone.classList.toggle('hidden', above !== 'hints');
       fillZone(hintsZone, 'Hints', '', !hintsEl.firstChild, 'Type a command to see what it can do');
 
