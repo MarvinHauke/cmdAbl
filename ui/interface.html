@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. SETTINGS_PLACEHOLDER = null | { optionsAbove }. Out also carries { settings: { optionsAbove } } (alone on Esc after a toggle). Lists: one below the prompt (Set rows, then options); with `optionsAbove` the tool rows (subcommands, options) sit above it once a command is recognized. -->
+<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. SETTINGS_PLACEHOLDER = null | { above: "off"|"hints"|"options" }. Out also carries { settings: { above } } (alone on Esc after a change). One list below the prompt (recent lines, targets; options after typing `-`; subcommands at a group position). above="hints": a read-only which-key panel above the prompt shows the command's options and subcommands; above="options": a selectable tool zone above it (↑ enters, best row next to the prompt). -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -51,15 +51,29 @@
     }
 
     /* ── footer ── */
-    #foot { flex: 0 0 auto; padding: 4px 12px; border-top: 1px solid var(--border); color: var(--dim); font-size: 11px; }
-    #foot label { display: inline-flex; align-items: center; gap: 6px; cursor: default; user-select: none; }
-    #foot input { margin: 0; accent-color: var(--accent); }
+    #foot { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-top: 1px solid var(--border); color: var(--dim); font-size: 11px; user-select: none; }
+    #above { display: inline-flex; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+    #above span { padding: 1px 8px; cursor: default; }
+    #above span + span { border-left: 1px solid var(--border); }
+    #above span.on { background: var(--bg-row); color: var(--accent); }
 
-    /* ── tool zone (above the prompt): best match at the bottom, next to the prompt; ~5 rows, then it scrolls ── */
+    /* ── selectable tool zone (above = options): best match at the bottom, next to the prompt; ~5 rows, then it scrolls ── */
     #tools { flex: 0 0 auto; max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
     #tools.hidden { display: none; }
     #tools > :first-child { margin-top: auto; }   /* sits at the bottom while the zone is short (safe with overflow) */
     #tools .row { flex-shrink: 0; }
+
+    /* ── hint panel (above the prompt, which-key style): read-only, never takes a key ── */
+    #hints {
+      flex: 0 0 auto; max-height: 84px; overflow-y: auto;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0 12px;
+      padding: 4px 12px; border-bottom: 1px solid var(--border);
+      font-size: 11px; line-height: 16px; user-select: none; cursor: default;
+    }
+    #hints.hidden { display: none; }
+    #hints .hint { display: flex; gap: 6px; min-width: 0; white-space: nowrap; }
+    #hints .hk { flex: 0 0 auto; color: var(--accent); font-weight: 600; }
+    #hints .hd { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
 
     /* ── dropdown (Set zone, below the prompt) ── */
     #dropdown { flex: 1; overflow-y: auto; }
@@ -84,6 +98,7 @@
 <body>
 
   <div id="tools"></div>
+  <div id="hints"></div>
 
   <div id="bar">
     <span id="colon">:</span>
@@ -95,7 +110,7 @@
 
   <div id="dropdown"></div>
 
-  <div id="foot"><label><input type="checkbox" id="above" tabindex="-1" /> Options above the prompt</label></div>
+  <div id="foot"><span>Above the prompt</span><span id="above" role="radiogroup"><span data-v="off">Off</span><span data-v="hints">Hints</span><span data-v="options">Options</span></span></div>
 
   <!-- Shared matcher, inlined as a `CmdMatch` global at build time. -->
   <script>/*MATCH_PLACEHOLDER*/</script>
@@ -110,11 +125,12 @@
     // null, or the snapshot CmdComplete.complete(line, cursor, COMPLETION) works on:
     //   { tree, completions, paths, tags }. null = no argument completion.
     const COMPLETION = /*COMPLETION_PLACEHOLDER*/null;
-    // null, or { optionsAbove }: the footer checkbox's initial state (false when absent).
+    // null, or { above }: the footer switch's initial state ("off" when absent).
     const SETTINGS = /*SETTINGS_PLACEHOLDER*/null;
 
     const input     = document.getElementById('input');
     const dropdown  = document.getElementById('dropdown');
+    const hintsEl   = document.getElementById('hints');
     const tools     = document.getElementById('tools');
     const ghostMirror = document.querySelector('#ghost .mirror');
     const ghostHint   = document.querySelector('#ghost .hint');
@@ -130,8 +146,11 @@
     let newLine   = null;  // rows + ranker without history lines, built on first use
     let chosen    = false; // the user moved the selection (arrows, Tab) since the last keystroke
     let mode      = 'word0'; // 'word0': fuzzy rows for the first word; 'args': CmdComplete rows
-    let optionsAbove = SETTINGS?.optionsAbove === true;   // tool rows above the prompt (args mode only)
-    let toggled   = false;   // the checkbox was flipped: the setting travels back even on Esc
+    const ABOVE = ['off', 'hints', 'options'];
+    const startAbove = ABOVE.includes(SETTINGS?.above) ? SETTINGS.above : 'off';
+    let above     = startAbove;   // what sits above the prompt (args mode only): nothing, a hint panel, or a selectable tool zone
+    let hintRows  = [];     // the panel's rows (read-only): the command's options and subcommands
+    let dashed    = false;  // the word at the caret starts with `-`: the options are the list
     let view      = null;    // args mode: { replace: {from, to}, usage }
 
     // ── messaging ──────────────────────────────────────────────────────────
@@ -139,7 +158,7 @@
     // bridge can only carry one string); null/empty closes without acting.
     function send(result) {
       // The setting goes back with the answer; on Esc only when the checkbox was flipped (core runs nothing then).
-      const out = result != null ? { ...result, settings: { optionsAbove } } : toggled ? { settings: { optionsAbove } } : null;
+      const out = result != null ? { ...result, settings: { above } } : above !== startAbove ? { settings: { above } } : null;
       const payload = out == null ? '' : JSON.stringify(out);
       const msg = { method: 'close_and_send', params: [payload] };
       if (window.webkit?.messageHandlers?.live) {
@@ -175,6 +194,8 @@
       const caret = input.selectionStart ?? raw.length;
       mode = modeAt(raw, caret);
       view = null;
+      hintRows = [];
+      dashed = false;
       if (mode === 'args') {
         if (!COMPLETION) return [];
         const res = CmdComplete.complete(raw, caret, COMPLETION);
@@ -182,10 +203,18 @@
         const rows = res.items.map(r => ({ type: r.kind, zone: r.zone, title: r.label, subtitle: r.description, insert: r.insert }));
         const tool = rows.filter(r => r.zone === 'tool'), set = rows.filter(r => r.zone !== 'tool');
         const hist = recentLines(raw, caret);
-        // Options on: the tool rows sit above the prompt (the zone shows only where this position has some).
-        // Off: one list below: history, then targets, then the options.
-        for (const r of tool) r.pane = optionsAbove ? 'tool' : 'list';
-        return optionsAbove ? [...tool, ...hist, ...set] : [...hist, ...set, ...tool];
+        // The list holds targets (recent lines first). Options join it only once `-` is typed, and
+        // subcommands at a group position with no targets; otherwise the tool rows are only hints.
+        dashed = raw.slice(res.replace.from, caret).startsWith('-');
+        // above = options: the tool rows are a selectable zone above the prompt, best row next to it.
+        if (above === 'options') {
+          for (const r of tool) r.pane = 'tool';
+          hintRows = [];
+          return [...tool, ...hist, ...set];
+        }
+        const toolInList = dashed || (!set.length && tool[0]?.type === 'command');
+        hintRows = above === 'hints' && !toolInList ? tool : [];
+        return [...hist, ...set, ...(toolInList ? tool : [])];
       }
       const part = wordAtCaret();
       // The word before the caret is a complete command name: its arguments follow, no completion.
@@ -230,12 +259,13 @@
     }
 
     // The highlight with nothing chosen: the best word-0 row; in arguments the first target (path,
-    // tag or value; recent lines stay one ↑ above it), or at a group position the best subcommand
-    // (`pakabl ` + Tab). Options are matched by name and are only reached with ↑ / ↓ (-1 = none).
+    // tag or value; recent lines stay one ↑ above it), at a group position the best subcommand
+    // (`pakabl ` + Tab), and after a typed `-` the first option. -1 = none.
     function defaultIdx() {
       if (mode !== 'args') return 0;
       const t = items.findIndex(r => r.zone === 'set' && r.type !== 'history');
-      return t !== -1 ? t : items.findIndex(r => r.type === 'command');
+      if (t !== -1) return t;
+      return items.findIndex(r => r.type === 'command' || (dashed && r.type === 'option'));
     }
 
     // Rows top to bottom as drawn: the tool zone reversed (best next to the prompt), then the list.
@@ -345,6 +375,7 @@
       updateGhost();
 
       dropdown.innerHTML = '';
+      hintsEl.innerHTML = '';
       tools.innerHTML = '';
 
       const draw = (item, i) => {
@@ -366,13 +397,22 @@
         return row;
       };
 
-      const order = displayOrder();
-      for (const i of order) (items[i].pane === 'tool' ? tools : dropdown).appendChild(draw(items[i], i));
+      for (const i of displayOrder()) (items[i].pane === 'tool' ? tools : dropdown).appendChild(draw(items[i], i));
       tools.classList.toggle('hidden', !tools.firstChild);
+      tools.scrollTop = tools.scrollHeight;   // the best row (the bottom one) in view
       dropdown.classList.toggle('hidden', !dropdown.firstChild);
 
-      // Keep the tool zone's best row (the bottom one) in view unless the highlight is elsewhere.
-      tools.scrollTop = tools.scrollHeight;
+      // The hint panel: read-only, built from the command's tool rows.
+      for (const h of hintRows) {
+        const cell = document.createElement('div');
+        cell.className = 'hint';
+        const k = document.createElement('span'); k.className = 'hk'; k.textContent = h.title;
+        const d = document.createElement('span'); d.className = 'hd'; d.textContent = h.subtitle ?? '';
+        cell.append(k, d);
+        hintsEl.appendChild(cell);
+      }
+      hintsEl.classList.toggle('hidden', !hintsEl.firstChild);
+
       document.querySelector('.row.active')?.scrollIntoView({ block: 'nearest' });
     }
 
@@ -386,18 +426,18 @@
       if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) { activeIdx = 0; chosen = false; render(); }
     });
 
-    // ↑/↓ walk the rows as drawn (tool zone top, Set zone bottom); the ends stop.
+    // ↑/↓ walk the rows as drawn (the tool zone on top when it is selectable, the list below; the hint
+    // panel is never part of it); the ends stop.
     function moveSel(d) {
       const order = displayOrder();
       if (!order.length) return;
-      if (activeIdx < 0) {   // nothing highlighted: ↑ goes to the best tool row, ↓ to the first Set row
+      if (activeIdx < 0) {   // nothing highlighted: ↑ goes to the best tool row, ↓ to the first list row
         const next = d < 0 ? items.findIndex(r => r.pane === 'tool') : items.findIndex(r => r.pane !== 'tool');
         if (next === -1) return;
         activeIdx = next; chosen = true; render();
         return;
       }
-      const pos = Math.max(0, Math.min(order.indexOf(activeIdx) + d, order.length - 1));
-      activeIdx = order[pos];
+      activeIdx = order[Math.max(0, Math.min(order.indexOf(activeIdx) + d, order.length - 1))];
       chosen = true;
       render();
     }
@@ -459,16 +499,18 @@
       }
     });
 
-    // The footer checkbox: toggling re-renders at once; keyboard focus stays in the input.
+    // The footer switch (Off · Hints · Options): a click sets it and re-renders at once; no key, and
+    // keyboard focus stays in the input.
     const aboveBox = document.getElementById('above');
-    aboveBox.checked = optionsAbove;
-    document.querySelector('#foot label').addEventListener('mousedown', e => {
-      e.preventDefault();   // no focus change, no native toggle
-      optionsAbove = !optionsAbove; toggled = true;
-      aboveBox.checked = optionsAbove;
+    const showAbove = () => aboveBox.querySelectorAll('span').forEach(el => el.classList.toggle('on', el.dataset.v === above));
+    showAbove();
+    aboveBox.addEventListener('mousedown', e => {
+      e.preventDefault();   // no focus change
+      const v = e.target.dataset?.v;
+      if (!ABOVE.includes(v) || v === above) return;
+      above = v; showAbove();
       chosen = false; render(); input.focus();
     });
-    document.querySelector('#foot label').addEventListener('click', e => e.preventDefault());
 
     // ── init ───────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
