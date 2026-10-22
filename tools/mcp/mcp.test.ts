@@ -203,6 +203,31 @@ test("show: posts the line with the token and says it started; busy is an answer
   }
 });
 
+test("cmdabl_show waits for the dialog after the start; a refused start does not wait", async () => {
+  let waited = 0;
+  const desktop = { waitForDialog: async () => (waited++, { text: "opened: fake", isError: false }) } as never;
+  const started = { show: async (line: string) => ({ text: `started ${line}`, isError: false }) } as never;
+  const refused = { show: async () => ({ text: "HTTP 409: busy", isError: true }) } as never;
+  const call = async (client: never) => {
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    const server = createServer(client, desktop);
+    const mcp = new Client({ name: "test", version: "0" });
+    try {
+      await Promise.all([server.connect(a), mcp.connect(b)]);
+      return (await mcp.callTool({ name: "cmdabl_show", arguments: { line: "tag -l" } })) as { content: Array<{ text: string }>; isError?: boolean };
+    } finally {
+      await mcp.close();
+      await server.close();
+    }
+  };
+  const ok = await call(started);
+  assert.equal(ok.content[0]!.text, "started tag -l\nopened: fake");
+  assert.equal(waited, 1);
+  const no = await call(refused);
+  assert.equal(no.isError, true);
+  assert.equal(waited, 1);
+});
+
 test("the MCP server lists its ten tools", async () => {
   const [a, b] = InMemoryTransport.createLinkedPair();
   const server = createServer(createClient({ port: 1, ...withToken }));

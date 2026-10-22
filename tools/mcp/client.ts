@@ -133,8 +133,8 @@ export function createClient(options: ClientOptions = {}) {
       if (refused) return refused;
       return ok(
         line.trim() === ""
-          ? "started: the palette is opening in Live (not waiting for it). Use cmdabl_capture to see it, cmdabl_keys to type."
-          : "started: the line is running interactively in Live (not waiting for its dialog). Use cmdabl_capture to see it, cmdabl_keys to answer it.",
+          ? "started: the palette is opening in Live. Use cmdabl_capture to see it, cmdabl_keys to type."
+          : "started: the line is running interactively in Live. Use cmdabl_capture to see it, cmdabl_keys to answer it.",
       );
     },
     async log(n = 50): Promise<ToolText> {

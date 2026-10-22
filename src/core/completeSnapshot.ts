@@ -121,10 +121,13 @@ export async function buildCompletionData(deps: SnapshotDeps): Promise<Completio
       return [key, normalizeCandidates(raw)];
     }),
   );
+  const t0 = Date.now();
   if (deps.refresh) {
     await withBudget(deps.refresh, deps.refreshBudgetMs ?? REFRESH_BUDGET_MS, undefined, (why) => debug(`completion: cache refresh gave up: ${why}`));
   }
+  const t1 = Date.now();
   const completions = Object.fromEntries(await rowsFor);
+  const t2 = Date.now();
 
   let nodes: ObjectNode[] = [];
   try {
@@ -132,11 +135,16 @@ export async function buildCompletionData(deps: SnapshotDeps): Promise<Completio
   } catch (e: unknown) {
     debug(`completion: cannot read the Set: ${e instanceof Error ? e.message : String(e)}`);
   }
+  const t3 = Date.now();
+  const tree = completionTree(deps.roots);
+  const paths = pathRows(nodes);
+  const tags = tagRows(nodes);
+  debug(`completion timing: cache refresh ${t1 - t0} ms, completers ${t2 - t1} ms more, reading the Set ${t3 - t2} ms, rows ${Date.now() - t3} ms`);
   if (nodes.length > MAX_PATHS) debug(`completion: paths capped (${MAX_PATHS} of ${nodes.length}); devices are dropped first`);
   return {
-    tree: completionTree(deps.roots),
+    tree,
     completions,
-    paths: pathRows(nodes),
-    tags: tagRows(nodes),
+    paths,
+    tags,
   };
 }

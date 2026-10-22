@@ -350,11 +350,14 @@ export function activate(activation: ActivationContext) {
         roots: registry.roots(),
         completers: registry.completers(),
         nodes: liveNodes,
-        // The caches that live behind the bridge are read once here; the completers and the paths read them.
-        refresh: () =>
-          getBridge().state() === "unavailable"
-            ? Promise.resolve()
-            : Promise.all([getTagCache().refreshNow(getBridge()), runBase.refreshStructure()]),
+        // Stale-while-revalidate, like the tree build: building the tree (liveNodes) already schedules a
+        // background refresh of the tags and the rack chain names, so an open palette sees what the last
+        // refresh read. Only a cold tag cache (never read) is awaited, so the first `#` is not empty.
+        refresh: () => {
+          if (getBridge().state() === "unavailable") return Promise.resolve();
+          const tags = getTagCache();
+          return tags.ready() ? Promise.resolve() : tags.refreshNow(getBridge());
+        },
         debug: (line) => logger("completion").debug(line),
       });
       logger("completion").debug(

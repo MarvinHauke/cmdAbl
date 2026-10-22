@@ -67,7 +67,8 @@ test("a completer that throws, rejects or is too slow gives no rows and a debug 
   assert.deepEqual(data.completions.tags, []);
   assert.deepEqual(data.completions.words, []);
   assert.deepEqual(data.completions.ids, [{ label: "x" }]);
-  assert.equal(debug.length, 2);
+  assert.equal(debug.filter((l) => /gave no rows/.test(l)).length, 2);
+  assert.ok(debug.some((l) => /^completion timing: cache refresh \d+ ms, completers \d+ ms more, reading the Set \d+ ms, rows \d+ ms$/.test(l)));
   assert.match(debug.join("\n"), /completer "tags" gave no rows: boom/);
   assert.match(debug.join("\n"), /completer "words" gave no rows: took over 20 ms/);
   const rejecting = await buildCompletionData({ roots, completers: new Map([["tags", () => Promise.reject(new Error("no"))]]), nodes: () => [], debug: () => {} });

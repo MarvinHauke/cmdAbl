@@ -363,3 +363,27 @@ test("macOS: the paced-typing script really runs in osascript (key and dialog ch
   const out = execFileSync("osascript", ["-l", "JavaScript", "-e", script], { encoding: "utf8", timeout: 15_000 });
   assert.deepEqual(JSON.parse(out.trim()), { sent: true });
 });
+
+const winList = (...ws: Array<[number, number]>) =>
+  JSON.stringify(ws.map(([width, height], i) => ({ id: i + 1, name: "", width, height, x: 0, y: 0, alpha: 1 })));
+
+test("waitForDialog: polls until a dialog window is on screen, settles, then says opened", async () => {
+  const sleeps: number[] = [];
+  let polls = 0;
+  const f = fake(() => ({ stdout: ++polls < 3 ? winList([1400, 900]) : winList([500, 260], [1400, 900]) }));
+  const out = await createDesktop({ run: f.run, sleep: async (ms) => void sleeps.push(ms) }).waitForDialog();
+  assert.equal(out.isError, false);
+  assert.match(out.text, /^opened/);
+  assert.equal(polls, 3);
+  assert.deepEqual(sleeps, [100, 100, 150]); // two polls apart, then the settle
+});
+
+test("waitForDialog: no dialog within the time says timed out (not an error); a failing listing is not waited on", async () => {
+  const none = fake(() => ({ stdout: winList([1400, 900]) }));
+  const out = await createDesktop({ run: none.run, sleep: async () => {} }).waitForDialog({ timeoutMs: 500, pollMs: 100 });
+  assert.equal(out.isError, false);
+  assert.match(out.text, /^timed out/);
+  assert.equal(none.calls.length, 5);
+  const broken = fake(() => ({ code: 1, stderr: "boom" }));
+  assert.match((await createDesktop({ run: broken.run, sleep: async () => {} }).waitForDialog()).text, /^not waited/);
+});
