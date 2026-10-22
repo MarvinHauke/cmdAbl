@@ -246,10 +246,10 @@ self-explanation. The user also wants recent commands first.
 - **Start at targets:** with nothing chosen, the highlight (and so Tab) is the first target row. Recent
   history lines stay at the top of the Set zone, one ↑ away from the first target. At a group position
   with no targets (`pakabl `), it is the best subcommand.
-- **The setting is stored by core** in `settings.json` in cmdAbl's data folder (`palette.optionsAbove`,
+- **The setting is stored by core** in `settings.json` in cmdAbl's data folder (`palette.hints`,
   default `false`) and passed to the palette in its JSON. The page can't call the extension while
   open, so it returns the setting with its result, or alone on Esc
-  (`PaletteResult.settings?: { optionsAbove: boolean }`; a result with only `settings` runs nothing).
+  (`PaletteResult.settings?: { hints: boolean }`; a result with only `settings` runs nothing).
   This is the first piece of the 0008 store; an additive change to the palette contract, asked for by
   the user.
 
