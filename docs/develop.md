@@ -84,6 +84,9 @@ project's `.mcp.json` registers it (`npx tsx tools/mcp/main.ts`); `npm run mcp` 
 | `cmdabl_show(line)` | Opens a command's dialog in Live, as if typed in the palette, and returns at once. An empty line opens the empty palette. |
 | `cmdabl_keys(text, key)` | Brings Live to the front and types text or presses one key from a short allowed list. Needs Accessibility access for your terminal app. |
 | `cmdabl_capture(name, target)` | Saves one Live window to `captures/<name>.png` (not committed): `dialog` is the frontmost cmdAbl dialog, `live` is Live's main window. |
+| `cmdabl_record(name, seconds)` | Records Live's main window for 1 to 30 seconds to `captures/<name>.mov` (not committed). It returns at once; then do the actions with `cmdabl_show` and `cmdabl_keys`. Needs Screen Recording access for your terminal app. |
+| `cmdabl_record_status(name)` | Says whether the recording is still running or done, and how big the file is. |
+| `cmdabl_convert(name, format, width, crop)` | Turns the recording into `captures/<name>.mp4` or `.gif` with ffmpeg. `crop` is `w:h:x:y` in source pixels. |
 
 When cmdAbl is not running, the tools say so within about 12 seconds.
 
@@ -95,6 +98,11 @@ When cmdAbl is not running, the tools say so within about 12 seconds.
 4. Run test lines with `cmdabl_run` and check the log lines with `cmdabl_log`. To look at a dialog, open it with
    `cmdabl_show`, capture it with `cmdabl_capture` and close it with `cmdabl_keys`. A capture can show private names,
    so check it before you use it anywhere.
+
+**Recordings.** A recording is of a screen area, not of one window: whatever covers Live is recorded too, such as a
+notification. Turn on Do Not Disturb first, and check every frame before you use a recording. `cmdabl_keys` takes
+`delayMs`, a pause after each typed character, so typing in a recording reads well. Before a take, reset the Set the
+way it was.
 
 What needs eyes or hands stays manual: Cmd+Z and moving a control.
 
