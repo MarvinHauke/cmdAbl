@@ -236,6 +236,23 @@ self-explanation. The user also wants recent commands first.
 - The tool zone shows at most about 5 rows; the dialog size is unchanged; the ghost text stays the
   usage hint.
 
+**Refined after the first build (user, 2026-10-22):**
+- **The tool zone is optional, and off by default.** A checkbox in the palette's footer, "Options
+  above the prompt", turns it on. With it off there is one list below the prompt: targets first, then
+  the options. So the options stay visible, but the palette never grows upward.
+- **With it on,** the palette grows upward only after a command is recognized **and** that position
+  has options or subcommands. At word 0 there is no tool zone; commands, history and Live objects stay
+  in one list below, as before.
+- **Start at targets:** with nothing chosen, the highlight (and so Tab) is the first target row. Recent
+  history lines stay at the top of the Set zone, one ↑ away from the first target. At a group position
+  with no targets (`pakabl `), it is the best subcommand.
+- **The setting is stored by core** in `settings.json` in cmdAbl's data folder (`palette.optionsAbove`,
+  default `false`) and passed to the palette in its JSON. The page can't call the extension while
+  open, so it returns the setting with its result, or alone on Esc
+  (`PaletteResult.settings?: { optionsAbove: boolean }`; a result with only `settings` runs nothing).
+  This is the first piece of the 0008 store; an additive change to the palette contract, asked for by
+  the user.
+
 ## Open questions
 
 - Prototype ghost text on a plain `<input>` overlay vs. a `contenteditable`; settle by trying.
