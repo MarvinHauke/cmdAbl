@@ -266,6 +266,17 @@ self-explanation. The user also wants recent commands first.
 - `complete()` keeps returning tool rows with `zone: "tool"`; the page draws them in the hint panel,
   not in the list.
 
+**Both as a choice (user, 2026-10-22, after trying the selectable zone in Live):**
+- The setting becomes `palette.above: "off" | "hints" | "options"`, default `"off"`. It replaces
+  `palette.hints`.
+  - `"off"`: one list below; options appear only after `-` (subcommands at a group position).
+  - `"hints"`: the which-key panel above, not selectable, compact.
+  - `"options"`: the selectable tool zone above (↑ enters it, best row next to the prompt), as built in
+    ui `4745dd2`.
+- In every mode, the list below holds targets in the larger row style and starts at the first target.
+- The footer control is a small three-way switch (Off · Hints · Options) instead of the checkbox. It is
+  clicked; no key, and focus stays in the input.
+
 ## Open questions
 
 - Prototype ghost text on a plain `<input>` overlay vs. a `contenteditable`; settle by trying.
