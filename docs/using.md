@@ -44,6 +44,8 @@ A grey hint after the cursor shows what the command expects next, such as `<targ
 
 A name with spaces is quoted for you.
 
+![The palette after `tag --rename `: the five tags of the Set with their track counts, and the grey hint `<old>`.](assets/images/complete-rename.png)
+
 ## Name the objects
 
 A command takes objects as text. cmdAbl reads that text as follows:
