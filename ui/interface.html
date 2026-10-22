@@ -58,14 +58,15 @@
     #above span.on { background: var(--bg-row); color: var(--accent); }
 
     /* ── selectable tool zone (above = options): best match at the bottom, next to the prompt; ~5 rows, then it scrolls ── */
-    #tools { flex: 0 0 auto; height: min(150px, 30vh); overflow-y: auto; scrollbar-gutter: stable; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
+    #tools { flex: 0 0 auto; height: 150px; overflow-y: auto; scrollbar-gutter: stable; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
     #tools.hidden { display: none; }
+    #tools.empty, #hints.empty { border-bottom-color: transparent; }   /* looks absent while empty; the height stays reserved */
     #tools > :first-child { margin-top: auto; }   /* sits at the bottom while the zone is short (safe with overflow) */
     #tools .row { flex-shrink: 0; }
 
     /* ── hint panel (above the prompt, which-key style): read-only, never takes a key ── */
     #hints {
-      flex: 0 0 auto; height: min(84px, 18vh); overflow-y: auto; align-content: start; scrollbar-gutter: stable;
+      flex: 0 0 auto; height: 100px; overflow-y: auto; align-content: start; scrollbar-gutter: stable;
       display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0 12px;
       padding: 4px 12px; border-bottom: 1px solid var(--border);
       font-size: 11px; line-height: 16px; user-select: none; cursor: default;
@@ -400,6 +401,7 @@
       // The area above the prompt is reserved at a fixed height for the whole session in hints/options
       // mode (empty at word 0), so the prompt and the list never move while typing.
       tools.classList.toggle('hidden', above !== 'options');
+      tools.classList.toggle('empty', !tools.firstChild);
       tools.scrollTop = tools.scrollHeight;   // the best row (the bottom one) in view
       // The list keeps its place (and the footer its position) even when it is empty.
 
@@ -413,6 +415,7 @@
         hintsEl.appendChild(cell);
       }
       hintsEl.classList.toggle('hidden', above !== 'hints');
+      hintsEl.classList.toggle('empty', !hintsEl.firstChild);
 
       document.querySelector('.row.active')?.scrollIntoView({ block: 'nearest' });
     }
