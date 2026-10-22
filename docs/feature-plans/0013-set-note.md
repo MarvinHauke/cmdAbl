@@ -103,6 +103,8 @@ settings store yet; `note` brings the small file access it needs (below).
     `Promise<boolean>`, scoped to `<data folder>/modules/<module>/`. Names are plain file names (no `/`,
     no `..`), so a module can't reach other modules' files. The note file is
     `modules/note/<id>.md`.
+  - Built: core `d9d5a9f`. The data folder is the SDK's `context.environment.storageDirectory`, falling
+    back to the Extensions Data path; writes are atomic and capped at 1 MB.
 - **Renderer:** the ui agent writes a small renderer of its own (headings, lists, checkboxes, tables,
   code, emphasis, links). It is inlined; no library unless that ends up over about 20 KB.
 
