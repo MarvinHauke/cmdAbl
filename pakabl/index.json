@@ -94,5 +94,11 @@
     "name": "cmdabl",
     "version": "0.1.4",
     "url": "https://github.com/MarvinHauke/cmdAbl/releases/download/v0.1.4/cmdabl-0.1.4.ablx"
+  },
+  {
+    "id": "swwallowws.session-notes",
+    "name": "Session Notes",
+    "version": "0.3.0",
+    "url": "https://github.com/swwallowws/ableton-session-notes/releases/download/v0.3.0/Session-Notes-0.3.0.ablx"
   }
 ]
