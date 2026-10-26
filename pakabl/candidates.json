@@ -2,7 +2,7 @@
   {
     "repo": "madisonrickert/ablevsep",
     "description": "Separate any audio clip into stems with any of MVSEP's 100+ models, right inside Ableton Live",
-    "stars": 56,
+    "stars": 57,
     "pushed": "2026-07-13",
     "ablx": [
       "AbleVSEP-1.2.0.ablx"
@@ -11,7 +11,7 @@
   {
     "repo": "madisonrickert/ableton-sheet-music-extension",
     "description": "View an Ableton Live MIDI clip as sheet music, transpose it for any instrument, and export MusicXML / PDF / PNG.",
-    "stars": 46,
+    "stars": 47,
     "pushed": "2026-07-13",
     "ablx": [
       "Sheet-Music-1.2.0.ablx"
@@ -38,7 +38,7 @@
   {
     "repo": "cdp-wasm-suite/cdp-extension",
     "description": "Ableton Live Extension embedding cdp-web",
-    "stars": 13,
+    "stars": 14,
     "pushed": "2026-07-06",
     "ablx": [
       "CDP-0.1.0.ablx"
@@ -92,7 +92,7 @@
   {
     "repo": "wuritz/trueclip",
     "description": "Clean up, reset and sequence imported audio stems in Ableton Live. Revert audio clips back to their 'true' state.",
-    "stars": 6,
+    "stars": 7,
     "pushed": "2026-06-24",
     "ablx": [
       "TrueClip-1.3.0.ablx"
