@@ -2,7 +2,7 @@
   {
     "repo": "madisonrickert/ablevsep",
     "description": "Separate any audio clip into stems with any of MVSEP's 100+ models, right inside Ableton Live",
-    "stars": 57,
+    "stars": 58,
     "pushed": "2026-07-13",
     "ablx": [
       "AbleVSEP-1.2.0.ablx"
@@ -48,7 +48,7 @@
     "repo": "ntworm/rc-surface",
     "description": "Source-available Ableton Live extension that turns any phone into a wireless MIDI + multi-sensor controller. PolyForm Noncommercial.",
     "stars": 13,
-    "pushed": "2026-10-17",
+    "pushed": "2026-10-29",
     "ablx": [
       "RC-Surface-2.0.0.ablx"
     ]
@@ -75,7 +75,7 @@
     "repo": "SamKuler/live-smith",
     "description": "An AI agent for Ableton Live",
     "stars": 11,
-    "pushed": "2026-10-18",
+    "pushed": "2026-10-31",
     "ablx": [
       "Live-Smith-0.3.0.ablx"
     ]
@@ -111,7 +111,7 @@
     "repo": "ntworm/rc-setlist",
     "description": "Source-available setlist extension for Ableton Live.",
     "stars": 5,
-    "pushed": "2026-10-06",
+    "pushed": "2026-11-01",
     "ablx": [
       "RC-Setlist-1.0.0.ablx"
     ]
