@@ -70,6 +70,11 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `commands.roots` | platform | reads the declared command tree | – |  |
 | `commands.usage` | platform | renders the short --help text for a command path | – |  |
 | `commands.help` | platform | renders --help text for a command path | – |  |
+| `midi.setBindings` | script | operation `midi_listen` (the bound controls) + core's binding table | – | The script forwards exactly the bound controls (and what listen adds); pushed events run the bound lines through the headless runner. |
+| `midi.listen` | script | operation `midi_listen` (all, none or a list; optional monitor window) | – | Forwarded controls no longer reach track input or Cmd+M for as long as they are forwarded. |
+| `midi.last` | script | operation `midi_last` | – | The newest messages the script kept (a ring of 50). |
+| `midi.enabled` | platform | reads `map.enabled` in settings.json | – |  |
+| `midi.setEnabled` | platform | writes `map.enabled` in settings.json | – |  |
 | `commands.completer` | platform | registers a source of completion candidates under a key | – |  |
 | `commands.add` | platform | declares a node on the command tree | – |  |
 

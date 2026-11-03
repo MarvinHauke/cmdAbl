@@ -72,7 +72,9 @@ export function chainSegments(input: string): Array<{ start: number; end: number
   const segments: Array<{ start: number; end: number }> = [];
   let start = 0;
   let quote: '"' | "'" | null = null;
-  for (let i = 0; i < input.length; i++) {
+  const pipe = pipeAt(input);
+  // After a top-level `|` the rest of the line is one raw command line (a binding): its `;` is its own.
+  for (let i = 0; i < (pipe < 0 ? input.length : pipe); i++) {
     const ch = input[i]!;
     if (quote) {
       if (ch === quote) quote = null;
@@ -88,6 +90,34 @@ export function chainSegments(input: string): Array<{ start: number; end: number
   }
   segments.push({ start, end: input.length });
   return segments;
+}
+
+/**
+ * The offset of the first `|` outside quotes and backslash escapes, or -1 (same quoting rules as `tokenize`).
+ * Everything after it is a raw argument (`ArgDef.rest: "raw"`, plan 0018): `map CC37 | mute #a; solo #b`.
+ */
+export function pipeAt(input: string): number {
+  let quote: '"' | "'" | null = null;
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i]!;
+    if (quote) {
+      if (ch === quote) quote = null;
+      else if (ch === "\\" && quote === '"' && i + 1 < input.length) i++;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === "\\" && i + 1 < input.length) {
+      i++;
+    } else if (ch === "|") {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/** The command words before the first top-level `|` and the raw text after it (trimmed), or null without a `|`. */
+export function splitPipe(input: string): { head: string; raw: string } | null {
+  const at = pipeAt(input);
+  return at < 0 ? null : { head: input.slice(0, at), raw: input.slice(at + 1).trim() };
 }
 
 /** One command of a `;` chain: its text (trimmed) and where it sits in the input. */

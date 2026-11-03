@@ -146,6 +146,12 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "commands.roots", via: "platform", call: "reads the declared command tree", lom: [] },
   { port: "commands.usage", via: "platform", call: "renders the short --help text for a command path", lom: [] },
   { port: "commands.help", via: "platform", call: "renders --help text for a command path", lom: [] },
+  // midi — the engine's table, and what the Remote Script forwards (plan 0018)
+  { port: "midi.setBindings", via: "script", call: "operation `midi_listen` (the bound controls) + core's binding table", lom: [], note: "The script forwards exactly the bound controls (and what listen adds); pushed events run the bound lines through the headless runner." },
+  { port: "midi.listen", via: "script", call: "operation `midi_listen` (all, none or a list; optional monitor window)", lom: [], note: "Forwarded controls no longer reach track input or Cmd+M for as long as they are forwarded." },
+  { port: "midi.last", via: "script", call: "operation `midi_last`", lom: [], note: "The newest messages the script kept (a ring of 50)." },
+  { port: "midi.enabled", via: "platform", call: "reads `map.enabled` in settings.json", lom: [] },
+  { port: "midi.setEnabled", via: "platform", call: "writes `map.enabled` in settings.json", lom: [] },
   { port: "commands.completer", via: "platform", call: "registers a source of completion candidates under a key", lom: [] },
   { port: "commands.add", via: "platform", call: "declares a node on the command tree", lom: [] },
 ];

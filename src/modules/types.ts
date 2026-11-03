@@ -11,6 +11,10 @@ import type { Bridge } from "../ableton/bridgeClient.js";
 import type { Provider } from "../core/types.js";
 import type { Completer } from "../core/complete.js";
 export type { Candidate, Completer, CompleterContext } from "../core/complete.js";
+import type { MidiPort } from "../core/midiPort.js";
+export type { BindingsSet, ListenOptions, MidiPort } from "../core/midiPort.js";
+export type { MidiBinding } from "../core/midiEngine.js";
+export type { MidiControl, MidiMessage, OperatorName } from "../core/midi.js";
 import type { BoardAnswer, BoardRequest, PickPreview, StateChange } from "../core/ui.js";
 import type { BridgeResult } from "../ableton/bridgeProtocol.js";
 import type { TagsWritten } from "../ableton/bridgeOps.js";
@@ -117,6 +121,8 @@ export interface ModuleApi {
   set: SetPort;
   /** The module's own files (plan 0013). */
   files: FilesPort;
+  /** MIDI mapping (plan 0018): the bindings the engine runs, what the script forwards, the messages it kept. */
+  midi: MidiPort;
   /** One info line in the log, tagged with the module's name (`cmdAbl [name] info: …`); no prefix of your own. */
   log(line: string): void;
   /**

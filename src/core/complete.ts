@@ -1,6 +1,6 @@
 import { effectiveOptions, valueLabel, valueNames, type ArgDef, type CommandNode, type OptionDef } from "./commandTree.js";
-import { findChild, startsOption } from "./parse.js";
-import { chainSegments, quoteIfNeeded, tokenize, type Token } from "./tokenize.js";
+import { fallbackOf, findChild, startsOption } from "./parse.js";
+import { chainSegments, pipeAt, quoteIfNeeded, tokenize, type Token } from "./tokenize.js";
 
 // Argument completion (plan 0006, "0.1.4: argument completion"): what the palette offers at the
 // cursor, as one pure function over a snapshot. `locate` finds the position (a command word, an
@@ -170,14 +170,17 @@ export function locate(input: string, tokens: readonly Token[], cursor: number, 
   const isGroup = (node?.children?.length ?? 0) > 0;
   const prefix = hit ? typed(input, token.start, at) : "";
 
-  if (k === before.length && (node === undefined || isGroup)) {
+  // A group with a fallback child takes the words that are no subcommand (`map CC37 | …`): they are its positions.
+  const fallback = node && isGroup ? fallbackOf(node) : undefined;
+  if (k === before.length && (node === undefined || isGroup) && !(fallback && hit && startsOption(input, hit))) {
     // Every word before the cursor is a command word and the node below is a group (or the top level).
     if (hit && startsOption(input, hit)) {
       return node ? { where: { at: "option", node, path, given: new Set() }, token: range, prefix, from: token.start } : none(prefix);
     }
     return { where: { at: "command", nodes, path, sub: node !== undefined }, token: range, prefix, from: token.start };
   }
-  if (!node || isGroup) return none(prefix); // an unknown word where a command or subcommand belongs
+  if (node && isGroup && fallback) node = fallback; // the words from `k` on belong to the fallback leaf
+  else if (!node || isGroup) return none(prefix); // an unknown word where a command or subcommand belongs
 
   // 2. Options and positionals of the leaf, as parse() reads them but without checking anything.
   const defs = effectiveOptions(node);
@@ -243,7 +246,7 @@ export function locate(input: string, tokens: readonly Token[], cursor: number, 
   }
 
   // 3. A positional argument.
-  const defsOfArgs = node.args ?? [];
+  const defsOfArgs = (node.args ?? []).filter((a) => !a.raw); // the text after `|` is no positional word
   let p = 0;
   let target: ArgDef | undefined;
   let first = 0; // index (in `positionals`) of the first word of the target argument
@@ -427,6 +430,12 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
     const inner = completeInner(line.slice(seg.start, seg.end), at - seg.start, data);
     return { ...inner, replace: { from: inner.replace.from + seg.start, to: inner.replace.to + seg.start } };
   }
+  // After a top-level `|` the rest is a command line of its own (a binding): complete it from the command word.
+  const bar = pipeAt(line);
+  if (bar >= 0 && cursor > bar) {
+    const inner = completeInner(line.slice(bar + 1), cursor - (bar + 1), data);
+    return { ...inner, replace: { from: inner.replace.from + bar + 1, to: inner.replace.to + bar + 1 } };
+  }
   const tokens = tokenize(line).tokens;
   const here = locate(line, tokens, cursor, data.tree);
   const w = here.where;
@@ -446,8 +455,10 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
       return reply(commandRows(w.nodes, here.prefix), w.sub ? "<command>" : undefined);
     case "option":
       return reply(optionRows(w.node, w.given, here.prefix));
-    case "options":
-      return reply(w.ended || /\s/.test(here.prefix) ? [] : optionRows(w.node, w.given, here.prefix));
+    case "options": {
+      const raw = w.node.args?.find((a) => a.raw);
+      return reply(w.ended || /\s/.test(here.prefix) ? [] : optionRows(w.node, w.given, here.prefix), raw ? `| <${raw.name}>` : undefined);
+    }
     case "optionValue": {
       const opt = w.option;
       const label = opt.values !== undefined ? valueNames(opt)[w.index] ?? "value" : valueLabel(opt);

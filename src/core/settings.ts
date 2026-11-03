@@ -16,6 +16,8 @@ export type Above = (typeof ABOVE_VALUES)[number];
 /** Every key, with its default; the type of the default is the type the value must have. */
 export const SETTINGS_DEFAULTS = {
   "palette.above": "off" as Above,
+  /** MIDI mapping (plan 0018): false drops every incoming message, `map --off`. */
+  "map.enabled": true,
 };
 
 /** The allowed values of a key whose values are a closed list (a value outside it counts as the wrong type). */
@@ -24,6 +26,7 @@ const ALLOWED: Partial<Record<SettingKey, readonly unknown[]>> = { "palette.abov
 export type SettingKey = keyof typeof SETTINGS_DEFAULTS;
 export interface SettingsValues {
   "palette.above": Above;
+  "map.enabled": boolean;
 }
 
 /** Does `value` suit the key: the default's type, and one of the allowed values when the key has a list. */

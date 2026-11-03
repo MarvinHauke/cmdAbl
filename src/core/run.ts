@@ -138,6 +138,11 @@ function canonicalLine(
   const words: string[] = [];
   args.forEach((values, argIndex) => {
     const def = node?.args?.[argIndex];
+    // The text after `|` is remembered as typed, behind the bar.
+    if (def?.raw) {
+      if (typeof values[0] === "string") words.push(`| ${values[0]}`);
+      return;
+    }
     // `--pick`: the line is remembered as typed, so a re-run opens the list again.
     if (invocation.options.pick === true && def?.kind === "path") {
       for (const t of typed[argIndex] ?? []) words.push(targetWord(t, nodes));

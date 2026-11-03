@@ -31,7 +31,9 @@ import { tokenFilePath } from "./ableton/bridgeToken.js";
 import * as path from "node:path";
 import { createUiGate, runHeadless } from "./core/headless.js";
 import { createDevRoutes, runTokenFilePath, type DevRoutes, writeRunToken } from "./devRoutes.js";
-import { midiListen, onMidiEvent } from "./ableton/bridgeOps.js";
+import { midiLast, midiListen, onMidiEvent } from "./ableton/bridgeOps.js";
+import { createMidiEngine } from "./core/midiEngine.js";
+import { createMidiPort } from "./core/midiPort.js";
 import { createMidiListenRoute, logMidiEvent } from "./ableton/midiEvents.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
 import { readVolume, writeVolume, type VolumeTrack } from "./core/volume.js";
@@ -135,6 +137,29 @@ export function activate(activation: ActivationContext) {
   });
 
   // ── default modules ──────────────────────────────────────────────────────
+  // MIDI mapping (plan 0018): pushed events go to the engine, which runs the bound lines headless (no dialogs,
+  // not in the history). `map.enabled` is read from settings.json, remembered for a second so a fader stream costs no disk.
+  let enabledAt = Number.NEGATIVE_INFINITY;
+  let enabledValue = true;
+  const mapEnabled = async (): Promise<boolean> => {
+    const t = Date.now();
+    if (t - enabledAt < 1000) return enabledValue;
+    enabledValue = (await settingsStore.get())["map.enabled"];
+    enabledAt = t;
+    return enabledValue;
+  };
+  const midiRuntime = createMidiPort({
+    engine: createMidiEngine({ run: (line) => runHeadless(line, runBase, gate), enabled: mapEnabled }),
+    listen: (controls, options) => midiListen(getBridge(), controls, options),
+    last: (since) => midiLast(getBridge(), since),
+    enabled: mapEnabled,
+    setEnabled: async (on) => {
+      enabledValue = on; // in effect at once, saved or not
+      enabledAt = Date.now();
+      return settingsStore.set({ "map.enabled": on });
+    },
+  });
+  onMidiEvent((event) => void midiRuntime.intake(event));
   const moduleApi: ModuleApi = {
     get bridge() {
       return getBridge();
@@ -156,6 +181,7 @@ export function activate(activation: ActivationContext) {
     },
     // The Set's id lives in the Set, written and read by the Remote Script (operation set_id).
     set: { id: (create) => setId(getBridge(), create === true) },
+    midi: midiRuntime.port,
     // Replaced per module below (a module sees its own folder only). Before a module's first command names it,
     // this folder is modules/module/; modules call files from a run, after activation.
     files: createModuleFiles({ base: dataFolder, module: () => "module", warn: (text) => logger("module").warn(text) }),
