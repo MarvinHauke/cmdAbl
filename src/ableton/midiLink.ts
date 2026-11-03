@@ -44,10 +44,10 @@ const DEFAULT_MONITOR_SECONDS = 30;
 
 const listeners = new Set<(event: MidiEvent) => void>();
 const blockedListeners = new Set<(blocked: string[] | null) => void>();
-/** The controls Live refused to hand to the script in its last map build, as the mapping syntax writes them ("CC51/ch1"); null = the script cannot tell. */
-let blocked: string[] | null = [];
+/** The controls Live refused to hand to the script in its last map build, as the mapping syntax writes them ("CC51/ch1"); null = not known (no report or listen reply yet, or the script cannot tell). */
+let blocked: string[] | null = null;
 
-/** The last known blocked set: `[]` none, a list of controls Live keeps for itself (Cmd+M mapping, another script), null = unknown. */
+/** The last known blocked set: `[]` none, a list of controls Live keeps for itself (Cmd+M mapping, another script), null = unknown (also before the first report). */
 export function midiBlocked(): string[] | null {
   return blocked === null ? null : [...blocked];
 }
@@ -120,7 +120,7 @@ export function resetMidiLink(): void {
   desired = null;
   monitorUntil = 0;
   inFlight = 0;
-  blocked = [];
+  blocked = null;
   listeners.clear();
   blockedListeners.clear();
 }

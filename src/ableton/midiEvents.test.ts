@@ -253,7 +253,7 @@ test("the blocked set: pushed midi_blocked events and the listen reply feed onBl
   attachMidi(client(t.transport));
   const seen: Array<string[] | null> = [];
   onBlocked((b) => void seen.push(b));
-  assert.deepEqual(midiBlocked(), []);
+  assert.equal(midiBlocked(), null, "unknown until the script reports");
   t.deliver(JSON.stringify({ v: 1, event: "midi_blocked", blocked: ["CC51/ch1"] }));
   t.deliver(JSON.stringify({ v: 1, event: "midi_blocked", blocked: ["CC51/ch1"] })); // same set: no second call
   assert.deepEqual(midiBlocked(), ["CC51/ch1"]);
