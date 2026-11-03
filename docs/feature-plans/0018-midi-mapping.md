@@ -8,7 +8,7 @@ Later it grows into a matrix like the XOR NerdSEQ mapping editor. Examples:
 
 ```
 map CC37 | mute #drums --set 0       # a button runs a command
-map CC --learn | vol #synth          # learn the control; its value drives vol
+map learn | vol #synth              # learn the control; its value drives vol
 ```
 
 **Parent:** [0004](0004-command-platform.md)
@@ -64,7 +64,7 @@ Constraints:
 | Owner | Job | Commands or pieces |
 |---|---|---|
 | `midi` module | sources and controls | `midi monitor` (what arrives), `midi name CC37 "Fader 1"`, `midi learn`, `midi -l` |
-| `map` module | bindings | `map <control> \| <command>`, `map --learn \| <command>`, `map -l`, `map --rm <n>` |
+| `map` module | bindings | `map <control> \| <command>`, `map learn \| <command>`, `map -l`, `map --rm <n>` |
 | core | the engine | commands live in many modules, so only the platform may run a bound command line |
 | bridge | the script side | script MIDI in and the push to the extension |
 
@@ -99,7 +99,7 @@ The matrix page later sits on top of `map`.
   - Values are coalesced: the latest wins, about 30 Hz.
   - Needs `vol` (0012), so it comes after trigger mode.
   - `vol` is relative by default and absolute with `--set` (0012, user 2026-10-21). A fader
-    (absolute control) binds to the absolute form: `map CC --learn | vol #synth` runs
+    (absolute control) binds to the absolute form: `map learn | vol #synth` runs
     `vol --set <value> #synth`. A relative encoder binds to the default relative form with a step
     per tick, which keeps the balance between the tracks.
   - **Bindings use the link layer (0015, user 2026-10-22).** A control drives a named control
@@ -110,9 +110,9 @@ The matrix page later sits on top of `map`.
   - `|` separates the control from the command line.
   - Core gets a "rest of the line" argument kind, so `map` receives the command raw and checks it
     by parsing it in a dry run.
-  - Controls are written `CC37`, `CC37/ch2`, `N60` or `PB`. `--learn` takes the next message.
+  - Controls are written `CC37`, `CC37/ch2`, `N60` or `PB`. `map learn` takes the next message.
 - **Learn under the dialog rule:**
-  - `--learn` shows "Move a control, then press Enter".
+  - `map learn` shows "Move a control, then press Enter".
   - On close, the extension asks the script `midi_last` for the newest message since the dialog
     opened.
 
@@ -235,7 +235,7 @@ midi monitor                         # the last incoming messages
    - `runHeadless`;
    - a rest-of-line argument after `|` that `;` doesn't split;
    - `{}` substitution.
-4. **Modules:** `midi monitor`; `map` (add, operators, `--learn`, `-l`, `--rm`, `--on`/`--off`);
+4. **Modules:** `midi monitor`; `map` (add, operators, `learn`, `-l`, `--rm`, `--on`/`--off`);
    storage; `midi_listen` on activation and on Set change.
 5. **Docs:** "MIDI mapping" in using.md.
 
@@ -255,9 +255,9 @@ midi monitor                         # the last incoming messages
    0.1.7.
 4. **`midi` module (small):** `midi monitor`, `midi name`, `midi -l`. The profile lives in
    cmdAbl's folder.
-5. **`map` module, trigger mode,** with today's commands: add, `--learn`, `-l`, `--rm`. Bindings
+5. **`map` module, trigger mode,** with today's commands: add, `learn`, `-l`, `--rm`. Bindings
    in the Set.
-6. **Value mode:** `ArgDef.mapValue` plus `vol` (0012), so `map CC --learn | vol #synth` works.
+6. **Value mode:** `ArgDef.mapValue` plus `vol` (0012), so `map learn | vol #synth` works.
 7. **Later:**
    - relative encoders;
    - feedback (`send_midi`);
@@ -393,7 +393,7 @@ So `map` stays thin: a control plus a pipeline of these same commands and steps.
   - `map learn | next` binds the control you move;
   - an ambiguous command bound to a control opens no dialog and logs exit 4;
   - bindings survive saving and reopening the Set;
-  - value mode: `map CC --learn | vol #synth`, and the fader follows smoothly.
+  - value mode: `map learn | vol #synth`, and the fader follows smoothly.
 
 ## Order note (user, 2026-10-22)
 
