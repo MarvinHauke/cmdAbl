@@ -238,6 +238,24 @@ midi monitor                         # the last incoming messages
   Both are fine for v1.
 - Mapping commands have their own topic, "Control".
 
+### Live test of v1 (2026-11-03, UC4) and the Cmd+M conflict
+
+- **Passed:**
+  - MIDI arrives in 0 ms, and a command runs in 75–110 ms;
+  - `hold` on CC51 mutes and unmutes Lead;
+  - `map learn` with Enter binds CC48/ch1;
+  - adding, replacing, listing and removing work, and the parse errors are clear.
+- **Cmd+M wins:** once a control is mapped in Live (Cmd+M), Live no longer forwards it to the Remote
+  Script, so a `map` binding on it goes silently dead.
+- **Fix:**
+  - the script reports which forwards failed (`forward_midi_cc` returns a result per control);
+  - `map` warns when adding ("CC51 is mapped in Live (Cmd+M), so cmdAbl doesn't receive it");
+  - `map -l` marks such rows (⚠ mapped in Live);
+  - a rebuild after a later Cmd+M mapping logs a warning.
+- **Learn and the monitor can't show live values in the page** (the dialog rule). The interim fix is
+  live values in Live's status bar (`show_message`) while the monitor window is open. A spike checks
+  whether a page can poll the local server while open.
+
 ### Syntax rules (v1)
 
 - `|` outside quotes is reserved. In `map` it starts the raw binding line, which `;` doesn't split.
