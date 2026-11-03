@@ -126,7 +126,27 @@ Decisions:
 - Bindings are stored per Set first (`modules/map/<setid>.json` via `api.files` and the Set id, like
   `note`). Templates or a global layer come later.
 
-### Spike built (bridge `9c7e95b`, script 0.1.9), Live test pending
+### Spike results (Live test 2026-11-03, Faderfox UC4 as cmdAbl's input)
+
+| Path | Median | Max |
+|---|---|---|
+| **UDP sent from `receive_midi`** | **0.2–0.5 ms** | **2 ms** |
+| UDP held to `update_display` | 53–58 ms | 99 ms |
+| HTTP POST | 950 ms – 34 s | 48 s (the queue backs up under fast knob moves) |
+
+- **Decision: the push goes as an unsolicited UDP datagram, sent straight from `receive_midi`.** HTTP is
+  dropped, and so is holding to the display tick.
+- MIDI arrives on cmdAbl's input port (map built: 4112 controls in 1–11 ms). The encoder (CC 104)
+  delivers the full range. The existing bridge still answers (median 46 ms).
+- **The UC4's buttons send 10 on press and 0 on release (CC 51), not 127.** Both edges arrive. For v1,
+  press means value > 0 and release means 0. **The user wants to set these values per control
+  himself later** (a threshold or value setting on the operator).
+- **Cmd+M still learns a control while cmdAbl forwards it** ("1/51" learned on a clip slot), with
+  "Remote" on for the input port. **Open:** do Live's mapping and cmdAbl both act on the same press?
+  If they do, `map` should warn about controls that are also mapped with Cmd+M. Track input with
+  notes is untested (the UC4 sends CCs).
+
+### Spike built (bridge `9c7e95b`, script 0.1.9)
 
 - `midi.py`: the forwarded set ("all" for the spike), a ring of 50, `build_midi_map` with
   `forward_midi_cc`, `forward_midi_note` and `forward_midi_pitchbend`.

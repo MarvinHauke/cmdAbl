@@ -24,7 +24,8 @@ All releases were tested in Live, including the installed `.ablx`.
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
 - In work: `;` chains (plan 0017), built and Live-tested through MCP on `feat/chain`. Next: the simple
-  MIDI mapping (plan 0018, trigger mode with operators), spike first. All plans are public since
+  MIDI mapping (plan 0018, trigger mode with operators): the spike is done on `feat/map` (UDP push,
+  under 2 ms). Open from the spike: do Cmd+M and cmdAbl both act on one control? All plans are public since
   2026-11-03.
 - How testing works since 0.1.3: the architect runs Live test lists through the `cmdabl_*` MCP tools
   (plan 0016) once the user has started `npm start` with a test Set; the user gets a short list of
