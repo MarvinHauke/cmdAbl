@@ -104,6 +104,9 @@
     }
 
     // ── the live source ─────────────────────────────────────────────────────
+    // A route answer of { error } (a slow module read, core's ~100 ms budget) or a failed request is tolerated for a while
+    // (about a second when answers are quick, longer when the server hangs) before the page says the live view is unavailable.
+    const MAX_FAILS = 10;
     let failures = 0;
     function unavailable(on) {
       note.textContent = on ? 'Live view unavailable. ' + FALLBACK_NOTE : '';
@@ -119,14 +122,14 @@
         clearTimeout(timer);
         const answer = await res.json();
         if (!res.ok || answer?.error) throw new Error('no answer');
-        if (failures >= 3) unavailable(false);
+        if (failures >= MAX_FAILS) unavailable(false);
         failures = 0;
         draw(answer);
         maybeClose(answer);
       } catch {
         failures++;
-        if (failures === 3) unavailable(true);   // keeps polling, slowly: it may come back
-        if (failures >= 3) delay = 500;
+        if (failures === MAX_FAILS) unavailable(true);   // keeps polling, slowly: it may come back
+        if (failures >= MAX_FAILS) delay = 500;
       }
       setTimeout(poll, delay);
     }
