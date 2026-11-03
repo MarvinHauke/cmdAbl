@@ -3,6 +3,7 @@ import { createFakeBridge, type FakeBridge, type FakeBridgeOptions } from "../ab
 import type { Command } from "../core/commandRegistry.js";
 import { helpForPath, unknownCompleterKeys, usageForPath } from "../core/commandTree.js";
 import type { Completer } from "../core/complete.js";
+import type { LiveRoutes } from "../core/livePage.js";
 import { formatControl, validateBinding } from "../core/midi.js";
 import type { MidiBinding } from "../core/midiEngine.js";
 import type { MidiControl } from "../core/midi.js";
@@ -60,6 +61,8 @@ export interface FakeApi {
   /** Tags by node `handleId`; `api.tags.write` replaces the entry (empty removes it). */
   tagStore: Map<string, string[]>;
   dialogs: Array<{ html: string; width: number; height: number }>;
+  /** The live pages `api.ui.livePage` was asked to show, with their route functions (call them to test the data a page would poll). */
+  livePages: Array<{ name: string; html: string; width: number; height: number; routes: LiveRoutes }>;
   /** Track state by handle id; writes land here. */
   tracks: Map<string, TrackHandle>;
   /** Volumes (0..1) written through the fake's `tracks.setVolume`, by handle id; unset reads 0.85. */
@@ -110,6 +113,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     tagLists: [],
     tagStore: new Map(Object.entries(options.tags ?? {})),
     dialogs: [],
+    livePages: [],
     tracks: new Map(),
     volumes: new Map(),
     transactions: 0,
@@ -224,6 +228,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       return chosen;
     },
     ui: {
+      livePage: async (name, html, width, height, routes) => {
+        fake.livePages.push({ name, html, width, height, routes });
+        return options.dialogAnswer || null;
+      },
       board: async (request) => {
         fake.boards.push(request);
         return { answer: options.boardAnswer?.(request) ?? null, cut: false };

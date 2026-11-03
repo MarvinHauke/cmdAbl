@@ -147,6 +147,7 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "commands.usage", via: "platform", call: "renders the short --help text for a command path", lom: [] },
   { port: "commands.help", via: "platform", call: "renders --help text for a command path", lom: [] },
   { port: "onSetChange", via: "script", call: "operation `set_id`, polled every few seconds while a module listens", lom: [], note: "The id lives in the Set (Song.set_data); the listener hears it when the script first answers and when it differs." },
+  { port: "ui.livePage", via: "platform", call: "a dialog on http://localhost:27184/live/<page> with read-only routes under a one-time token", lom: [], note: "The read-only exception to the dialog rule (plan 0018): the page polls the module's route functions while open; it never writes." },
   { port: "files.readResult", via: "platform", call: "reads <data folder>/modules/<module>/<name>", lom: [], note: "Tells a missing file from a failed read." },
   // midi — the engine's table, and what the Remote Script forwards (plan 0018)
   { port: "midi.setBindings", via: "script", call: "operation `midi_listen` (the bound controls) + core's binding table", lom: [], note: "The script forwards exactly the bound controls (and what listen adds); pushed events run the bound lines through the headless runner." },

@@ -66,6 +66,11 @@ const EXCEPTIONS: Exception[] = [
     target: "node:fs",
     why: "the id completers run on every palette open and need a one-stat mtime check and an existence test; a shell spawn per open cost ~100 ms; no port offers file stats yet",
   },
+  {
+    file: "src/modules/map/index.ts",
+    target: "ui/modules/midi/capture.html",
+    why: "map learn and midi monitor share one live capture page (plan 0018); a copy per module would drift",
+  },
 ];
 
 /** The only Node built-ins a module may import (rule 6). */
@@ -181,7 +186,6 @@ test("architecture: every listed exception is still needed", () => {
 // Rule 4 is about behaviour, not imports: a module that calls the SDK's modal
 // dialog itself bypasses the dialog queue and the UI surfaces.
 const DIALOG_EXCEPTIONS: { file: string; why: string }[] = [
-  { file: "src/extension.ts", why: "dev-only spike (dialogSpike.ts): opens a dialog on an http://localhost URL, which the UI surfaces cannot; remove with the spike" },
 ];
 
 function filesCallingShowModalDialog(): string[] {

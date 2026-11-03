@@ -160,6 +160,11 @@ test("the production bundle has no dev routes; the development bundle has them",
       assert.ok(!prod.includes(marker), `the production bundle must not contain the dev routes (${marker})`);
       assert.ok(dev.includes(marker), `the development bundle must contain them (${marker})`);
     }
+    // Live pages (plan 0018) are part of the release; the dialog spike that preceded them is in neither build.
+    for (const [name, bundle] of [["production", prod], ["development", dev]] as const) {
+      assert.ok(bundle.includes("/live/"), `the ${name} bundle must contain the live page routes`);
+      assert.ok(!bundle.includes("/spike") && !bundle.includes("dialogSpike"), `the ${name} bundle must not contain the dialog spike`);
+    }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

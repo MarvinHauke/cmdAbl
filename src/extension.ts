@@ -34,8 +34,8 @@ import { createDevRoutes, runTokenFilePath, type DevRoutes, writeRunToken } from
 import { midiBlocked, midiLast, midiListen, onBlocked, onMidiEvent } from "./ableton/bridgeOps.js";
 import { createMidiEngine } from "./core/midiEngine.js";
 import { createSetWatch } from "./core/setWatch.js";
+import { createLivePages } from "./core/livePage.js";
 import { createMidiPort } from "./core/midiPort.js";
-import { createDialogSpike } from "./ableton/dialogSpike.js";
 import { createMidiListenRoute, logMidiEvent } from "./ableton/midiEvents.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
 import { readVolume, writeVolume, type VolumeTrack } from "./core/volume.js";
@@ -64,8 +64,12 @@ export function activate(activation: ActivationContext) {
   // The gate passes everything through to the real dialogs, except during a headless run (plan 0016).
   // cmdAbl's own settings (settings.json in the data folder); the palette page returns changes with its result.
   const settingsStore = createSettingsStore({ base: dataFolder, warn: (text) => logger("settings").warn(text) });
+  // Live pages (plan 0018): a module's dialog may read from it through token-guarded routes of the trigger server.
+  // Registered in release builds too; unavailable (data-page fallback) when the port is taken.
+  let trigger: { listening(): boolean } | undefined;
+  const livePages = createLivePages({ port: TRIGGER_PORT, available: () => trigger?.listening() === true });
   const gate = createUiGate(
-    createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.above": settings.above })),
+    createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.above": settings.above }), livePages),
   );
   const ui: Ui = gate.ui;
   const providers: { provider: Provider; priority: number }[] = [];
@@ -211,7 +215,7 @@ export function activate(activation: ActivationContext) {
     },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
-    ui: { board: (request) => runBoard(ui, request) },
+    ui: { board: (request) => runBoard(ui, request), livePage: (name, html, width, height, routes) => ui.livePage(name, html, width, height, routes) },
     pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, ...options, multi: options?.multi ?? true }),
     tags: {
       refresh: () => getTagCache().refreshNow(getBridge()),
@@ -266,7 +270,6 @@ export function activate(activation: ActivationContext) {
   // Development builds only (plan 0016): POST /run and GET /log for the agents' test access.
   let devRoutes: DevRoutes | undefined;
   let midiRoute: ReturnType<typeof createMidiListenRoute> | undefined;
-  let spikeRoute: ReturnType<typeof createDialogSpike> | undefined;
   if (CMDABL_DEV_ROUTES) {
     const file = runTokenFilePath();
     const token = writeRunToken(file);
@@ -283,12 +286,6 @@ export function activate(activation: ActivationContext) {
       // MIDI (plan 0018): a debug line per pushed event; /midi-listen changes what the script forwards.
       const midiLog = logger("midi");
       onMidiEvent((event) => logMidiEvent(midiLog, event));
-      // SPIKE (dev builds only): can a dialog page reach this server? POST /spike/open?mode=data|http (src/ableton/dialogSpike.ts).
-      spikeRoute = createDialogSpike({
-        token,
-        showDialog: (url, width, height) => dialogs.run("spike", () => context.ui.showModalDialog(url, width, height)),
-        log: (line) => logger("spike").info(line),
-      });
       midiRoute = createMidiListenRoute({
         token,
         listen: async (controls, monitor) => {
@@ -300,7 +297,7 @@ export function activate(activation: ActivationContext) {
       logger("host").warn(`development routes off: cannot write ${file}`);
     }
   }
-  startTriggerServer(TRIGGER_PORT, () => {
+  trigger = startTriggerServer(TRIGGER_PORT, () => {
     context.commands.executeCommand("cmdabl.open");
   }, () => isOpen || dialogs.describe() !== null, () => {
     const was = dialogs.reset();
@@ -311,7 +308,7 @@ export function activate(activation: ActivationContext) {
     if (was) return `dialog queue reset (was: ${was.name})${note}`;
     if (gateReleased) return "run gate released";
     return isOpen ? "no dialog open; a command is still running" : "no dialog was open";
-  }, async () => (await reportBridge(getBridge())).line, (req, res) => midiRoute?.(req, res) === true || spikeRoute?.(req, res) === true || devRoutes?.(req, res) === true);
+  }, async () => (await reportBridge(getBridge())).line, (req, res) => midiRoute?.(req, res) === true || devRoutes?.(req, res) === true, (req, res) => livePages.handle(req, res));
 
   // The Karabiner rule only fires while `cmdabl_open` is 0. If a previous host
   // was stopped with the palette open, the flag would stay at 1 and ":" would

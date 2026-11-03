@@ -2,6 +2,7 @@ import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { PaletteItem, PaletteResult, ResultSection } from "./types.js";
 import type { CompletionData } from "./complete.js";
 import { PALETTE_WIDTH, paletteHeight } from "./paletteSize.js";
+import type { LivePages, LiveRoutes } from "./livePage.js";
 import { takePaletteAnswer, type PaletteSettings } from "./settings.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsText } from "./notifySize.js";
@@ -184,6 +185,14 @@ export interface Ui {
   board(request: BoardRequest): Promise<BoardAnswer | null>;
   /** A module's own page: resolves with the string it returns on close, or null if dismissed (an empty string counts as dismissed). */
   page(name: string, html: string, width: number, height: number): Promise<string | null>;
+  /**
+   * A module's page that may READ from the module while it is open (plan 0018 "Live pages"; the read-only exception to
+   * the dialog rule): `routes` are served under a one-time token at `http://localhost:27184/live/<name>/<route>`, and the
+   * page gets `{ base, token }` where it has `const LIVE = /*LIVE_PLACEHOLDER*\/null;`. It never writes; the close string
+   * still comes back as with `page`. If the server cannot serve it (port taken), the page opens as a data page with
+   * `LIVE = null` and must work without polling.
+   */
+  livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes): Promise<string | null>;
 }
 
 const dataUrl = (html: string) => `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
@@ -198,6 +207,8 @@ export function createDefaultUi(
   queue: DialogQueue = createDialogQueue(),
   /** Called with the settings a palette result carried (also one that carried nothing else). */
   onSettings?: (settings: PaletteSettings) => void,
+  /** The live pages the trigger server serves; absent: live pages open as data pages. */
+  live?: LivePages,
 ): Ui {
   const show = (name: string, html: string, width: number, height: number): Promise<string | null> =>
     // A failure is already logged by the queue; here it only counts as dismissed.
@@ -251,6 +262,19 @@ export function createDefaultUi(
     async page(name, html, width, height) {
       // The SDK resolves an empty string on dismissal: both count as dismissed.
       return (await show(name, html, width, height)) || null;
+    },
+
+    async livePage(name, html, width, height, routes) {
+      const session = live?.open(name, html, routes) ?? null;
+      // No server (port taken) or a bad name: the same page as a data page, `LIVE = null`.
+      if (!session) return (await show(name, html, width, height)) || null;
+      try {
+        // Through the same queue: only one dialog is ever open. A failure is logged by the queue and counts as dismissed.
+        const raw = await queue.run(name, () => context.ui.showModalDialog(session.url, width, height)).catch(() => null);
+        return raw || null;
+      } finally {
+        session.close(); // the token and the routes end with the dialog
+      }
     },
   };
   return ui;

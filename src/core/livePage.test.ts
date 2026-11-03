@@ -1,0 +1,212 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import * as http from "node:http";
+import type { AddressInfo } from "node:net";
+import { createLivePages, MAX_LIVE_ANSWER, type LivePages, type LiveRoutes } from "./livePage.js";
+import { appLog } from "./log.js";
+
+const HTML = '<html><script>const LIVE = /*LIVE_PLACEHOLDER*/null;</script></html>';
+
+async function withServer(
+  options: { available?: boolean; budgetMs?: number },
+  body: (ctx: { pages: LivePages; port: number; get: (path: string, headers?: Record<string, string>, method?: string) => Promise<{ status: number; text: string }> }) => Promise<void>,
+): Promise<void> {
+  let pages!: LivePages;
+  const server = http.createServer((req, res) => {
+    if (!pages.handle(req, res)) res.writeHead(404).end("other");
+  });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  const port = (server.address() as AddressInfo).port;
+  pages = createLivePages({ port, available: () => options.available !== false, budgetMs: options.budgetMs });
+  const get = (path: string, headers: Record<string, string> = {}, method = "GET") =>
+    new Promise<{ status: number; text: string }>((resolve, reject) => {
+      const req = http.request({ host: "127.0.0.1", port, path, method, headers: { Host: `localhost:${port}`, ...headers } }, (res) => {
+        let text = "";
+        res.on("data", (c) => (text += c));
+        res.on("end", () => resolve({ status: res.statusCode ?? 0, text }));
+      });
+      req.on("error", reject);
+      req.end();
+    });
+  try {
+    await body({ pages, port, get });
+  } finally {
+    await new Promise((r) => server.close(r));
+  }
+}
+const tokenOf = (url: string): string => /t=([0-9a-f]+)$/.exec(url)![1]!;
+const pathOf = (url: string): string => url.replace(/^http:\/\/localhost:\d+/, "");
+/** Load the page (the one allowed load) and read the route token out of it: the only Bearer the routes accept. */
+async function routeToken(get: (path: string, headers?: Record<string, string>) => Promise<{ status: number; text: string }>, url: string): Promise<string> {
+  const page = await get(pathOf(url));
+  assert.equal(page.status, 200);
+  return /"token":"([0-9a-f]{32})"/.exec(page.text)![1]!;
+}
+
+test("a token is minted per dialog (128 bits), loads the page ONCE, with {base, token} in it", async () => {
+  await withServer({}, async ({ pages, port, get }) => {
+    const a = pages.open("monitor", HTML, {})!;
+    const b = pages.open("learn", HTML, {})!;
+    assert.match(a.url, new RegExp(`^http://localhost:${port}/live/monitor\\?t=[0-9a-f]{32}$`));
+    assert.notEqual(tokenOf(a.url), tokenOf(b.url));
+    const first = await get(pathOf(a.url));
+    assert.equal(first.status, 200);
+    assert.ok(first.text.includes(`"base":"http://localhost:${port}/live/monitor"`));
+    assert.ok(/"token":"[0-9a-f]{32}"/.test(first.text));
+    assert.notEqual(/"token":"([0-9a-f]{32})"/.exec(first.text)![1], tokenOf(a.url)); // the route token is not the URL's load token
+    assert.ok(!first.text.includes("LIVE_PLACEHOLDER"));
+    assert.equal((await get(pathOf(a.url))).status, 404); // used once
+    assert.equal((await get(`/live/learn?t=${"0".repeat(32)}`)).status, 404); // a wrong token
+    assert.equal((await get("/live/learn")).status, 404); // no token
+    assert.equal((await get(pathOf(b.url))).status, 200);
+  });
+});
+
+test("routes need the Bearer token; unknown routes are 404; own properties only", async () => {
+  await withServer({}, async ({ pages, get }) => {
+    const calls: string[] = [];
+    const routes: LiveRoutes = { rows: () => (calls.push("rows"), [{ n: 1 }]), later: async () => "ok" };
+    const s = pages.open("monitor", HTML, routes)!;
+    const loadToken = tokenOf(s.url);
+    const token = await routeToken(get, s.url);
+    const auth = { Authorization: `Bearer ${token}` };
+    assert.equal((await get("/live/monitor/rows", { Authorization: `Bearer ${loadToken}` })).status, 401); // what the URL leaves behind reads nothing
+    assert.equal((await get("/live/monitor/rows")).status, 401);
+    assert.equal((await get("/live/monitor/rows", { Authorization: `Bearer ${"1".repeat(32)}` })).status, 401);
+    assert.equal((await get("/live/monitor/rows", { Authorization: token })).status, 401); // not a Bearer header
+    assert.deepEqual(calls, []); // nothing ran without the token
+    const ok = await get("/live/monitor/rows", auth);
+    assert.equal(ok.status, 200);
+    assert.deepEqual(JSON.parse(ok.text), [{ n: 1 }]);
+    assert.equal(JSON.parse((await get("/live/monitor/later", auth)).text), "ok"); // async routes too
+    for (const name of ["nope", "toString", "__proto__", "constructor", "rows/extra"]) assert.equal((await get(`/live/monitor/${name}`, auth)).status, 404, name);
+    assert.equal((await get("/live/other/rows", auth)).status, 404); // another page
+    assert.equal((await get("/live/", auth)).status, 404);
+  });
+});
+
+test("every request is checked: GET only, Host, Origin (absent or exactly localhost:port), Sec-Fetch-Site", async () => {
+  await withServer({}, async ({ pages, port, get }) => {
+    const s = pages.open("monitor", HTML, { rows: () => 1 })!;
+    const auth = { Authorization: `Bearer ${await routeToken(get, s.url)}` };
+    assert.equal((await get("/live/monitor/rows", auth, "POST")).status, 405);
+    assert.equal((await get("/live/monitor/rows", auth, "PUT")).status, 405);
+    assert.equal((await get("/live/monitor/rows", { ...auth, Host: "evil.example:80" })).status, 403); // DNS rebinding
+    assert.equal((await get("/live/monitor/rows", { ...auth, Host: `127.0.0.1:${port}` })).status, 403);
+    assert.equal((await get("/live/monitor/rows", { ...auth, Origin: "http://evil.example" })).status, 403);
+    assert.equal((await get("/live/monitor/rows", { ...auth, Origin: "null" })).status, 403); // a data: page
+    assert.equal((await get("/live/monitor/rows", { ...auth, Origin: `http://localhost:${port + 1}` })).status, 403);
+    assert.equal((await get("/live/monitor/rows", { ...auth, Origin: `http://localhost:${port}` })).status, 200);
+    assert.equal((await get("/live/monitor/rows", { ...auth, "Sec-Fetch-Site": "cross-site" })).status, 403);
+    assert.equal((await get("/live/monitor/rows", { ...auth, "Sec-Fetch-Site": "same-site" })).status, 403);
+    assert.equal((await get("/live/monitor/rows", { ...auth, "Sec-Fetch-Site": "same-origin" })).status, 200);
+    // the page load obeys the same checks (a second page: the first one's load token is spent)
+    const other = pages.open("learn", HTML, {})!;
+    assert.equal((await get(pathOf(other.url), { Origin: "http://evil.example" })).status, 403);
+    assert.equal((await get(pathOf(other.url), { Host: "evil.example" })).status, 403);
+    assert.equal((await get(pathOf(other.url), { "Sec-Fetch-Site": "none" })).status, 200); // a navigation
+  });
+});
+
+test("a throwing, rejecting, slow, huge or non-plain route answers {error} with status 200, never a crash", async () => {
+  await withServer({ budgetMs: 30 }, async ({ pages, get }) => {
+    const s = pages.open("monitor", HTML, {
+      throws: () => {
+        throw new Error("secret internal detail");
+      },
+      rejects: async () => Promise.reject(new Error("nope")),
+      slow: () => new Promise(() => {}),
+      huge: () => "x".repeat(MAX_LIVE_ANSWER + 10),
+      loop: () => {
+        const a: Record<string, unknown> = {};
+        a.self = a;
+        return a;
+      },
+      nothing: () => undefined,
+    })!;
+    const auth = { Authorization: `Bearer ${await routeToken(get, s.url)}` };
+    for (const route of ["throws", "rejects", "slow", "huge", "loop"]) {
+      const r = await get(`/live/monitor/${route}`, auth);
+      assert.equal(r.status, 200, route);
+      assert.ok("error" in JSON.parse(r.text), route);
+      assert.ok(!r.text.includes("secret internal detail"), route); // no internals in the answer
+    }
+    assert.equal((await get("/live/monitor/nothing", auth)).text, "null");
+  });
+});
+
+test("the token and the routes end with the dialog; a second open of the same page revokes the first", async () => {
+  await withServer({}, async ({ pages, get }) => {
+    const first = pages.open("monitor", HTML, { rows: () => 1 })!;
+    const auth1 = { Authorization: `Bearer ${await routeToken(get, first.url)}` };
+    assert.equal((await get("/live/monitor/rows", auth1)).status, 200);
+    const second = pages.open("monitor", HTML, { rows: () => 2 })!;
+    assert.equal((await get("/live/monitor/rows", auth1)).status, 401); // the first token is dead
+    first.close(); // closing the old one must not end the new one
+    const auth2 = { Authorization: `Bearer ${await routeToken(get, second.url)}` };
+    assert.equal(JSON.parse((await get("/live/monitor/rows", auth2)).text), 2);
+    second.close();
+    assert.equal((await get("/live/monitor/rows", auth2)).status, 404);
+    assert.equal((await get(pathOf(second.url))).status, 404);
+    second.close(); // closing twice is harmless
+  });
+});
+
+test("no server or a bad page name: open answers null (the caller shows a data page with LIVE = null)", async () => {
+  await withServer({ available: false }, async ({ pages }) => {
+    assert.equal(pages.open("monitor", HTML, {}), null);
+  });
+  await withServer({}, async ({ pages }) => {
+    for (const name of ["", "A", "a/b", "../x", "a b", "a".repeat(41), "-x"]) assert.equal(pages.open(name, HTML, {}), null, JSON.stringify(name));
+    assert.ok(pages.open("ok-name-1", HTML, {}));
+  });
+});
+
+test("other URLs are not handled; the token never reaches the log", async () => {
+  await withServer({}, async ({ pages, get }) => {
+    assert.equal((await get("/open")).text, "other");
+    assert.equal((await get("/livex/monitor")).text, "other");
+    const s = pages.open("monitor", HTML, { rows: () => 1, bad: () => { throw new Error("x"); } })!;
+    const loadToken = tokenOf(s.url);
+    const token = await routeToken(get, s.url);
+    await get("/live/monitor/rows", { Authorization: `Bearer ${token}` });
+    await get("/live/monitor/bad", { Authorization: `Bearer ${token}` });
+    s.close();
+    const logged = appLog.lines(500).join("\n");
+    assert.ok(!logged.includes(token) && !logged.includes(loadToken), "no token may ever be logged");
+  });
+});
+
+test("a headless run dismisses a live page like any dialog and names it", async () => {
+  const { createUiGate } = await import("./headless.js");
+  const opened: string[] = [];
+  const gate = createUiGate({
+    prompt: async () => null,
+    select: async () => null,
+    notify: () => {},
+    board: async () => null,
+    page: async () => null,
+    livePage: async (name) => (opened.push(name), "real"),
+  });
+  const capture = { dialogs: [] as string[], notices: [] as string[] };
+  const answer = await gate.within(capture, () => gate.ui.livePage("monitor", HTML, 100, 100, {}));
+  assert.equal(answer, null);
+  assert.deepEqual(capture.dialogs, ['page "monitor"']);
+  assert.deepEqual(opened, []); // the real surface was never reached
+  assert.equal(await gate.ui.livePage("monitor", HTML, 100, 100, {}), "real"); // outside a headless run it passes through
+});
+
+test("the served page carries a Content-Security-Policy that keeps the token and data on this server", async () => {
+  await withServer({}, async ({ pages, port }) => {
+    const s = pages.open("monitor", HTML, {})!;
+    const headers = await new Promise<http.IncomingHttpHeaders>((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: pathOf(s.url), headers: { Host: `localhost:${port}` } }, (res) => {
+        res.resume();
+        resolve(res.headers);
+      }).on("error", reject);
+    });
+    assert.match(String(headers["content-security-policy"]), /default-src 'none'.*connect-src 'self'/);
+    assert.equal(headers["cache-control"], "no-store");
+    assert.equal(headers["referrer-policy"], "no-referrer");
+  });
+});
