@@ -96,3 +96,46 @@ test("nothing throws when the base folder is unusable", async () => {
   assert.equal(await files.read("a.md"), null);
   assert.ok(warnings.length >= 1);
 });
+
+test("readResult tells a missing file from a failed read; read still answers null for both", async () => {
+  const s = setup();
+  try {
+    assert.deepEqual(await s.files.readResult("none.json"), { status: "missing" });
+    assert.deepEqual(s.warnings, []); // a missing file is not a warning
+    await s.files.write("a.json", "{}");
+    assert.deepEqual(await s.files.readResult("a.json"), { status: "ok", text: "{}" });
+    assert.deepEqual(await s.files.readResult("empty.json"), { status: "missing" });
+    await s.files.write("e.json", "");
+    assert.deepEqual(await s.files.readResult("e.json"), { status: "ok", text: "" }); // an empty file is ok, not missing
+    // a folder with that name cannot be read
+    fs.mkdirSync(path.join(s.base, "modules", "note", "folder.json"));
+    const failed = await s.files.readResult("folder.json");
+    assert.equal(failed.status, "failed");
+    assert.match((failed as { reason: string }).reason, /^[A-Z]+$/); // a short error code, never content
+    assert.match(s.warnings.join("\n"), /cannot read folder.json \(EISDIR\)/);
+    assert.equal(await s.files.read("folder.json"), null);
+    assert.equal(await s.files.read("none.json"), null);
+  } finally {
+    s.done();
+  }
+});
+
+test("readResult: no permission and a refused name are failures, not 'missing'", async () => {
+  const s = setup();
+  try {
+    await s.files.write("locked.json", "secret");
+    fs.chmodSync(path.join(s.base, "modules", "note", "locked.json"), 0o000);
+    const locked = await s.files.readResult("locked.json");
+    if (process.getuid?.() !== 0) {
+      assert.equal(locked.status, "failed");
+      assert.equal((locked as { reason: string }).reason, "EACCES");
+      assert.ok(!JSON.stringify(locked).includes("secret"));
+    }
+    assert.deepEqual(await s.files.readResult("../x"), { status: "failed", reason: "not a plain file name" });
+    assert.deepEqual(await s.files.readResult(".hidden"), { status: "failed", reason: "not a plain file name" });
+    s.rename("../evil");
+    assert.equal((await s.files.readResult("a.json")).status, "failed"); // a module name that is no plain name
+  } finally {
+    s.done();
+  }
+});

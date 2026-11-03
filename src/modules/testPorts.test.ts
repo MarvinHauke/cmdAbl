@@ -53,3 +53,13 @@ test("fake api: tags and pickTags", async () => {
   assert.deepEqual(fake.tagLists, [{ title: "tag /Bass", rows: [{ name: "fx", on: true }] }]);
   assert.equal(await createFakeApi().api.pickTags("t", []), null);
 });
+
+test("fake api.files.readResult: ok, missing, failed (unreadable or a bad name)", async () => {
+  const fake = createFakeApi({ files: { "a.json": "{}" } });
+  assert.deepEqual(await fake.api.files.readResult("a.json"), { status: "ok", text: "{}" });
+  assert.deepEqual(await fake.api.files.readResult("b.json"), { status: "missing" });
+  fake.unreadableFiles.add("a.json");
+  assert.deepEqual(await fake.api.files.readResult("a.json"), { status: "failed", reason: "EACCES" });
+  assert.equal(await fake.api.files.read("a.json"), null); // read answers null for a failing file too
+  assert.equal((await fake.api.files.readResult("../x")).status, "failed");
+});

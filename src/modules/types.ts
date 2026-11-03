@@ -10,6 +10,8 @@ import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { Provider } from "../core/types.js";
 import type { Completer } from "../core/complete.js";
+import type { ReadResult } from "../core/files.js";
+export type { ReadResult } from "../core/files.js";
 export type { Candidate, Completer, CompleterContext } from "../core/complete.js";
 import type { MidiPort } from "../core/midiPort.js";
 export type { BindingsSet, ListenOptions, MidiPort } from "../core/midiPort.js";
@@ -97,6 +99,12 @@ export interface FilesPort {
    * module sees only its own folder `<data folder>/modules/<module name>/`.
    */
   read(name: string): Promise<string | null>;
+  /**
+   * Like `read`, but tells "no such file" from "the read failed": `{ status: "ok", text }`, `{ status: "missing" }`
+   * (the file does not exist: safe to start empty), or `{ status: "failed", reason }` (a refused name, a folder with
+   * that name, no permission, …: do NOT write over it). `reason` is a short code, never content. Never throws.
+   */
+  readResult(name: string): Promise<ReadResult>;
   /**
    * Write the file (UTF-8, at most 1 MB), creating the folder on the first write; the file appears
    * whole or not at all. True when written, false for a refused name, too much text or a failing

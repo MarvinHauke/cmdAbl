@@ -66,6 +66,8 @@ export interface FakeApi {
   volumes: Map<string, number>;
   /** How many transactions were opened. */
   transactions: number;
+  /** Names the fake `api.files.readResult` fails on (`read` still answers null for them). */
+  unreadableFiles: Set<string>;
   /** The fake `api.files`, by name; writes land here. */
   fileStore: Map<string, string>;
   /** The Set's id now (`api.set.id(true)` fills it when empty). */
@@ -109,6 +111,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     volumes: new Map(),
     transactions: 0,
     fileStore: new Map(Object.entries(options.files ?? {})),
+    unreadableFiles: new Set(),
     setId: options.setId ?? null,
     midiBindings: [],
     setListeners: [],
@@ -149,7 +152,13 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       },
     },
     files: {
-      read: async (name) => (validFileName(name) ? (fake.fileStore.get(name) ?? null) : null),
+      readResult: async (name) => {
+        if (!validFileName(name)) return { status: "failed", reason: "not a plain file name" };
+        if (fake.unreadableFiles.has(name)) return { status: "failed", reason: "EACCES" };
+        const text = fake.fileStore.get(name);
+        return text === undefined ? { status: "missing" } : { status: "ok", text };
+      },
+      read: async (name) => (validFileName(name) && !fake.unreadableFiles.has(name) ? (fake.fileStore.get(name) ?? null) : null),
       write: async (name, text) => {
         if (!validFileName(name) || typeof text !== "string" || Buffer.byteLength(text, "utf8") > MAX_FILE_BYTES) return false;
         fake.fileStore.set(name, text);
