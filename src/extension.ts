@@ -35,6 +35,7 @@ import { midiLast, midiListen, onMidiEvent } from "./ableton/bridgeOps.js";
 import { createMidiEngine } from "./core/midiEngine.js";
 import { createSetWatch } from "./core/setWatch.js";
 import { createMidiPort } from "./core/midiPort.js";
+import { createDialogSpike } from "./ableton/dialogSpike.js";
 import { createMidiListenRoute, logMidiEvent } from "./ableton/midiEvents.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
 import { readVolume, writeVolume, type VolumeTrack } from "./core/volume.js";
@@ -263,6 +264,7 @@ export function activate(activation: ActivationContext) {
   // Development builds only (plan 0016): POST /run and GET /log for the agents' test access.
   let devRoutes: DevRoutes | undefined;
   let midiRoute: ReturnType<typeof createMidiListenRoute> | undefined;
+  let spikeRoute: ReturnType<typeof createDialogSpike> | undefined;
   if (CMDABL_DEV_ROUTES) {
     const file = runTokenFilePath();
     const token = writeRunToken(file);
@@ -279,6 +281,12 @@ export function activate(activation: ActivationContext) {
       // MIDI (plan 0018): a debug line per pushed event; /midi-listen changes what the script forwards.
       const midiLog = logger("midi");
       onMidiEvent((event) => logMidiEvent(midiLog, event));
+      // SPIKE (dev builds only): can a dialog page reach this server? POST /spike/open?mode=data|http (src/ableton/dialogSpike.ts).
+      spikeRoute = createDialogSpike({
+        token,
+        showDialog: (url, width, height) => dialogs.run("spike", () => context.ui.showModalDialog(url, width, height)),
+        log: (line) => logger("spike").info(line),
+      });
       midiRoute = createMidiListenRoute({
         token,
         listen: async (controls, monitor) => {
@@ -301,7 +309,7 @@ export function activate(activation: ActivationContext) {
     if (was) return `dialog queue reset (was: ${was.name})${note}`;
     if (gateReleased) return "run gate released";
     return isOpen ? "no dialog open; a command is still running" : "no dialog was open";
-  }, async () => (await reportBridge(getBridge())).line, (req, res) => midiRoute?.(req, res) === true || devRoutes?.(req, res) === true);
+  }, async () => (await reportBridge(getBridge())).line, (req, res) => midiRoute?.(req, res) === true || spikeRoute?.(req, res) === true || devRoutes?.(req, res) === true);
 
   // The Karabiner rule only fires while `cmdabl_open` is 0. If a previous host
   // was stopped with the palette open, the flag would stay at 1 and ":" would
