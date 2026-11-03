@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark" />
+  <title>MIDI</title>
+  <!-- Live page of `map learn` and `midi monitor` (plan 0018, "Live pages"). It may only READ while open.
+       In: CAPTURE_PLACEHOLDER = { title, hint, mode: "learn" | "monitor" } (plain text, set with textContent).
+           LIVE_PLACEHOLDER = null | { base, token }: the live source. With it the page polls GET <base>/messages every ~100 ms
+           (Authorization: Bearer <token>); the answer is { opened, last, messages: [{ seq, type: "cc"|"note_on"|"note_off"|"pb",
+           channel 1-16, number, value, time }] } (the newest 20, OLDEST first; the page shows the newest on top) or { error }.
+           null (or a source that stays unreachable) = the fallback: no list, "live view unavailable", Enter reads.
+       Out (close_and_send): "go" on Enter, or in learn mode ~150 ms after the first control moved; "" on Esc. The module reads the
+           newest control itself afterwards (api.midi.last), so the page sends no control.
+       Size: 460 x 320. All text goes in with textContent. -->
+  <style>
+    /*SHARED_CSS_PLACEHOLDER*/
+
+    html, body { height: 100%; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
+
+    #head { flex: 0 0 auto; padding: 10px 12px 8px; border-bottom: 1px solid var(--border); }
+    #title { font-weight: 600; color: var(--accent); }
+    #hint { margin-top: 3px; color: var(--dim); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+
+    #list { flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 4px 0; }
+    .msg { display: grid; grid-template-columns: 52px 92px 40px 44px 1fr; gap: 0 8px; padding: 2px 12px; line-height: 18px; white-space: nowrap; }
+    .msg > span { overflow: hidden; text-overflow: ellipsis; }
+    .msg .t { color: var(--dim); font-size: 11px; text-align: right; }
+    .msg .k { font-weight: 600; }
+    .msg .c, .msg .n { color: var(--dim); }
+    .msg .v { color: var(--text); }
+    .msg.fresh { background: var(--bg-row); }
+    .msg.fresh .k { color: var(--accent); }
+    #empty { padding: 14px 12px; color: var(--dim); text-align: center; }
+
+    #foot { flex: 0 0 auto; border-top: 1px solid var(--border); padding: 5px 12px; color: var(--dim); font-size: 11px; line-height: 1.5; }
+    #note { overflow-wrap: anywhere; }
+    #note:empty { display: none; }
+    kbd { font: inherit; color: var(--text); background: var(--bg-row); border-radius: 3px; padding: 0 5px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <div id="head"><div id="title"></div><div id="hint"></div></div>
+  <div id="list"><div id="empty"></div></div>
+  <div id="foot"><div id="note"></div><div><kbd>Enter</kbd> done &nbsp; <kbd>Esc</kbd> cancel</div></div>
+
+  <script>
+    // Injected by the extension before the dialog opens (see the contract above).
+    const CAPTURE = /*CAPTURE_PLACEHOLDER*/null;
+    const LIVE = /*LIVE_PLACEHOLDER*/null;   // { base, token } when the live source is reachable, else null
+
+    const FALLBACK_NOTE = "When you press Enter, cmdAbl reads what you moved. This page can't show it live; watch Live's status bar.";
+    const KIND = { cc: 'CC', note_on: 'Note on', note_off: 'Note off', pb: 'Pitch bend' };
+    const learn = CAPTURE?.mode === 'learn';
+
+    const list  = document.getElementById('list');
+    const empty = document.getElementById('empty');
+    const note  = document.getElementById('note');
+    document.getElementById('title').textContent = CAPTURE?.title ?? '';
+    document.getElementById('hint').textContent = CAPTURE?.hint ?? '';
+    empty.textContent = learn ? 'Move a control…' : 'Waiting for MIDI…';
+
+    let finished = false;
+    function send(value) {
+      if (finished) return;
+      finished = true;
+      const m = { method: 'close_and_send', params: [value] };
+      if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
+      else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
+    }
+
+    // ── drawing: the newest message on top ──────────────────────────────────
+    let lastSeq = null;
+    function cell(cls, text) { const s = document.createElement('span'); s.className = cls; s.textContent = text; return s; }
+    function draw(answer) {
+      if (answer.last === lastSeq) return;   // nothing new since the last poll
+      lastSeq = answer.last;
+      const msgs = Array.isArray(answer.messages) ? answer.messages.slice().reverse() : [];
+      list.textContent = '';
+      if (!msgs.length) { list.appendChild(empty); return; }
+      msgs.forEach((m, i) => {
+        const row = document.createElement('div');
+        row.className = 'msg' + (i === 0 ? ' fresh' : '');
+        const secs = typeof m.time === 'number' && typeof answer.opened === 'number' ? (m.time - answer.opened) / 1000 : NaN;
+        row.append(
+          cell('t', Number.isFinite(secs) ? '+' + Math.max(0, secs).toFixed(1) + 's' : ''),
+          cell('k', KIND[m.type] ?? String(m.type ?? '')),
+          cell('c', 'ch ' + (m.channel ?? '')),
+          cell('n', m.type === 'pb' ? '' : '#' + (m.number ?? '')),
+          cell('v', String(m.value ?? '')),
+        );
+        list.appendChild(row);
+      });
+    }
+
+    // ── learn: close ~150 ms after the first control moved (the control stays on screen meanwhile) ─
+    let closing = null;
+    function maybeClose(answer) {
+      if (!learn || closing || !answer.messages?.length) return;
+      closing = setTimeout(() => send('go'), 150);
+    }
+
+    // ── the live source ─────────────────────────────────────────────────────
+    let failures = 0;
+    function unavailable(on) {
+      note.textContent = on ? 'Live view unavailable. ' + FALLBACK_NOTE : '';
+      if (on) { list.textContent = ''; lastSeq = null; }
+    }
+    async function poll() {
+      if (finished) return;
+      let delay = 100;
+      try {
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), 800);
+        const res = await fetch(LIVE.base + '/messages', { headers: { Authorization: 'Bearer ' + LIVE.token }, signal: ctl.signal, cache: 'no-store' });
+        clearTimeout(timer);
+        const answer = await res.json();
+        if (!res.ok || answer?.error) throw new Error('no answer');
+        if (failures >= 3) unavailable(false);
+        failures = 0;
+        draw(answer);
+        maybeClose(answer);
+      } catch {
+        failures++;
+        if (failures === 3) unavailable(true);   // keeps polling, slowly: it may come back
+        if (failures >= 3) delay = 500;
+      }
+      setTimeout(poll, delay);
+    }
+
+    if (LIVE?.base && LIVE?.token) {
+      poll();
+    } else {
+      list.textContent = '';
+      note.textContent = FALLBACK_NOTE;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); send('go'); }
+      else if (e.key === 'Escape') { e.preventDefault(); send(''); }
+    });
+  </script>
+</body>
+</html>
