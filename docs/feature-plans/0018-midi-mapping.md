@@ -146,22 +146,24 @@ Decisions:
   If they do, `map` should warn about controls that are also mapped with Cmd+M. Track input with
   notes is untested (the UC4 sends CCs).
 
-### Spike built (bridge `9c7e95b`, script 0.1.9)
+### v1 channel (bridge `6f63615`, script 0.1.10)
 
-- `midi.py`: the forwarded set ("all" for the spike), a ring of 50, `build_midi_map` with
-  `forward_midi_cc`, `forward_midi_note` and `forward_midi_pitchbend`.
-- `events.py`: every message is sent three ways for measuring: UDP from `receive_midi`, UDP held to
-  `update_display`, and an HTTP POST to `/midi-event`.
-- New ops: `midi_listen {controls}` and `midi_last {since}`.
-- Dev-only routes: `POST /midi-listen`, `GET /midi-stats`.
-- **Notes for the release version (reviewer):**
-  - check that each datagram comes from 127.0.0.1:27185 before an event runs a command;
-  - record the map build time (Live's Log.txt: "map built: N controls in X ms");
-  - keep one channel only (HTTP has no production route);
-  - `onEvent` must survive a recreated bridge client;
-  - after a script reload, `midi_listen` has to be sent again (the push target is lost).
-- **Forwarding takes the controls away from Live:** a forwarded control no longer reaches track input
-  or Cmd+M. So v1 forwards only the bound controls, never "all" (the spike verifies this).
+- **Forwarding:** nothing is forwarded by default; `midi_listen {controls}` forwards only the bound
+  controls.
+- **The push:** only an unsolicited UDP datagram from `receive_midi` (spike: median 0.2–0.5 ms, max
+  2 ms). HTTP and the `update_display`-held send are dropped.
+- **Events:** `{seq, type cc|note_on|note_off|pb, channel 1–16, number, value, time}`. A note-on with
+  velocity 0 counts as note_off.
+- **The ring of the last 50 messages is always on.** `midi_listen {controls, monitor: true, seconds}`
+  forwards everything for learn and `midi monitor` (default 30 s, at most 120), then ends by itself.
+  While it is open, track input and Cmd+M on that port pause: Live gives forwarded messages only to
+  the script. So learn and the monitor open the window, read `midi_last`, and close it again.
+- **Robustness:**
+  - every reply carries a `boot` id, and the extension re-sends the last listen after a script
+    restart;
+  - events are accepted only from 127.0.0.1:27185;
+  - listeners survive a recreated bridge client.
+- **Still open:** the map build time measured in Live's Log.txt ("map built: N controls in X ms").
 
 ### Four layers
 
