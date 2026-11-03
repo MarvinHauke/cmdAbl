@@ -12,7 +12,7 @@ def _service(ctx):
 
 
 def midi_listen(song, args, ctx):
-    """Which controls the script forwards; the caller becomes the target of pushed events. Asks Live to rebuild the MIDI map."""
+    """Which controls the script forwards and pushes (default none); `monitor` forwards everything for `seconds` (learn). The caller becomes the target of pushed events. Asks Live to rebuild the MIDI map."""
     result = _service(ctx).op_listen(args, getattr(ctx, "peer", None))
     ctx.rebuild_map()
     return result

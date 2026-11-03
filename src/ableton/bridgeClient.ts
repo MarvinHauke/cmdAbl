@@ -59,6 +59,12 @@ export interface Bridge {
    * a request is pending. Returns a function that removes the listener. A listener that throws is skipped.
    */
   onEvent?(listener: (event: PushedEvent) => void): () => void;
+  /**
+   * The script started: the first reply of a run, or a reply whose run id (`boot`) differs from the last one
+   * (it was reloaded and forgot what it was told, e.g. midi_listen). Fires for the first contact too. Returns
+   * a function that removes the listener. A listener that throws is skipped.
+   */
+  onScriptStart?(listener: () => void): () => void;
   close(): void;
 }
 
@@ -91,6 +97,8 @@ export function createBridgeClient(options: BridgeClientOptions): Bridge {
   let helloInFlight: Promise<BridgeResult<HelloInfo>> | null = null;
   let closed = false;
   const eventListeners = new Set<(event: PushedEvent) => void>();
+  const startListeners = new Set<() => void>();
+  let lastBoot: string | null = null;
 
   transport.onMessage((raw) => {
     try {
@@ -107,6 +115,16 @@ export function createBridgeClient(options: BridgeClientOptions): Bridge {
       }
       const reply = parseReply(raw);
       if (reply.id === null || !("id" in reply)) return; // not ours to answer
+      if ((reply.kind === "ok" || reply.kind === "error") && reply.boot !== undefined && reply.boot !== lastBoot) {
+        lastBoot = reply.boot;
+        for (const listener of [...startListeners]) {
+          try {
+            listener();
+          } catch {
+            // one broken listener must not stop the others
+          }
+        }
+      }
       const settle = pending.get(reply.id);
       if (!settle) return; // late or unknown id: ignore
       pending.delete(reply.id);
@@ -256,14 +274,24 @@ export function createBridgeClient(options: BridgeClientOptions): Bridge {
       eventListeners.add(listener);
       return () => void eventListeners.delete(listener);
     },
+    onScriptStart(listener) {
+      startListeners.add(listener);
+      return () => void startListeners.delete(listener);
+    },
     close() {
       eventListeners.clear();
+      startListeners.clear();
       closed = true;
       for (const settle of pending.values()) settle(fail(1, "bridge closed"));
       pending.clear();
       transport.close();
     },
   };
+}
+
+/** True for a datagram from the Remote Script's socket (127.0.0.1:27185); replies and pushed events are accepted from nobody else. */
+export function isFromScript(address: string, port: number): boolean {
+  return address === BRIDGE_HOST && port === BRIDGE_PORT;
 }
 
 /** The real transport: one UDP socket on an ephemeral port, created on first use. */
@@ -275,8 +303,8 @@ export function createUdpTransport(): Transport {
     if (socket) return socket;
     const s = dgram.createSocket("udp4");
     s.on("message", (buf, rinfo) => {
-      // Only the Remote Script may answer; another local process is dropped.
-      if (rinfo.address !== BRIDGE_HOST || rinfo.port !== BRIDGE_PORT) return;
+      // Only the Remote Script may answer or push an event; another local process is dropped.
+      if (!isFromScript(rinfo.address, rinfo.port)) return;
       listener?.(buf.toString("utf8"));
     });
     s.on("error", () => {

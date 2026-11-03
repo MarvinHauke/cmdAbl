@@ -8,18 +8,19 @@ socket is drained from `update_display`, which Live calls on the main thread at
 - routes.py    {scope, route} -> Live objects
 - ops/         one handler per operation (the list `hello` reports)
 - midi.py      MIDI in: the forwarded set, the ring buffer (plan 0018)
-- events.py    the outbox that pushes events to cmdAbl (plan 0018)
+- events.py    pushes MIDI events to cmdAbl as UDP datagrams (plan 0018)
 
 Layout and rules: docs/feature-plans/0001 §8.
 """
 
+import secrets
 import socket
 import time
 import traceback
 
 from _Framework.ControlSurface import ControlSurface
 
-from .events import HttpPusher, Outbox
+from .events import Outbox
 from .midi import MidiService
 from .ops import OPS, WRITES
 from .access_token import create_token
@@ -28,7 +29,6 @@ from .protocol import handle_request
 BRIDGE_HOST = "127.0.0.1"
 BRIDGE_PORT = 27185
 MAX_PER_TICK = 32
-MAX_MIDI_LOG_LINES = 300  # spike: one Log.txt line per message, for the first ones only
 
 
 class cmdAbl(ControlSurface):
@@ -36,10 +36,9 @@ class cmdAbl(ControlSurface):
         super().__init__(c_instance)
         self._socket = None
         self.peer = None  # the address of the request being handled (ops that register a push target read it)
-        self._midi_logged = 0
+        self._boot = secrets.token_hex(4)  # in every reply: a client that sees it change knows the script restarted
         self.midi = MidiService()
-        self._http = HttpPusher(lambda: self._token)
-        self._outbox = Outbox(self._send_to, self._http, self.log_message)
+        self._outbox = Outbox(self._send_to, self.log_message)
         # The access token for writing ops: new per Live start, a file only the user can read.
         # The value is never logged.
         self._token = create_token()
@@ -55,10 +54,6 @@ class cmdAbl(ControlSurface):
             self.log_message("cmdAbl [script] failed to bind:\n%s" % traceback.format_exc())
 
     def disconnect(self):
-        try:
-            self._http.close()
-        except Exception:
-            pass
         if self._socket is not None:
             try:
                 self._socket.close()
@@ -71,11 +66,10 @@ class cmdAbl(ControlSurface):
         super().update_display()
         self._drain_socket()
         try:
-            self._outbox.flush_tick(self.midi.peer)
-            for line in self._http.drain_problems():  # the worker thread may not call Live, so the main thread logs
-                self.log_message(line)
+            if self.midi.tick():  # the monitor window ended: back to the listened controls only
+                self.rebuild_map()
         except Exception:
-            self.log_message("cmdAbl [script] event flush error:\n%s" % traceback.format_exc())
+            self.log_message("cmdAbl [script] midi tick error:\n%s" % traceback.format_exc())
 
     # -- MIDI in (plan 0018): Live's callbacks, wired to midi.py and events.py ------------------
 
@@ -96,10 +90,8 @@ class cmdAbl(ControlSurface):
             if msg is None:
                 super().receive_midi(midi_bytes)  # sysex, clock, … stay with the framework
                 return
-            self._outbox.push(msg, self.midi.peer)
-            if self._midi_logged < MAX_MIDI_LOG_LINES:  # after the push: logging must not delay it
-                self._midi_logged += 1
-                self.log_message("cmdAbl [midi] %s ch%d #%d = %d" % (msg["type"], msg["channel"], msg["number"], msg["value"]))
+            if self.midi.wanted(msg):
+                self._outbox.push(msg, self.midi.peer)
         except Exception:
             self.log_message("cmdAbl [midi] receive error:\n%s" % traceback.format_exc())
 
@@ -142,7 +134,7 @@ class cmdAbl(ControlSurface):
         # Every request has an id and an op; a datagram without them is dropped and logged
         # (this includes the old one-way `cmd` messages of early development builds).
         self.peer = addr
-        reply, problem = handle_request(data, self._ops_for_song(), WRITES, self._token)
+        reply, problem = handle_request(data, self._ops_for_song(), WRITES, self._token, self._boot)
         if problem:
             self.log_message("cmdAbl [script] dropped datagram: %s" % problem)
         if reply is not None:

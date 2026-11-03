@@ -7,7 +7,7 @@ import { ExitCode } from "../core/types.js";
 
 export const PROTOCOL_VERSION = 1;
 /** The Remote Script version this extension was built with (VERSION in protocol.py). */
-export const SCRIPT_VERSION = "0.1.9";
+export const SCRIPT_VERSION = "0.1.10";
 export const BRIDGE_PORT = 27185;
 export const BRIDGE_HOST = "127.0.0.1";
 /** ≥ 300 ms by 0004 (the script drains ~10 Hz); 500 ms is an assumption until measured. */
@@ -50,11 +50,14 @@ export function encodeRequest(id: string, op: string, args: Record<string, unkno
 }
 
 export type ParsedReply =
-  | { kind: "ok"; id: string; v: number; result: Record<string, unknown> }
-  | { kind: "error"; id: string; v: number; code: string; text: string }
+  | { kind: "ok"; id: string; v: number; result: Record<string, unknown>; boot?: string }
+  | { kind: "error"; id: string; v: number; code: string; text: string; boot?: string }
   | { kind: "malformed"; id: string | null; why: string };
 
 const isObject = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);
+
+/** The script's run id (`boot`, in every reply since 0.1.10); a change means the script restarted. */
+const bootOf = (msg: Record<string, unknown>): { boot?: string } => (typeof msg.boot === "string" && msg.boot !== "" ? { boot: msg.boot } : {});
 
 /** Validate one datagram from the script. Never throws. */
 export function parseReply(raw: string): ParsedReply {
@@ -70,14 +73,14 @@ export function parseReply(raw: string): ParsedReply {
   if (typeof msg.v !== "number") return { kind: "malformed", id, why: "reply without v" };
   if (msg.ok === true) {
     if (!isObject(msg.result)) return { kind: "malformed", id, why: "ok reply without result object" };
-    return { kind: "ok", id, v: msg.v, result: msg.result };
+    return { kind: "ok", id, v: msg.v, result: msg.result, ...bootOf(msg) };
   }
   if (msg.ok === false) {
     const e = msg.error;
     if (!isObject(e) || typeof e.code !== "string" || typeof e.text !== "string") {
       return { kind: "malformed", id, why: "error reply without code and text" };
     }
-    return { kind: "error", id, v: msg.v, code: e.code, text: e.text };
+    return { kind: "error", id, v: msg.v, code: e.code, text: e.text, ...bootOf(msg) };
   }
   return { kind: "malformed", id, why: "reply without ok" };
 }

@@ -56,7 +56,7 @@ test("installed script check: missing, old, current, unknown", () => {
 
 // Pins the reset value; update it together with VERSION in protocol.py on the next script change (0001 §3).
 test("the script version is 0.1.8 (0001 §3 versioning rule)", () => {
-  assert.equal(SCRIPT_VERSION, "0.1.9");
+  assert.equal(SCRIPT_VERSION, "0.1.10");
 });
 
 test("parseEvent reads a pushed event and ignores replies and junk", () => {
@@ -66,4 +66,15 @@ test("parseEvent reads a pushed event and ignores replies and junk", () => {
   assert.equal(parseEvent('{"v":1,"id":"r1","event":"midi"}'), null);
   assert.equal(parseEvent('{"v":1,"id":"r1","ok":true,"result":{}}'), null);
   for (const bad of ["", "nope", "[]", "null", '{"event":""}', '{"event":5}']) assert.equal(parseEvent(bad), null, bad);
+});
+
+test("parseReply reads the script's boot id when there is one", () => {
+  const ok = parseReply('{"v":1,"id":"a","ok":true,"result":{},"boot":"ab12"}');
+  assert.ok(ok.kind === "ok" && ok.boot === "ab12");
+  const err = parseReply('{"v":1,"id":"a","ok":false,"error":{"code":"x","text":"y"},"boot":"ab12"}');
+  assert.ok(err.kind === "error" && err.boot === "ab12");
+  const none = parseReply('{"v":1,"id":"a","ok":true,"result":{}}');
+  assert.ok(none.kind === "ok" && none.boot === undefined);
+  const bad = parseReply('{"v":1,"id":"a","ok":true,"result":{},"boot":5}');
+  assert.ok(bad.kind === "ok" && bad.boot === undefined);
 });

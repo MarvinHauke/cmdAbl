@@ -1,6 +1,9 @@
 import type { Bridge } from "./bridgeClient.js";
 import { fail, TEXT_OUTDATED, TEXT_STALE, type BridgeResult } from "./bridgeProtocol.js";
 import type { ObjectNode } from "./objectTree.js";
+import { sendListen, type MidiControls } from "./midiLink.js";
+
+export { onMidiEvent, type MidiControl, type MidiControls, type MidiEvent } from "./midiLink.js";
 
 // One typed function per Remote Script operation (0001 §4, §8). Modules call
 // these, never `bridge.request("name", …)` with loose arguments. Every function
@@ -474,27 +477,20 @@ export async function setId(bridge: Bridge, create = false): Promise<string | nu
   }
 }
 
-/** One control for `midiListen`: a kind, and optionally one channel (1-16) and one number (0-127); omitted = all. */
-export interface MidiControl {
-  type: "cc" | "note" | "pb";
-  channel?: number;
-  number?: number;
-}
-
 /**
- * Tell the script which MIDI controls to forward from its input port (`"all"`, `"none"` or a list), and
- * register this extension as the target of pushed events (plan 0018). A writing op: it changes what Live
- * does with the port. Resolves to how many controls are forwarded, or a failure; never throws.
+ * Tell the script which MIDI controls to forward from its input port and push to this extension
+ * (`"none"` by default in the script, `"all"`, or a list), and register this extension as the target
+ * of pushed events (plan 0018). `monitor` also forwards everything for `seconds` (default 30, at most
+ * 120) so `midiLast` sees every message (learn, `midi monitor`); Live then hands those messages to the
+ * script only, so track input and Cmd+M on the port pause until the window ends. A writing op.
+ * The controls are remembered and sent again when the script restarts. Never throws.
  */
-export async function midiListen(bridge: Bridge, controls: "all" | "none" | MidiControl[]): Promise<BridgeResult<{ count: number }>> {
-  try {
-    const reply = await bridge.request("midi_listen", { controls }, { changes: true, token: true });
-    if (!reply.ok) return reply;
-    const count = reply.value.count;
-    return typeof count === "number" ? { ok: true, value: { count } } : fail(1, "bad reply from the Remote Script (midi_listen)");
-  } catch {
-    return fail(1, "midi_listen failed");
-  }
+export function midiListen(
+  bridge: Bridge,
+  controls: MidiControls,
+  options: { monitor?: boolean; seconds?: number } = {},
+): Promise<BridgeResult<{ count: number; monitor: boolean }>> {
+  return sendListen(bridge, controls, options);
 }
 
 /** One stored MIDI message: `seq` rises by one per message; `time` is when the script received it (ms since the epoch). */

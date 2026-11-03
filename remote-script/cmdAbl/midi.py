@@ -8,8 +8,11 @@ remembers (a ring buffer of the last messages) and the two ops that go with it:
 - `midi_last {since}`       the newest messages (the pull side, also for `--learn`).
 
 No Live import here: `Live.MidiMap` is handed in by the surface, so everything is unit-tested.
-Spike: the default is "all" controls, so the monitor sees everything; a release build starts with
-"none" until `midi_listen` asks for controls.
+Only the controls `midi_listen` names are forwarded (default: none). `monitor: true` forwards
+everything for a short time (learn / `midi monitor`): the ring buffer then sees every message,
+while only the listed controls are pushed. Live gives forwarded messages to the script only, so
+while monitoring, other uses of the port (track input, Cmd+M) are paused; it ends by itself
+after `seconds` (default 30, at most 120) in case the extension went away.
 """
 
 import time
@@ -19,7 +22,8 @@ from .protocol import OpError
 CAPACITY = 50
 MAX_CONTROLS = 256
 MAX_REPLY_BYTES = 3500  # midi_last stays below the 4096-byte reply cap
-DEFAULT_CONTROLS = "all"
+MONITOR_DEFAULT_S = 30
+MONITOR_MAX_S = 120
 
 STATUS_NOTE_OFF = 0x80
 STATUS_NOTE_ON = 0x90
@@ -32,7 +36,7 @@ KINDS = ("cc", "note", "pb")
 def parse_message(midi_bytes):
     """A raw MIDI message -> {type, channel (1-16), number, value}, or None (sysex, clock, short, junk).
 
-    A note-on with velocity 0 is a note-off (`vel0` says so). Pitch bend has number 0 and the 14-bit value.
+    A note-on with velocity 0 is a note-off. Pitch bend has number 0 and the 14-bit value.
     """
     try:
         if not midi_bytes or len(midi_bytes) < 2:
@@ -48,10 +52,7 @@ def parse_message(midi_bytes):
                 return {"type": "cc", "channel": channel, "number": number, "value": value}
             if kind == STATUS_NOTE_ON and value > 0:
                 return {"type": "note_on", "channel": channel, "number": number, "value": value}
-            msg = {"type": "note_off", "channel": channel, "number": number, "value": value}
-            if kind == STATUS_NOTE_ON:
-                msg["vel0"] = True
-            return msg
+            return {"type": "note_off", "channel": channel, "number": number, "value": value}
         if kind == STATUS_PITCHBEND:
             if len(midi_bytes) < 3:
                 return None
@@ -105,23 +106,41 @@ def expand(controls):
     return out
 
 
+def control_key(msg):
+    """The (kind, channel0, number) a parsed message belongs to, as `expand` writes controls."""
+    kind = {"cc": "cc", "note_on": "note", "note_off": "note", "pb": "pb"}[msg["type"]]
+    return (kind, msg["channel"] - 1, None if kind == "pb" else msg["number"])
+
+
 class MidiService(object):
-    """The forwarded set, the ring buffer and the push target. One per surface."""
+    """The listened set, the monitor window, the ring buffer and the push target. One per surface."""
 
     def __init__(self, clock=time.time, capacity=CAPACITY):
         self._clock = clock
         self._capacity = capacity
         self._buffer = []
         self._seq = 0
-        self.spec = DEFAULT_CONTROLS if DEFAULT_CONTROLS in ("all", "none") else parse_controls(DEFAULT_CONTROLS)
+        self.spec = "none"
+        self._wanted = set()
+        self._monitor_until = 0.0
         self.peer = None  # (host, port) of the extension that last called midi_listen
+
+    def monitoring(self):
+        return self._monitor_until > 0.0 and self._clock() < self._monitor_until
+
+    def tick(self):
+        """Main thread, every update_display: True once when the monitor window just ended (the map must be rebuilt)."""
+        if self._monitor_until > 0.0 and self._clock() >= self._monitor_until:
+            self._monitor_until = 0.0
+            return True
+        return False
 
     # -- Live's callbacks ------------------------------------------------
 
     def build_map(self, midi_map, script_handle, map_handle):
-        """Forward the chosen controls. `midi_map` is `Live.MidiMap`. Returns how many were forwarded."""
+        """Forward the listened controls (all of them while monitoring). `midi_map` is `Live.MidiMap`. Returns how many."""
         count = 0
-        for kind, ch, n in expand(self.spec):
+        for kind, ch, n in expand("all" if self.monitoring() else self.spec):
             if kind == "cc":
                 midi_map.forward_midi_cc(script_handle, map_handle, ch, n)
             elif kind == "note":
@@ -132,7 +151,10 @@ class MidiService(object):
         return count
 
     def receive(self, midi_bytes):
-        """One incoming message -> the stored event (with seq and the receive time in ms), or None."""
+        """One incoming message -> the stored event (with seq and the receive time in ms), or None.
+
+        Every parsed message goes into the ring; `wanted` says whether it is also pushed.
+        """
         t = self._clock() * 1000.0
         msg = parse_message(midi_bytes)
         if msg is None:
@@ -144,14 +166,25 @@ class MidiService(object):
         del self._buffer[: -self._capacity]
         return msg
 
+    def wanted(self, msg):
+        return control_key(msg) in self._wanted
+
     # -- the ops -----------------------------------------------------------
 
     def op_listen(self, args, peer):
         spec = parse_controls(args.get("controls"))
+        monitor = args.get("monitor", False)
+        if not isinstance(monitor, bool):
+            raise OpError("bad_request", "monitor must be true or false")
+        seconds = args.get("seconds", MONITOR_DEFAULT_S)
+        if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or not 1 <= seconds <= MONITOR_MAX_S:
+            raise OpError("bad_request", "seconds must be 1-%d" % MONITOR_MAX_S)
         self.spec = spec
+        self._wanted = set(expand(spec))
+        self._monitor_until = self._clock() + seconds if monitor else 0.0
         if peer is not None:
             self.peer = peer
-        return {"count": len(expand(spec)), "all": spec == "all"}
+        return {"count": len(expand("all" if monitor else spec)), "monitor": monitor}
 
     def op_last(self, args):
         since = args.get("since", 0)

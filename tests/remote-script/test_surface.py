@@ -46,13 +46,11 @@ def surface(song, datagrams):
     # No real port and, above all, no real token file: the user's own token must not be touched.
     real, mod.socket = mod.socket, NoSocket()
     real_token, mod.create_token = mod.create_token, lambda *a, **k: None
-    real_http, mod.HttpPusher = mod.HttpPusher, lambda token: real_http(token, start=False)  # no worker thread
     try:
         s = cmdAbl(None)
     finally:
         mod.socket = real
         mod.create_token = real_token
-        mod.HttpPusher = real_http
     s._song = song
     s._socket = Sock(datagrams)
     return s
@@ -100,8 +98,8 @@ class Midi(unittest.TestCase):
         s._token = self.TOKEN
         return s
 
-    def listen(self, controls, token=None):
-        args = {"controls": controls, "token": token or self.TOKEN}
+    def listen(self, controls, token=None, **more):
+        args = dict({"controls": controls, "token": token or self.TOKEN}, **more)
         return (json.dumps({"v": 1, "id": "m", "op": "midi_listen", "args": args}).encode(), ("127.0.0.1", 4242))
 
     def test_midi_listen_over_the_socket_needs_the_token_registers_the_peer_and_rebuilds(self):
@@ -109,28 +107,48 @@ class Midi(unittest.TestCase):
         s._drain_socket()
         refused, ok = [r for r, _ in s._socket.sent]
         self.assertEqual(refused["error"]["code"], "forbidden")
-        self.assertEqual(ok["result"], {"count": 16, "all": False})
+        self.assertEqual(ok["result"], {"count": 16, "monitor": False})
         self.assertEqual(s.midi.peer, ("127.0.0.1", 4242))
         self.assertEqual(getattr(s, "rebuilds", 0), 1)
 
-    def test_receive_midi_pushes_on_udp_now_and_udp_tick_later_and_logs_after(self):
-        s = self.surface([self.listen("all")])
+    def test_every_reply_carries_the_boot_id_and_it_differs_per_run(self):
+        hello = (b'{"v":1,"id":"a","op":"hello","args":{}}', ("h", 1))
+        a, b = self.surface([hello, (b'{"v":1,"id":"b","op":"nope","args":{}}', ("h", 1))]), self.surface([hello])
+        a._drain_socket()
+        b._drain_socket()
+        replies = [r for r, _ in a._socket.sent]
+        self.assertEqual(len({r["boot"] for r in replies}), 1)
+        self.assertNotEqual(replies[0]["boot"], b._socket.sent[0][0]["boot"])
+
+    def test_receive_midi_pushes_only_listened_controls_over_udp_and_keeps_the_ring_for_all(self):
+        s = self.surface([self.listen([{"type": "cc", "number": 21}])])
         s._drain_socket()
         s._socket.sent.clear()
         s.receive_midi((0xB0, 21, 127))
-        events = [r for r, _ in s._socket.sent]
-        self.assertEqual([(e["via"], e["type"], e["number"], e["value"]) for e in events], [("udp", "cc", 21, 127)])
-        s.update_display()
-        self.assertEqual([r["via"] for r, _ in s._socket.sent], ["udp", "udp_tick"])
-        self.assertTrue(any("cmdAbl [midi] cc ch1 #21 = 127" in m for m in s.logged))
+        s.receive_midi((0xB0, 22, 1))
+        events = [(r, a) for r, a in s._socket.sent]
+        self.assertEqual([(e["event"], e["type"], e["number"], e["value"]) for e, _ in events], [("midi", "cc", 21, 127)])
+        self.assertEqual(events[0][1], ("127.0.0.1", 4242))
+        self.assertEqual(len(s.midi._buffer), 2)
         self.assertFalse(hasattr(s, "base_midi"))
 
-    def test_update_display_logs_the_http_workers_problems_on_the_main_thread(self):
+    def test_nothing_is_pushed_by_default(self):
         s = self.surface()
-        s._http._problem("ConnectionRefusedError")
-        self.assertEqual(s.logged and [m for m in s.logged if "event push (http)" in m], [])  # the worker never logs itself
+        s.receive_midi((0xB0, 21, 127))
+        self.assertEqual(s._socket.sent, [])
+
+    def test_the_monitor_window_ends_in_update_display_with_a_map_rebuild(self):
+        now = [50.0]
+        s = self.surface([self.listen("none", monitor=True, seconds=5)])
+        s.midi._clock = lambda: now[0]
+        s._drain_socket()
+        s.midi._monitor_until = 55.0
+        before = getattr(s, "rebuilds", 0)
         s.update_display()
-        self.assertEqual([m for m in s.logged if "event push (http)" in m], ["cmdAbl [script] event push (http) failed: ConnectionRefusedError"])
+        self.assertEqual(getattr(s, "rebuilds", 0), before)
+        now[0] = 56.0
+        s.update_display()
+        self.assertEqual(getattr(s, "rebuilds", 0), before + 1)
 
     def test_other_messages_stay_with_the_framework(self):
         s = self.surface()

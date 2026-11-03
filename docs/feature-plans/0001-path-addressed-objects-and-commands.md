@@ -664,21 +664,31 @@ addition if the chain's switch turns out not to match the visible button.
   running, too old, token missing, bad reply) is null, nothing throws.
 - Live-tested 2026-10-22: the id survives save, reload, Save As and Collect All and Save (Save As keeps the same id in the copy).
 
-**MIDI in and the event push** (script 0.1.9, spike; the plan is `0018`)
-- `midi.py` holds the forwarded set and a ring buffer of the last 50 messages (`seq`, type, channel
-  1-16, number, value, receive time in ms); `build_midi_map` forwards them on the script's input port
-  (`Live.MidiMap.forward_midi_cc` / `_note` / `_pitchbend`), `receive_midi` stores and pushes. A
-  note-on with velocity 0 is stored as a note-off (`vel0`). Sysex, clock and the like stay with the framework.
-- `midi_listen` `{controls: "all"|"none"|[{type: cc|note|pb, channel?: 1-16, number?: 0-127}]}` →
-  `{count, all}`; a writing op (it changes what Live does with the port). It asks Live to rebuild the
-  MIDI map and registers the caller's address as the target of pushed events. The spike's default is
-  `"all"`; the release default is `"none"`. `midi_last` `{since?}` → `{last, messages: [[seq, type, channel, number, value, t]…]}`.
-- `events.py` pushes every message as `{"v":1,"event":"midi","via":…,"seq","type","channel","number","value","t","sent"}`
-  (no `id`: the client tells events from replies by that). The spike sends each on three channels to compare:
-  `udp` (inside `receive_midi`), `udp_tick` (held until `update_display`) and `http` (a worker thread posts to
-  `127.0.0.1:27184/midi-event` with the bridge token, so a slow server cannot stall Live's main thread; the worker never calls Live, its problems are logged by `update_display`).
-- Extension: `Bridge.onEvent(listener)` (bridgeClient.ts), `midiListen` / `midiLast` in `bridgeOps.ts`,
-  `midiEvents.ts` (latency monitor, `/midi-event`, `/midi-listen`, `/midi-stats`; development builds only).
+**MIDI in and the event push** (script 0.1.10; the plan is `0018`, the spike decided the channel)
+- `midi.py` forwards only the controls `midi_listen` names (default none) on the script's input port
+  (`Live.MidiMap.forward_midi_cc` / `_note` / `_pitchbend` in `build_midi_map`) and keeps a ring buffer of
+  the last 50 messages (`seq`, type, channel 1-16, number, value, receive time in ms), always on. A note-on
+  with velocity 0 is a note-off. Sysex, clock and the like stay with the framework (the script does not call
+  `super().receive_midi` for parsed messages: it registers no framework controls).
+- `midi_listen` `{controls: "all"|"none"|[{type: cc|note|pb, channel?: 1-16, number?: 0-127}], monitor?: bool, seconds?: 1-120}`
+  → `{count, monitor}`; a writing op (it changes what Live does with the port). It asks Live to rebuild the MIDI
+  map and registers the caller's address as the target of pushed events. `monitor` forwards **everything**
+  for `seconds` (default 30) so the ring sees every message (learn, `midi monitor`) while only the listed
+  controls are pushed. Trade-off: Live gives forwarded messages to the script only, so while monitoring,
+  track input and Cmd+M on that port pause; the window ends by itself (`update_display` rebuilds the map).
+  `midi_last` `{since?}` → `{last, messages: [[seq, type, channel, number, value, t]…]}`.
+- `events.py` pushes a wanted message as one UDP datagram from inside `receive_midi` to the registered address
+  (spike: median 0.2-0.5 ms, max 2 ms; an HTTP POST and a send held to `update_display` were dropped):
+  `{"v":1,"event":"midi","seq","type":"cc"|"note_on"|"note_off"|"pb","channel","number","value","t"}`.
+  No `id`: the client tells events from replies by that.
+- Every reply carries `boot`, a random id of this run of the script. A client that sees it change knows the
+  script restarted (and forgot `midi_listen` and the push address).
+- Extension: the transport accepts datagrams (replies and events) only from 127.0.0.1:27185 (`isFromScript`).
+  `midiLink.ts` keeps the `onMidiEvent` listeners and the last listened controls outside any bridge client;
+  `attachMidi(bridge)` (called by `getBridge()` for every client) feeds the listeners and, on `onScriptStart`
+  (first reply or a changed `boot`), sends the last `midi_listen` again. API in `bridgeOps.ts`:
+  `onMidiEvent(cb)`, `midiListen(bridge, controls, {monitor?, seconds?})`, `midiLast(bridge, since)`, all failing soft.
+  Development builds add `POST /midi-listen?controls=…[&monitor=1]` and a debug line with the latency per event (`midiEvents.ts`).
 
 **Access token** (mandatory before the first operation that changes something — built with the
 first one, `chain_set`)

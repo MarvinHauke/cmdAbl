@@ -194,8 +194,8 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
   },
   {
     name: "midi_listen",
-    summary: "Chooses which MIDI controls (CC, notes, pitch bend) the script forwards from its input port, asks Live to rebuild the MIDI map, and registers the caller as the target of pushed events.",
-    params: "{ controls: \"all\" | \"none\" | [{ type: \"cc\"|\"note\"|\"pb\", channel?: 1-16, number?: 0-127 }], token }",
+    summary: "Chooses which MIDI controls (CC, notes, pitch bend) the script forwards from its input port and pushes (default none), asks Live to rebuild the MIDI map, and registers the caller as the target of pushed events; monitor forwards everything for a short window (learn).",
+    params: "{ controls: \"all\" | \"none\" | [{ type: \"cc\"|\"note\"|\"pb\", channel?: 1-16, number?: 0-127 }], monitor?: bool, seconds?: 1-120, token }",
     changesLive: true,
     via: "script",
     usesRoute: false,
