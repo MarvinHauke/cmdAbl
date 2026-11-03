@@ -38,6 +38,9 @@ class _ControlSurface(object):
     def receive_midi(self, midi_bytes):
         self.base_midi = getattr(self, "base_midi", []) + [midi_bytes]
 
+    def show_message(self, text):
+        self.shown = getattr(self, "shown", []) + [text]
+
     def request_rebuild_midi_map(self):
         self.rebuilds = getattr(self, "rebuilds", 0) + 1
 

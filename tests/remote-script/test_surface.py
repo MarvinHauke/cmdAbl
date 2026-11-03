@@ -150,6 +150,33 @@ class Midi(unittest.TestCase):
         s.update_display()
         self.assertEqual(getattr(s, "rebuilds", 0), before + 1)
 
+    def test_the_status_bar_shows_values_during_the_window_and_monitor_off_at_its_end(self):
+        now = [10.0]
+        s = self.surface([self.listen("none", monitor=True, seconds=5)])
+        s.midi._clock = lambda: now[0]
+        s._drain_socket()
+        s.midi._monitor_until = 15.0
+        s.receive_midi((0xB0, 48, 127))
+        self.assertEqual(s.shown, ["cmdAbl \u00b7 CC48 ch1 = 127"])
+        now[0] = 16.0
+        s.update_display()
+        self.assertEqual(s.shown[-1], "cmdAbl \u00b7 monitor off")
+        s.update_display()
+        self.assertEqual(len(s.shown), 2)
+        s.receive_midi((0xB0, 48, 1))
+        self.assertEqual(len(s.shown), 2)  # no window: silent
+
+    def test_a_failing_status_bar_is_logged_and_never_raises(self):
+        s = self.surface([self.listen("none", monitor=True)])
+        s._drain_socket()
+
+        def boom(text):
+            raise RuntimeError("x")
+
+        s.show_message = boom
+        s.receive_midi((0xB0, 1, 1))
+        self.assertTrue(any("status bar failed" in m for m in s.logged))
+
     def test_other_messages_stay_with_the_framework(self):
         s = self.surface()
         s.receive_midi((0xF8,))

@@ -226,6 +226,20 @@ test("a restart during an open monitor window re-sends it with the time that is 
   assert.equal(listens[listens.length - 1]!.monitor, undefined);
 });
 
+test("status:false is sent only when asked, and a restart keeps it", async () => {
+  resetMidiLink();
+  const boot = { boot: "aaaa" };
+  const { c, listens } = scriptWith(boot);
+  await midiListen(c, "none", { monitor: true, seconds: 20 });
+  assert.equal(listens[0]!.status, undefined);
+  await midiListen(c, "none", { monitor: true, seconds: 20, status: false });
+  assert.equal(listens[1]!.status, false);
+  boot.boot = "bbbb";
+  await c.request("midi_last", {});
+  await settle();
+  assert.equal(listens[listens.length - 1]!.status, false);
+});
+
 test("a refused listen does not become the re-send target", async () => {
   resetMidiLink();
   const bridge = createFakeBridge({ ops: { midi_listen: () => fail(5, "no") } });

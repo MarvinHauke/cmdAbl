@@ -68,6 +68,7 @@ class cmdAbl(ControlSurface):
         try:
             if self.midi.tick():  # the monitor window ended: back to the listened controls only
                 self.rebuild_map()
+            self._show(self.midi.status_flush())
         except Exception:
             self.log_message("cmdAbl [script] midi tick error:\n%s" % traceback.format_exc())
 
@@ -92,8 +93,16 @@ class cmdAbl(ControlSurface):
                 return
             if self.midi.wanted(msg):
                 self._outbox.push(msg, self.midi.peer)
+            self._show(self.midi.status_for(msg))  # after the push: the status bar must not delay it
         except Exception:
             self.log_message("cmdAbl [midi] receive error:\n%s" % traceback.format_exc())
+
+    def _show(self, text):
+        if text:
+            try:
+                self.show_message(text)  # Live's status bar
+            except Exception:
+                self.log_message("cmdAbl [midi] status bar failed:\n%s" % traceback.format_exc())
 
     def rebuild_map(self):
         try:

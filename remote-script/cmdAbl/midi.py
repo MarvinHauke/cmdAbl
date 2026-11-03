@@ -24,6 +24,8 @@ MAX_CONTROLS = 256
 MAX_REPLY_BYTES = 3500  # midi_last stays below the 4096-byte reply cap
 MONITOR_DEFAULT_S = 30
 MONITOR_MAX_S = 120
+STATUS_INTERVAL_S = 0.05  # at most ~20 status bar updates a second
+STATUS_PREFIX = "cmdAbl \u00b7 "
 
 STATUS_NOTE_OFF = 0x80
 STATUS_NOTE_ON = 0x90
@@ -106,6 +108,20 @@ def expand(controls):
     return out
 
 
+def status_text(msg):
+    """The status bar line for a message: 'cmdAbl · CC48 ch1 = 127', 'N36 ch10 on 100', 'N36 ch10 off', 'PB ch1 = 8192'."""
+    t, ch, n, v = msg["type"], msg["channel"], msg["number"], msg["value"]
+    if t == "cc":
+        body = "CC%d ch%d = %d" % (n, ch, v)
+    elif t == "note_on":
+        body = "N%d ch%d on %d" % (n, ch, v)
+    elif t == "note_off":
+        body = "N%d ch%d off" % (n, ch)
+    else:
+        body = "PB ch%d = %d" % (ch, v)
+    return STATUS_PREFIX + body
+
+
 def control_key(msg):
     """The (kind, channel0, number) a parsed message belongs to, as `expand` writes controls."""
     kind = {"cc": "cc", "note_on": "note", "note_off": "note", "pb": "pb"}[msg["type"]]
@@ -123,6 +139,10 @@ class MidiService(object):
         self.spec = "none"
         self._wanted = set()
         self._monitor_until = 0.0
+        self._status = True  # show messages in Live's status bar while a monitor window is open
+        self._status_last = 0.0
+        self._status_pending = None
+        self._status_off = False
         self.peer = None  # (host, port) of the extension that last called midi_listen
 
     def monitoring(self):
@@ -131,9 +151,40 @@ class MidiService(object):
     def tick(self):
         """Main thread, every update_display: True once when the monitor window just ended (the map must be rebuilt)."""
         if self._monitor_until > 0.0 and self._clock() >= self._monitor_until:
+            if self._status:
+                self._status_off = True
             self._monitor_until = 0.0
+            self._status_pending = None
             return True
         return False
+
+    # -- the status bar (main thread): the surface shows what these return -----------------------
+
+    def status_for(self, msg):
+        """The text to show for a message now, or None (no window, status off, or throttled: the latest waits for status_flush)."""
+        if not (self._status and self.monitoring()):
+            return None
+        text = status_text(msg)
+        now = self._clock()
+        if now - self._status_last >= STATUS_INTERVAL_S:
+            self._status_last = now
+            self._status_pending = None
+            return text
+        self._status_pending = text
+        return None
+
+    def status_flush(self):
+        """Every update_display: 'monitor off' once after a window with status ended, else the throttled latest value."""
+        if self._status_off:
+            self._status_off = False
+            self._status_pending = None
+            return STATUS_PREFIX + "monitor off"
+        if self._status_pending is not None and self._status and self.monitoring():
+            now = self._clock()
+            if now - self._status_last >= STATUS_INTERVAL_S:
+                text, self._status_pending, self._status_last = self._status_pending, None, now
+                return text
+        return None
 
     # -- Live's callbacks ------------------------------------------------
 
@@ -179,9 +230,19 @@ class MidiService(object):
         seconds = args.get("seconds", MONITOR_DEFAULT_S)
         if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or not 1 <= seconds <= MONITOR_MAX_S:
             raise OpError("bad_request", "seconds must be 1-%d" % MONITOR_MAX_S)
+        status = args.get("status", True)
+        if not isinstance(status, bool):
+            raise OpError("bad_request", "status must be true or false")
+        was_showing = self._status and self.monitoring()
         self.spec = spec
         self._wanted = set(expand(spec))
         self._monitor_until = self._clock() + seconds if monitor else 0.0
+        self._status = status
+        self._status_pending = None
+        if was_showing and not (status and monitor):
+            self._status_off = True  # a window that showed values was ended early: say so once
+        if monitor and status:
+            self._status_off = False  # a new window opened before the old "monitor off" was shown
         if peer is not None:
             self.peer = peer
         return {"count": len(expand("all" if monitor else spec)), "monitor": monitor}

@@ -67,6 +67,8 @@ export function deliverPushedEvent(event: PushedEvent): void {
 let desired: MidiControls | null = null;
 /** When the monitor window of the last accepted listen ends (ms since the epoch); 0 = no window. */
 let monitorUntil = 0;
+/** Whether the last accepted monitor listen asked for the status bar (the default). */
+let monitorStatus = true;
 /** Listens sent and not yet answered: a restart seen meanwhile is covered by them, so nothing is re-sent. */
 let inFlight = 0;
 
@@ -83,11 +85,11 @@ export function resetMidiLink(): void {
   listeners.clear();
 }
 
-/** Ask the script to listen. `monitor` also forwards everything for `seconds` (learn); only `controls` is remembered. Never throws. */
+/** Ask the script to listen. `monitor` also forwards everything for `seconds` (learn) and shows the messages in Live's status bar unless `status` is false; only `controls` is remembered. Never throws. */
 export async function sendListen(
   bridge: Bridge,
   controls: MidiControls,
-  options: { monitor?: boolean; seconds?: number } = {},
+  options: { monitor?: boolean; seconds?: number; status?: boolean } = {},
 ): Promise<BridgeResult<{ count: number; monitor: boolean }>> {
   inFlight++;
   try {
@@ -95,6 +97,7 @@ export async function sendListen(
     if (options.monitor === true) {
       args.monitor = true;
       if (options.seconds !== undefined) args.seconds = options.seconds;
+      if (options.status === false) args.status = false;
     }
     const reply = await bridge.request("midi_listen", args, { changes: true, token: true });
     if (!reply.ok) return reply;
@@ -102,6 +105,7 @@ export async function sendListen(
     if (typeof count !== "number") return fail(1, "bad reply from the Remote Script (midi_listen)");
     // Only an accepted listen becomes what a restarted script is told again.
     desired = controls;
+    monitorStatus = options.status !== false;
     monitorUntil = monitor === true ? Date.now() + (options.seconds ?? DEFAULT_MONITOR_SECONDS) * 1000 : 0;
     return { ok: true, value: { count, monitor: monitor === true } };
   } catch {
@@ -121,6 +125,6 @@ export function attachMidi(bridge: Bridge): void {
     if (desired === null || inFlight > 0) return;
     // A monitor window that is still open goes on for the rest of its time; an ended one is not reopened.
     const remaining = Math.ceil((monitorUntil - Date.now()) / 1000);
-    void sendListen(bridge, desired, remaining >= 1 ? { monitor: true, seconds: remaining } : {});
+    void sendListen(bridge, desired, remaining >= 1 ? { monitor: true, seconds: remaining, status: monitorStatus } : {});
   });
 }

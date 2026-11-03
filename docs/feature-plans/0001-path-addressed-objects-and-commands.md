@@ -664,7 +664,7 @@ addition if the chain's switch turns out not to match the visible button.
   running, too old, token missing, bad reply) is null, nothing throws.
 - Live-tested 2026-10-22: the id survives save, reload, Save As and Collect All and Save (Save As keeps the same id in the copy).
 
-**MIDI in and the event push** (script 0.1.10; the plan is `0018`, the spike decided the channel)
+**MIDI in and the event push** (script 0.1.10, status bar 0.1.11; the plan is `0018`, the spike decided the channel)
 - `midi.py` forwards only the controls `midi_listen` names (default none) on the script's input port
   (`Live.MidiMap.forward_midi_cc` / `_note` / `_pitchbend` in `build_midi_map`) and keeps a ring buffer of
   the last 50 messages (`seq`, type, channel 1-16, number, value, receive time in ms), always on. A note-on
@@ -676,6 +676,10 @@ addition if the chain's switch turns out not to match the visible button.
   for `seconds` (default 30) so the ring sees every message (learn, `midi monitor`) while only the listed
   controls are pushed. Trade-off: Live gives forwarded messages to the script only, so while monitoring,
   track input and Cmd+M on that port pause; the window ends by itself (`update_display` rebuilds the map).
+  While the window is open the script writes each message to Live's status bar with `show_message`
+  (`cmdAbl · CC48 ch1 = 127`, `cmdAbl · N36 ch10 on 100`; at most ~20 a second, the latest value wins; trailing
+  values go out on the next `update_display`) and `cmdAbl · monitor off` once when the window ends;
+  `status: false` switches it off.
   `midi_last` `{since?}` → `{last, messages: [[seq, type, channel, number, value, t]…]}`.
 - `events.py` pushes a wanted message as one UDP datagram from inside `receive_midi` to the registered address
   (spike: median 0.2-0.5 ms, max 2 ms; an HTTP POST and a send held to `update_display` were dropped):

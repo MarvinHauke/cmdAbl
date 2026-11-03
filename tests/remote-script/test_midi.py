@@ -3,7 +3,7 @@ import unittest
 
 import fake_live  # noqa: F401  (installs the _Framework stub)
 from cmdAbl import midi
-from cmdAbl.midi import MidiService, expand, parse_controls, parse_message
+from cmdAbl.midi import MidiService, expand, parse_controls, parse_message, status_text
 from cmdAbl.ops.midi import midi_last, midi_listen
 from cmdAbl.protocol import OpError
 
@@ -126,6 +126,81 @@ class Service(unittest.TestCase):
         svc.op_listen({"controls": "none", "monitor": True}, None)
         svc.op_listen({"controls": "none"}, None)
         self.assertFalse(svc.monitoring())
+
+
+class Status(unittest.TestCase):
+    def make(self, **args):
+        self.now = [100.0]
+        svc = MidiService(clock=lambda: self.now[0])
+        svc.op_listen(dict({"controls": "none", "monitor": True, "seconds": 10}, **args), None)
+        return svc
+
+    def msg(self, svc, raw):
+        return svc.receive(raw)
+
+    def test_texts(self):
+        cases = {
+            (0xB0, 48, 127): "cmdAbl \u00b7 CC48 ch1 = 127",
+            (0x99, 36, 100): "cmdAbl \u00b7 N36 ch10 on 100",
+            (0x89, 36, 0): "cmdAbl \u00b7 N36 ch10 off",
+            (0xE0, 0x00, 0x40): "cmdAbl \u00b7 PB ch1 = 8192",
+        }
+        for raw, text in cases.items():
+            self.assertEqual(status_text(parse_message(raw)), text)
+
+    def test_shows_while_the_window_is_open_and_throttles_to_20_a_second(self):
+        svc = self.make()
+        self.assertEqual(svc.status_for(self.msg(svc, (0xB0, 48, 1))), "cmdAbl \u00b7 CC48 ch1 = 1")
+        self.now[0] += 0.01
+        self.assertIsNone(svc.status_for(self.msg(svc, (0xB0, 48, 2))))
+        self.now[0] += 0.01
+        self.assertIsNone(svc.status_for(self.msg(svc, (0xB0, 48, 3))))
+        self.assertIsNone(svc.status_flush())  # too early
+        self.now[0] += 0.05
+        self.assertEqual(svc.status_flush(), "cmdAbl \u00b7 CC48 ch1 = 3")  # the latest value
+        self.assertIsNone(svc.status_flush())
+        self.now[0] += 0.06
+        self.assertIsNotNone(svc.status_for(self.msg(svc, (0xB0, 48, 4))))
+
+    def test_nothing_without_a_window_or_with_status_false(self):
+        svc = MidiService(clock=lambda: 1.0)
+        self.assertIsNone(svc.status_for(svc.receive((0xB0, 1, 1))))
+        quiet = self.make(status=False)
+        self.assertIsNone(quiet.status_for(quiet.receive((0xB0, 1, 1))))
+        self.now[0] += 20
+        self.assertTrue(quiet.tick())
+        self.assertIsNone(quiet.status_flush())
+
+    def test_monitor_off_once_at_the_end_by_time_and_by_a_new_listen(self):
+        svc = self.make()
+        svc.status_for(svc.receive((0xB0, 1, 1)))
+        self.now[0] += 10
+        self.assertTrue(svc.tick())
+        self.assertEqual(svc.status_flush(), "cmdAbl \u00b7 monitor off")
+        self.assertIsNone(svc.status_flush())
+        again = self.make()
+        again.op_listen({"controls": "none"}, None)  # ended early
+        self.assertEqual(again.status_flush(), "cmdAbl \u00b7 monitor off")
+        self.assertIsNone(again.status_flush())
+
+    def test_a_pending_value_is_dropped_when_the_window_ends(self):
+        svc = self.make()
+        svc.status_for(svc.receive((0xB0, 1, 1)))
+        svc.status_for(svc.receive((0xB0, 1, 2)))
+        self.now[0] += 10
+        svc.tick()
+        self.assertEqual(svc.status_flush(), "cmdAbl \u00b7 monitor off")
+
+    def test_a_new_window_cancels_a_pending_monitor_off(self):
+        svc = self.make()
+        svc.status_for(svc.receive((0xB0, 1, 1)))
+        svc.op_listen({"controls": "none"}, None)  # ends the window: "monitor off" is due
+        svc.op_listen({"controls": "none", "monitor": True}, None)  # the next learn, before update_display
+        self.assertIsNone(svc.status_flush())
+
+    def test_status_must_be_a_bool(self):
+        with self.assertRaises(OpError):
+            MidiService().op_listen({"controls": "none", "status": "no"}, None)
 
 
 class Ops(unittest.TestCase):

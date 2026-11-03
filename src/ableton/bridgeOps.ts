@@ -482,13 +482,15 @@ export async function setId(bridge: Bridge, create = false): Promise<string | nu
  * (`"none"` by default in the script, `"all"`, or a list), and register this extension as the target
  * of pushed events (plan 0018). `monitor` also forwards everything for `seconds` (default 30, at most
  * 120) so `midiLast` sees every message (learn, `midi monitor`); Live then hands those messages to the
- * script only, so track input and Cmd+M on the port pause until the window ends. A writing op.
+ * script only, so track input and Cmd+M on the port pause until the window ends. While the window is open the
+ * script also shows each message in Live's status bar ("cmdAbl · CC48 ch1 = 127", at most ~20 a second, and
+ * "cmdAbl · monitor off" once at the end); `status: false` turns that off. A writing op.
  * The controls are remembered and sent again when the script restarts. Never throws.
  */
 export function midiListen(
   bridge: Bridge,
   controls: MidiControls,
-  options: { monitor?: boolean; seconds?: number } = {},
+  options: { monitor?: boolean; seconds?: number; status?: boolean } = {},
 ): Promise<BridgeResult<{ count: number; monitor: boolean }>> {
   return sendListen(bridge, controls, options);
 }
