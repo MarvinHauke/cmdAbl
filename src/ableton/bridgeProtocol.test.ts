@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { encodeRequest, mapScriptError, parseHello, parseReply, PROTOCOL_VERSION, SCRIPT_VERSION, TEXT_OUTDATED, TEXT_STALE } from "./bridgeProtocol.js";
+import { encodeRequest, mapScriptError, parseEvent, parseHello, parseReply, PROTOCOL_VERSION, SCRIPT_VERSION, TEXT_OUTDATED, TEXT_STALE } from "./bridgeProtocol.js";
 import { parseScriptVersion, inspectInstalledScript } from "./installedScript.js";
 import { readFileSync } from "node:fs";
 
@@ -56,5 +56,14 @@ test("installed script check: missing, old, current, unknown", () => {
 
 // Pins the reset value; update it together with VERSION in protocol.py on the next script change (0001 §3).
 test("the script version is 0.1.8 (0001 §3 versioning rule)", () => {
-  assert.equal(SCRIPT_VERSION, "0.1.8");
+  assert.equal(SCRIPT_VERSION, "0.1.9");
+});
+
+test("parseEvent reads a pushed event and ignores replies and junk", () => {
+  const ev = parseEvent('{"v":1,"event":"midi","via":"udp","seq":3}');
+  assert.equal(ev?.name, "midi");
+  assert.equal(ev?.data.seq, 3);
+  assert.equal(parseEvent('{"v":1,"id":"r1","event":"midi"}'), null);
+  assert.equal(parseEvent('{"v":1,"id":"r1","ok":true,"result":{}}'), null);
+  for (const bad of ["", "nope", "[]", "null", '{"event":""}', '{"event":5}']) assert.equal(parseEvent(bad), null, bad);
 });

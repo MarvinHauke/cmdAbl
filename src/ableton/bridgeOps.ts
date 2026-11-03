@@ -473,3 +473,57 @@ export async function setId(bridge: Bridge, create = false): Promise<string | nu
     return null;
   }
 }
+
+/** One control for `midiListen`: a kind, and optionally one channel (1-16) and one number (0-127); omitted = all. */
+export interface MidiControl {
+  type: "cc" | "note" | "pb";
+  channel?: number;
+  number?: number;
+}
+
+/**
+ * Tell the script which MIDI controls to forward from its input port (`"all"`, `"none"` or a list), and
+ * register this extension as the target of pushed events (plan 0018). A writing op: it changes what Live
+ * does with the port. Resolves to how many controls are forwarded, or a failure; never throws.
+ */
+export async function midiListen(bridge: Bridge, controls: "all" | "none" | MidiControl[]): Promise<BridgeResult<{ count: number }>> {
+  try {
+    const reply = await bridge.request("midi_listen", { controls }, { changes: true, token: true });
+    if (!reply.ok) return reply;
+    const count = reply.value.count;
+    return typeof count === "number" ? { ok: true, value: { count } } : fail(1, "bad reply from the Remote Script (midi_listen)");
+  } catch {
+    return fail(1, "midi_listen failed");
+  }
+}
+
+/** One stored MIDI message: `seq` rises by one per message; `time` is when the script received it (ms since the epoch). */
+export interface MidiMessage {
+  seq: number;
+  type: string;
+  channel: number;
+  number: number;
+  value: number;
+  time: number;
+}
+
+/** The newest MIDI messages after `since` (a seq; 0 = all that are kept), oldest first. Never throws. */
+export async function midiLast(bridge: Bridge, since = 0): Promise<BridgeResult<{ last: number; messages: MidiMessage[] }>> {
+  try {
+    const reply = await bridge.request("midi_last", { since });
+    if (!reply.ok) return reply;
+    const { last, messages } = reply.value;
+    if (typeof last !== "number" || !Array.isArray(messages)) return fail(1, "bad reply from the Remote Script (midi_last)");
+    const rows: MidiMessage[] = [];
+    for (const row of messages) {
+      if (!Array.isArray(row) || row.length !== 6) continue;
+      const [seq, type, channel, number, value, time] = row as unknown[];
+      if (typeof seq === "number" && typeof type === "string" && typeof channel === "number" && typeof number === "number" && typeof value === "number" && typeof time === "number") {
+        rows.push({ seq, type, channel, number, value, time });
+      }
+    }
+    return { ok: true, value: { last, messages: rows } };
+  } catch {
+    return fail(1, "midi_last failed");
+  }
+}

@@ -46,11 +46,13 @@ def surface(song, datagrams):
     # No real port and, above all, no real token file: the user's own token must not be touched.
     real, mod.socket = mod.socket, NoSocket()
     real_token, mod.create_token = mod.create_token, lambda *a, **k: None
+    real_http, mod.HttpPusher = mod.HttpPusher, lambda token: real_http(token, start=False)  # no worker thread
     try:
         s = cmdAbl(None)
     finally:
         mod.socket = real
         mod.create_token = real_token
+        mod.HttpPusher = real_http
     s._song = song
     s._socket = Sock(datagrams)
     return s
@@ -88,6 +90,81 @@ class Surface(unittest.TestCase):
         s = surface(FakeSong(), [hello] * (mod.MAX_PER_TICK + 5))
         s._drain_socket()
         self.assertEqual(len(s._socket.sent), mod.MAX_PER_TICK)
+
+
+class Midi(unittest.TestCase):
+    TOKEN = "f" * 32
+
+    def surface(self, datagrams=()):
+        s = surface(FakeSong(), list(datagrams))
+        s._token = self.TOKEN
+        return s
+
+    def listen(self, controls, token=None):
+        args = {"controls": controls, "token": token or self.TOKEN}
+        return (json.dumps({"v": 1, "id": "m", "op": "midi_listen", "args": args}).encode(), ("127.0.0.1", 4242))
+
+    def test_midi_listen_over_the_socket_needs_the_token_registers_the_peer_and_rebuilds(self):
+        s = self.surface([self.listen("none", token="0" * 32), self.listen([{"type": "cc", "number": 1}])])
+        s._drain_socket()
+        refused, ok = [r for r, _ in s._socket.sent]
+        self.assertEqual(refused["error"]["code"], "forbidden")
+        self.assertEqual(ok["result"], {"count": 16, "all": False})
+        self.assertEqual(s.midi.peer, ("127.0.0.1", 4242))
+        self.assertEqual(getattr(s, "rebuilds", 0), 1)
+
+    def test_receive_midi_pushes_on_udp_now_and_udp_tick_later_and_logs_after(self):
+        s = self.surface([self.listen("all")])
+        s._drain_socket()
+        s._socket.sent.clear()
+        s.receive_midi((0xB0, 21, 127))
+        events = [r for r, _ in s._socket.sent]
+        self.assertEqual([(e["via"], e["type"], e["number"], e["value"]) for e in events], [("udp", "cc", 21, 127)])
+        s.update_display()
+        self.assertEqual([r["via"] for r, _ in s._socket.sent], ["udp", "udp_tick"])
+        self.assertTrue(any("cmdAbl [midi] cc ch1 #21 = 127" in m for m in s.logged))
+        self.assertFalse(hasattr(s, "base_midi"))
+
+    def test_update_display_logs_the_http_workers_problems_on_the_main_thread(self):
+        s = self.surface()
+        s._http._problem("ConnectionRefusedError")
+        self.assertEqual(s.logged and [m for m in s.logged if "event push (http)" in m], [])  # the worker never logs itself
+        s.update_display()
+        self.assertEqual([m for m in s.logged if "event push (http)" in m], ["cmdAbl [script] event push (http) failed: ConnectionRefusedError"])
+
+    def test_other_messages_stay_with_the_framework(self):
+        s = self.surface()
+        s.receive_midi((0xF8,))
+        self.assertEqual(s.base_midi, [(0xF8,)])
+
+    def test_build_midi_map_forwards_on_the_script_handle(self):
+        import sys
+        import types
+
+        calls = []
+        live = types.ModuleType("Live")
+        live.MidiMap = types.SimpleNamespace(
+            forward_midi_cc=lambda *a: calls.append(("cc",) + a),
+            forward_midi_note=lambda *a: calls.append(("note",) + a),
+            forward_midi_pitchbend=lambda *a: calls.append(("pb",) + a),
+        )
+        s = self.surface()
+        s.midi.spec = [("cc", 0, 7)]
+        s._c_instance = types.SimpleNamespace(handle=lambda: "H")
+        sys.modules["Live"] = live
+        try:
+            s.build_midi_map("M")
+        finally:
+            del sys.modules["Live"]
+        self.assertEqual(calls, [("cc", "H", "M", 0, 7)])
+        self.assertEqual(s.base_map_calls, 1)
+        self.assertTrue(any("map built: 1 controls" in m for m in s.logged))
+
+    def test_build_midi_map_outside_live_logs_and_does_not_raise(self):
+        s = self.surface()
+        s._c_instance = None
+        s.build_midi_map("M")
+        self.assertTrue(any("map failed" in m for m in s.logged))
 
 
 class Routes(unittest.TestCase):

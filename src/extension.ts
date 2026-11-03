@@ -31,6 +31,9 @@ import { tokenFilePath } from "./ableton/bridgeToken.js";
 import * as path from "node:path";
 import { createUiGate, runHeadless } from "./core/headless.js";
 import { createDevRoutes, runTokenFilePath, type DevRoutes, writeRunToken } from "./devRoutes.js";
+import { midiListen } from "./ableton/bridgeOps.js";
+import { createTokenSource } from "./ableton/bridgeToken.js";
+import { createMidiMonitor, createMidiRoutes } from "./ableton/midiEvents.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
 import { readVolume, writeVolume, type VolumeTrack } from "./core/volume.js";
 import { trackFor } from "./ableton/trackLookup.js";
@@ -223,6 +226,7 @@ export function activate(activation: ActivationContext) {
   // GET /bridge a diagnostic for measuring round trips.
   // Development builds only (plan 0016): POST /run and GET /log for the agents' test access.
   let devRoutes: DevRoutes | undefined;
+  let midiRoutes: ReturnType<typeof createMidiRoutes> | undefined;
   if (CMDABL_DEV_ROUTES) {
     const file = runTokenFilePath();
     const token = writeRunToken(file);
@@ -236,6 +240,27 @@ export function activate(activation: ActivationContext) {
         show: (line) => void showLine(line),
       });
       logger("host").info(`development routes on: POST /run, GET /log (Bearer token in ${file})`);
+      // MIDI spike (plan 0018): pushed events are logged with their latency; /midi-listen changes what the script forwards.
+      const monitor = createMidiMonitor();
+      const bridgeToken = createTokenSource();
+      const listen = async (controls: Parameters<typeof midiListen>[1]): Promise<string> => {
+        const r = await midiListen(getBridge(), controls);
+        return r.ok ? `forwarding ${r.value.count} controls` : `midi_listen failed: ${r.text}`;
+      };
+      midiRoutes = createMidiRoutes({
+        eventToken: () => {
+          const t = bridgeToken.get();
+          return t.ok ? t.value : null;
+        },
+        controlToken: token,
+        monitor,
+        listen,
+        stats: () => JSON.stringify(monitor.summary()),
+      });
+      getBridge().onEvent?.((event) => {
+        if (event.name === "midi") monitor.handle(event.data);
+      });
+      void listen("all").then((line) => logger("midi").info(line));
     } else {
       logger("host").warn(`development routes off: cannot write ${file}`);
     }
@@ -251,7 +276,7 @@ export function activate(activation: ActivationContext) {
     if (was) return `dialog queue reset (was: ${was.name})${note}`;
     if (gateReleased) return "run gate released";
     return isOpen ? "no dialog open; a command is still running" : "no dialog was open";
-  }, async () => (await reportBridge(getBridge())).line, devRoutes);
+  }, async () => (await reportBridge(getBridge())).line, (req, res) => midiRoutes?.(req, res) === true || devRoutes?.(req, res) === true);
 
   // The Karabiner rule only fires while `cmdabl_open` is 0. If a previous host
   // was stopped with the palette open, the flag would stay at 1 and ":" would

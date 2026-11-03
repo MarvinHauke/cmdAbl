@@ -664,6 +664,22 @@ addition if the chain's switch turns out not to match the visible button.
   running, too old, token missing, bad reply) is null, nothing throws.
 - Live-tested 2026-10-22: the id survives save, reload, Save As and Collect All and Save (Save As keeps the same id in the copy).
 
+**MIDI in and the event push** (script 0.1.9, spike; the plan is `0018`)
+- `midi.py` holds the forwarded set and a ring buffer of the last 50 messages (`seq`, type, channel
+  1-16, number, value, receive time in ms); `build_midi_map` forwards them on the script's input port
+  (`Live.MidiMap.forward_midi_cc` / `_note` / `_pitchbend`), `receive_midi` stores and pushes. A
+  note-on with velocity 0 is stored as a note-off (`vel0`). Sysex, clock and the like stay with the framework.
+- `midi_listen` `{controls: "all"|"none"|[{type: cc|note|pb, channel?: 1-16, number?: 0-127}]}` →
+  `{count, all}`; a writing op (it changes what Live does with the port). It asks Live to rebuild the
+  MIDI map and registers the caller's address as the target of pushed events. The spike's default is
+  `"all"`; the release default is `"none"`. `midi_last` `{since?}` → `{last, messages: [[seq, type, channel, number, value, t]…]}`.
+- `events.py` pushes every message as `{"v":1,"event":"midi","via":…,"seq","type","channel","number","value","t","sent"}`
+  (no `id`: the client tells events from replies by that). The spike sends each on three channels to compare:
+  `udp` (inside `receive_midi`), `udp_tick` (held until `update_display`) and `http` (a worker thread posts to
+  `127.0.0.1:27184/midi-event` with the bridge token, so a slow server cannot stall Live's main thread; the worker never calls Live, its problems are logged by `update_display`).
+- Extension: `Bridge.onEvent(listener)` (bridgeClient.ts), `midiListen` / `midiLast` in `bridgeOps.ts`,
+  `midiEvents.ts` (latency monitor, `/midi-event`, `/midi-listen`, `/midi-stats`; development builds only).
+
 **Access token** (mandatory before the first operation that changes something — built with the
 first one, `chain_set`)
 - *Threat model.* Any local process can send UDP to 127.0.0.1:27185. The same user can already

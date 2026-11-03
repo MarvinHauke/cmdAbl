@@ -14,8 +14,10 @@ import {
   encodeRequest,
   fail,
   mapScriptError,
+  parseEvent,
   parseHello,
   parseReply,
+  type PushedEvent,
   type BridgeResult,
   type HelloInfo,
 } from "./bridgeProtocol.js";
@@ -52,6 +54,11 @@ export interface Bridge {
     args?: Record<string, unknown>,
     options?: { changes?: boolean; token?: boolean },
   ): Promise<BridgeResult<Record<string, unknown>>>;
+  /**
+   * Events the Remote Script pushes on its own (plan 0018): the listener gets each one, whether or not
+   * a request is pending. Returns a function that removes the listener. A listener that throws is skipped.
+   */
+  onEvent?(listener: (event: PushedEvent) => void): () => void;
   close(): void;
 }
 
@@ -83,9 +90,21 @@ export function createBridgeClient(options: BridgeClientOptions): Bridge {
   let cached: BridgeResult<HelloInfo> | null = null;
   let helloInFlight: Promise<BridgeResult<HelloInfo>> | null = null;
   let closed = false;
+  const eventListeners = new Set<(event: PushedEvent) => void>();
 
   transport.onMessage((raw) => {
     try {
+      const pushed = parseEvent(raw);
+      if (pushed) {
+        for (const listener of [...eventListeners]) {
+          try {
+            listener(pushed);
+          } catch {
+            // one broken listener must not stop the others
+          }
+        }
+        return;
+      }
       const reply = parseReply(raw);
       if (reply.id === null || !("id" in reply)) return; // not ours to answer
       const settle = pending.get(reply.id);
@@ -233,7 +252,12 @@ export function createBridgeClient(options: BridgeClientOptions): Bridge {
     available,
     ping,
     request,
+    onEvent(listener) {
+      eventListeners.add(listener);
+      return () => void eventListeners.delete(listener);
+    },
     close() {
+      eventListeners.clear();
       closed = true;
       for (const settle of pending.values()) settle(fail(1, "bridge closed"));
       pending.clear();
