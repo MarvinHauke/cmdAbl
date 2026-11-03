@@ -292,9 +292,16 @@ midi monitor                         # the last incoming messages
 - **The exception, a live page, may only read while open.**
 
 **Rules for a live page:**
-1. **Served from `http://localhost:27184/live/<page>?t=<token>`.** The token is fresh per dialog, about
-   128 bits, used once to load the page; the page then sends it as `Authorization: Bearer`. It is never
+1. **Served from `http://localhost:27184/live/<page>?t=<load token>`, with two tokens per dialog,
+   each about 128 bits** (reviewer, 2026-11-04):
+   - **the load token** is in the URL and loads the page once, then it's dead;
+   - **the route token** is written only into the served HTML (`LIVE.token`) and is the only
+     `Authorization: Bearer` accepted.
+
+   A dialog URL that Live or WebKit might log or cache is then worth nothing. Neither token is ever
    logged. The routes exist only while that dialog is open and are revoked when it closes.
+   - **`localhost` resolves to `::1` first:** the server binds `[::1]:27184` too for `/live/`, so no
+     other local process can take that address. If that fails, the data-page fallback applies.
 2. **Checks on every route:**
    - origin `http://localhost:27184` exactly;
    - the token, compared in constant time;
