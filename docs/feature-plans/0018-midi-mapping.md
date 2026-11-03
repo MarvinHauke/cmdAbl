@@ -202,6 +202,21 @@ map --off / map --on                 # settings.json map.enabled
 midi monitor                         # the last incoming messages
 ```
 
+### Set changes (core `1399a79`)
+
+- **`api.onSetChange(listener)`** tells `map` when another Set is open, so it can load that Set's
+  bindings.
+- **When the listener fires:**
+  - once when the Remote Script first answers, also if the script comes up after the extension;
+  - at once if the id is already known;
+  - after that, on every change of the Set id.
+  It gets the Set id, or `null` if the Set has none yet.
+- **How core detects it:** it polls the script's `set_id` without `create` (read-only, with the token,
+  nothing written) every 3 s, or every 10 s while the script doesn't answer.
+- **Known limits:** two Sets without an id look the same, and A → B → A within one poll goes unseen.
+  Both are fine for v1.
+- Mapping commands have their own topic, "Control".
+
 ### Syntax rules (v1)
 
 - `|` outside quotes is reserved. In `map` it starts the raw binding line, which `;` doesn't split.
