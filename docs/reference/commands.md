@@ -10,6 +10,7 @@ shows as help. Type a command in the palette; `<command> --help` prints the same
 
 - Find and select: `goto`, `find`, `next`, `prev`
 - Mix: `mute`, `solo`, `arm`, `vol`
+- Control: `map`, `midi`
 - Tags: `tag`
 - Look things up: `help`, `man`, `lom`, `note`
 - Recent commands: `history`
@@ -382,6 +383,130 @@ vol --set -inf /Lead
 ```
 
 silence the fader
+
+## Control
+
+### `map`
+
+run command lines from MIDI controls
+
+Binds a MIDI control to a command line, so a button or knob on your controller runs it. map CC37 toggle | solo #lead --set {} binds controller 37 to a line; the line is everything after the bar, chains with ; included. The operator says when the line runs and what {} becomes: press (the default) runs it when the control goes down, release when it comes up, hold on both with 1 and 0, toggle on every press with 1, 0, 1, and so on. Press and release give no value, so they cannot use {}. A control is CC37, N36 (a note) or PB (pitch bend); add /ch2 to listen to one channel only. Bindings belong to the Live Set and are stored with it. A line runs without dialogs: an address that is ambiguous does not run and is logged. Giving the same control and operator again replaces the line. Needs the cmdAbl Remote Script.
+
+**Usage:** `map <command>`
+
+**Subcommands:** `learn`, `add`
+
+#### `map learn`
+
+bind the control you move next
+
+Opens a small page that says Move a control, then press Enter. When you press Enter, the control that was moved last is bound to the line after the bar, with the operator you name (press if none). A control that sends on several channels is bound to the channel it used.
+
+**Usage:** `map learn [<press|release|hold|toggle>] | <line>`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<operator>` | one of `press`, `release`, `hold`, `toggle` | no | When the line runs: press (default), release, hold or toggle |
+| `<line>` | text | yes | The command line to run, after the bar (the text after `\|`, kept as typed) |
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+map learn toggle | mute #fx --set {}
+```
+
+move a control, then press Enter
+
+#### `map add`
+
+bind a control, list the bindings, remove one, or switch mapping on or off
+
+map &lt;control> [operator] | &lt;line> binds the control to the line. map -l lists the bindings of this Set as numbered rows, map --rm 2 removes the second one, map --off stops all MIDI mapping and map --on starts it again (the setting is kept).
+
+**Usage:** `map add [--list] [--rm <n>] [--on] [--off] [<control>] [<press|release|hold|toggle>] [| <line>]`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<control>` | text | no | The control: CC37, N36, PB, with /ch2 to limit the channel |
+| `<operator>` | one of `press`, `release`, `hold`, `toggle` | no | When the line runs: press (default), release, hold or toggle |
+| `<line>` | text | no | The command line to run, after the bar; {} is the operator's value (the text after `\|`, kept as typed) |
+
+| Option | Description |
+| --- | --- |
+| `-l, --list` | list the bindings of this Set as numbered rows |
+| `--rm <n>` | remove binding number n (see map -l) |
+| `--on` | switch MIDI mapping on |
+| `--off` | switch MIDI mapping off |
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+map CC37 | mute #drums --set 0
+```
+
+controller 37 mutes the tracks tagged drums
+
+```
+map N36 hold | mute #drums --set {}
+```
+
+mute while the note is held
+
+```
+map CC37/ch2 toggle | solo #lead --set {}
+```
+
+a latching solo on channel 2
+
+```
+map -l
+```
+
+list the bindings
+
+```
+map --rm 2
+```
+
+remove binding 2
+
+```
+map --off
+```
+
+stop MIDI mapping
+
+### `midi`
+
+look at incoming MIDI
+
+Tools for the MIDI input that map uses. midi monitor shows the last messages the controller sent.
+
+**Usage:** `midi <command>`
+
+**Subcommands:** `monitor`
+
+#### `midi monitor`
+
+show the last 20 incoming MIDI messages
+
+Opens a small page that says Move a control, then press Enter. Everything the controller sends meanwhile is listed afterwards, newest first, with type, channel, number and value. While the page is open, bound controls do not run their lines. Needs the cmdAbl Remote Script and cmdAbl set as a MIDI input in Live's settings.
+
+**Usage:** `midi monitor`
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+midi monitor
+```
+
+move some controls, press Enter, read the list
 
 ## Tags
 

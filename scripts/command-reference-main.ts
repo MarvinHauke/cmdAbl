@@ -56,6 +56,7 @@ const stub: ModuleApi = {
   onPick: () => {},
   registerProvider: () => {},
   onCommandRun: () => {},
+  onSetChange: () => {},
   showFeedback: () => {},
 };
 for (const mod of MODULES) mod.activate(stub);
