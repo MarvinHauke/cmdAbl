@@ -18,7 +18,15 @@ export function registerMap(api: ModuleApi): { sync(): Promise<void> } {
   let loaded = false;
   let loadedId: string | null = null;
 
-  const usage = (): string => api.commands.usage(["map"]) ?? SYNTAX;
+  // The add form first: the group's own usage line ("map <command>") says nothing about a binding.
+  const usage = (): string =>
+    [
+      `usage: ${SYNTAX}`,
+      "       map learn [press|release|hold|toggle] | <command line>",
+      "       map -l",
+      "       map --rm <n>",
+      "       map --on | --off",
+    ].join("\n");
   const usageFail = (why: string): CommandResult => fail(ExitCode.USAGE, `map: ${why}\n${usage()}`);
 
   /** Load the bindings of the current Set when the Set changed since last time (or on first use) and give them to the engine. */

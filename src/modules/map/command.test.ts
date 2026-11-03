@@ -188,3 +188,20 @@ test("a file that fails to read (not missing) is never overwritten either", asyn
   assert.match(r!.message!, /cannot be read/);
   assert.ok(fake.logged.some((l) => /EACCES/.test(l.text)));
 });
+
+test("a map error shows the add form, not the group's usage", async () => {
+  const { add } = await setup();
+  const r = (await add({ control: "CC1" }))!;
+  assert.match(r.message!, /usage: map <control> \[press\|release\|hold\|toggle\] \| <command line>/);
+  assert.match(r.message!, /map learn/);
+  assert.match(r.message!, /map --rm <n>/);
+});
+
+test("every form in the usage text parses against the declared tree", async () => {
+  const { parse } = await import("../../core/parse.js");
+  const { fake } = await setup();
+  for (const line of ["map CC37 press | mute #a", "map CC37 | mute #a", "map learn press | mute #a", "map -l", "map --rm 2", "map --on", "map --off"]) {
+    const outcome = parse(line, fake.commands as never);
+    assert.equal(outcome.kind, "run", `${line}: ${outcome.kind === "error" ? outcome.result.message : outcome.kind}`);
+  }
+});

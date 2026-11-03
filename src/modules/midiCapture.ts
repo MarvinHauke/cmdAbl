@@ -17,7 +17,7 @@ const PAGE = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta n
   p { margin: 0; color: #999; overflow-wrap: anywhere; }
   kbd { background: #333; border-radius: 3px; padding: 1px 6px; color: #ddd; }
 </style></head><body>
-<h1 id="title"></h1><p id="hint"></p><p><kbd>Enter</kbd> done &nbsp; <kbd>Esc</kbd> cancel</p>
+<h1 id="title"></h1><p id="hint"></p><p>When you press Enter, cmdAbl reads what you moved. This page can&#39;t show it live; watch Live&#39;s status bar.</p><p><kbd>Enter</kbd> done &nbsp; <kbd>Esc</kbd> cancel</p>
 <script>
   // In: CAPTURE_PLACEHOLDER = { title, hint } (plain text, set with textContent). Out (close_and_send): "go" on Enter, "" on Esc.
   const CAPTURE = /*CAPTURE_PLACEHOLDER*/null;
@@ -57,7 +57,7 @@ export async function captureMessages(api: ModuleApi, title: string, hint: strin
   if (!start.ok) return fail(start.code, `${name}: ${start.text}`);
   const opened = await api.midi.listen("all", { monitor: true, seconds: CAPTURE_SECONDS });
   if (!opened.ok) return fail(opened.code, `${name}: ${opened.text}`);
-  const answer = await api.dialog(capturePage(title, hint), 420, 190, name);
+  const answer = await api.dialog(capturePage(title, hint), 420, 220, name);
   const got = await api.midi.last(start.value.last);
   await api.midi.listen("none"); // ends the monitor window; the bound controls stay forwarded
   if (!got.ok) return fail(got.code, `${name}: ${got.text}`);
