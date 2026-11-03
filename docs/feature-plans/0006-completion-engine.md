@@ -286,6 +286,14 @@ self-explanation. The user also wants recent commands first.
   size. Live's status bar (`show_message`) would need the palette to reach cmdAbl while open; it depends
   on the server spike above.
 
+## Spike result (2026-11-04)
+
+A dialog page can reach cmdAbl's local server while open: both a `data:` page (origin `"null"`) and a
+page served from `http://localhost:27184` (same origin), with ping and POST around 1 ms and a smooth
+100 ms poll. The figures are in [0018](0018-midi-mapping.md) ("Second Live test"). The completion
+server variant is therefore feasible; the design and security rules above apply, and the dialog rule in
+`CLAUDE.md` changes only with the user's decision.
+
 ## Open questions
 
 - Prototype ghost text on a plain `<input>` overlay vs. a `contenteditable`; settle by trying.

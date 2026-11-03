@@ -256,6 +256,28 @@ midi monitor                         # the last incoming messages
   live values in Live's status bar (`show_message`) while the monitor window is open. A spike checks
   whether a page can poll the local server while open.
 
+### Second Live test (2026-11-04, script 0.1.12)
+
+- **Status bar:** live values while a monitor window is open (`cmdAbl · CC48 ch1 = 127`). Works.
+- **Cmd+M detection works:** `forward_midi_cc` returns a bool per control.
+  - `map` warns when adding, and `map -l` shows "⚠ taken in Live";
+  - a later Cmd+M mapping logs a warning;
+  - after removing the Cmd+M mapping, cmdAbl receives the control again without a new `map`.
+- **Bindings were lost after a Live restart** because the Set wasn't saved after the first `map` (the
+  first binding creates the Set id). The docs must say: save the Set after the first `map`.
+- **Page spike (bridge `c9912ed`): a dialog page can reach cmdAbl's local server while open.**
+
+  | Variant | Origin | Ping median/max | POST with token | Poll every 100 ms |
+  |---|---|---|---|---|
+  | `data:` page | `"null"` | 1 / 28 ms | 1 ms | 100–102 ms, smooth (frame gap ≤ 21 ms) |
+  | page served from `http://localhost:27184` | `http://localhost:27184` | 0 / 3 ms | 1 ms | 100–101 ms, smooth (≤ 22 ms) |
+
+  Both work without errors. The `http://localhost` variant has a real origin, so the origin check means
+  something (`"null"` is also sent by any sandboxed iframe on any website). This opens live pages:
+  `midi monitor` with live values, a `map learn` page that closes by itself on movement, and the
+  completion server of plan 0006. **It changes the dialog rule** (`CLAUDE.md`: "it cannot call the
+  extension while open"), so it needs the user's decision.
+
 ### Syntax rules (v1)
 
 - `|` outside quotes is reserved. In `map` it starts the raw binding line, which `;` doesn't split.
