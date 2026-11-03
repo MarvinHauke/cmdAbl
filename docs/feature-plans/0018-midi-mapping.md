@@ -195,12 +195,21 @@ Decisions:
 map CC37 | mute #drums --set 0
 map N36 hold | mute #drums --set {}
 map CC37/ch2 toggle | solo #lead --set {}
-map --learn toggle | mute #fx --set {}
+map learn toggle | mute #fx --set {}   # subcommand, so the platform parses the operator
 map -l
 map --rm 2
 map --off / map --on                 # settings.json map.enabled
 midi monitor                         # the last incoming messages
 ```
+
+### Syntax rules (v1)
+
+- `|` outside quotes is reserved. In `map` it starts the raw binding line, which `;` doesn't split.
+  In every other command a bare `|` is a usage error (exit 2), e.g. `note buy milk | eggs` or
+  `find a|b`. Quote it or write `\|`. Old history entries with a bare `|` fail the same way. This
+  goes into the release notes next to the `;` change (core, 2026-11-03).
+- Learn is a subcommand, `map learn [operator] | <line>`, so the platform parses the operator: with
+  `--learn` there would be no control word and the operator would land in the control slot.
 
 ### Engine rules (v1)
 
@@ -381,7 +390,7 @@ So `map` stays thin: a control plus a pipeline of these same commands and steps.
 - Live:
   - `map CC37 | mute #drums --set 0`: the button unmutes every drums track, including a track
     tagged afterwards;
-  - `map --learn | next` binds the control you move;
+  - `map learn | next` binds the control you move;
   - an ambiguous command bound to a control opens no dialog and logs exit 4;
   - bindings survive saving and reopening the Set;
   - value mode: `map CC --learn | vol #synth`, and the fader follows smoothly.
