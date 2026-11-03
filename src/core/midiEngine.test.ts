@@ -160,6 +160,8 @@ function portSetup() {
       return { ok: true, value: { count: controls === "all" ? 4112 : controls === "none" ? 0 : controls.length, monitor: options.monitor === true } };
     },
     last: async (since) => ({ ok: true, value: { last: since + 1, messages: [] } }),
+    blocked: () => [],
+    onBlocked: () => () => {},
     enabled: async () => true,
     setEnabled: async () => true,
     now: () => clock,
@@ -204,6 +206,8 @@ test("last asks the script; a bridge failure comes back as the failure", async (
     engine: setup().engine,
     listen: async () => ({ ok: false, code: 5, text: "script not running" }),
     last: async () => ({ ok: false, code: 5, text: "script not running" }),
+    blocked: () => { throw new Error("no bridge"); },
+    onBlocked: () => () => {},
     enabled: async () => { throw new Error("no settings"); },
     setEnabled: async () => { throw new Error("no settings"); },
   });
@@ -239,6 +243,8 @@ test("a failing listen changes nothing: no window, no extra controls, the old bo
     engine,
     listen: async (controls) => (ok ? { ok: true, value: { count: 1, monitor: false } } : { ok: false, code: 5, text: "down" }),
     last: async () => ({ ok: false, code: 5, text: "down" }),
+    blocked: () => [],
+    onBlocked: () => () => {},
     enabled: async () => true,
     setEnabled: async () => true,
   });
@@ -327,6 +333,8 @@ test("a failed listen puts the engine's table back as it was", async () => {
     engine,
     listen: async () => (ok ? { ok: true, value: { count: 1, monitor: false } } : { ok: false, code: 5, text: "down" }),
     last: async () => ({ ok: false, code: 5, text: "down" }),
+    blocked: () => [],
+    onBlocked: () => () => {},
     enabled: async () => true,
     setEnabled: async () => true,
   });
@@ -362,4 +370,31 @@ test("setBindings while a line runs: the binding keeps working afterwards (the r
   await engine.handle(cc(10, 1)); // must run again
   await engine.handle(cc(10, 2));
   assert.deepEqual(ran, ["slow", "slow", "new"]);
+});
+
+test("blocked / onBlocked pass the bridge's list through; a failing read is 'unknown' and a throwing listener is skipped", () => {
+  let current: string[] | null = ["CC51/ch1"];
+  const callbacks: Array<(b: string[] | null) => void> = [];
+  const runtime = createMidiPort({
+    engine: setup().engine,
+    listen: async () => ({ ok: true, value: { count: 0, monitor: false } }),
+    last: async () => ({ ok: true, value: { last: 0, messages: [] } }),
+    blocked: () => current,
+    onBlocked: (cb) => (callbacks.push(cb), () => void callbacks.splice(callbacks.indexOf(cb), 1)),
+    enabled: async () => true,
+    setEnabled: async () => true,
+  });
+  assert.deepEqual(runtime.port.blocked(), ["CC51/ch1"]);
+  const heard: Array<string[] | null> = [];
+  runtime.port.onBlocked(() => {
+    throw new Error("broken");
+  });
+  const off = runtime.port.onBlocked((b) => heard.push(b));
+  current = null;
+  for (const cb of callbacks) cb(current);
+  assert.deepEqual(heard, [null]); // the broken listener did not stop the other
+  off(); // the returned function removes the listener
+  for (const cb of callbacks) cb(["CC1/ch1"]);
+  assert.deepEqual(heard, [null]);
+  assert.equal(runtime.port.blocked(), null);
 });

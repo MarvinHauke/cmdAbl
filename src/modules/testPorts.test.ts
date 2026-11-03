@@ -63,3 +63,17 @@ test("fake api.files.readResult: ok, missing, failed (unreadable or a bad name)"
   assert.equal(await fake.api.files.read("a.json"), null); // read answers null for a failing file too
   assert.equal((await fake.api.files.readResult("../x")).status, "failed");
 });
+
+test("fake api.midi.blocked / onBlocked: a rebuild is simulated by changing midiBlocked and calling the listeners", () => {
+  const fake = createFakeApi();
+  assert.deepEqual(fake.api.midi.blocked(), []);
+  const heard: Array<string[] | null> = [];
+  const off = fake.api.midi.onBlocked((b) => heard.push(b));
+  fake.midiBlocked = ["CC51/ch1"];
+  for (const l of fake.blockedListeners) l(fake.api.midi.blocked());
+  assert.deepEqual(heard, [["CC51/ch1"]]);
+  fake.midiBlocked = null;
+  assert.equal(fake.api.midi.blocked(), null);
+  off();
+  assert.equal(fake.blockedListeners.length, 0);
+});

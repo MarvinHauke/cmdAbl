@@ -5,6 +5,7 @@ import {
   controlMatches,
   controlOf,
   formatControl,
+  isBlocked,
   initialState,
   listenControl,
   parseControl,
@@ -113,4 +114,22 @@ test("validateBinding and substituteValue: {} needs an operator with a value", (
   assert.equal(substituteValue("mute #a --set {}; solo #b --set {}", 1), "mute #a --set 1; solo #b --set 1");
   assert.equal(substituteValue("next", undefined), "next");
   assert.equal(substituteValue("a {} b", 0), "a 0 b");
+});
+
+test("isBlocked: a control without a channel is blocked by any /chN entry, one with a channel only by that entry; null is not blocked", () => {
+  const blocked = ["CC51/ch1", "N60/ch2", "PB/ch3"];
+  const is = (text: string, list: string[] | null = blocked) => isBlocked(parseControl(text)!, list);
+  assert.equal(is("CC51"), true);
+  assert.equal(is("CC51/ch1"), true);
+  assert.equal(is("CC51/ch2"), false);
+  assert.equal(is("CC52"), false);
+  assert.equal(is("N60"), true);
+  assert.equal(is("N60/ch2"), true);
+  assert.equal(is("N60/ch1"), false);
+  assert.equal(is("PB"), true);
+  assert.equal(is("PB/ch3"), true);
+  assert.equal(is("PB/ch1"), false);
+  assert.equal(is("CC51", []), false);
+  assert.equal(is("CC51", null), false); // unknown: not claimed
+  assert.equal(is("CC51", ["garbage", "CC5/ch1"]), false); // CC5 is not CC51
 });

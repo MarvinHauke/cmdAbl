@@ -79,6 +79,21 @@ export function listenControl(control: MidiControl): { type: ControlKind; channe
   };
 }
 
+/**
+ * Is `control` among the controls Live keeps for itself? `blocked` is the script's list in mapping syntax
+ * (`CC51/ch1`, `N60/ch2`, `PB/ch1`); a control typed without a channel (`CC51`) is blocked when ANY `CC51/chN` is listed,
+ * one with a channel only when exactly that entry is. Null (the script cannot tell) is not blocked.
+ */
+export function isBlocked(control: MidiControl, blocked: readonly string[] | null): boolean {
+  if (!blocked) return false;
+  const base = formatControl({ ...control, channel: undefined });
+  return blocked.some((entry) => {
+    const parsed = parseControl(entry);
+    if (!parsed || formatControl({ ...parsed, channel: undefined }) !== base) return false;
+    return control.channel === undefined || parsed.channel === control.channel;
+  });
+}
+
 // ── operators ─────────────────────────────────────────────────────────────────────────────────
 
 export const OPERATORS = ["press", "release", "hold", "toggle"] as const;

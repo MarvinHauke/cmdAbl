@@ -152,6 +152,8 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "midi.setBindings", via: "script", call: "operation `midi_listen` (the bound controls) + core's binding table", lom: [], note: "The script forwards exactly the bound controls (and what listen adds); pushed events run the bound lines through the headless runner." },
   { port: "midi.listen", via: "script", call: "operation `midi_listen` (all, none or a list; optional monitor window)", lom: [], note: "Forwarded controls no longer reach track input or Cmd+M for as long as they are forwarded." },
   { port: "midi.last", via: "script", call: "operation `midi_last`", lom: [], note: "The newest messages the script kept (a ring of 50)." },
+  { port: "midi.blocked", via: "script", call: "the `blocked` list of `midi_listen` and the pushed event `midi_blocked`", lom: [], note: "Controls Live keeps for itself (a Cmd+M mapping, another script): they are never forwarded to cmdAbl." },
+  { port: "midi.onBlocked", via: "script", call: "the pushed event `midi_blocked` after a map build", lom: [] },
   { port: "midi.enabled", via: "platform", call: "reads `map.enabled` in settings.json", lom: [] },
   { port: "midi.setEnabled", via: "platform", call: "writes `map.enabled` in settings.json", lom: [] },
   { port: "commands.completer", via: "platform", call: "registers a source of completion candidates under a key", lom: [] },

@@ -31,7 +31,7 @@ import { tokenFilePath } from "./ableton/bridgeToken.js";
 import * as path from "node:path";
 import { createUiGate, runHeadless } from "./core/headless.js";
 import { createDevRoutes, runTokenFilePath, type DevRoutes, writeRunToken } from "./devRoutes.js";
-import { midiLast, midiListen, onMidiEvent } from "./ableton/bridgeOps.js";
+import { midiBlocked, midiLast, midiListen, onBlocked, onMidiEvent } from "./ableton/bridgeOps.js";
 import { createMidiEngine } from "./core/midiEngine.js";
 import { createSetWatch } from "./core/setWatch.js";
 import { createMidiPort } from "./core/midiPort.js";
@@ -154,6 +154,8 @@ export function activate(activation: ActivationContext) {
     engine: createMidiEngine({ run: (line) => runHeadless(line, runBase, gate), enabled: mapEnabled }),
     listen: (controls, options) => midiListen(getBridge(), controls, options),
     last: (since) => midiLast(getBridge(), since),
+    blocked: midiBlocked,
+    onBlocked,
     enabled: mapEnabled,
     setEnabled: async (on) => {
       enabledValue = on; // in effect at once, saved or not

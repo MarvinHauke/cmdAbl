@@ -76,6 +76,9 @@ export interface FakeApi {
   midiBindings: MidiBinding[];
   /** Listeners registered with `api.onSetChange`; call them to simulate a Set change. */
   setListeners: Array<(setId: string | null) => void>;
+  /** What the fake `api.midi.blocked()` answers (default none); call `blockedListeners` after changing it to simulate a map rebuild. */
+  midiBlocked: string[] | null;
+  blockedListeners: Array<(blocked: string[] | null) => void>;
   /** The fake `map.enabled` (default true). */
   mapEnabled: boolean;
   /** Every `api.midi.listen` call, in order. */
@@ -115,6 +118,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     setId: options.setId ?? null,
     midiBindings: [],
     setListeners: [],
+    midiBlocked: [],
+    blockedListeners: [],
     mapEnabled: true,
     midiListens: [],
     completers: new Map(),
@@ -181,6 +186,11 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       last: async (since = 0) => {
         const messages = (options.midiMessages ?? []).filter((m) => m.seq > since);
         return { ok: true, value: { last: Math.max(since, ...messages.map((m) => m.seq)), messages } };
+      },
+      blocked: () => (fake.midiBlocked === null ? null : [...fake.midiBlocked]),
+      onBlocked: (listener) => {
+        fake.blockedListeners.push(listener);
+        return () => void fake.blockedListeners.splice(fake.blockedListeners.indexOf(listener) >>> 0, 1);
       },
       enabled: async () => fake.mapEnabled,
       setEnabled: async (on) => ((fake.mapEnabled = on), true),

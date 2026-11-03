@@ -36,6 +36,15 @@ export interface MidiPort {
    * A monitor window never turns into a permanent forward-everything, and `setBindings` ends it.
    */
   listen(controls: "all" | "none" | readonly MidiControl[], options?: ListenOptions): Promise<BridgeResult<{ count: number }>>;
+  /**
+   * The controls Live keeps for itself, as the script last reported them (after a map build): `[]` none, a list like
+   * `["CC51/ch1", "N60/ch2", "PB/ch1"]` (a Cmd+M mapping or another script holds them, so cmdAbl never receives
+   * them), or null when the script cannot tell. A control typed without a channel (`CC51`) is blocked when any
+   * `CC51/chN` is listed.
+   */
+  blocked(): string[] | null;
+  /** Be told when the blocked set changes (the script reports it after every map build). A throwing listener is skipped. */
+  onBlocked(listener: (blocked: string[] | null) => void): () => void;
   /** The `map.enabled` setting: false makes the engine drop every message (`map --off`). */
   enabled(): Promise<boolean>;
   /** Switch the engine on or off; stored in settings.json (`map.enabled`). Resolves false when it could not be saved (it is in effect for this session anyway). */
@@ -48,6 +57,9 @@ export interface MidiPortDeps {
   listen: (controls: MidiControls, options: { monitor?: boolean; seconds?: number }) => Promise<BridgeResult<{ count: number; monitor: boolean }>>;
   /** midiLast of the bridge client. */
   last: (since: number) => Promise<BridgeResult<{ last: number; messages: StoredMessage[] }>>;
+  /** bridge: the last known blocked set, and its changes. */
+  blocked: () => string[] | null;
+  onBlocked: (callback: (blocked: string[] | null) => void) => () => void;
   /** Read and write `map.enabled`. */
   enabled: () => Promise<boolean>;
   setEnabled: (on: boolean) => Promise<boolean>;
@@ -113,6 +125,21 @@ export function createMidiPort(deps: MidiPortDeps): MidiRuntime {
         monitorUntil = 0;
         return { ok: true, value: { count: reply.value.count } };
       },
+      blocked: () => {
+        try {
+          return deps.blocked();
+        } catch {
+          return null;
+        }
+      },
+      onBlocked: (listener) =>
+        deps.onBlocked((blocked) => {
+          try {
+            listener(blocked);
+          } catch {
+            // one broken listener must not stop the others
+          }
+        }),
       enabled: () => deps.enabled().catch(() => true),
       setEnabled: (on) => deps.setEnabled(on).catch(() => false),
     },
