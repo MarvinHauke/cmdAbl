@@ -49,6 +49,6 @@ export function parseBindings(text: string | null): { bindings: MidiBinding[]; d
 export const sameSlot = (a: MidiBinding, b: MidiBinding): boolean => formatControl(a.control) === formatControl(b.control) && a.operator === b.operator;
 
 /** One numbered row for `map -l`. */
-export function bindingRow(n: number, b: MidiBinding): string {
-  return `${n}  ${formatControl(b.control)}  ${b.operator}  | ${b.line}`;
+export function bindingRow(n: number, b: MidiBinding, blocked = false): string {
+  return `${n}  ${formatControl(b.control)}  ${b.operator}  | ${b.line}${blocked ? "   ⚠ taken in Live" : ""}`;
 }

@@ -1,10 +1,13 @@
 import type { ModuleApi } from "../types.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
-import { OPERATORS, controlOf, formatControl, isOperator, parseControl, validateBinding, type MessageType, type OperatorName } from "../../core/midi.js";
+import { OPERATORS, controlOf, formatControl, isBlocked, isOperator, parseControl, validateBinding, type MessageType, type OperatorName } from "../../core/midi.js";
+import type { MidiControl } from "../../core/midi.js";
 import type { MidiBinding } from "../../core/midiEngine.js";
 import { captureMessages, isCaptured } from "../midiCapture.js";
 import { bindingRow, parseBindings, sameSlot, serializeBindings } from "./store.js";
 
+/** How long an add waits for the script's report of blocked controls. */
+const BLOCKED_WAIT_MS = 300;
 const SYNTAX = "map <control> [press|release|hold|toggle] | <command line>";
 
 /**
@@ -113,8 +116,39 @@ export function registerMap(api: ModuleApi): { sync(): Promise<void> } {
     const failed = await commit(next);
     if (failed) return failed;
     const n = at >= 0 ? at + 1 : next.length;
-    return { ...ok(`map ${n}: ${formatControl(binding.control)} ${binding.operator} | ${binding.line}${at >= 0 ? " (replaced)" : ""}`), log: [`map ${n} ${at >= 0 ? "replaced" : "added"}`] };
+    const warning = (await blockedNow(binding.control))
+      ? `\n⚠ ${formatControl(binding.control)} is taken in Live (a Cmd+M mapping or another control surface), so cmdAbl doesn't receive it; remove that mapping or use another control`
+      : "";
+    return {
+      ...ok(`map ${n}: ${formatControl(binding.control)} ${binding.operator} | ${binding.line}${at >= 0 ? " (replaced)" : ""}${warning}`),
+      log: [`map ${n} ${at >= 0 ? "replaced" : "added"}`],
+    };
   }
+
+  /**
+   * Is the control one Live keeps for itself? The script reports it with the rebuild that follows `setBindings`, so a control
+   * just bound may not be listed yet: wait a moment for that report before judging.
+   */
+  async function blockedNow(control: MidiControl): Promise<boolean> {
+    const known = api.midi.blocked();
+    if (known === null) return false; // unknown: no warning, and nothing to wait for
+    if (isBlocked(control, known)) return true;
+    const report = await new Promise<string[] | null>((resolve) => {
+      let off: (() => void) | undefined;
+      const timer = setTimeout(() => (off?.(), resolve(api.midi.blocked())), BLOCKED_WAIT_MS);
+      off = api.midi.onBlocked((list) => (clearTimeout(timer), off?.(), resolve(list)));
+    });
+    return isBlocked(control, report);
+  }
+
+  // A rebuild that newly blocks a bound control: a log line (map -l shows the mark).
+  let lastBlocked = new Set<string>();
+  api.midi.onBlocked((list) => {
+    const mine = bindings.filter((b) => isBlocked(b.control, list)).map((b) => formatControl(b.control));
+    const fresh = mine.filter((c) => !lastBlocked.has(c));
+    lastBlocked = new Set(mine);
+    if (fresh.length) api.logger.warn(`${[...new Set(fresh)].join(", ")} taken in Live (a Cmd+M mapping or another control surface): cmdAbl does not receive it`);
+  });
 
   const operatorOf = (given: unknown[] | undefined): OperatorName => {
     const name = (given?.[0] as string | undefined)?.toLowerCase();
@@ -209,7 +243,7 @@ export function registerMap(api: ModuleApi): { sync(): Promise<void> } {
               const off = (await api.midi.enabled()) ? "" : "map is off (map --on)\n";
               return bindings.length === 0
                 ? ok(`${off}map: no bindings in this Set. Add one: ${SYNTAX}`)
-                : ok(off + bindings.map((b, i) => bindingRow(i + 1, b)).join("\n"));
+                : ok(off + bindings.map((b, i) => bindingRow(i + 1, b, isBlocked(b.control, api.midi.blocked()))).join("\n"));
             }
             const n = Number(o.rm);
             if (!Number.isInteger(n) || n < 1) return usageFail(`--rm takes a number from map -l, not "${String(o.rm)}"`);

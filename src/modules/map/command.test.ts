@@ -205,3 +205,35 @@ test("every form in the usage text parses against the declared tree", async () =
     assert.equal(outcome.kind, "run", `${line}: ${outcome.kind === "error" ? outcome.result.message : outcome.kind}`);
   }
 });
+
+test("a control Live keeps for itself: add warns (and stores), map -l marks the row, a rebuild report is logged", async () => {
+  const { fake, add } = await setup();
+  fake.midiBlocked = ["CC51/ch1"];
+  const r = (await add({ control: "CC51", line: "mute #a --set 1" }))!;
+  assert.equal(r.code, ExitCode.OK);
+  assert.match(r.message!, /⚠ CC51 is taken in Live \(a Cmd\+M mapping or another control surface\), so cmdAbl doesn't receive it/);
+  assert.equal(fake.midiBindings.length, 1);
+  await add({ control: "CC7", line: "mute #b --set 1" });
+  const rows = ((await add({}, { list: true }))!).message!.split("\n");
+  assert.match(rows[0]!, /⚠ taken in Live$/);
+  assert.doesNotMatch(rows[1]!, /⚠/);
+});
+
+test("a free control gets no warning; a report that arrives after the bind still warns", async () => {
+  const { fake, add } = await setup();
+  assert.doesNotMatch(((await add({ control: "CC7", line: "mute #a --set 1" }))!).message!, /⚠/);
+  const pending = add({ control: "CC8", line: "mute #a --set 1" });
+  await new Promise((r) => setTimeout(r, 20));
+  fake.midiBlocked = ["CC8/ch2"];
+  for (const l of fake.blockedListeners) l(fake.midiBlocked);
+  assert.match(((await pending)!).message!, /⚠ CC8 is taken in Live/);
+});
+
+test("a rebuild that newly blocks a bound control logs one warning", async () => {
+  const { fake, add } = await setup();
+  await add({ control: "CC51", line: "mute #a --set 1" });
+  fake.midiBlocked = ["CC51/ch1"];
+  for (const l of fake.blockedListeners) l(fake.midiBlocked);
+  for (const l of fake.blockedListeners) l(fake.midiBlocked);
+  assert.equal(fake.logged.filter((l) => l.level === "warn" && /CC51 taken in Live/.test(l.text)).length, 1);
+});
