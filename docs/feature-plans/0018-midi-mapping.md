@@ -202,7 +202,7 @@ map learn toggle | mute #fx --set {}   # subcommand, so the platform parses the 
 map -l
 map --rm 2
 map --off / map --on                 # settings.json map.enabled
-midi monitor                         # the last incoming messages
+midi monitor                         # live view of incoming messages
 ```
 
 ### Modules built (modules `51356c5`)
@@ -216,7 +216,7 @@ midi monitor                         # the last incoming messages
 - **`map -l`:** numbered rows, e.g. `1  CC37  toggle  | solo #lead --set {}`.
 - **`map --rm <n>`:** rows complete from the list.
 - **`map --on` / `--off`:** the `map.enabled` setting.
-- **`midi monitor`:** the same page, then the newest 20 messages.
+- **`midi monitor`:** the live list on the page is the output, and closing is quiet (a log line only). Only without a working live view (the fallback page answers "list") does the command show the newest 20 messages as text (user, 2026-11-04).
 - **Storage and loading:** `modules/map/<setid>.json`. The Set id is created on the first save, so Live
   marks the Set as changed. Bindings load on `api.onSetChange` and before every `map` command.
 - **A damaged bindings file is never overwritten** (exit 1, with a warning).
