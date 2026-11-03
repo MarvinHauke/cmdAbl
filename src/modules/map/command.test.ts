@@ -176,3 +176,15 @@ test("after a damaged file is fixed, the next command loads it and works", async
   assert.equal(r.code, ExitCode.OK);
   assert.deepEqual(fake.midiBindings.map((b) => b.line), ["mute #z --set 1", "mute #a"]);
 });
+
+test("a file that fails to read (not missing) is never overwritten either", async () => {
+  const fake = createFakeApi({ setId: "set1", files: { "set1.json": serializeBindings([{ control: { kind: "cc", number: 7 }, operator: "press", line: "mute #z --set 1" }]) } });
+  fake.unreadableFiles.add("set1.json");
+  fake.api.commands.add({ name: "mute", summary: "mute", run: () => undefined });
+  registerMap(fake.api);
+  const leaf = fake.commands.find((c) => c.name === "map")!.children!.find((c) => c.name === "add")!;
+  const r = (await leaf.run!({ path: ["map"], options: {}, args: [["CC1"], [], ["mute #a"]] } as never, undefined as never)) as Result;
+  assert.equal(r!.code, ExitCode.FAILURE);
+  assert.match(r!.message!, /cannot be read/);
+  assert.ok(fake.logged.some((l) => /EACCES/.test(l.text)));
+});

@@ -36,10 +36,15 @@ export function registerMap(api: ModuleApi): { sync(): Promise<void> } {
     const id = await api.set.id(false);
     if (loaded && id === loadedId && damaged === null) return; // a damaged file is read again each time, so fixing it works
     let text: string | null = null;
-    if (id !== null) text = await api.files.read(`${id}.json`);
+    let unreadable: string | null = null;
+    if (id !== null) {
+      const read = await api.files.readResult(`${id}.json`);
+      if (read.status === "ok") text = read.text;
+      else if (read.status === "failed") unreadable = read.reason;
+    }
     const parsed = parseBindings(text);
-    damaged = parsed.damaged && id !== null ? `${id}.json` : null;
-    if (damaged) api.logger.warn(`${damaged} cannot be read as bindings; map leaves it alone until you fix or remove it`);
+    damaged = (parsed.damaged || unreadable !== null) && id !== null ? `${id}.json` : null;
+    if (damaged) api.logger.warn(`${damaged} cannot be read${unreadable ? ` (${unreadable})` : " as bindings"}; map leaves it alone until you fix or remove it`);
     if (parsed.dropped > 0) api.logger.warn(`${parsed.dropped} binding(s) in ${id}.json ignored (not a control, operator or line); they will be removed at the next change`);
     const previous = bindings;
     bindings = parsed.bindings;
