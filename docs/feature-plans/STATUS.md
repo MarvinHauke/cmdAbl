@@ -58,6 +58,9 @@ Older checks that were never reported; most can now run through MCP.
 
 ## Backlog (not ordered)
 
+- Tag board (user, 2026-11-03): rename a tag in `tag -l`; remove a whole tag (× on the section) with a
+  warning first; removing a track from a tag (× on a chip) stays without a warning, as today.
+
 - Device on/off (user, 2026-10-22): its own module `bypass` with the short alias `bp` (command aliases
   exist in the tree). It switches a device's "Device On" (SDK `parameters[0]`, no Remote Script). Rules as
   `mute`: toggle, `--set 1` bypassed, `--set 0` active, several targets, pick list with state, one undo

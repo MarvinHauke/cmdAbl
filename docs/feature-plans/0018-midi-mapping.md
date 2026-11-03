@@ -183,6 +183,9 @@ Decisions:
 | `hold` | press and release | 1 on press, 0 on release | momentary: `map N36 hold \| mute #drums --set {}` |
 | `toggle` | each press | 1, 0, 1, … (state per binding) | latching: `map CC37 toggle \| solo #lead --set {}` |
 
+- **A hardware toggle** (a button set to toggle on the controller, like the UC4's CC 51, sending 10 then
+  0 on the next press) needs no cmdAbl `toggle`: `hold` mirrors the hardware state (1 while the value
+  is above 0, 0 at 0). A named alias such as `follow` could make that clearer later (user, 2026-11-03).
 - **Later operators,** same slot: `value` (absolute, scaled into a range, coalesced at about 30 Hz),
   `step` (relative encoders), `range a b`, `curve`, `invert`, `pickup`. They lead into value mode and
   then into the matrix's step chain.
