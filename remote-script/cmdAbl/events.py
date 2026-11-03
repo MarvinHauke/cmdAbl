@@ -6,7 +6,9 @@ called `midi_listen` (the extension's bridge socket). The spike measured a media
 (max 2 ms); an HTTP POST and a send held until `update_display` were dropped.
 
 Wire format: {"v":1,"event":"midi","seq":n,"type":"cc"|"note_on"|"note_off"|"pb","channel":1-16,
-"number":n,"value":n,"t":<ms when receive_midi ran>}. `t` and the extension's clock are the same
+"number":n,"value":n,"t":<ms when receive_midi ran>[,"monitor":true]}. `monitor` is present (true) only for
+events that arrive while a monitor window is open: then every message is pushed, not only the listened
+controls, and the receiver must not run bindings for them. `t` and the extension's clock are the same
 machine's `time.time()`, so `Date.now() - t` is the push latency.
 
 Rules: nothing raises out of here; a failing socket is logged once per kind, not once per message.
@@ -19,6 +21,8 @@ def encode_event(event):
     body = {"v": 1, "event": "midi"}
     for key in ("seq", "type", "channel", "number", "value", "t"):
         body[key] = event[key]
+    if event.get("monitor") is True:
+        body["monitor"] = True
     return json.dumps(body, separators=(",", ":")).encode("utf-8")
 
 

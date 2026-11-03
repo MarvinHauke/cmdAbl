@@ -17,10 +17,18 @@ test("readMidiEvent checks every field and the type", () => {
   }
 });
 
+test("readMidiEvent carries monitor only when it is true", () => {
+  assert.equal(readMidiEvent(JSON.parse(pushed({ monitor: true })))?.monitor, true);
+  assert.equal("monitor" in readMidiEvent(JSON.parse(pushed({ monitor: "yes" })))!, false);
+  assert.equal("monitor" in readMidiEvent(JSON.parse(pushed()))!, false);
+});
+
 test("logMidiEvent writes one debug line with the latency", () => {
   const lines: string[] = [];
   logMidiEvent({ debug: (t) => void lines.push(t) }, { seq: 4, type: "note_off", channel: 2, number: 60, value: 0, time: 1000 }, 1001.25);
   assert.deepEqual(lines, ["note_off ch2 #60 = 0 seq 4 latency 1.3 ms"]);
+  logMidiEvent({ debug: (t) => void lines.push(t) }, { seq: 5, type: "cc", channel: 1, number: 1, value: 1, time: 0, monitor: true }, 0);
+  assert.equal(lines.length, 1, "monitor events are not logged one by one");
   logMidiEvent({ debug: () => { throw new Error("x"); } }, { seq: 1, type: "cc", channel: 1, number: 1, value: 1, time: 0 }, 0); // never throws
 });
 

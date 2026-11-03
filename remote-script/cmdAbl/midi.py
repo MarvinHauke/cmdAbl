@@ -15,7 +15,7 @@ later) and as a pushed `midi_blocked` event whenever the set changes.
 Only the controls `midi_listen` names are forwarded (default: none). `monitor: true` forwards
 everything for a short time (learn / `midi monitor`): the ring buffer then sees every message,
 while only the listed controls are pushed. Live gives forwarded messages to the script only, so
-while monitoring, other uses of the port (track input, Cmd+M) are paused; it ends by itself
+while monitoring, other uses of the port (track input, Cmd+M) are paused, and every message is also pushed (marked `monitor`); it ends by itself
 after `seconds` (default 30, at most 120) in case the extension went away.
 """
 

@@ -132,6 +132,24 @@ class Midi(unittest.TestCase):
         self.assertEqual(len(s.midi._buffer), 2)
         self.assertFalse(hasattr(s, "base_midi"))
 
+    def test_a_monitor_window_pushes_every_message_marked_and_listened_ones_once(self):
+        now = [10.0]
+        s = self.surface([self.listen([{"type": "cc", "number": 21}], monitor=True, seconds=5)])
+        s.midi._clock = lambda: now[0]
+        s._drain_socket()
+        s.midi._monitor_until = 15.0
+        s._socket.sent.clear()
+        s.receive_midi((0xB0, 21, 127))  # listened
+        s.receive_midi((0xB0, 22, 1))  # not listened
+        s.receive_midi((0x90, 36, 100))
+        events = [r for r, _ in s._socket.sent]
+        self.assertEqual([(e["number"], e.get("monitor")) for e in events], [(21, True), (22, True), (36, True)])
+        now[0] = 16.0  # the window is over: back to the listened controls, unmarked
+        s._socket.sent.clear()
+        s.receive_midi((0xB0, 22, 2))
+        s.receive_midi((0xB0, 21, 3))
+        self.assertEqual([(r["number"], r.get("monitor")) for r, _ in s._socket.sent], [(21, None)])
+
     def test_nothing_is_pushed_by_default(self):
         s = self.surface()
         s.receive_midi((0xB0, 21, 127))

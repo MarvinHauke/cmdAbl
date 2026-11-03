@@ -97,7 +97,10 @@ class cmdAbl(ControlSurface):
             if msg is None:
                 super().receive_midi(midi_bytes)  # sysex, clock, … stay with the framework
                 return
-            if self.midi.wanted(msg):
+            if self.midi.monitoring():
+                # A monitor window pushes every message, marked, so the extension can follow it without polling midi_last.
+                self._outbox.push(dict(msg, monitor=True), self.midi.peer)
+            elif self.midi.wanted(msg):
                 self._outbox.push(msg, self.midi.peer)
             self._show(self.midi.status_for(msg))  # after the push: the status bar must not delay it
         except Exception:

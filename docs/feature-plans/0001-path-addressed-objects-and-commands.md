@@ -692,6 +692,10 @@ addition if the chain's switch turns out not to match the visible button.
   (spike: median 0.2-0.5 ms, max 2 ms; an HTTP POST and a send held to `update_display` were dropped):
   `{"v":1,"event":"midi","seq","type":"cc"|"note_on"|"note_off"|"pb","channel","number","value","t"}`.
   No `id`: the client tells events from replies by that.
+  While a monitor window is open (script 0.1.13) **every** message is pushed, with `"monitor":true`, so a live
+  monitor needs no `midi_last` polling (the push is under 2 ms; polling waited for the ~10 Hz `update_display`).
+  Listened controls are pushed once, also marked; the receiver must not run bindings for marked events.
+  Outside a window only listened controls are pushed, unmarked.
 - Every reply carries `boot`, a random id of this run of the script. A client that sees it change knows the
   script restarted (and forgot `midi_listen` and the push address).
 - Extension: the transport accepts datagrams (replies and events) only from 127.0.0.1:27185 (`isFromScript`).

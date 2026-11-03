@@ -10,6 +10,7 @@ import type { MidiControl, MidiControls, MidiEvent } from "./midiLink.js";
 
 /** One debug line: the event and how long the push took (`Date.now() - time`, the script's clock is this machine's). */
 export function logMidiEvent(log: Pick<Logger, "debug">, event: MidiEvent, now: number = Date.now()): void {
+  if (event.monitor) return; // a monitor window pushes every message: one line each would flood the log
   try {
     const ms = Math.round((now - event.time) * 10) / 10;
     log.debug(`${event.type} ch${event.channel} #${event.number} = ${event.value} seq ${event.seq} latency ${ms} ms`);

@@ -12,6 +12,11 @@ class Events(unittest.TestCase):
         body = json.loads(encode_event(EVENT).decode())
         self.assertEqual(body, {"v": 1, "event": "midi", "seq": 1, "type": "cc", "channel": 1, "number": 21, "value": 127, "t": 1000.0})
 
+    def test_monitor_is_in_the_datagram_only_when_true(self):
+        self.assertTrue(json.loads(encode_event(dict(EVENT, monitor=True)).decode())["monitor"])
+        self.assertNotIn("monitor", json.loads(encode_event(dict(EVENT, monitor=False)).decode()))
+        self.assertNotIn("monitor", json.loads(encode_event(EVENT).decode()))
+
     def test_push_sends_one_datagram_to_the_peer(self):
         sent, lines = [], []
         box = Outbox(lambda data, peer: sent.append((json.loads(data.decode()), peer)), lines.append)

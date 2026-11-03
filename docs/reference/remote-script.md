@@ -7,7 +7,7 @@ The companion Remote Script (Python, runs inside Live) does what the Extensions 
 selection, reads facts only the Live Object Model knows, stores and reads track tags in the Set, and mutes or solos rack chains
 and pads, also inside nested racks. cmdAbl talks to it over a local socket with request/reply messages. `cmdabl setup` installs it, `cmdabl bridge` shows its status.
 
-Script version **0.1.12**, protocol **v1**.
+Script version **0.1.13**, protocol **v1**.
 
 | Operation | What it does | Parameters | Changes the Live Set |
 | --- | --- | --- | --- |

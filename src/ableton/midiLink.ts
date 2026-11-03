@@ -27,6 +27,8 @@ export interface MidiEvent {
   /** 0-127; pitch bend 0-16383. */
   value: number;
   time: number;
+  /** True only for a message that arrived while a monitor window was open: it is pushed whether or not it is listened to, and must not run bindings. */
+  monitor?: true;
 }
 
 const TYPES = ["cc", "note_on", "note_off", "pb"];
@@ -36,7 +38,7 @@ export function readMidiEvent(data: Record<string, unknown>): MidiEvent | null {
   const { seq, type, channel, number, value, t } = data;
   if (typeof type !== "string" || !TYPES.includes(type)) return null;
   if (![seq, channel, number, value, t].every((n) => typeof n === "number" && Number.isFinite(n))) return null;
-  return { seq: seq as number, type: type as MidiEvent["type"], channel: channel as number, number: number as number, value: value as number, time: t as number };
+  return { seq: seq as number, type: type as MidiEvent["type"], channel: channel as number, number: number as number, value: value as number, time: t as number, ...(data.monitor === true ? { monitor: true as const } : {}) };
 }
 
 /** The script's default monitor window (midi_listen without `seconds`). */
