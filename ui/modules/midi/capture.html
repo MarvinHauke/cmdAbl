@@ -6,11 +6,11 @@
   <title>MIDI</title>
   <!-- Live page of `map learn` and `midi monitor` (plan 0018, "Live pages"). It may only READ while open.
        In: CAPTURE_PLACEHOLDER = { title, hint, mode: "learn" | "monitor" } (plain text, set with textContent).
-           LIVE_PLACEHOLDER = null | { base, token }: the live source. With it the page polls GET <base>/messages every ~100 ms
+           LIVE_PLACEHOLDER = null | { base, token }: the live source. With it the page polls GET <base>/messages every ~30 ms
            (Authorization: Bearer <token>); the answer is { opened, last, messages: [{ seq, type: "cc"|"note_on"|"note_off"|"pb",
-           channel 1-16, number, value, time }] } (the newest 20, OLDEST first; the page shows the newest on top) or { error }.
+           channel 1-16, number, value, time }] } (the newest 20, OLDEST first; the page keeps one row per control, value updated in place) or { error }.
            null (or a source that stays unreachable) = the fallback: no list, "live view unavailable", Enter reads.
-       Out (close_and_send): "go" on Enter, or in learn mode ~150 ms after the first control moved; "" on Esc. The module reads the
+       Out (close_and_send): "go" on Enter while the live view works, "list" on Enter without a working live view (LIVE null, unreachable, or before the first answer), "go" in learn mode ~150 ms after the first control moved; "" on Esc. The module reads the
            newest control itself afterwards (api.midi.last), so the page sends no control.
        Size: 460 x 320. All text goes in with textContent. -->
   <style>
@@ -60,7 +60,11 @@
     const empty = document.getElementById('empty');
     const note  = document.getElementById('note');
     document.getElementById('title').textContent = CAPTURE?.title ?? '';
-    document.getElementById('hint').textContent = CAPTURE?.hint ?? '';
+    const hintEl = document.getElementById('hint');
+    hintEl.textContent = CAPTURE?.hint ?? '';
+    // With the live view the page says what it does itself; the module's own hint is for the fallback.
+    const LIVE_HINT = learn ? "Move the control to bind; it's taken as soon as it moves." : 'Move a control. Values show live. Enter or Esc closes.';
+    function setLive(on) { hintEl.textContent = on ? LIVE_HINT : (CAPTURE?.hint ?? ''); }
     empty.textContent = learn ? 'Move a control…' : 'Waiting for MIDI…';
 
     let finished = false;
@@ -72,28 +76,45 @@
       else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
     }
 
-    // ── drawing: the newest message on top ──────────────────────────────────
-    let lastSeq = null;
+    // ── drawing: one row per control, updated in place ──────────────────────
+    // A control (type, channel, number) keeps its row; its value changes without moving anything. A control seen for
+    // the first time is added on top. The row that moved last is marked.
+    const rows = new Map();   // key -> { el, v, t }
+    let seen = 0;             // highest seq drawn
+    let fresh = null;
+    const MAX_ROWS = 40;
     function cell(cls, text) { const s = document.createElement('span'); s.className = cls; s.textContent = text; return s; }
+    function setText(el, text) { if (el.textContent !== text) el.textContent = text; }
     function draw(answer) {
-      if (answer.last === lastSeq) return;   // nothing new since the last poll
-      lastSeq = answer.last;
-      const msgs = Array.isArray(answer.messages) ? answer.messages.slice().reverse() : [];
-      list.textContent = '';
-      if (!msgs.length) { list.appendChild(empty); return; }
-      msgs.forEach((m, i) => {
-        const row = document.createElement('div');
-        row.className = 'msg' + (i === 0 ? ' fresh' : '');
+      if (typeof answer.last === 'number' && answer.last < seen) {   // the source restarted: its numbering began again
+        list.textContent = ''; rows.clear(); fresh = null; seen = 0;
+      }
+      const fresh_ = (Array.isArray(answer.messages) ? answer.messages : []).filter(m => typeof m.seq === 'number' && m.seq > seen);
+      if (!fresh_.length) return;
+      for (const m of fresh_) {   // oldest first, so the last message of a control wins
+        seen = Math.max(seen, m.seq);
+        const key = m.type + '|' + m.channel + '|' + (m.type === 'pb' ? '' : m.number);
+        let row = rows.get(key);
+        if (!row) {
+          const el = document.createElement('div');
+          el.className = 'msg';
+          row = { el, t: cell('t', ''), v: cell('v', '') };
+          el.append(row.t, cell('k', KIND[m.type] ?? String(m.type ?? '')), cell('c', 'ch ' + (m.channel ?? '')),
+                    cell('n', m.type === 'pb' ? '' : '#' + (m.number ?? '')), row.v);
+          rows.set(key, row);
+          if (empty.parentNode) empty.remove();
+          list.prepend(el);
+          if (rows.size > MAX_ROWS) {   // the oldest control row goes
+            const last = list.lastElementChild;
+            for (const [k, r] of rows) if (r.el === last) { rows.delete(k); break; }
+            last.remove();
+          }
+        }
         const secs = typeof m.time === 'number' && typeof answer.opened === 'number' ? (m.time - answer.opened) / 1000 : NaN;
-        row.append(
-          cell('t', Number.isFinite(secs) ? '+' + Math.max(0, secs).toFixed(1) + 's' : ''),
-          cell('k', KIND[m.type] ?? String(m.type ?? '')),
-          cell('c', 'ch ' + (m.channel ?? '')),
-          cell('n', m.type === 'pb' ? '' : '#' + (m.number ?? '')),
-          cell('v', String(m.value ?? '')),
-        );
-        list.appendChild(row);
-      });
+        setText(row.t, Number.isFinite(secs) ? '+' + Math.max(0, secs).toFixed(1) + 's' : '');
+        setText(row.v, String(m.value ?? ''));
+        if (fresh !== row) { fresh?.el.classList.remove('fresh'); row.el.classList.add('fresh'); fresh = row; }
+      }
     }
 
     // ── learn: close ~150 ms after the first control moved (the control stays on screen meanwhile) ─
@@ -105,16 +126,18 @@
 
     // ── the live source ─────────────────────────────────────────────────────
     // A route answer of { error } (a slow module read, core's ~100 ms budget) or a failed request is tolerated for a while
-    // (about a second when answers are quick, longer when the server hangs) before the page says the live view is unavailable.
-    const MAX_FAILS = 10;
+    // (about a second at 30 ms polls when answers are quick, longer when the server hangs) before the page says the live view is unavailable.
+    const MAX_FAILS = 30;
+    let working = false;   // the live view has answered and still does: Enter then says "go", otherwise "list" (the module lists the messages)
     let failures = 0;
     function unavailable(on) {
       note.textContent = on ? 'Live view unavailable. ' + FALLBACK_NOTE : '';
-      if (on) { list.textContent = ''; lastSeq = null; }
+      if (on) { working = false; setLive(false); }
+      if (on) { list.textContent = ''; rows.clear(); fresh = null; seen = 0; }
     }
     async function poll() {
       if (finished) return;
-      let delay = 100;
+      let delay = 30;   // rtt is 1-2 ms; one request in flight at a time
       try {
         const ctl = new AbortController();
         const timer = setTimeout(() => ctl.abort(), 800);
@@ -125,9 +148,12 @@
         if (failures >= MAX_FAILS) unavailable(false);
         failures = 0;
         draw(answer);
+        working = true;
+        setLive(true);
         maybeClose(answer);
       } catch {
         failures++;
+        working = false;
         if (failures === MAX_FAILS) unavailable(true);   // keeps polling, slowly: it may come back
         if (failures >= MAX_FAILS) delay = 500;
       }
@@ -135,6 +161,7 @@
     }
 
     if (LIVE?.base && LIVE?.token) {
+      setLive(true);
       poll();
     } else {
       list.textContent = '';
@@ -142,7 +169,7 @@
     }
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); send('go'); }
+      if (e.key === 'Enter') { e.preventDefault(); send(working ? 'go' : 'list'); }
       else if (e.key === 'Escape') { e.preventDefault(); send(''); }
     });
   </script>
