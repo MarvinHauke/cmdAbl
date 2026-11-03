@@ -202,6 +202,24 @@ map --off / map --on                 # settings.json map.enabled
 midi monitor                         # the last incoming messages
 ```
 
+### Modules built (modules `51356c5`)
+
+- **`map <control> [press|release|hold|toggle] | <line>`:**
+  - binding the same control and operator again replaces the line;
+  - the first word of the line must be a registered command;
+  - `map | next` gives "missing argument <control>".
+- **`map learn [operator] | <line>`:** a page says "Move a control". Enter binds the newest control
+  that moved, with its channel; Esc does nothing.
+- **`map -l`:** numbered rows, e.g. `1  CC37  toggle  | solo #lead --set {}`.
+- **`map --rm <n>`:** rows complete from the list.
+- **`map --on` / `--off`:** the `map.enabled` setting.
+- **`midi monitor`:** the same page, then the newest 20 messages.
+- **Storage and loading:** `modules/map/<setid>.json`. The Set id is created on the first save, so Live
+  marks the Set as changed. Bindings load on `api.onSetChange` and before every `map` command.
+- **A damaged bindings file is never overwritten** (exit 1, with a warning).
+- **Open:** `api.files.readResult` must tell "missing" from "read failed" (core is adding it), or a
+  failed read could lead to an overwrite.
+
 ### Set changes (core `1399a79`)
 
 - **`api.onSetChange(listener)`** tells `map` when another Set is open, so it can load that Set's
