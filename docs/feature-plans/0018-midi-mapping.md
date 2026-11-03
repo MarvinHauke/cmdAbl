@@ -126,6 +126,23 @@ Decisions:
 - Bindings are stored per Set first (`modules/map/<setid>.json` via `api.files` and the Set id, like
   `note`). Templates or a global layer come later.
 
+### Spike built (bridge `9c7e95b`, script 0.1.9), Live test pending
+
+- `midi.py`: the forwarded set ("all" for the spike), a ring of 50, `build_midi_map` with
+  `forward_midi_cc`, `forward_midi_note` and `forward_midi_pitchbend`.
+- `events.py`: every message is sent three ways for measuring: UDP from `receive_midi`, UDP held to
+  `update_display`, and an HTTP POST to `/midi-event`.
+- New ops: `midi_listen {controls}` and `midi_last {since}`.
+- Dev-only routes: `POST /midi-listen`, `GET /midi-stats`.
+- **Notes for the release version (reviewer):**
+  - check that each datagram comes from 127.0.0.1:27185 before an event runs a command;
+  - record the map build time (Live's Log.txt: "map built: N controls in X ms");
+  - keep one channel only (HTTP has no production route);
+  - `onEvent` must survive a recreated bridge client;
+  - after a script reload, `midi_listen` has to be sent again (the push target is lost).
+- **Forwarding takes the controls away from Live:** a forwarded control no longer reaches track input
+  or Cmd+M. So v1 forwards only the bound controls, never "all" (the spike verifies this).
+
 ### Four layers
 
 | Layer | What it is | v1 |
