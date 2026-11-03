@@ -92,7 +92,7 @@ it.
   - a Session clip starts playing (on the real start after launch quantization, not on the trigger);
   - a scene is triggered;
   - later: Arrangement clips, and locators being passed.
-- **The bridge addition (not decided):** the script pushes `{event, track, scene, name}` to cmdAbl, which
+- **The bridge addition (approved 2026-11-03 with [0018](0018-midi-mapping.md), spike first):** the script pushes `{event, track, scene, name}` to cmdAbl, which
   finds the `[> …]` part and runs it. Options for the push:
   - an unsolicited UDP datagram to the extension's bridge socket;
   - an HTTP POST to the local trigger server, with the access token.
