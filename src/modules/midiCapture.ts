@@ -2,40 +2,17 @@ import type { MidiMessage } from "../ableton/bridgeOps.js";
 import { fail, type CommandResult } from "../core/types.js";
 import type { ModuleApi } from "./types.js";
 
-// "Move a control, then press Enter" (plan 0018): shared by `map learn` and `midi monitor`. The page is a
-// small self-contained dialog; it answers "go" on Enter and "" on Esc. While it is open the script keeps
+// "Move a control, then press Enter" (plan 0018): shared by `map learn` and `midi monitor`. The page is ui/modules/midi/capture.html (a
+// live page); it answers "go" on Enter (in learn mode also when the first control moved) and "" on Esc. While it is open the script keeps
 // every message (a monitor window); after it closes the module asks `api.midi.last` for what came in.
 
 import { fillTemplate } from "../core/inlineJson.js";
 
-const PAGE = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="color-scheme" content="dark"><title>MIDI</title>
-<style>
-  html, body { height: 100%; margin: 0; }
-  body { background: #1e1e1e; color: #ddd; font: 13px -apple-system, "Segoe UI", sans-serif; display: flex; flex-direction: column;
-         align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 0 18px; }
-  h1 { font-size: 14px; margin: 0; font-weight: 600; }
-  p { margin: 0; color: #999; overflow-wrap: anywhere; }
-  kbd { background: #333; border-radius: 3px; padding: 1px 6px; color: #ddd; }
-</style></head><body>
-<h1 id="title"></h1><p id="hint"></p><p>When you press Enter, cmdAbl reads what you moved. This page can&#39;t show it live; watch Live&#39;s status bar.</p><p><kbd>Enter</kbd> done &nbsp; <kbd>Esc</kbd> cancel</p>
-<script>
-  // In: CAPTURE_PLACEHOLDER = { title, hint } (plain text, set with textContent). Out (close_and_send): "go" on Enter, "" on Esc.
-  const CAPTURE = /*CAPTURE_PLACEHOLDER*/null;
-  document.getElementById('title').textContent = CAPTURE.title;
-  document.getElementById('hint').textContent = CAPTURE.hint;
-  function send(value) {
-    const m = { method: 'close_and_send', params: [value] };
-    if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
-    else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
-  }
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); send('go'); }
-    else if (e.key === 'Escape') { e.preventDefault(); send(''); }
-  });
-</script></body></html>`;
+export type CaptureMode = "learn" | "monitor";
 
-/** The capture dialog's page: `title` and `hint` are plain text. */
-export const capturePage = (title: string, hint: string): string => fillTemplate(PAGE, { CAPTURE: { title, hint } });
+/** The capture page filled in: `title` and `hint` are plain text; `mode` tells a live page whether to close itself on the first control. */
+export const capturePage = (title: string, hint: string, mode: CaptureMode = "monitor", template: string): string =>
+  fillTemplate(template, { CAPTURE: { title, hint, mode } });
 
 export interface Captured {
   /** Enter was pressed (false: Esc or dismissed). */
@@ -47,18 +24,56 @@ export interface Captured {
 /** The window lasts this long at most (the script allows 1-120 s). */
 export const CAPTURE_SECONDS = 120;
 
+/** The newest messages the live page shows, and how often the cache behind its route is refreshed. */
+const LIVE_ROWS = 20;
+const POLL_MS = 100;
+
 /**
- * Open the capture page and collect the MIDI messages that arrive while it is open. A failure of the Remote Script
- * comes back as a result (exit 5). The monitor window is closed again before this returns, whatever happened;
- * the caller's own `setBindings` call also ends it.
+ * Open the capture page (a live page: it polls the `messages` route, and closes itself in learn mode on the first control that
+ * moved) and collect the MIDI messages that arrive while it is open. A failure of the Remote Script comes back as a result
+ * (exit 5). The monitor window is closed again before this returns, whatever happened; the caller's own `setBindings`
+ * call also ends it. `template` is the page (ui/modules/midi/capture.html), given by the module's index.ts.
  */
-export async function captureMessages(api: ModuleApi, title: string, hint: string, name: string): Promise<Captured | CommandResult> {
+export async function captureMessages(
+  api: ModuleApi,
+  title: string,
+  hint: string,
+  name: string,
+  mode: CaptureMode,
+  template: string,
+): Promise<Captured | CommandResult> {
   const start = await api.midi.last(0);
   if (!start.ok) return fail(start.code, `${name}: ${start.text}`);
   const opened = await api.midi.listen("all", { monitor: true, seconds: CAPTURE_SECONDS });
   if (!opened.ok) return fail(opened.code, `${name}: ${opened.text}`);
-  const answer = await api.dialog(capturePage(title, hint), 420, 220, name);
-  const got = await api.midi.last(start.value.last);
+  const since = start.value.last;
+  const openedAt = Date.now();
+  // The route must answer within the platform's ~100 ms: it returns a cache that a loop keeps fresh (the bridge call can be slower).
+  let cache: unknown = { opened: openedAt, last: since, messages: [] };
+  const refresh = async (): Promise<void> => {
+    try {
+      const got = await api.midi.last(since);
+      cache = got.ok ? { opened: openedAt, last: got.value.last, messages: got.value.messages.slice(-LIVE_ROWS) } : { error: got.text };
+    } catch {
+      cache = { error: "no answer" }; // last() never throws; a refresh must not take the command down if it ever does
+    }
+  };
+  await refresh();
+  let running = true;
+  const loop = (async () => {
+    while (running) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+      if (running) await refresh();
+    }
+  })();
+  let answer: string | null;
+  try {
+    answer = await api.ui.livePage(name.replace(/[^a-z0-9]+/gi, "-").toLowerCase(), capturePage(title, hint, mode, template), 460, 320, { messages: () => cache });
+  } finally {
+    running = false;
+    await loop;
+  }
+  const got = await api.midi.last(since);
   await api.midi.listen("none"); // ends the monitor window; the bound controls stay forwarded
   if (!got.ok) return fail(got.code, `${name}: ${got.text}`);
   return { done: answer === "go", messages: got.value.messages };

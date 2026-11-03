@@ -16,7 +16,7 @@ const SYNTAX = "map <control> [press|release|hold|toggle] | <command line>";
  * script forward exactly those controls) and writes them back after every change. The Set only gets an id when its first
  * binding is saved.
  */
-export function registerMap(api: ModuleApi): { sync(): Promise<void> } {
+export function registerMap(api: ModuleApi, template: string): { sync(): Promise<void> } {
   let bindings: MidiBinding[] = [];
   let loaded = false;
   let loadedId: string | null = null;
@@ -190,7 +190,7 @@ export function registerMap(api: ModuleApi): { sync(): Promise<void> } {
           const problem = validateBinding(operator, line);
           if (problem) return usageFail(problem);
           await sync();
-          const caught = await captureMessages(api, "Move a control", `then press Enter to bind it to: ${line}`, "map learn");
+          const caught = await captureMessages(api, "Move a control", `then press Enter to bind it to: ${line}`, "map learn", "learn", template);
           if (!isCaptured(caught)) return caught;
           if (!caught.done) return ok();
           const newest = caught.messages[caught.messages.length - 1];
@@ -262,6 +262,9 @@ export function registerMap(api: ModuleApi): { sync(): Promise<void> } {
       },
     ],
   });
+
+  // Told once the script answers and whenever another Set opens; every map command syncs again too.
+  api.onSetChange(() => void sync().catch(() => {}));
 
   return { sync };
 }

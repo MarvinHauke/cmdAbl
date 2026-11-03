@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import { validateTree } from "../../core/commandTree.js";
 import { ExitCode } from "../../core/types.js";
 import { createFakeApi } from "../testPorts.js";
-import { activate } from "./index.js";
+import { registerMidi } from "./command.js";
+
+const TEMPLATE = "<script>const CAPTURE = /*CAPTURE_PLACEHOLDER*/null; const LIVE = /*LIVE_PLACEHOLDER*/null;</script>";
+const activate = (api: Parameters<typeof registerMidi>[0]) => registerMidi(api, TEMPLATE);
 import { monitorLines } from "./format.js";
 
 const msg = (seq: number, type: string, channel: number, number: number, value: number) => ({ seq, type, channel, number, value, time: seq }) as never;
@@ -44,4 +47,39 @@ test("midi monitor: Esc shows nothing, no messages is exit 1", async () => {
 
 test("monitorLines shows type, channel, number and value; pitch bend has no number", () => {
   assert.deepEqual(monitorLines([msg(1, "note_on", 2, 36, 100), msg(2, "pb", 1, 0, 8192)] as never), ["pb       ch1  value 8192", "note_on  ch2  number 36  value 100"]);
+});
+
+test("midi monitor opens a live page whose messages route gives the newest 20 since the open, oldest first", async () => {
+  const messages = Array.from({ length: 25 }, (_, i) => msg(i + 1, "cc", 1, 37, i));
+  const fake = createFakeApi({ dialogAnswer: "go", midiMessages: messages });
+  activate(fake.api);
+  arriveAfterOpen(fake as never);
+  await run(fake);
+  const page = fake.livePages[0]!;
+  assert.equal(page.name, "midi-monitor");
+  assert.match(page.html, /"mode":"monitor"/);
+  const answer = (await page.routes.messages!()) as { opened: number; last: number; messages: Array<{ seq: number }> };
+  assert.equal(answer.messages.length, 20);
+  assert.equal(answer.messages[0]!.seq, 6);
+  assert.equal(answer.messages.at(-1)!.seq, 25);
+  assert.equal(answer.last, 25);
+  assert.ok(answer.opened > 0);
+});
+
+test("the messages route answers at once from its cache even when the bridge is slow", async () => {
+  const fake = createFakeApi({ dialogAnswer: "go", midiMessages: [msg(1, "cc", 1, 37, 5)] });
+  activate(fake.api);
+  arriveAfterOpen(fake as never);
+  const fast = fake.api.midi.last;
+  let slow = false;
+  fake.api.midi.last = (async (since?: number) => {
+    if (slow) await new Promise((r) => setTimeout(r, 200));
+    return fast(since);
+  }) as never;
+  await run(fake);
+  slow = true;
+  const t = performance.now();
+  const answer = (await fake.livePages[0]!.routes.messages!()) as { messages: Array<{ seq: number }> };
+  assert.ok(performance.now() - t < 50, "answered from the cache");
+  assert.equal(answer.messages[0]!.seq, 1);
 });

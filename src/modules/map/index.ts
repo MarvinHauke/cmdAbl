@@ -1,9 +1,8 @@
 import type { ModuleApi } from "../types.js";
 import { registerMap } from "./command.js";
+import capturePage from "../../../ui/modules/midi/capture.html";
 
-/** `map` — MIDI controls that run command lines (plan 0018). */
+/** `map` — MIDI controls that run command lines (plan 0018); the learn page is ui/modules/midi/capture.html. */
 export function activate(api: ModuleApi): void {
-  const { sync } = registerMap(api);
-  // Told once the script answers and whenever another Set opens; every map command syncs again too.
-  api.onSetChange(() => void sync().catch(() => {}));
+  registerMap(api, capturePage);
 }

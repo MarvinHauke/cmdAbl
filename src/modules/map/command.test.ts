@@ -6,6 +6,7 @@ import { createFakeApi } from "../testPorts.js";
 import { registerMap } from "./command.js";
 import { parseBindings, serializeBindings } from "./store.js";
 
+const TEMPLATE = "<script>const CAPTURE = /*CAPTURE_PLACEHOLDER*/null; const LIVE = /*LIVE_PLACEHOLDER*/null;</script>";
 type Result = { code: number; message?: string; log?: string[] } | undefined;
 const msg = (seq: number, type: string, channel: number, number: number, value: number) => ({ seq, type, channel, number, value, time: seq }) as never;
 
@@ -21,7 +22,7 @@ async function setup(options: Parameters<typeof createFakeApi>[0] = {}) {
   const fake = createFakeApi({ setId: "set1", ...options });
   fake.api.commands.add({ name: "mute", summary: "mute", run: () => undefined });
   fake.api.commands.add({ name: "solo", summary: "solo", run: () => undefined });
-  const { sync } = registerMap(fake.api);
+  const { sync } = registerMap(fake.api, TEMPLATE);
   await sync();
   arriveAfterOpen(fake as never);
   const map = fake.commands.find((c) => c.name === "map")!;
@@ -135,7 +136,7 @@ test("learn: Esc changes nothing; nothing moved is exit 1; {} with press is exit
   assert.equal((await none.learn(undefined, "mute #fx --set 1"))!.code, ExitCode.FAILURE);
   const bad = await setup({ dialogAnswer: "go" });
   assert.equal((await bad.learn("press", "mute #fx --set {}"))!.code, ExitCode.USAGE);
-  assert.equal(bad.fake.dialogs.length, 0);
+  assert.equal(bad.fake.livePages.length, 0);
 });
 
 test("store: bad rows are dropped, bad JSON gives none", () => {
@@ -150,8 +151,7 @@ test("a Set change loads that Set's bindings", async () => {
   const text = serializeBindings([{ control: { kind: "cc", number: 7 }, operator: "press", line: "mute #a --set 1" }]);
   const fake = createFakeApi({ setId: "set1", files: { "set1.json": text } });
   fake.api.commands.add({ name: "mute", summary: "mute", run: () => undefined });
-  const { activate } = await import("./index.js");
-  activate(fake.api);
+  registerMap(fake.api, TEMPLATE);
   await new Promise((r) => setTimeout(r, 5));
   assert.equal(fake.midiBindings.length, 1);
   assert.equal(fake.setListeners.length, 1);
@@ -181,7 +181,7 @@ test("a file that fails to read (not missing) is never overwritten either", asyn
   const fake = createFakeApi({ setId: "set1", files: { "set1.json": serializeBindings([{ control: { kind: "cc", number: 7 }, operator: "press", line: "mute #z --set 1" }]) } });
   fake.unreadableFiles.add("set1.json");
   fake.api.commands.add({ name: "mute", summary: "mute", run: () => undefined });
-  registerMap(fake.api);
+  registerMap(fake.api, TEMPLATE);
   const leaf = fake.commands.find((c) => c.name === "map")!.children!.find((c) => c.name === "add")!;
   const r = (await leaf.run!({ path: ["map"], options: {}, args: [["CC1"], [], ["mute #a"]] } as never, undefined as never)) as Result;
   assert.equal(r!.code, ExitCode.FAILURE);
@@ -236,4 +236,15 @@ test("a rebuild that newly blocks a bound control logs one warning", async () =>
   for (const l of fake.blockedListeners) l(fake.midiBlocked);
   for (const l of fake.blockedListeners) l(fake.midiBlocked);
   assert.equal(fake.logged.filter((l) => l.level === "warn" && /CC51 taken in Live/.test(l.text)).length, 1);
+});
+
+test("map learn opens a live page in learn mode; its route shows what moved since the open", async () => {
+  const { fake, learn } = await setup({ dialogAnswer: "go", midiMessages: [msg(1, "cc", 1, 48, 64)] });
+  await learn(undefined, "mute #fx --set 1");
+  const page = fake.livePages[0]!;
+  assert.equal(page.name, "map-learn");
+  assert.match(page.html, /"mode":"learn"/);
+  const answer = (await page.routes.messages!()) as { messages: Array<{ number: number }> };
+  assert.equal(answer.messages[0]!.number, 48);
+  assert.equal(fake.midiBindings[0]!.control.number, 48);
 });
