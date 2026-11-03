@@ -206,8 +206,10 @@ midi monitor                         # the last incoming messages
 
 - **Running:** a bound line runs headless: no dialogs, exit 4 on ambiguity, one log line per firing,
   not added to the history, one undo step per part.
-- **Overlap:** a firing that arrives while the same binding still runs is dropped. `toggle` advances
-  only when a run starts.
+- **Overlap:** a firing that arrives while the same binding still runs is dropped for `press`,
+  `release` and `toggle`; `toggle` advances only when a run starts. For `hold`, the latest dropped value
+  is kept (a newer one replaces it) and runs once when the current line finishes, so a quick tap's
+  release is never lost and the end state matches the hardware (reviewer, 2026-11-03).
 
 ### Work (v1)
 
