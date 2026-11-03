@@ -109,6 +109,9 @@ full text.
     `modules/note/<id>.md`.
   - Built: core `d9d5a9f`. The data folder is the SDK's `context.environment.storageDirectory`, falling
     back to the Extensions Data path; writes are atomic and capped at 1 MB.
+  - `api.files.readResult(name)` → `{status: "ok", text} | {status: "missing"} | {status: "failed", reason}`
+    (core `7c396c0`, for plan 0018) tells a missing file from a failed read. A module must not write over
+    a file whose read failed. `read` delegates to it.
 - **Renderer:** the ui agent writes a small renderer of its own (headings, lists, checkboxes, tables,
   code, emphasis, links). It is inlined; no library unless that ends up over about 20 KB.
 
