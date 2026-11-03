@@ -7,6 +7,7 @@
 export const TOPIC_ORDER: readonly string[] = [
   "Find and select",
   "Mix",
+  "Control",
   "Tags",
   "Look things up",
   "Recent commands",

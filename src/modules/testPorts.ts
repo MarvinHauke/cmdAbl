@@ -72,6 +72,8 @@ export interface FakeApi {
   setId: string | null;
   /** The bindings last given to `api.midi.setBindings` (rows with `{}` and press/release are refused, as in the engine). */
   midiBindings: MidiBinding[];
+  /** Listeners registered with `api.onSetChange`; call them to simulate a Set change. */
+  setListeners: Array<(setId: string | null) => void>;
   /** The fake `map.enabled` (default true). */
   mapEnabled: boolean;
   /** Every `api.midi.listen` call, in order. */
@@ -109,6 +111,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     fileStore: new Map(Object.entries(options.files ?? {})),
     setId: options.setId ?? null,
     midiBindings: [],
+    setListeners: [],
     mapEnabled: true,
     midiListens: [],
     completers: new Map(),
@@ -152,6 +155,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
         fake.fileStore.set(name, text);
         return true;
       },
+    },
+    onSetChange: (listener) => {
+      fake.setListeners.push(listener);
+      listener(fake.setId); // the fake's Set is known from the start
     },
     midi: {
       setBindings: async (list) => {

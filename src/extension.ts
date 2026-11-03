@@ -33,6 +33,7 @@ import { createUiGate, runHeadless } from "./core/headless.js";
 import { createDevRoutes, runTokenFilePath, type DevRoutes, writeRunToken } from "./devRoutes.js";
 import { midiLast, midiListen, onMidiEvent } from "./ableton/bridgeOps.js";
 import { createMidiEngine } from "./core/midiEngine.js";
+import { createSetWatch } from "./core/setWatch.js";
 import { createMidiPort } from "./core/midiPort.js";
 import { createMidiListenRoute, logMidiEvent } from "./ableton/midiEvents.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
@@ -160,6 +161,15 @@ export function activate(activation: ActivationContext) {
     },
   });
   onMidiEvent((event) => void midiRuntime.intake(event));
+  // The Set's id, polled once a module listens (api.onSetChange): the script may come up after the extension, and a new Set has another id.
+  const setWatch = createSetWatch({
+    read: async () => {
+      const reply = await getBridge().request("set_id", {}, { token: true });
+      if (!reply.ok) return { ok: false };
+      const id = reply.value.id;
+      return { ok: true, id: typeof id === "string" && id !== "" ? id : null };
+    },
+  });
   const moduleApi: ModuleApi = {
     get bridge() {
       return getBridge();
@@ -182,6 +192,7 @@ export function activate(activation: ActivationContext) {
     // The Set's id lives in the Set, written and read by the Remote Script (operation set_id).
     set: { id: (create) => setId(getBridge(), create === true) },
     midi: midiRuntime.port,
+    onSetChange: (listener) => setWatch.onChange(listener),
     // Replaced per module below (a module sees its own folder only). Before a module's first command names it,
     // this folder is modules/module/; modules call files from a run, after activation.
     files: createModuleFiles({ base: dataFolder, module: () => "module", warn: (text) => logger("module").warn(text) }),

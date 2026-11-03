@@ -121,6 +121,13 @@ export interface ModuleApi {
   set: SetPort;
   /** The module's own files (plan 0013). */
   files: FilesPort;
+  /**
+   * Be told when the Live Set is (re)available or has changed: `listener` gets the Set's id (plan 0013; null = the
+   * Set has none yet) once the Remote Script answers for the first time (also after it came up later than the
+   * extension), at once when it is already known, and again whenever the id differs (a new Set was opened).
+   * A different Set without an id is not told apart from the previous one without an id. A throwing listener is skipped.
+   */
+  onSetChange(listener: (setId: string | null) => void): void;
   /** MIDI mapping (plan 0018): the bindings the engine runs, what the script forwards, the messages it kept. */
   midi: MidiPort;
   /** One info line in the log, tagged with the module's name (`cmdAbl [name] info: …`); no prefix of your own. */
