@@ -25,9 +25,17 @@ yourself.
   described in the user docs.
 - Answer **cmdabl-reviewer** when a change needs a decision the plans don't cover.
 - **Test new features yourself** (user, 2026-10-22) with the `cmdabl_*` MCP tools (plan 0016), once
-  the user has started `npm start` with a test Set and said Live is free. Run the builders' Live test
-  lists, report what passed with the log lines, and send failures back to the builder. Only one Extension
-  Host connects at a time, and only the user starts it.
+  the user has said Live is free (a test Set is open). Run the builders' Live test lists, report what
+  passed with the log lines, and send failures back to the builder.
+- **Start and restart `npm start` yourself** (user, 2026-11-03), only after that "Live is free":
+  - Run it in a tmux pane next to yours, in your own window, so the user can watch the log. Reuse the
+    pane if it exists (find it with `tmux list-panes -F '#{pane_id} #{pane_current_command}'`, the
+    one running `node`). Otherwise split your window (`tmux split-window -h -d -c <repo> 'npm start'`,
+    or a shell pane plus `send-keys`).
+  - Restart with `tmux send-keys -t <pane> C-c`, then `npm start` and Enter. Wait for "Connected to
+    Live", then read the log with `tmux capture-pane`.
+  - Only one Extension Host connects at a time, so never start a second one.
+  - Restarting Live itself (e.g. after a Remote Script version change) stays with the user.
 - **At the end of each feature, give the user a short "try it yourself" list:** the few core commands
   to run by hand, so they get familiar with the feature. Separate from that, name what only the user
   can check (how a page looks, Cmd+Z, hand moves, save/reload, the installed `.ablx`).

@@ -47,8 +47,11 @@ gets a short list of the core features to try by hand, plus what only they can c
   `git diff <file>` and don't touch a file with another agent's uncommitted changes; stage only
   your own files (no `-A`, no interactive `-p`). `src/modules/types.ts` is edited by `cmdabl-core`
   only.
-- **Only the user starts Live and `npm start`**, and only one Extension Host connects at a time.
-  Agents run `npm test` and `npm run build` and hand over a Live test list.
+- **Only the user starts or restarts Live**, and only one Extension Host connects at a time.
+  **The architect may start and restart `npm start`** once the user has said in this session that Live
+  is free (user, 2026-11-03). It runs in a tmux pane next to the architect, in the architect's window,
+  so the user can watch the log. Other agents never run `npm start`; they run `npm test` and
+  `npm run build` and hand over a Live test list.
 - **Testing in Live through MCP** (plan 0016): when the user has said in this session that a test
   Set is open and Live is free, an agent may run its test list with the `cmdabl_*` MCP tools
   (`cmdabl_run`, `cmdabl_log`, `cmdabl_bridge`, `cmdabl_state`). One agent at a time; the architect
