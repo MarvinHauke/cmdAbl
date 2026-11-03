@@ -278,6 +278,48 @@ midi monitor                         # the last incoming messages
   completion server of plan 0006. **It changes the dialog rule** (`CLAUDE.md`: "it cannot call the
   extension while open"), so it needs the user's decision.
 
+### Live pages (user, 2026-11-04: the localhost variant)
+
+**The rule and its exception** (`CLAUDE.md`):
+- **The default stays:** a dialog gets JSON in and returns one string, and writes into Live happen
+  through a command after it closes.
+- **What that keeps:**
+  - pages stay simple;
+  - writes stay in one place, with undo, history and logging;
+  - release builds expose no Set data;
+  - a hung page can't hurt cmdAbl;
+  - pages can be tested without Live.
+- **The exception, a live page, may only read while open.**
+
+**Rules for a live page:**
+1. **Served from `http://localhost:27184/live/<page>?t=<token>`.** The token is fresh per dialog, about
+   128 bits, used once to load the page; the page then sends it as `Authorization: Bearer`. It is never
+   logged. The routes exist only while that dialog is open and are revoked when it closes.
+2. **Checks on every route:**
+   - origin `http://localhost:27184` exactly;
+   - the token, compared in constant time;
+   - GET only, read-only;
+   - small JSON answers.
+3. **The page polls** about every 100 ms (spike: rtt 1–2 ms, smooth). It needs no websocket.
+4. **Fallback:** if the server can't be reached, the page works as a normal page (learn reads on
+   Enter, the monitor shows its snapshot) and says "live view unavailable".
+5. **In core:** core owns the route registration (`api.ui.livePage(name, html, size, routes)`, an
+   additive ModuleApi change). Modules declare read functions; core serves them under the token.
+6. **Tests:** pages are checked in a browser with a fake live source, the same interface as the server.
+
+**First live pages:**
+- **`midi monitor`:** the last messages update live (newest first), and the status bar keeps working.
+- **`map learn`:** the page closes by itself on the first control that moves, after a short debounce of
+  about 150 ms. The page shows the control before closing. Enter and Esc still work.
+- **Later:** the completion server (plan 0006) on the same mechanism.
+
+**Work:**
+1. **core:** `livePage`, the token, the routes and the origin check, release-safe (they exist in release
+   builds, unlike the dev routes). Remove bridge's spike routes.
+2. **ui:** a small `live.js` (poll, fallback, the token in the header) plus the two pages' live parts.
+3. **modules:** `midi monitor` and `map learn` as live pages.
+4. **bridge:** nothing new (`midi_last` already exists).
+
 ### Syntax rules (v1)
 
 - `|` outside quotes is reserved. In `map` it starts the raw binding line, which `;` doesn't split.

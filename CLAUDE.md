@@ -21,8 +21,11 @@ Live's Extension Host) with a small companion Remote Script (Python) for what th
 - A handler returns a `CommandResult` (exit code 0 ok, 1 failure, 2 usage, 3 not found,
   4 ambiguous, 5 unavailable). Nothing throws at a user action: an uncaught error takes down the
   whole Extension Host, including other extensions.
-- A dialog gets JSON in and returns one string when it closes; it cannot call the extension while
-  open. Extensions cannot call each other.
+- A dialog gets JSON in and returns one string when it closes. Everything that changes Live happens
+  through a command after it closes. **Exception: a live page** (user, 2026-11-04; plan 0018). It is
+  served from `http://localhost:27184` with a one-time token per dialog, and may only **read** from
+  cmdAbl while open, through routes that exist only for that dialog. It never writes, and it still
+  works when the server can't be reached. Extensions cannot call each other.
 - Keep plans, README and code in sync in the same change.
 
 ## Agent team
