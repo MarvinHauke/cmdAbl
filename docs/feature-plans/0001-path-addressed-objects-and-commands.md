@@ -680,6 +680,13 @@ addition if the chain's switch turns out not to match the visible button.
   (`cmdAbl · CC48 ch1 = 127`, `cmdAbl · N36 ch10 on 100`; at most ~20 a second, the latest value wins; trailing
   values go out on the next `update_display`) and `cmdAbl · monitor off` once when the window ends;
   `status: false` switches it off.
+- **Blocked controls** (script 0.1.12): `Live.MidiMap.forward_midi_*` should answer with a bool; `False` means Live keeps the
+  control (the user mapped it with Cmd+M, or another script has it). `build_map` collects the refused *listened* controls
+  (`"CC51/ch1"`, `"N60/ch2"`, `"PB/ch1"`, the mapping syntax; at most 64); a call that raises counts as refused; if no call
+  answers with a bool the set is `null` (unknown). The `midi_listen` reply carries `blocked` (the result of the previous
+  build: Live rebuilds the map later), and every build whose set differs from the last one pushed sends
+  `{"v":1,"event":"midi_blocked","blocked":[…]|null}` and logs `blocked by Live: …`.
+  Extension: `onBlocked(cb)`, `midiBlocked()` and `midiListen(...).value.blocked`.
   `midi_last` `{since?}` → `{last, messages: [[seq, type, channel, number, value, t]…]}`.
 - `events.py` pushes a wanted message as one UDP datagram from inside `receive_midi` to the registered address
   (spike: median 0.2-0.5 ms, max 2 ms; an HTTP POST and a send held to `update_display` were dropped):

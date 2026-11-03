@@ -194,7 +194,7 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
   },
   {
     name: "midi_listen",
-    summary: "Chooses which MIDI controls (CC, notes, pitch bend) the script forwards from its input port and pushes (default none), asks Live to rebuild the MIDI map, and registers the caller as the target of pushed events; monitor forwards everything for a short window (learn) and shows the messages in Live's status bar (status: false turns that off).",
+    summary: "Chooses which MIDI controls (CC, notes, pitch bend) the script forwards from its input port and pushes (default none), asks Live to rebuild the MIDI map, and registers the caller as the target of pushed events; monitor forwards everything for a short window (learn) and shows the messages in Live's status bar (status: false turns that off). The reply lists `blocked` controls Live refused to forward (mapped with Cmd+M), and the script pushes a midi_blocked event when that set changes.",
     params: "{ controls: \"all\" | \"none\" | [{ type: \"cc\"|\"note\"|\"pb\", channel?: 1-16, number?: 0-127 }], monitor?: bool, seconds?: 1-120, status?: bool, token }",
     changesLive: true,
     via: "script",

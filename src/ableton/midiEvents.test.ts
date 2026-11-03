@@ -4,7 +4,7 @@ import { createFakeBridge } from "./bridgeFake.js";
 import { createBridgeClient, isFromScript, type Transport } from "./bridgeClient.js";
 import { midiLast, midiListen, onMidiEvent } from "./bridgeOps.js";
 import { createMidiListenRoute, logMidiEvent, parseControlList } from "./midiEvents.js";
-import { attachMidi, desiredControls, readMidiEvent, resetMidiLink } from "./midiLink.js";
+import { attachMidi, desiredControls, midiBlocked, onBlocked, readMidiEvent, resetMidiLink } from "./midiLink.js";
 import { fail, SCRIPT_VERSION } from "./bridgeProtocol.js";
 
 const pushed = (over: Record<string, unknown> = {}): string =>
@@ -115,10 +115,10 @@ test("when the script restarts (boot id changes) the last listen is sent again",
 test("midiListen sends controls (and monitor only when asked), remembers controls, and never throws", async () => {
   resetMidiLink();
   const bridge = createFakeBridge({ ops: { midi_listen: (args) => ({ ok: true, value: { count: args.monitor ? 4112 : 3, monitor: args.monitor === true } }) } });
-  assert.deepEqual(await midiListen(bridge, "none"), { ok: true, value: { count: 3, monitor: false } });
+  assert.deepEqual(await midiListen(bridge, "none"), { ok: true, value: { count: 3, monitor: false, blocked: null } });
   assert.deepEqual(bridge.calls[0], { op: "midi_listen", args: { controls: "none" }, changes: true, token: true });
   const mon = await midiListen(bridge, [{ type: "note" }], { monitor: true, seconds: 10 });
-  assert.deepEqual(mon, { ok: true, value: { count: 4112, monitor: true } });
+  assert.deepEqual(mon, { ok: true, value: { count: 4112, monitor: true, blocked: null } });
   assert.deepEqual(bridge.calls[1]!.args, { controls: [{ type: "note" }], monitor: true, seconds: 10 });
   assert.deepEqual(desiredControls(), [{ type: "note" }]);
   const refused = await midiListen(createFakeBridge({ ops: {} }), "none");
@@ -245,4 +245,24 @@ test("a refused listen does not become the re-send target", async () => {
   const bridge = createFakeBridge({ ops: { midi_listen: () => fail(5, "no") } });
   await midiListen(bridge, "all");
   assert.equal(desiredControls(), null);
+});
+
+test("the blocked set: pushed midi_blocked events and the listen reply feed onBlocked/midiBlocked, once per change", async () => {
+  resetMidiLink();
+  const t = fakeTransport();
+  attachMidi(client(t.transport));
+  const seen: Array<string[] | null> = [];
+  onBlocked((b) => void seen.push(b));
+  assert.deepEqual(midiBlocked(), []);
+  t.deliver(JSON.stringify({ v: 1, event: "midi_blocked", blocked: ["CC51/ch1"] }));
+  t.deliver(JSON.stringify({ v: 1, event: "midi_blocked", blocked: ["CC51/ch1"] })); // same set: no second call
+  assert.deepEqual(midiBlocked(), ["CC51/ch1"]);
+  t.deliver(JSON.stringify({ v: 1, event: "midi_blocked", blocked: null }));
+  t.deliver(JSON.stringify({ v: 1, event: "midi_blocked", blocked: "CC1" })); // malformed: ignored
+  t.deliver(JSON.stringify({ v: 1, event: "midi_blocked", blocked: [] }));
+  assert.deepEqual(seen, [["CC51/ch1"], null, []]);
+  const bridge = createFakeBridge({ ops: { midi_listen: () => ({ ok: true, value: { count: 1, monitor: false, blocked: ["N60/ch2"] } }) } });
+  const r = await midiListen(bridge, [{ type: "note" }]);
+  assert.ok(r.ok && r.value.blocked?.[0] === "N60/ch2");
+  assert.deepEqual(midiBlocked(), ["N60/ch2"]);
 });

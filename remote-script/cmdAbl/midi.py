@@ -8,6 +8,10 @@ remembers (a ring buffer of the last messages) and the two ops that go with it:
 - `midi_last {since}`       the newest messages (the pull side, also for `--learn`).
 
 No Live import here: `Live.MidiMap` is handed in by the surface, so everything is unit-tested.
+Controls Live refuses to hand over (mapped with Cmd+M, or taken by another script) are reported as
+`blocked` in the `midi_listen` reply (the result of the previous map build: Live builds the new map
+later) and as a pushed `midi_blocked` event whenever the set changes.
+
 Only the controls `midi_listen` names are forwarded (default: none). `monitor: true` forwards
 everything for a short time (learn / `midi monitor`): the ring buffer then sees every message,
 while only the listed controls are pushed. Live gives forwarded messages to the script only, so
@@ -122,6 +126,16 @@ def status_text(msg):
     return STATUS_PREFIX + body
 
 
+def control_label(kind, ch, n):
+    """The control as the mapping syntax writes it: CC51/ch1, N60/ch2, PB/ch1."""
+    if kind == "pb":
+        return "PB/ch%d" % (ch + 1)
+    return "%s%d/ch%d" % ("CC" if kind == "cc" else "N", n, ch + 1)
+
+
+MAX_BLOCKED = 64
+
+
 def control_key(msg):
     """The (kind, channel0, number) a parsed message belongs to, as `expand` writes controls."""
     kind = {"cc": "cc", "note_on": "note", "note_off": "note", "pb": "pb"}[msg["type"]]
@@ -144,6 +158,11 @@ class MidiService(object):
         self._status_pending = None
         self._status_off = False
         self.peer = None  # (host, port) of the extension that last called midi_listen
+        # Controls Live did not give to the script (the user mapped them with Cmd+M, or another script has them):
+        # None = the forward calls do not say; a list = the listened controls that were refused in the last build.
+        self.blocked = []
+        self._blocked_sent = []
+        self.forward_errors = 0
 
     def monitoring(self):
         return self._monitor_until > 0.0 and self._clock() < self._monitor_until
@@ -189,17 +208,40 @@ class MidiService(object):
     # -- Live's callbacks ------------------------------------------------
 
     def build_map(self, midi_map, script_handle, map_handle):
-        """Forward the listened controls (all of them while monitoring). `midi_map` is `Live.MidiMap`. Returns how many."""
+        """Forward the listened controls (all of them while monitoring). `midi_map` is `Live.MidiMap`. Returns how many.
+
+        The forward calls should answer with a bool (False = Live refused: the control is mapped elsewhere). A listened
+        control that was refused goes into `self.blocked`; when no call answers with a bool, `blocked` is None (unknown).
+        """
         count = 0
+        refused = []
+        answered = False
+        self.forward_errors = 0
         for kind, ch, n in expand("all" if self.monitoring() else self.spec):
-            if kind == "cc":
-                midi_map.forward_midi_cc(script_handle, map_handle, ch, n)
-            elif kind == "note":
-                midi_map.forward_midi_note(script_handle, map_handle, ch, n)
-            else:
-                midi_map.forward_midi_pitchbend(script_handle, map_handle, ch)
+            try:
+                if kind == "cc":
+                    ok = midi_map.forward_midi_cc(script_handle, map_handle, ch, n)
+                elif kind == "note":
+                    ok = midi_map.forward_midi_note(script_handle, map_handle, ch, n)
+                else:
+                    ok = midi_map.forward_midi_pitchbend(script_handle, map_handle, ch)
+            except Exception:
+                self.forward_errors += 1
+                ok = False
             count += 1
+            if isinstance(ok, bool):
+                answered = True
+                if not ok and (kind, ch, n) in self._wanted and len(refused) < MAX_BLOCKED:
+                    refused.append(control_label(kind, ch, n))
+        self.blocked = refused if (answered or count == 0) else None
         return count
+
+    def take_blocked_change(self):
+        """(True, blocked) once when the blocked set differs from the one last reported, else (False, None)."""
+        if self.blocked == self._blocked_sent:
+            return False, None
+        self._blocked_sent = list(self.blocked) if self.blocked is not None else None
+        return True, self.blocked
 
     def receive(self, midi_bytes):
         """One incoming message -> the stored event (with seq and the receive time in ms), or None.
@@ -245,7 +287,7 @@ class MidiService(object):
             self._status_off = False  # a new window opened before the old "monitor off" was shown
         if peer is not None:
             self.peer = peer
-        return {"count": len(expand("all" if monitor else spec)), "monitor": monitor}
+        return {"count": len(expand("all" if monitor else spec)), "monitor": monitor, "blocked": self.blocked}
 
     def op_last(self, args):
         since = args.get("since", 0)

@@ -43,6 +43,39 @@ export function readMidiEvent(data: Record<string, unknown>): MidiEvent | null {
 const DEFAULT_MONITOR_SECONDS = 30;
 
 const listeners = new Set<(event: MidiEvent) => void>();
+const blockedListeners = new Set<(blocked: string[] | null) => void>();
+/** The controls Live refused to hand to the script in its last map build, as the mapping syntax writes them ("CC51/ch1"); null = the script cannot tell. */
+let blocked: string[] | null = [];
+
+/** The last known blocked set: `[]` none, a list of controls Live keeps for itself (Cmd+M mapping, another script), null = unknown. */
+export function midiBlocked(): string[] | null {
+  return blocked === null ? null : [...blocked];
+}
+
+/** Called when the blocked set changes (the script pushes it after a map build). Returns a function that removes the listener. */
+export function onBlocked(callback: (blocked: string[] | null) => void): () => void {
+  blockedListeners.add(callback);
+  return () => void blockedListeners.delete(callback);
+}
+
+function readBlocked(value: unknown): string[] | null | undefined {
+  if (value === null) return null;
+  if (!Array.isArray(value) || !value.every((x) => typeof x === "string")) return undefined;
+  return value as string[];
+}
+
+function setBlocked(next: string[] | null): void {
+  const same = blocked === next || (blocked !== null && next !== null && blocked.length === next.length && blocked.every((c, i) => c === next[i]));
+  blocked = next;
+  if (same) return;
+  for (const listener of [...blockedListeners]) {
+    try {
+      listener(midiBlocked());
+    } catch {
+      // one broken listener must not stop the others
+    }
+  }
+}
 
 /** Listen to pushed MIDI events (from whichever bridge client is current). Returns a function that removes the listener. A listener that throws is skipped. */
 export function onMidiEvent(callback: (event: MidiEvent) => void): () => void {
@@ -52,6 +85,11 @@ export function onMidiEvent(callback: (event: MidiEvent) => void): () => void {
 
 /** Hand one pushed message to the listeners; a malformed one is dropped. Never throws. */
 export function deliverPushedEvent(event: PushedEvent): void {
+  if (event.name === "midi_blocked") {
+    const next = readBlocked(event.data.blocked);
+    if (next !== undefined) setBlocked(next);
+    return;
+  }
   if (event.name !== "midi") return;
   const midi = readMidiEvent(event.data);
   if (!midi) return;
@@ -82,7 +120,9 @@ export function resetMidiLink(): void {
   desired = null;
   monitorUntil = 0;
   inFlight = 0;
+  blocked = [];
   listeners.clear();
+  blockedListeners.clear();
 }
 
 /** Ask the script to listen. `monitor` also forwards everything for `seconds` (learn) and shows the messages in Live's status bar unless `status` is false; only `controls` is remembered. Never throws. */
@@ -90,7 +130,7 @@ export async function sendListen(
   bridge: Bridge,
   controls: MidiControls,
   options: { monitor?: boolean; seconds?: number; status?: boolean } = {},
-): Promise<BridgeResult<{ count: number; monitor: boolean }>> {
+): Promise<BridgeResult<{ count: number; monitor: boolean; blocked: string[] | null }>> {
   inFlight++;
   try {
     const args: Record<string, unknown> = { controls };
@@ -102,12 +142,16 @@ export async function sendListen(
     const reply = await bridge.request("midi_listen", args, { changes: true, token: true });
     if (!reply.ok) return reply;
     const { count, monitor } = reply.value;
+    const refused = readBlocked(reply.value.blocked) ?? null;
     if (typeof count !== "number") return fail(1, "bad reply from the Remote Script (midi_listen)");
     // Only an accepted listen becomes what a restarted script is told again.
     desired = controls;
     monitorStatus = options.status !== false;
     monitorUntil = monitor === true ? Date.now() + (options.seconds ?? DEFAULT_MONITOR_SECONDS) * 1000 : 0;
-    return { ok: true, value: { count, monitor: monitor === true } };
+    // The reply carries the result of the previous map build (possibly stale: the script pushes the new one after Live has
+    // rebuilt the map). Consumers should follow onBlocked / midiBlocked, not this reply value.
+    setBlocked(refused);
+    return { ok: true, value: { count, monitor: monitor === true, blocked: refused } };
   } catch {
     return fail(1, "midi_listen failed");
   } finally {

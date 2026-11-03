@@ -3,7 +3,7 @@ import { fail, TEXT_OUTDATED, TEXT_STALE, type BridgeResult } from "./bridgeProt
 import type { ObjectNode } from "./objectTree.js";
 import { sendListen, type MidiControls } from "./midiLink.js";
 
-export { onMidiEvent, type MidiControl, type MidiControls, type MidiEvent } from "./midiLink.js";
+export { midiBlocked, onBlocked, onMidiEvent, type MidiControl, type MidiControls, type MidiEvent } from "./midiLink.js";
 
 // One typed function per Remote Script operation (0001 §4, §8). Modules call
 // these, never `bridge.request("name", …)` with loose arguments. Every function
@@ -485,13 +485,16 @@ export async function setId(bridge: Bridge, create = false): Promise<string | nu
  * script only, so track input and Cmd+M on the port pause until the window ends. While the window is open the
  * script also shows each message in Live's status bar ("cmdAbl · CC48 ch1 = 127", at most ~20 a second, and
  * "cmdAbl · monitor off" once at the end); `status: false` turns that off. A writing op.
- * The controls are remembered and sent again when the script restarts. Never throws.
+ * The controls are remembered and sent again when the script restarts. `blocked` lists listened controls Live
+ * refused to hand to the script (mapped with Cmd+M, or taken by another script), e.g. ["CC51/ch1"]; it is the
+ * result of the script's previous map build (can be stale: rely on `onBlocked(cb)` / `midiBlocked()`, which follow the current one; null = unknown).
+ * Never throws.
  */
 export function midiListen(
   bridge: Bridge,
   controls: MidiControls,
   options: { monitor?: boolean; seconds?: number; status?: boolean } = {},
-): Promise<BridgeResult<{ count: number; monitor: boolean }>> {
+): Promise<BridgeResult<{ count: number; monitor: boolean; blocked: string[] | null }>> {
   return sendListen(bridge, controls, options);
 }
 

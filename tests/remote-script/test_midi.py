@@ -3,23 +3,34 @@ import unittest
 
 import fake_live  # noqa: F401  (installs the _Framework stub)
 from cmdAbl import midi
-from cmdAbl.midi import MidiService, expand, parse_controls, parse_message, status_text
+from cmdAbl.midi import control_label, MidiService, expand, parse_controls, parse_message, status_text
 from cmdAbl.ops.midi import midi_last, midi_listen
 from cmdAbl.protocol import OpError
 
 
 class FakeMidiMap(object):
-    def __init__(self):
+    """`deny` = controls Live refuses (answer False); `answers=False` = the calls answer None like an API that does not say."""
+
+    def __init__(self, deny=(), answers=True, raises=()):
         self.calls = []
+        self.deny, self.answers, self.raises = set(deny), answers, set(raises)
+
+    def _reply(self, key):
+        if key in self.raises:
+            raise RuntimeError("boom")
+        return (key not in self.deny) if self.answers else None
 
     def forward_midi_cc(self, handle, map_handle, ch, n):
         self.calls.append(("cc", handle, map_handle, ch, n))
+        return self._reply(("cc", ch, n))
 
     def forward_midi_note(self, handle, map_handle, ch, n):
         self.calls.append(("note", handle, map_handle, ch, n))
+        return self._reply(("note", ch, n))
 
     def forward_midi_pitchbend(self, handle, map_handle, ch):
         self.calls.append(("pb", handle, map_handle, ch))
+        return self._reply(("pb", ch, None))
 
 
 class Ctx(object):
@@ -110,7 +121,7 @@ class Service(unittest.TestCase):
         now = [100.0]
         svc = MidiService(clock=lambda: now[0])
         out = svc.op_listen({"controls": [{"type": "cc", "number": 1, "channel": 1}], "monitor": True, "seconds": 10}, None)
-        self.assertEqual(out, {"count": 16 * 128 * 2 + 16, "monitor": True})
+        self.assertEqual(out, {"count": 16 * 128 * 2 + 16, "monitor": True, "blocked": []})
         self.assertTrue(svc.monitoring())
         self.assertEqual(svc.build_map(FakeMidiMap(), "H", "M"), 16 * 128 * 2 + 16)
         self.assertFalse(svc.tick())
@@ -126,6 +137,59 @@ class Service(unittest.TestCase):
         svc.op_listen({"controls": "none", "monitor": True}, None)
         svc.op_listen({"controls": "none"}, None)
         self.assertFalse(svc.monitoring())
+
+
+class Blocked(unittest.TestCase):
+    def listened(self):
+        svc = MidiService()
+        svc.op_listen({"controls": [{"type": "cc", "number": 51, "channel": 1}, {"type": "note", "number": 60}, {"type": "pb", "channel": 2}]}, None)
+        return svc
+
+    def test_labels(self):
+        self.assertEqual([control_label("cc", 0, 51), control_label("note", 1, 60), control_label("pb", 1, None)], ["CC51/ch1", "N60/ch2", "PB/ch2"])
+
+    def test_refused_listened_controls_are_collected(self):
+        svc = self.listened()
+        svc.build_map(FakeMidiMap(deny=[("cc", 0, 51), ("note", 3, 60), ("pb", 1, None)]), "H", "M")
+        self.assertEqual(sorted(svc.blocked), ["CC51/ch1", "N60/ch4", "PB/ch2"])
+
+    def test_in_monitor_mode_only_the_listened_controls_count(self):
+        svc = self.listened()
+        svc.op_listen({"controls": [{"type": "cc", "number": 51, "channel": 1}], "monitor": True}, None)
+        svc.build_map(FakeMidiMap(deny=[("cc", 0, 51), ("cc", 0, 52)]), "H", "M")
+        self.assertEqual(svc.blocked, ["CC51/ch1"])
+
+    def test_a_forward_call_that_does_not_say_means_unknown_and_nothing_listened_means_none_blocked(self):
+        svc = self.listened()
+        svc.build_map(FakeMidiMap(answers=False), "H", "M")
+        self.assertIsNone(svc.blocked)
+        empty = MidiService()
+        empty.build_map(FakeMidiMap(answers=False), "H", "M")
+        self.assertEqual(empty.blocked, [])
+
+    def test_a_raising_forward_call_counts_as_refused_and_does_not_stop_the_map(self):
+        svc = self.listened()
+        m = FakeMidiMap(raises=[("cc", 0, 51)])
+        self.assertEqual(svc.build_map(m, "H", "M"), len(m.calls))  # every control was tried
+        self.assertEqual(svc.forward_errors, 1)
+        self.assertEqual(svc.blocked, ["CC51/ch1"])
+
+    def test_the_change_is_reported_once(self):
+        svc = self.listened()
+        svc.build_map(FakeMidiMap(), "H", "M")
+        self.assertEqual(svc.take_blocked_change(), (False, None))
+        svc.build_map(FakeMidiMap(deny=[("cc", 0, 51)]), "H", "M")
+        self.assertEqual(svc.take_blocked_change(), (True, ["CC51/ch1"]))
+        self.assertEqual(svc.take_blocked_change(), (False, None))
+        svc.build_map(FakeMidiMap(), "H", "M")
+        self.assertEqual(svc.take_blocked_change(), (True, []))
+        svc.build_map(FakeMidiMap(answers=False), "H", "M")
+        self.assertEqual(svc.take_blocked_change(), (True, None))
+
+    def test_the_listen_reply_carries_the_last_build_result(self):
+        svc = self.listened()
+        svc.build_map(FakeMidiMap(deny=[("cc", 0, 51)]), "H", "M")
+        self.assertEqual(svc.op_listen({"controls": "none"}, None)["blocked"], ["CC51/ch1"])
 
 
 class Status(unittest.TestCase):
@@ -206,10 +270,10 @@ class Status(unittest.TestCase):
 class Ops(unittest.TestCase):
     def test_listen_sets_spec_registers_the_peer_and_rebuilds(self):
         ctx = Ctx()
-        self.assertEqual(midi_listen(None, {"controls": [{"type": "cc", "number": 1}]}, ctx), {"count": 16, "monitor": False})
+        self.assertEqual(midi_listen(None, {"controls": [{"type": "cc", "number": 1}]}, ctx), {"count": 16, "monitor": False, "blocked": []})
         self.assertEqual(ctx.midi.peer, ("127.0.0.1", 5000))
         self.assertEqual(ctx.rebuilds, 1)
-        self.assertEqual(midi_listen(None, {"controls": "none"}, ctx), {"count": 0, "monitor": False})
+        self.assertEqual(midi_listen(None, {"controls": "none"}, ctx), {"count": 0, "monitor": False, "blocked": []})
 
     def test_listen_with_bad_controls_changes_nothing(self):
         ctx = Ctx()

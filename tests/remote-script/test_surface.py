@@ -107,7 +107,7 @@ class Midi(unittest.TestCase):
         s._drain_socket()
         refused, ok = [r for r, _ in s._socket.sent]
         self.assertEqual(refused["error"]["code"], "forbidden")
-        self.assertEqual(ok["result"], {"count": 16, "monitor": False})
+        self.assertEqual(ok["result"], {"count": 16, "monitor": False, "blocked": []})
         self.assertEqual(s.midi.peer, ("127.0.0.1", 4242))
         self.assertEqual(getattr(s, "rebuilds", 0), 1)
 
@@ -204,6 +204,33 @@ class Midi(unittest.TestCase):
         self.assertEqual(calls, [("cc", "H", "M", 0, 7)])
         self.assertEqual(s.base_map_calls, 1)
         self.assertTrue(any("map built: 1 controls" in m for m in s.logged))
+
+    def test_a_refused_control_is_logged_and_pushed_once_as_midi_blocked(self):
+        import sys
+        import types
+
+        deny = {"on": True}
+        live = types.ModuleType("Live")
+        live.MidiMap = types.SimpleNamespace(
+            forward_midi_cc=lambda h, m, ch, n: not (deny["on"] and (ch, n) == (0, 51)),
+            forward_midi_note=lambda *a: True,
+            forward_midi_pitchbend=lambda *a: True,
+        )
+        s = self.surface([self.listen([{"type": "cc", "number": 51, "channel": 1}])])
+        s._drain_socket()
+        s._socket.sent.clear()
+        s._c_instance = types.SimpleNamespace(handle=lambda: "H")
+        sys.modules["Live"] = live
+        try:
+            s.build_midi_map("M")
+            s.build_midi_map("M")  # same set: nothing new
+            deny["on"] = False
+            s.build_midi_map("M")
+        finally:
+            del sys.modules["Live"]
+        events = [r for r, _ in s._socket.sent]
+        self.assertEqual([(e["event"], e["blocked"]) for e in events], [("midi_blocked", ["CC51/ch1"]), ("midi_blocked", [])])
+        self.assertTrue(any("blocked by Live: CC51/ch1" in m for m in s.logged))
 
     def test_build_midi_map_outside_live_logs_and_does_not_raise(self):
         s = self.surface()

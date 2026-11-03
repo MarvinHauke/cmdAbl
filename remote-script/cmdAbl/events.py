@@ -22,6 +22,11 @@ def encode_event(event):
     return json.dumps(body, separators=(",", ":")).encode("utf-8")
 
 
+def encode_blocked(blocked):
+    """{"v":1,"event":"midi_blocked","blocked":["CC51/ch1", …] | null}  (null = Live's forward calls do not say)."""
+    return json.dumps({"v": 1, "event": "midi_blocked", "blocked": blocked}, separators=(",", ":")).encode("utf-8")
+
+
 class Outbox(object):
     """`send_udp(data, peer)` is the script socket's sendto."""
 
@@ -32,10 +37,17 @@ class Outbox(object):
 
     def push(self, event, peer):
         """Send one event to `peer` (None = nobody registered: nothing is sent). Returns True when sent."""
+        return self._send(encode_event, event, peer)
+
+    def push_blocked(self, blocked, peer):
+        """The set of controls Live refused changed."""
+        return self._send(encode_blocked, blocked, peer)
+
+    def _send(self, encode, thing, peer):
         if peer is None:
             return False
         try:
-            self._send_udp(encode_event(event), peer)
+            self._send_udp(encode(thing), peer)
             self._last_problem = None
             return True
         except Exception as e:

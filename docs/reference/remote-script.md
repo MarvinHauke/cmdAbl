@@ -7,7 +7,7 @@ The companion Remote Script (Python, runs inside Live) does what the Extensions 
 selection, reads facts only the Live Object Model knows, stores and reads track tags in the Set, and mutes or solos rack chains
 and pads, also inside nested racks. cmdAbl talks to it over a local socket with request/reply messages. `cmdabl setup` installs it, `cmdabl bridge` shows its status.
 
-Script version **0.1.11**, protocol **v1**.
+Script version **0.1.12**, protocol **v1**.
 
 | Operation | What it does | Parameters | Changes the Live Set |
 | --- | --- | --- | --- |
@@ -17,7 +17,7 @@ Script version **0.1.11**, protocol **v1**.
 | `chains` | Reads the chain names of racks (and drum pad notes, mute and solo), paged by size (up to 20 racks per request). | `{ targets: [{ scope, route, offset? }] }` | no |
 | `chain_set` | Mutes or solos chains, checked by name and read back afterwards (up to 20 chains per request; one undo step). | `{ targets: [{ scope, route, expectName, mute?, solo? }], token }` | yes (needs the access token) |
 | `param_display` | Reads Live's own display text ("-6.0 dB", "-inf dB") for values of a track's volume, without moving the fader; at most 64 values per call. | `{ scope, route, param: "volume", values: number[], expectName? }` | no |
-| `midi_listen` | Chooses which MIDI controls (CC, notes, pitch bend) the script forwards from its input port and pushes (default none), asks Live to rebuild the MIDI map, and registers the caller as the target of pushed events; monitor forwards everything for a short window (learn) and shows the messages in Live's status bar (status: false turns that off). | <code>{ controls: "all" &#124; "none" &#124; [{ type: "cc"&#124;"note"&#124;"pb", channel?: 1-16, number?: 0-127 }], monitor?: bool, seconds?: 1-120, status?: bool, token }</code> | yes (needs the access token) |
+| `midi_listen` | Chooses which MIDI controls (CC, notes, pitch bend) the script forwards from its input port and pushes (default none), asks Live to rebuild the MIDI map, and registers the caller as the target of pushed events; monitor forwards everything for a short window (learn) and shows the messages in Live's status bar (status: false turns that off). The reply lists `blocked` controls Live refused to forward (mapped with Cmd+M), and the script pushes a midi_blocked event when that set changes. | <code>{ controls: "all" &#124; "none" &#124; [{ type: "cc"&#124;"note"&#124;"pb", channel?: 1-16, number?: 0-127 }], monitor?: bool, seconds?: 1-120, status?: bool, token }</code> | yes (needs the access token) |
 | `midi_last` | The newest MIDI messages the script received after a sequence number (for learn and diagnostics). | `{ since?: int }` | no |
 | `set_id` | Reads the Live Set's own id (null when it has none); with create it stores a new random id in the Set and marks the Set as modified with the invisible colour toggle of tags_set. | `{ create?: bool, token }` | yes (needs the access token) |
 | `tags_all` | Reads the tags of every tagged track (regular, return, main); stored on the track with Track.get_data, so they live in the Set. | `{ offset? }` | no |

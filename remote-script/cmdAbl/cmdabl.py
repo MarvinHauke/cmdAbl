@@ -82,6 +82,12 @@ class cmdAbl(ControlSurface):
             started = time.time()
             count = self.midi.build_map(Live.MidiMap, self._c_instance.handle(), midi_map_handle)
             self.log_message("cmdAbl [midi] map built: %d controls forwarded in %.0f ms" % (count, (time.time() - started) * 1000.0))
+            if self.midi.forward_errors:
+                self.log_message("cmdAbl [midi] %d forward calls raised" % self.midi.forward_errors)
+            changed, blocked = self.midi.take_blocked_change()
+            if changed:
+                self.log_message("cmdAbl [midi] blocked by Live: %s" % (", ".join(blocked) if blocked else ("unknown" if blocked is None else "none")))
+                self._outbox.push_blocked(blocked, self.midi.peer)
         except Exception:
             self.log_message("cmdAbl [midi] map failed:\n%s" % traceback.format_exc())
 
