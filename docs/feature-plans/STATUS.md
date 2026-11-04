@@ -33,9 +33,8 @@ All releases were tested in Live, including the installed `.ablx`.
   `9727c84`, `5fe1a8c`). **Open before the release:** re-record `tags.gif`, `tag-board.png` and
   `bridge.png` (script 0.1.14) through MCP, in a Set with several tags and untagged tracks (the user
   opens it); then cmdabl-docs swaps them in. Then the installed `.ablx`, release 0.1.5.
-  **Bug to fix first (user, 2026-11-04, ui):** when every track is tagged, `tag -l` has no untagged
-  section, so removing a tag's chip (the track would be untagged after Apply) shows no card. The
-  board must create the untagged section for such cards.
+  Board bug (all tracks tagged, no untagged section) fixed in `ui/board.html` with a hidden stand-in
+  section; to be Live-tested.
 - In work on `feat/map` (not pushed): `;` chains (0017, Live-tested); the simple MIDI mapping (0018:
   `map`, `map learn`, `midi monitor`, operators, Remote Script 0.1.14), live pages (localhost,
   load and route tokens, long polling), the Cmd+M conflict warning. Live-tested with the UC4
