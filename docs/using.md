@@ -54,7 +54,7 @@ A name with spaces is quoted for you.
 #### Show the options above the prompt
 
 The footer of the palette has a switch, **Above the prompt: Off · Hints · Options**. Click it with the mouse. The
-choice is saved and used the next time you open the palette. The palette opens taller for **Hints** and **Options**.
+choice is saved in [`settings.json`](#settings) and used the next time you open the palette. The palette opens taller for **Hints** and **Options**.
 If you switch while the palette is open, the layout changes fully at the next open.
 
 - **Off** (the default): one list below the prompt. Options appear in it after you type `-`.
@@ -558,7 +558,7 @@ control on your controller. The page shows it and closes by itself, and the cont
 
 - `map -l` lists the bindings of the Set as numbered rows, for example `1  CC37  toggle  | solo #lead --set {}`.
 - `map --rm 2` removes binding 2. The numbers come from `map -l`.
-- `map --off` stops all MIDI mapping and `map --on` starts it again. The choice is kept.
+- `map --off` stops all MIDI mapping and `map --on` starts it again. The choice is kept as `map.enabled` in the [settings](#settings).
 
 **How a bound line runs.** It runs without dialogs. If a name in the line fits more than one object, nothing runs
 and the log says so, so use exact paths or tags in bound lines. Each part is one undo step, and the run does not go
@@ -571,18 +571,18 @@ own bindings.
 
 **Controls taken in Live.** A control that you mapped in Live with `Cmd+M`, or that another control surface uses, goes to Live and not to cmdAbl. cmdAbl
 cannot use it: `map` warns when you bind it ("⚠ CC51 is taken in Live …, so cmdAbl doesn't receive it"), and `map -l` marks the row "⚠ taken in Live". Remove the mapping in
-Live, or use another control.
+Live, or use another control. After you remove it, cmdAbl receives the control again without a new `map`.
 
 **`midi monitor`** opens a page that lists the controls your controller sends, one row per control, with type, channel,
 number and value. A control you move for the first time is added on top, and its value updates in place. The row of the control that moved last is marked. A section **Taken in Live** lists controls that Live kept for
-itself during that time. `Enter` or `Esc` closes the page. While it is open, bound controls do not run their lines.
+itself during that time. `Enter` or `Esc` closes the page. Live's status bar can show the values too: see `midi.statusBar` in the [settings](#settings). While it is open, bound controls do not run their lines.
 If the page cannot show live values, it shows the newest messages as a list when you press `Enter`.
 
-### Settings
+## Settings
 
-cmdAbl keeps its settings in `settings.json`, in cmdAbl's data folder (the Extensions Data folder in Ableton's
-Application Support). A missing file means the defaults. A value of the wrong type is
-ignored with a warning in the log.
+cmdAbl keeps a few settings in `settings.json`, in cmdAbl's data folder (the Extensions Data folder in Ableton's
+Application Support). A missing file means the defaults. A broken file, or a value of the wrong
+type, means the default for that setting and a warning in the log.
 
 | Key | Values | What it does |
 | --- | --- | --- |
