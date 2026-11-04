@@ -55,7 +55,7 @@
     .head:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
     .head .meta.inl { margin-left: 0; }   /* the folded heading reads "▸ untagged · 35 tracks" */
     .head .caret { color: var(--dim); width: 1.2ch; flex: none; }
-    .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 4px; }
+    .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; }
     .chip { display: inline-flex; align-items: baseline; gap: 6px; background: var(--bg-row); border: 1px solid var(--border);
             border-radius: 2px; padding: 0 6px; line-height: 22px; overflow-wrap: anywhere; min-width: 0; cursor: default; }
     .chip .x { color: var(--dim); font-size: 11px; user-select: none; }
@@ -94,7 +94,7 @@
 
     /* The create entry at the bottom. */
     /* The new-tag row is pinned above all sections: first in the Tab order and always in view. */
-    #create { flex: 0 0 auto; padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+    #create { flex: 0 0 auto; padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
     #create.target { background: hsla(0, 0%, 100%, 0.045); box-shadow: inset 2px 0 0 var(--accent); }
     #create .crow { display: flex; align-items: center; gap: 8px; }
     /* The tracks collected for the new tag (clicks on untagged chips while this field is the target). */
@@ -544,7 +544,8 @@
           if (s.cc != null) { keyOnUntagged(e, si); return; }
           const stop = () => { e.preventDefault(); e.stopPropagation(); };
           const enter = () => { const idx = chipIdx(s); if (idx.length) { s.cc = idx[0]; renderChips(si); revealCursor(si); } };
-          if (e.key === 'Enter' || e.key === ' ') { stop(); toggleFold(si); }
+          if (e.key === ' ') { stop(); toggleFold(si); }
+          else if (e.key === 'Enter') { stop(); setFold(si, false); enter(); }   // opens and steps to the first track
           else if (e.key === 'ArrowRight') { stop(); if (s.folded) setFold(si, false); else enter(); }   // → opens, again steps into the tracks
           else if (e.key === 'ArrowLeft') { stop(); setFold(si, true); }
           else if (e.key === 'ArrowUp') { stop(); moveHead(head, -1); }
@@ -587,7 +588,8 @@
           if (e.key === 'ArrowRight') { stop(); if (s.folded) setFold(si, false); else caretToEnd(s.inputEl); }   // → opens; open: into the add field
           else if (e.key === 'ArrowLeft') { stop(); setFold(si, true); }
           else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { stop(); moveHead(head, e.key === 'ArrowDown' ? 1 : -1); }
-          else if (e.key === 'Enter' || e.key === ' ') { stop(); toggleFold(si); }
+          else if (e.key === ' ') { stop(); toggleFold(si); }
+          else if (e.key === 'Enter') { stop(); setFold(si, false); caretToEnd(s.inputEl); }   // opens (if folded) and goes into the field: the tag becomes the target
           else if (e.key === 'F2' && s.renamable) { stop(); startRename(si); }
           else if (e.key === 'Backspace' && e.shiftKey && s.removable) { stop(); toggleRemoveAll(si); }
         });
