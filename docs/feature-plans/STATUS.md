@@ -29,8 +29,10 @@ All releases were tested in Live, including the installed `.ablx`.
 - **0.1.5 user findings: built and tested 2026-11-04** (ui `c41d063`…`80dcb30`, core `4e8520a`): board
   focus in New tag, add field in the heading, only × removes, orphaned tracks as cards, "tag goes
   away", fold above 20 tracks, file-tree keys; suggestions show silent tag expansions;
-  `midi.statusBar` (default off); monitor time column off. Open: docs (cmdabl-docs, briefed), the
-  installed `.ablx`, release 0.1.5.
+  `midi.statusBar` (default off); monitor time column off. Docs done (`656bdb0`, `8540a8c`,
+  `9727c84`, `5fe1a8c`). **Open before the release:** re-record `tags.gif`, `tag-board.png` and
+  `bridge.png` (script 0.1.14) through MCP, in a Set with several tags and untagged tracks (the user
+  opens it); then cmdabl-docs swaps them in. Then the installed `.ablx`, release 0.1.5.
 - In work on `feat/map` (not pushed): `;` chains (0017, Live-tested); the simple MIDI mapping (0018:
   `map`, `map learn`, `midi monitor`, operators, Remote Script 0.1.14), live pages (localhost,
   load and route tokens, long polling), the Cmd+M conflict warning. Live-tested with the UC4
