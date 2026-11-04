@@ -173,6 +173,10 @@ remove a whole tag; that needs `tag -r` or `tag --set 0`.
     pattern as a new tag; Esc cancels the edit.
   - **× remove:** the section is marked (struck through), and the footer says "#fx will be removed from
     N tracks". A second click unmarks it.
+- **Board layout for long Sets** (Live test, 2026-11-04):
+  - the "+ # New tag…" row is pinned at the top;
+  - a created tag appears directly below it with its add field focused;
+  - "untagged" is the last section, collapsed by default ("▸ untagged · N tracks"), with no add field.
 - **Apply sends everything at once:**
   - renames use the `tag -r` logic (an existing name merges);
   - removing a whole tag is confirmed **inside the board** (user, 2026-11-04): Apply with a marked tag

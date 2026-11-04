@@ -49,6 +49,7 @@ site theme (`docs/stylesheets/`), and the UI guide when one is written.
   6. A status note sits next to the thing it describes, not on its own line.
   7. Text is at least 11 px, readable in light and dark.
   8. A destructive action is confirmed in the same page, not in a second window.
+  9. After an action, its result is in view and focused (scroll there, focus the next input).
 
   Keep the list short. When a review finds a new kind of problem, propose an item to the architect
   instead of adding it yourself.
