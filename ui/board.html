@@ -63,9 +63,9 @@
     .none { color: var(--dim); font-size: 11px; line-height: 20px; }
 
     /* The inline input is the last "chip": a dashed outline, ghost text behind the typed text. */
-    .addwrap { position: relative; display: inline-block; }
+    .addwrap { position: relative; display: inline-block; max-width: 100%; }
     .addwrap input { position: relative; z-index: 1; box-sizing: border-box; background: var(--bg-row); border: 1px solid var(--dim); border-radius: 2px;
-                     outline: none; color: var(--text); font: inherit; line-height: 16px; padding: 0 6px; caret-color: var(--accent); }
+                     outline: none; color: var(--text); font: inherit; line-height: 16px; padding: 0 6px; caret-color: var(--accent); max-width: 100%; }
     .addwrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
     .addwrap input::placeholder { color: var(--dim); }
     .ghost { position: absolute; left: 7px; top: 1px; line-height: 16px; white-space: pre; pointer-events: none; color: var(--dim); }
@@ -348,7 +348,7 @@
       const best = sugs.length ? s.items[sugs[s.hi]].label : '';
       const rest = ghostRest(best, s.q);
       s.ghostEl.replaceChildren(el('span', 'typed', s.q), document.createTextNode(rest));
-      s.inputEl.style.width = 'calc(' + Math.max(14, s.q.length + rest.length + 1) + 'ch + 14px)';
+      s.inputEl.style.width = 'calc(' + Math.max(s.inputEl.placeholder.length + 1, s.q.length + rest.length + 1) + 'ch + 14px)';
       s.rest = rest;
       s.sugEls.replaceChildren();
       if (focused) sugs.forEach((ii, k) => {
@@ -426,7 +426,7 @@
         s.ghostEl = el('span', 'ghost');
         s.inputEl = el('input');
         s.inputEl.type = 'text';
-        s.inputEl.placeholder = '+ add track…';
+        s.inputEl.placeholder = addPlaceholder(s);
         s.inputEl.autocomplete = 'off';
         s.inputEl.spellcheck = false;
         s.addEl.append(s.ghostEl, s.inputEl);
@@ -452,6 +452,8 @@
       if (s.rename === null) return s.heading;
       return s.heading.startsWith('#') && !s.rename.startsWith('#') ? '#' + s.rename : s.rename;
     }
+    // The add field says which tag it adds to: "+ add track to #drums…" (the shown name, so a rename shows too).
+    const addPlaceholder = s => '+ add track to ' + shownName(s) + '…';
     function refreshHead(si) {
       const s = S[si];
       if (!s.nmEl) return;
@@ -461,6 +463,7 @@
       s.markEl.textContent = s.rename !== null && !s.removeAll ? '(was ' + s.heading + ')' : '';
       s.el.classList.toggle('gone', s.removeAll);
       s.rmBtn?.classList.toggle('on', s.removeAll);
+      if (s.inputEl) { s.inputEl.placeholder = addPlaceholder(s); renderAdd(si); }
     }
     function toggleRemoveAll(si) {
       const s = S[si];
@@ -580,7 +583,9 @@
       const hint = text => { createErr.textContent = text; createErr.hidden = false; createInput.classList.remove('shake'); void createInput.offsetWidth; createInput.classList.add('shake'); };
       if (S.some(s => s.id === name || norm(s.heading) === norm(name))) { hint('exists already'); return; }
       if (!validName(name)) { hint('not a valid name'); return; }
-      S.push({ id: name, heading: name, meta: undefined, readonly: false, created: true, q: '', hi: 0, added: [], cc: null,
+      // A created tag reads like the others: with the # when the existing headings (or the name pattern) have one.
+      const hashed = S.some(x => x.heading.startsWith('#')) || /^#\?/.test(BOARD.create.pattern ?? '');
+      S.push({ id: name, heading: hashed && !name.startsWith('#') ? '#' + name : name, meta: undefined, readonly: false, created: true, q: '', hi: 0, added: [], cc: null,
                renamable: false, removable: false, rename: null, removeAll: false,
                items: candidates.map(c => ({ id: c.id, label: c.label, orig: false, cur: false })) });
       createInput.value = '';
