@@ -278,6 +278,14 @@ midi monitor                         # live view of incoming messages
   completion server of plan 0006. **It changes the dialog rule** (`CLAUDE.md`: "it cannot call the
   extension while open"), so it needs the user's decision.
 
+### Third Live test (2026-11-04, user with the UC4)
+
+No bugs: `map learn` on a live page closes by itself, `midi monitor` lists Cmd+M controls as "Taken
+in Live", and bindings survive save and reopen. **Change for 0.1.5 (user):** Live's status bar no
+longer shows incoming MIDI by default. Setting `midi.statusBar` (boolean, default false) in
+`settings.json`; the monitor page is where values show. It moves to a MIDI settings page with the
+settings pattern (0.1.6).
+
 ### Live pages (user, 2026-11-04: the localhost variant)
 
 **The rule and its exception** (`CLAUDE.md`):

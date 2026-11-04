@@ -25,13 +25,20 @@ All releases were tested in Live, including the installed `.ablx`.
   `gitleaks`, no force push).
 - Tag board rename/remove (0010): built and Live-tested 2026-11-04 on `feat/tag-board-edit` (rename
   in place, × with the confirm bar in the board, pinned new-tag row, untagged folded, add field names its
-  tag).
+  tag). Click-to-assign (`3570512`) Live-tested by the user 2026-11-04.
+- **0.1.5 rest (user, 2026-11-04):** the small user findings go in before the release:
+  - ui: board focus starts in "New tag", the add field in the header row, a clicked untagged chip
+    moves to its target, long sections fold (0010);
+  - core: suggestions show silent tag expansions (`drums` → `#drums`, 0006); setting `midi.statusBar`
+    (default false);
+  - modules: `midi monitor` and `map learn` show the status bar only with `midi.statusBar` (0018).
 - In work on `feat/map` (not pushed): `;` chains (0017, Live-tested); the simple MIDI mapping (0018:
   `map`, `map learn`, `midi monitor`, operators, Remote Script 0.1.14), live pages (localhost,
   load and route tokens, long polling), the Cmd+M conflict warning. Live-tested with the UC4
   (2026-11-04): bindings, hold, learn, the status bar, the Cmd+M warning in `map` and `map -l`.
-  Open: `midi monitor` live and its "Taken in Live" list in Live; the learn text for taken controls
-  (offer: "Controls taken in Live (Cmd+M) can't be learned: …"); using.md docs; release 0.1.5.
+  The user's UC4 test (2026-11-04) passed: learn closes by itself, "Taken in Live" in the monitor,
+  bindings after save and reopen. Open: the learn text for taken controls (offer: "Controls taken in
+  Live (Cmd+M) can't be learned: …"); using.md docs; the installed `.ablx`; release 0.1.5.
   Docs note: save the Set after the first `map`, or the bindings won't load after a restart.
 - How testing works since 0.1.3: the architect runs Live test lists through the `cmdabl_*` MCP tools
   (plan 0016) once the user has started `npm start` with a test Set; the user gets a short list of
@@ -78,8 +85,14 @@ Older checks that were never reported; most can now run through MCP.
   mute silences a path (track, chain, pad), bypass skips a device's processing. Deferred until the `mute`
   listing has a hierarchy (plan 0006 step 3); order set by the user.
 
-- A `cmdabl settings` page (user, 2026-10-22): one place for cmdAbl's settings (`settings.json`); the
-  palette's "above the prompt" switch likely moves there. Builds on the store from 0.1.4 (plan 0008).
+- **0.1.6: settings and help pattern** (user findings, 2026-11-04; needs a plan, 0019):
+  - a settings page per window (gear button, `<module> config`: `tag config`, MIDI, note) plus a
+    `cmdabl settings` page (user, 2026-10-22) over `settings.json`; it takes the palette's
+    Off/Hints/Options switch, the board's fold threshold and `midi.statusBar`;
+  - one help pattern: a quiet help line that follows the mouse and focus (like Live's Info View, can
+    be switched off), used by the board footer and the palette's hint panel (0006);
+  - note: timestamped entries with view and edit modes (0013).
+  A new UI surface, so the contract part needs the user's approval.
 
 - Ideas from ClyphX (2026-10-20): plan 0009 — `;` action lists with aliases (0.1.3); `.`,
   index, range and `all` targets, `vol`/`pan`/`send` (0.1.x); snapshots (0.2.x); triggers from

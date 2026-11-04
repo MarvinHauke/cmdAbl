@@ -294,6 +294,18 @@ page served from `http://localhost:27184` (same origin), with ping and POST arou
 server variant is therefore feasible; the design and security rules above apply, and the dialog rule in
 `CLAUDE.md` changes only with the user's decision.
 
+## User findings (2026-11-04)
+
+- **0.1.5 (core):** when a bare word silently resolves to a tag (`mute drums` → `mute #drums`), the
+  suggestions show the expanded form. Built once in the engine, so every module with target
+  arguments gets it.
+- **0.1.6, with the settings page:** the Off/Hints/Options switch moves to the settings; the hint panel
+  becomes an interactive help view (fed by the typed command, its help and the options for its
+  arguments and targets; hover info), sharing one help pattern with the tag board's footer.
+- **Question (user):** must every module write its own completion? Direction: a generic baseline from
+  the command tree's argument kinds gives every new module suggestions and ghost text; modules add
+  completers only for their special cases. core sends a short proposal.
+
 ## Open questions
 
 - Prototype ghost text on a plain `<input>` overlay vs. a `contenteditable`; settle by trying.

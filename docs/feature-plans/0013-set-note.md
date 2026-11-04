@@ -126,6 +126,15 @@ full text.
   - a table editor;
   - a reminder when the Set opens.
 
+## Timestamped entries (user, 2026-11-04; planned for 0.1.6)
+
+- The page opens in view mode. `e` enters edit mode and adds a Markdown timestamp line; Esc goes back
+  to view mode; another `e` adds the next timestamp and entry; Esc in view mode closes the page.
+- Option in the note's settings: after leaving edit mode, edit mode opens again for a while (a loop).
+- Later: tie an entry to an Ableton locator (needs the bridge; no locator writes without a plan,
+  since the decisions above keep the Set clean).
+- Open: the key (`e`, `i`, or `m` for mark), and the timestamp: wall-clock time or song position.
+
 ## Phased rollout
 
 1. **cmdabl-bridge:** the `set_id` op with tests; script 0.1.8. The Live spike (save, reload, Save As)

@@ -207,6 +207,21 @@ remove a whole tag; that needs `tag -r` or `tag --set 0`.
     keyboard access);
   - modules: the `tag` board sets the flags, applies renames and removals, and confirms removals.
 
+## User findings for 0.1.5 (user, 2026-11-04)
+
+Click-to-assign was Live-tested by the user (ui `3570512`). Four changes, ui only (`ui/board.html`):
+- focus starts in "New tag" when the board opens;
+- each tag's add field sits in its header row, after the name and before "N tracks ×"; the chip rows
+  hold only tracks (this also ends the wrap jump when a pending chip fills a row);
+- a clicked untagged chip leaves "untagged" and shows as a pending chip in the target; its × there
+  undoes it;
+- every tag section can fold; sections with more than 20 tracks start folded (a named constant, a
+  setting once the settings page exists).
+
+For 0.1.6 (with the settings page and the help pattern, see STATUS): a gear button and `tag config`
+for the board's settings, and a footer help line that follows the mouse (like Live's Info View, can
+be switched off).
+
 ## The UI pattern in `ui/`
 
 - **Core surfaces** are generic, can be themed and replaced, and their contract is in
