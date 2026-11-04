@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows, in its heading line, a fold arrow, the name, an inline input ("+ add track to #tag…", like the tag bar in Live's browser) and the count; below it come its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it). A tag is open by default and starts folded when it has more than FOLD_AFTER (20) tracks (on a heading — reached with ↑/↓ — → unfolds and ← folds, or the arrow button); a folded heading shows the pending changes as "+2 ×1"; adding by typing unfolds. The input: typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips (←/→/↑/↓ move the highlight while they show); Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. ←/→ in an empty input (or at caret 0) put a chip cursor on the section's chips: Backspace/Delete/Space toggle the removal mark of the chip under it, typing/Esc/Tab return to the input, Enter applies. A readonly section shows chips only; today it is also built last and starts folded ("▸ untagged · 35 tracks", the heading toggles it on click / Enter / Space), because tag is the only user — a second user that marks sections readonly for other reasons needs an explicit `folded?` flag from core and the caller's order kept. The "+ # New tag…" row is pinned above the sections; a created section is added directly below it, focused and in view. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. A section with renamable / removable shows a heading whose name is editable in place (click it, or F2 in the section's input: an inline input; the leading # stays outside) and a × at the right end of the heading: the name's input (Enter takes the name if it matches create.pattern, else shake; Esc cancels the edit only; the heading then shows the new name and, dimmed on the same line, "(was #old)"), × (or Shift+Backspace in an empty input, or Shift+Tab to the buttons and Enter) marks the whole tag for removal (struck through, chips dimmed; the footer says what will be removed; a second click unmarks it). Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names], renamed?: [{ section, to }], removed?: [section], confirmed?: true } on Apply (confirmed with removed: Apply with a tag marked for removal first shows a confirm bar in the footer, "Remove #fx from N tracks?" with Cancel (default, Esc) and Remove and apply): only real differences against the request (a section marked for removal sends only `removed`: its own chip changes and rename are dropped); a created section's id is its name and its items start off. Only the × of a chip removes (or undoes); a click on its name selects it for the keys (Backspace removes). A track whose last tag is marked off or removed shows in untagged as a dashed card (assign it to another tag in the same change); a tag with all its tracks marked off is struck through with "tag goes away". The New tag row works like a tag row: its collected tracks are chips below the field, the help is in the footer. Click to assign: the target is the tag whose add field was focused last (highlighted; footer "Click tracks to add them to #drums") or the New tag field; a click on an untagged chip adds that track to the target as a pending chip and the track leaves the untagged list (× on the pending chip brings it back), or, for the New tag field, collects it in a line below the field ("goes into the new tag: …", each with ×) until a name + Enter creates the tag with them (Esc clears); the page opens in the New tag field; chips of other tags don't assign. Keyboard: Tab to the untagged heading, ↓/→ puts a chip cursor on the tracks (←/→/↑/↓ move, Enter or Space assigns to the active target, Esc leaves). Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
+<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows, in its heading line, a fold arrow, the name, an inline input ("+ add track to #tag…", like the tag bar in Live's browser) and the count; below it come its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it). A tag is open by default and starts folded when it has more than FOLD_AFTER (20) tracks (on a heading — reached with ↑/↓ — → unfolds and ← folds, or the arrow button); a folded heading shows the pending changes as "+2 ×1"; adding by typing unfolds. The input: typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips (↑/↓ move the highlight while they show); Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. Keys, like a file tree (deeper = →, out = ←): ↑/↓ move only between headings (the New tag field, each tag heading, the untagged heading); → on a heading unfolds it, on an open one goes into its add field; → in the field with the caret at the far end (empty included) puts a chip cursor on the first chip (←/→ walk the chips, → on the last stays, ← on the first goes back to the field); ← in the field at caret 0 goes to the heading; ← on an open heading folds it; ↑/↓ inside a tag go to its heading / the next heading. The New tag field works the same with the collected chips. Chip cursor: Backspace/Delete toggle the removal mark of the chip under it, typing/Esc/Tab return to the input, Enter applies. The target is the tag whose add field (or chips) was entered last: passing a heading with ↑/↓ doesn't change it, so a track can be assigned to the tag you left, from the untagged heading. A readonly section shows chips only; today it is also built last and starts folded ("▸ untagged · 35 tracks", the heading toggles it on click / Enter / Space), because tag is the only user — a second user that marks sections readonly for other reasons needs an explicit `folded?` flag from core and the caller's order kept. The "+ # New tag…" row is pinned above the sections; a created section is added directly below it, focused and in view. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. A section with renamable / removable shows a heading whose name is editable in place (click it, or F2 in the section's input: an inline input; the leading # stays outside) and a × at the right end of the heading: the name's input (Enter takes the name if it matches create.pattern, else shake; Esc cancels the edit only; the heading then shows the new name and, dimmed on the same line, "(was #old)"), × (or Shift+Backspace in an empty input, or Shift+Tab to the buttons and Enter) marks the whole tag for removal (struck through, chips dimmed; the footer says what will be removed; a second click unmarks it). Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names], renamed?: [{ section, to }], removed?: [section], confirmed?: true } on Apply (confirmed with removed: Apply with a tag marked for removal first shows a confirm bar in the footer, "Remove #fx from N tracks?" with Cancel (default, Esc) and Remove and apply): only real differences against the request (a section marked for removal sends only `removed`: its own chip changes and rename are dropped); a created section's id is its name and its items start off. Only the × of a chip removes (or undoes); a click on its name selects it for the keys (Backspace removes). A track whose last tag is marked off or removed shows in untagged as a dashed card (assign it to another tag in the same change); a tag with all its tracks marked off is struck through with "tag goes away". The New tag row works like a tag row: its collected tracks are chips below the field, the help is in the footer. Click to assign: the target is the tag whose add field was focused last (highlighted; footer "Click tracks to add them to #drums") or the New tag field; a click on an untagged chip adds that track to the target as a pending chip and the track leaves the untagged list (× on the pending chip brings it back), or, for the New tag field, collects it in a line below the field ("goes into the new tag: …", each with ×) until a name + Enter creates the tag with them (Esc clears); the page opens in the New tag field; chips of other tags don't assign. Keyboard: Tab to the untagged heading, ↓/→ puts a chip cursor on the tracks (←/→/↑/↓ move, Enter or Space assigns to the active target, Esc leaves). Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -173,6 +173,7 @@
     const FOLD_AFTER = 20;   // a tag with more tracks than this starts folded (becomes a setting with the settings page)
     let target = -1, quiet = false;
     const collected = [];
+    let ccNew = null;   // the chip cursor on the collected tracks (a track id), DOM focus stays in the New tag field
 
     function changes() {
       const out = [];
@@ -192,7 +193,7 @@
     // Esc or Close with pending changes warns first (footer); a second Esc or Close discards,
     // any other key cancels the warning. Without changes it closes at once.
     const hintEl = document.getElementById('hint');
-    const keyHint = 'Tab accept · ← chips · ⌫ remove' + (S.some(s => s.renamable) ? ' · F2 rename' : '') + ' · ↑↓ rows · ←→ fold';   // short on purpose: the full key list comes back with a help line
+    const keyHint = 'Tab accept · ⌫ remove' + (S.some(s => s.renamable) ? ' · F2 rename' : '') + ' · ↑↓ tags · → into · ← out';   // short on purpose: the full key list comes back with a help line
     // The footer line: what whole tags will be removed (once marked), else the keys.
     function curHint() {
       const gone = S.filter(s => s.removeAll);
@@ -316,10 +317,12 @@
     function renderCollected() {
       const label = id => candidates.find(c => c.id === id)?.label ?? id;
       collectedEl.hidden = !S.some(s => s.readonly);
+      if (ccNew != null && !collected.includes(ccNew)) ccNew = null;
+      createWrap?.classList.toggle('chipmode', ccNew != null);
       collectedEl.replaceChildren();
       if (!collected.length) { collectedEl.append(el('span', 'none', 'no tracks yet')); return; }   // like a tag without tracks
       for (const id of collected) {
-        const chip = el('span', 'chip add');
+        const chip = el('span', 'chip add' + (id === ccNew ? ' cur' : ''));
         chip.append(el('span', 'l', label(id)), el('span', 'x', '×'));
         chip.title = 'to be added to the new tag (× undoes)';
         chip.addEventListener('mousedown', e => { e.preventDefault(); if (e.target.closest('.x')) uncollect(id); });
@@ -543,16 +546,16 @@
           const enter = () => { const idx = chipIdx(s); if (idx.length) { s.cc = idx[0]; renderChips(si); revealCursor(si); } };
           if (e.key === 'Enter' || e.key === ' ') { stop(); toggleFold(si); }
           else if (e.key === 'ArrowRight') { stop(); if (s.folded) setFold(si, false); else enter(); }   // → opens, again steps into the tracks
-          else if (e.key === 'ArrowDown') { stop(); if (!s.folded) enter(); }
           else if (e.key === 'ArrowLeft') { stop(); setFold(si, true); }
-          else if (e.key === 'ArrowUp') { stop(); moveRow(head, -1); }
+          else if (e.key === 'ArrowUp') { stop(); moveHead(head, -1); }
+          else if (e.key === 'ArrowDown') stop();   // the last heading
         });
         head.addEventListener('blur', () => { if (s.cc != null) { s.cc = null; renderChips(si); } });
       } else {
         // a tag folds too: open by default, folded from FOLD_AFTER tracks; the add field and the count stay in the heading
         s.folded = s.items.filter(i => i.orig).length > FOLD_AFTER;
         s.caretEl = el('button', 'fold', s.folded ? '▸' : '▾');
-        s.caretEl.type = 'button'; s.caretEl.tabIndex = -1; s.caretEl.title = 'Fold / unfold the tracks (← →  on the heading)';
+        s.caretEl.type = 'button'; s.caretEl.tabIndex = -1; s.caretEl.title = 'Fold / unfold the tracks (← → on the heading)';
         s.caretEl.addEventListener('mousedown', e => e.preventDefault());
         s.caretEl.addEventListener('click', () => toggleFold(si));
         head.append(s.caretEl, s.nameEl, s.markEl);
@@ -577,14 +580,13 @@
         s.inputEl.autocomplete = 'off';
         s.inputEl.spellcheck = false;
         s.addEl.append(s.ghostEl, s.inputEl);
-        head.tabIndex = -1;   // reached by ↑/↓ (no Tab stop): → unfolds, ← folds, F2 renames
-        head.addEventListener('focus', () => setTarget(si));
+        head.tabIndex = -1;   // reached by ↑/↓ (no Tab stop): → unfolds, then goes into the field; ← folds; F2 renames
         head.addEventListener('keydown', e => {
           if (e.target !== head) return;
           const stop = () => { e.preventDefault(); e.stopPropagation(); };
-          if (e.key === 'ArrowRight') { stop(); setFold(si, false); }
+          if (e.key === 'ArrowRight') { stop(); if (s.folded) setFold(si, false); else caretToEnd(s.inputEl); }   // → opens; open: into the add field
           else if (e.key === 'ArrowLeft') { stop(); setFold(si, true); }
-          else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { stop(); moveRow(head, e.key === 'ArrowDown' ? 1 : -1); }
+          else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { stop(); moveHead(head, e.key === 'ArrowDown' ? 1 : -1); }
           else if (e.key === 'Enter' || e.key === ' ') { stop(); toggleFold(si); }
           else if (e.key === 'F2' && s.renamable) { stop(); startRename(si); }
           else if (e.key === 'Backspace' && e.shiftKey && s.removable) { stop(); toggleRemoveAll(si); }
@@ -710,7 +712,7 @@
 
     // ---- focus order: the sections' inputs, then the create input ---------------------------
     const createBox = document.getElementById('create');
-    let createInput = null, createErr = null;
+    let createInput = null, createErr = null, createWrap = null;
     // Focus order = the order drawn: the pinned create input, created sections (newest on top), the others.
     function inputs() {
       const out = [];
@@ -721,30 +723,32 @@
     }
     // The first section's input (the create row is above it): where the focus starts and typing goes.
     const firstInput = () => inputs().find(x => x.si !== -1) ?? inputs()[0];
-    // The board's rows, top to bottom (what ↑/↓ walk through): the New tag field, then per section its heading and its add
-    // field. Folded chips are no stop (←/→ in the add field and the heading's cursor reach them).
-    function boardRows() {
+    // Headings, top to bottom: the New tag field, then every section's heading. ↑/↓ walk only these; → goes deeper
+    // (heading → add field → chips), ← back out. The add field and the chips are no stops of ↑/↓.
+    function headingList() {
       const out = [];
       if (createInput) out.push(createInput);
-      for (const node of sectionsBox.children) {
-        const s = S.find(x => x.el === node);
-        if (!s) continue;
-        out.push(s.headEl);
-        if (s.inputEl) out.push(s.inputEl);
-      }
+      for (const node of sectionsBox.children) { const s = S.find(x => x.el === node); if (s) out.push(s.headEl); }
       return out;
     }
-    function moveRow(from, delta) {
-      const list = boardRows();
-      const at = list.indexOf(from);
-      const next = list[Math.max(0, Math.min(list.length - 1, at + delta))];
-      if (!next || next === from) return;
+    function focusHeading(next) {
       next.focus({ preventScroll: true });
       if (next === createInput) { scroll.scrollTop = 0; return; }
       const box = next.closest('.sec');
-      if (box && !next.matches('input')) { const r = box.getBoundingClientRect(); revealBlock(r.top, r.bottom, box === sectionsBox.firstElementChild); }   // an input's own focus handler reveals its section
+      if (box) { const r = box.getBoundingClientRect(); revealBlock(r.top, r.bottom, box === sectionsBox.firstElementChild); }
     }
-    const jump = (from, delta) => moveRow(from === -1 ? createInput : S[from].inputEl, delta);
+    function moveHead(from, delta) {
+      const list = headingList();
+      const at = list.indexOf(from);
+      const next = list[Math.max(0, Math.min(list.length - 1, at + delta))];
+      if (next && next !== from) focusHeading(next);
+    }
+    // From inside a section (field or chips; si -1 = the New tag field): -1 = its own heading, +1 = the next heading.
+    function jump(si, delta) {
+      if (si === -1) { if (delta > 0) moveHead(createInput, 1); return; }
+      if (delta < 0) focusHeading(S[si].headEl); else moveHead(S[si].headEl, 1);
+    }
+    function caretToEnd(input) { input.focus({ preventScroll: true }); input.setSelectionRange(input.value.length, input.value.length); }
 
     // ---- the create entry ------------------------------------------------------------------
     function buildCreate() {
@@ -755,8 +759,9 @@
       createInput.placeholder = BOARD.create.label;
       createInput.autocomplete = 'off';
       createInput.spellcheck = false;
-      const wrap = el('span', 'addwrap');
+      const wrap = createWrap = el('span', 'addwrap');
       wrap.append(createInput);
+      createInput.addEventListener('blur', () => { if (ccNew != null) { ccNew = null; renderCollected(); } });
       createInput.style.width = 'calc(' + Math.max(12, BOARD.create.label.length + 1) + 'ch + 14px)';
       createErr = el('span', 'nomatch');
       createErr.hidden = true;
@@ -819,8 +824,8 @@
       const idx = chipIdx(s);
       const at = idx.indexOf(s.cc);
       const leave = () => { s.cc = null; renderChips(si); };
-      if (e.key === 'ArrowLeft') { e.preventDefault(); if (at > 0) { s.cc = idx[at - 1]; renderChips(si); } }
-      else if (e.key === 'ArrowRight') { e.preventDefault(); if (at < idx.length - 1) { s.cc = idx[at + 1]; renderChips(si); } else leave(); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); if (at > 0) { s.cc = idx[at - 1]; renderChips(si); } else { leave(); caretToEnd(s.inputEl); } }   // ← on the first chip: back to the field
+      else if (e.key === 'ArrowRight') { e.preventDefault(); if (at < idx.length - 1) { s.cc = idx[at + 1]; renderChips(si); } }   // → on the last chip stays put
       else if (e.key === ' ') e.preventDefault();   // nothing destructive on Space
       else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
@@ -828,7 +833,7 @@
         toggleItem(si, ii);
         if (!chipIdx(s).includes(ii)) { s.cc = idx[at - 1] ?? null; renderChips(si); }   // an added chip vanished: previous chip, else the input
       }
-      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); leave(); if (e.key === 'ArrowDown') jump(si, 1); }   // ↑ goes back to the add field
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); leave(); jump(si, e.key === 'ArrowDown' ? 1 : -1); }   // ↑ own heading, ↓ the next one
       else if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat && !s.inputEl.value.trim()) apply(); }   // nothing typed to add: Enter applies (no changes: nothing)
       else if (e.key === 'Escape') { e.preventDefault(); leave(); }
       else if (e.key === 'Tab') { e.preventDefault(); leave(); }
@@ -847,7 +852,7 @@
       const at = idx.indexOf(s.cc);
       const move = to => { if (to !== undefined && to !== s.cc) { s.cc = to; renderChips(si); } revealCursor(si); };
       const stop = () => { e.preventDefault(); e.stopPropagation(); };
-      if (e.key === 'ArrowLeft') { stop(); move(idx[Math.max(0, at - 1)]); }
+      if (e.key === 'ArrowLeft') { stop(); if (at > 0) move(idx[at - 1]); else { s.cc = null; renderChips(si); } }   // ← on the first track: back to the heading
       else if (e.key === 'ArrowRight') { stop(); move(idx[Math.min(idx.length - 1, at + 1)]); }
       else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         stop();
@@ -881,18 +886,17 @@
       if (s.cc != null) { keyOnChip(e, si); return; }
       if (e.key === 'F2' && s.renamable) { e.preventDefault(); startRename(si); return; }
       if (e.key === 'Backspace' && e.shiftKey && !s.inputEl.value && s.removable) { e.preventDefault(); toggleRemoveAll(si); return; }
-      // While suggestions show, plain ←/→ move the highlight (previous/next, no wrap) instead of the caret
-      // or the chips; Cmd/Alt/Ctrl+←/→, Home and End stay native.
-      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey
-          && s.inputEl.value && (s.sugList?.length ?? 0) > 0) {
-        e.preventDefault();
-        const next = Math.max(0, Math.min(s.sugList.length - 1, s.hi + (e.key === 'ArrowRight' ? 1 : -1)));
-        if (next !== s.hi) { s.hi = next; renderAdd(si); }
+      // File-tree keys: → with the caret at the far end (an empty field included) goes into the chips, ← with the caret at
+      // the start goes out to the heading; Cmd/Alt/Ctrl/Shift variants, Home and End stay native.
+      const plain = !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey;
+      const inp = s.inputEl;
+      if (e.key === 'ArrowRight' && plain && inp.selectionStart === inp.value.length && inp.selectionEnd === inp.value.length) {
+        const idx = chipIdx(s);
+        if (idx.length) { e.preventDefault(); setFold(si, false); s.cc = idx[0]; renderChips(si); }
         return;
       }
-      if (e.key === 'ArrowLeft' && !e.shiftKey && s.inputEl.selectionStart === 0 && s.inputEl.selectionEnd === 0) {
-        const idx = chipIdx(s);
-        if (idx.length) { e.preventDefault(); setFold(si, false); s.cc = idx[idx.length - 1]; renderChips(si); }
+      if (e.key === 'ArrowLeft' && plain && inp.selectionStart === 0 && inp.selectionEnd === 0) {
+        e.preventDefault(); focusHeading(s.headEl);
         return;
       }
       if (e.key === 'Enter') {
@@ -927,7 +931,24 @@
         if (s.inputEl.value) { s.q = s.inputEl.value = ''; s.hi = 0; clearNoMatch(s); renderAdd(si); } else requestClose();
       }
     }
+    function keyOnCollected(e) {
+      const at = collected.indexOf(ccNew);
+      const leave = () => { ccNew = null; renderCollected(); };
+      if (e.key === 'ArrowLeft') { e.preventDefault(); if (at > 0) { ccNew = collected[at - 1]; renderCollected(); } else { leave(); caretToEnd(createInput); } }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); if (at < collected.length - 1) { ccNew = collected[at + 1]; renderCollected(); } }
+      else if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); const next = collected[at + 1] ?? collected[at - 1] ?? null; uncollect(ccNew); ccNew = next; renderCollected(); }
+      else if (e.key === ' ') e.preventDefault();
+      else if (e.key === 'ArrowDown') { e.preventDefault(); leave(); jump(-1, 1); }
+      else if (e.key === 'ArrowUp' || e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); leave(); }
+      else if (e.key === 'Enter') { e.preventDefault(); }
+      else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) leave();   // typed into the field
+    }
     function keyInCreate(e) {
+      if (ccNew != null) { keyOnCollected(e); return; }
+      if (e.key === 'ArrowRight' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && collected.length
+          && createInput.selectionStart === createInput.value.length && createInput.selectionEnd === createInput.value.length) {
+        e.preventDefault(); ccNew = collected[0]; renderCollected(); return;
+      }
       if (e.key === 'Enter') {
         e.preventDefault();
         if (e.repeat) return;
