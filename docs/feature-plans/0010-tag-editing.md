@@ -160,6 +160,33 @@ with the new-tag row (bare `#` = the tag list, as elsewhere). Usage: `tag --edit
 `OptionDef.valueDefault`). `tag -e #` is single-select: Enter picks the tag (`73f0079`, `702fcca`). It ships with the
 board as the keyboard path (decision 5).
 
+## Rename and remove whole tags in the board (user, 2026-11-04)
+
+Today the board removes a track from a tag (× on a chip) and creates tags, but it can't rename a tag or
+remove a whole tag; that needs `tag -r` or `tag --set 0`.
+
+- **Each tag section's heading gets two actions:**
+  - **✎ rename:** the heading becomes an inline input. Enter takes the name, checked against the same
+    pattern as a new tag; Esc cancels the edit.
+  - **× remove:** the section is marked (struck through), and the footer says "#fx will be removed from
+    N tracks". A second click unmarks it.
+- **Apply sends everything at once:**
+  - renames use the `tag -r` logic (an existing name merges);
+  - removing a whole tag asks once more after the board closes ("Remove #fx from N tracks?", Cancel
+    first). Cancel applies nothing from that board;
+  - removing one track (× on a chip) stays without a question;
+  - the log gets the change and undo lines as usual.
+- **Board contract (additive):**
+  - section `renamable?: boolean`, `removable?: boolean`;
+  - answer `renamed?: [{ section, to }]`, `removed?: [section]`.
+
+  Old callers are unaffected. A rename plus a removal of the same section: the removal wins.
+- **Work:**
+  - core: the contract and the parser of the answer (`parseBoardAnswer`), with tests;
+  - ui: `ui/board.html` (the actions, the inline input, the strike-through, the footer text,
+    keyboard access);
+  - modules: the `tag` board sets the flags, applies renames and removals, and confirms removals.
+
 ## The UI pattern in `ui/`
 
 - **Core surfaces** are generic, can be themed and replaced, and their contract is in
