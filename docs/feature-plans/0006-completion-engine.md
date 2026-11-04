@@ -304,7 +304,20 @@ server variant is therefore feasible; the design and security rules above apply,
   arguments and targets; hover info), sharing one help pattern with the tag board's footer.
 - **Question (user):** must every module write its own completion? Direction: a generic baseline from
   the command tree's argument kinds gives every new module suggestions and ghost text; modules add
-  completers only for their special cases. core sends a short proposal.
+  completers only for their special cases. Answer (core, 2026-11-04, built as of `4e8520a`):
+  - **Free from the command tree:** commands, subcommands with aliases, options (`--help`, `--pick`),
+    option value labels, enum choices, the hint line (`<name>`, `<a|b>`, `[<name>…]`, `| <line>`);
+    for path arguments the Live paths filtered by `kinds`, `#tag`/`!#tag` rows with counts and the
+    silent-tag row; numbers get the hint only; `;` parts and `|` bindings complete per part. Ghost text
+    is the first row's remainder when it extends the word, otherwise the usage hint (the silent-tag
+    row replaces the word, so it is a row only).
+  - **Needs a module completer** (`api.commands.completer`, `ArgDef.complete`/`OptionDef.complete`):
+    values from module state or disk (pakabl ids, tag names for `tag -r`/`-e`, script names,
+    `map --rm <n>`), their descriptions, ranking beyond prefix/substring. Completers read caches only
+    (one call at palette open, 100 ms budget, no bridge calls).
+  - **Rule:** an argument whose values aren't Live objects is `text` or `enum` with a completer, never
+    `path`, or it shows Live paths.
+  - Open (asked the user): show the tag row while the word is a prefix (`dru` → `#drums`).
 
 ## Open questions
 
