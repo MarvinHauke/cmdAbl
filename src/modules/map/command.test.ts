@@ -244,7 +244,7 @@ test("map learn opens a live page in learn mode; its route shows what moved sinc
   const page = fake.livePages[0]!;
   assert.equal(page.name, "map-learn");
   assert.match(page.html, /"mode":"learn"/);
-  const answer = (await page.routes.messages!()) as { messages: Array<{ number: number }> };
+  const answer = (await (page.routes.messages as { wait: (s: number | null, c: never) => Promise<unknown> }).wait(null, { cancelled: false, onCancel() {} } as never)) as { messages: Array<{ number: number }> };
   assert.equal(answer.messages[0]!.number, 48);
   assert.equal(fake.midiBindings[0]!.control.number, 48);
 });
