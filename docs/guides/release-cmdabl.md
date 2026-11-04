@@ -33,6 +33,9 @@ yet. Nothing bumps the version for you.
    - The plan index (`docs/feature-plans/README.md`) moves the plan to "Released" and sorts "Next"
      by what builds on what again.
    - Ideas stay until built or dropped; dropped ones go to "Deferred" with one reason.
+10. **Small team again** (the architect): stop the builder sessions that worked on the release
+    (`scripts/agents.sh stop`; they start fresh for the next task), and suggest to the user that the
+    architect's session be compacted (`/compact keep: open decisions, STATUS, next step`).
 
 When a new major version of Live comes out, set `LIVE_MANUAL_VERSION` in
 `src/modules/man/topics.ts` to it before releasing: `man ableton <words>` searches only that

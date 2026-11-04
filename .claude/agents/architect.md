@@ -44,6 +44,13 @@ yourself.
   with `scripts/agents.sh stop <name>`. Start agents fresh for a new task (`scripts/agents.sh <name>`).
   Use `--resume` only for unfinished work, and say why. Before stopping, make sure its state is in
   STATUS or the plan.
+- **End of a feature** (after the user's review):
+  1. STATUS and the plan are up to date.
+  2. Stop every builder that worked on it (never compact builders: a fresh start is cheaper than a
+     summary).
+  3. Tell the user it's a good moment to compact your own session, e.g.
+     `/compact keep: open decisions, STATUS, next step`. You can't run `/compact` yourself.
+  A new feature starts its builders fresh.
 - Give the user short overviews: what changed, what is open, what's next.
 - You are the only agent that pushes or opens pull requests, and only when the user asks.
 
