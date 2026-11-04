@@ -10,7 +10,7 @@ const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "cmdabl-settings-"));
 test("a missing file gives the defaults, quietly", async () => {
   const warnings: string[] = [];
   const store = createSettingsStore({ base: path.join(tmp(), "none"), warn: (t) => warnings.push(t) });
-  assert.deepEqual(await store.get(), { "palette.above": "off", "map.enabled": true });
+  assert.deepEqual(await store.get(), { "palette.above": "off", "map.enabled": true, "midi.statusBar": false });
   assert.deepEqual(toPaletteSettings(await store.get()), { above: "off" });
   assert.deepEqual(warnings, []);
   assert.equal(SETTINGS_DEFAULTS["palette.above"], "off");
@@ -27,7 +27,7 @@ test("a broken file, a non-object and a wrong type give the defaults and one war
     fs.writeFileSync(path.join(dir, SETTINGS_FILE), text);
     const warnings: string[] = [];
     const store = createSettingsStore({ base: dir, warn: (t) => warnings.push(t) });
-    assert.deepEqual(await store.get(), { "palette.above": "off", "map.enabled": true }, text);
+    assert.deepEqual(await store.get(), { "palette.above": "off", "map.enabled": true, "midi.statusBar": false }, text);
     assert.equal(warnings.length, 1, text);
     assert.match(warnings[0]!, expected);
     await store.get(); // read once: no second warning
@@ -37,7 +37,7 @@ test("a broken file, a non-object and a wrong type give the defaults and one war
   const dir = tmp();
   fs.mkdirSync(path.join(dir, SETTINGS_FILE));
   const warnings: string[] = [];
-  assert.deepEqual(await createSettingsStore({ base: dir, warn: (t) => warnings.push(t) }).get(), { "palette.above": "off", "map.enabled": true });
+  assert.deepEqual(await createSettingsStore({ base: dir, warn: (t) => warnings.push(t) }).get(), { "palette.above": "off", "map.enabled": true, "midi.statusBar": false });
   assert.match(warnings[0]!, /cannot read settings.json/);
 });
 
@@ -47,15 +47,15 @@ test("the round trip: set, a new store reads it, other keys are kept, no tempora
   const warnings: string[] = [];
   const store = createSettingsStore({ base: dir, warn: (t) => warnings.push(t) });
   assert.equal(await store.set({ "palette.above": "options" }), true);
-  assert.deepEqual(await store.get(), { "palette.above": "options", "map.enabled": true }); // in effect at once
+  assert.deepEqual(await store.get(), { "palette.above": "options", "map.enabled": true, "midi.statusBar": false }); // in effect at once
   const again = createSettingsStore({ base: dir, warn: (t) => warnings.push(t) });
-  assert.deepEqual(await again.get(), { "palette.above": "options", "map.enabled": true });
-  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, SETTINGS_FILE), "utf8")), { "future.key": [1], "palette.above": "options", "map.enabled": true });
+  assert.deepEqual(await again.get(), { "palette.above": "options", "map.enabled": true, "midi.statusBar": false });
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, SETTINGS_FILE), "utf8")), { "future.key": [1], "palette.above": "options", "map.enabled": true, "midi.statusBar": false });
   assert.deepEqual(fs.readdirSync(dir), [SETTINGS_FILE]);
   assert.deepEqual(warnings, []);
   // a patch with a wrong type or an unknown key changes nothing
   await again.set({ "palette.above": "no", nope: 1 } as never);
-  assert.deepEqual(await again.get(), { "palette.above": "options", "map.enabled": true });
+  assert.deepEqual(await again.get(), { "palette.above": "options", "map.enabled": true, "midi.statusBar": false });
 });
 
 test("a patch that changes nothing writes nothing", async () => {
@@ -84,7 +84,7 @@ test("creates the folder on the first write; a failing disk answers false with a
   });
   assert.equal(await blocked.set({ "palette.above": "options" }), false);
   assert.match(warnings.join("\n"), /cannot write settings.json \(EACCES\)/);
-  assert.deepEqual(await blocked.get(), { "palette.above": "options", "map.enabled": true });
+  assert.deepEqual(await blocked.get(), { "palette.above": "options", "map.enabled": true, "midi.statusBar": false });
 });
 
 test("palette.above takes off, hints or options; any other value is the default plus a warning, and a set of one is ignored", async () => {
@@ -105,7 +105,7 @@ test("palette.above takes off, hints or options; any other value is the default 
   }
   const store = createSettingsStore({ base: tmp(), warn: () => {} });
   await store.set({ "palette.above": "both" } as never);
-  assert.deepEqual(await store.get(), { "palette.above": "off", "map.enabled": true });
+  assert.deepEqual(await store.get(), { "palette.above": "off", "map.enabled": true, "midi.statusBar": false });
   await store.set({ "palette.above": "hints" });
   assert.deepEqual(toPaletteSettings(await store.get()), { above: "hints" });
 });
@@ -123,7 +123,7 @@ test("an edit of the file from outside is picked up at the next get; our own wri
   // a write of our own: in effect at once, and the written file is not read back as "changed"
   await store.set({ "palette.above": "off" });
   assert.deepEqual(toPaletteSettings(await store.get()), { above: "off" });
-  assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")), { x: 1, "palette.above": "off", "map.enabled": true }); // the outside key survived
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")), { x: 1, "palette.above": "off", "map.enabled": true, "midi.statusBar": false }); // the outside key survived
   // the file removed: back to the defaults, quietly; a broken edit: defaults and ONE warning
   fs.unlinkSync(file);
   assert.deepEqual(toPaletteSettings(await store.get()), { above: "off" });
@@ -144,7 +144,7 @@ test("two quick changes are written one after the other; the last one wins", asy
   const a = store.set({ "palette.above": "options" });
   const b = store.set({ "palette.above": "off" });
   assert.deepEqual(await Promise.all([a, b]), [true, true]);
-  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, SETTINGS_FILE), "utf8")), { "palette.above": "off", "map.enabled": true });
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, SETTINGS_FILE), "utf8")), { "palette.above": "off", "map.enabled": true, "midi.statusBar": false });
 });
 
 test("parsePaletteSettings and parsePaletteAnswer: result, settings, both, or neither", () => {
@@ -204,5 +204,17 @@ test("map.enabled defaults to true, can be switched off and is read back; a non-
   fs.writeFileSync(path.join(dir, SETTINGS_FILE), '{"map.enabled": "no"}');
   const warnings: string[] = [];
   assert.equal((await createSettingsStore({ base: dir, warn: (t) => warnings.push(t) }).get())["map.enabled"], true);
+  assert.equal(warnings.length, 1);
+});
+
+test("midi.statusBar defaults to false, round-trips, and a non-boolean is the default plus a warning", async () => {
+  const dir = tmp();
+  const store = createSettingsStore({ base: dir, warn: () => {} });
+  assert.equal((await store.get())["midi.statusBar"], false);
+  await store.set({ "midi.statusBar": true });
+  assert.equal((await createSettingsStore({ base: dir, warn: () => {} }).get())["midi.statusBar"], true);
+  fs.writeFileSync(path.join(dir, SETTINGS_FILE), '{"midi.statusBar": 1}');
+  const warnings: string[] = [];
+  assert.equal((await createSettingsStore({ base: dir, warn: (t) => warnings.push(t) }).get())["midi.statusBar"], false);
   assert.equal(warnings.length, 1);
 });

@@ -156,6 +156,7 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "midi.onEvent", via: "script", call: "the pushed event `midi` (also the monitor-marked copies during a monitor window)", lom: [] },
   { port: "midi.blocked", via: "script", call: "the `blocked` list of `midi_listen` and the pushed event `midi_blocked`", lom: [], note: "Controls Live keeps for itself (a Cmd+M mapping, another script): they are never forwarded to cmdAbl." },
   { port: "midi.onBlocked", via: "script", call: "the pushed event `midi_blocked` after a map build", lom: [] },
+  { port: "midi.statusBar", via: "platform", call: "reads `midi.statusBar` in settings.json", lom: [] },
   { port: "midi.enabled", via: "platform", call: "reads `map.enabled` in settings.json", lom: [] },
   { port: "midi.setEnabled", via: "platform", call: "writes `map.enabled` in settings.json", lom: [] },
   { port: "commands.completer", via: "platform", call: "registers a source of completion candidates under a key", lom: [] },

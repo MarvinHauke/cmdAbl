@@ -84,6 +84,8 @@ export interface FakeApi {
   /** What the fake `api.midi.blocked()` answers (default none); call `blockedListeners` after changing it to simulate a map rebuild. */
   midiBlocked: string[] | null;
   blockedListeners: Array<(blocked: string[] | null) => void>;
+  /** The fake `midi.statusBar` (default false). */
+  midiStatusBar: boolean;
   /** The fake `map.enabled` (default true). */
   mapEnabled: boolean;
   /** Every `api.midi.listen` call, in order. */
@@ -127,6 +129,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     midiBlocked: [],
     blockedListeners: [],
     eventListeners: [],
+    midiStatusBar: false,
     mapEnabled: true,
     midiListens: [],
     completers: new Map(),
@@ -203,6 +206,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
         fake.blockedListeners.push(listener);
         return () => void fake.blockedListeners.splice(fake.blockedListeners.indexOf(listener) >>> 0, 1);
       },
+      statusBar: async () => fake.midiStatusBar,
       enabled: async () => fake.mapEnabled,
       setEnabled: async (on) => ((fake.mapEnabled = on), true),
       listen: async (controls, listenOptions) => {

@@ -52,6 +52,8 @@ export interface MidiPort {
    * Keep the listener quick and read-only: it runs on the push path.
    */
   onEvent(listener: (event: MidiEvent) => void): () => void;
+  /** The `midi.statusBar` setting: whether monitor and learn also show incoming messages in Live's status bar (default false). `listen` with `monitor` applies it. */
+  statusBar(): Promise<boolean>;
   /** The `map.enabled` setting: false makes the engine drop every message (`map --off`). */
   enabled(): Promise<boolean>;
   /** Switch the engine on or off; stored in settings.json (`map.enabled`). Resolves false when it could not be saved (it is in effect for this session anyway). */
@@ -61,12 +63,14 @@ export interface MidiPort {
 export interface MidiPortDeps {
   engine: MidiEngine;
   /** midiListen of the bridge client. */
-  listen: (controls: MidiControls, options: { monitor?: boolean; seconds?: number }) => Promise<BridgeResult<{ count: number; monitor: boolean }>>;
+  listen: (controls: MidiControls, options: { monitor?: boolean; seconds?: number; status?: boolean }) => Promise<BridgeResult<{ count: number; monitor: boolean }>>;
   /** midiLast of the bridge client. */
   last: (since: number) => Promise<BridgeResult<{ last: number; messages: StoredMessage[] }>>;
   /** bridge: the last known blocked set, and its changes. */
   blocked: () => string[] | null;
   onBlocked: (callback: (blocked: string[] | null) => void) => () => void;
+  /** Read `midi.statusBar`. */
+  statusBar: () => Promise<boolean>;
   /** Read and write `map.enabled`. */
   enabled: () => Promise<boolean>;
   setEnabled: (on: boolean) => Promise<boolean>;
@@ -121,7 +125,8 @@ export function createMidiPort(deps: MidiPortDeps): MidiRuntime {
       async listen(controls, options = {}) {
         if (options.monitor === true) {
           const seconds = options.seconds ?? 30;
-          const reply = await deps.listen(wantedWith(extra), { monitor: true, seconds });
+          const status = await deps.statusBar().catch(() => false); // the setting decides whether the status bar shows the messages
+          const reply = await deps.listen(wantedWith(extra), { monitor: true, seconds, status });
           if (!reply.ok) return reply;
           monitorUntil = now() + seconds * 1000;
           return { ok: true, value: { count: reply.value.count } };
@@ -152,6 +157,7 @@ export function createMidiPort(deps: MidiPortDeps): MidiRuntime {
             // one broken listener must not stop the others
           }
         }),
+      statusBar: () => deps.statusBar().catch(() => false),
       enabled: () => deps.enabled().catch(() => true),
       setEnabled: (on) => deps.setEnabled(on).catch(() => false),
     },

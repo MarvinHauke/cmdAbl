@@ -6,6 +6,7 @@ import { tokenize } from "./tokenize.js";
 
 const run = () => undefined;
 const tree: CommandNode<any, any>[] = [
+  { name: "ranked", summary: "tracks and chains", args: [{ name: "t", kind: "path", kinds: ["track", "chain"], variadic: true }], run },
   { name: "note", summary: "a note", options: [{ name: "edit", short: "e", summary: "edit it" }], run },
   { name: "plain", summary: "no options, no args", run },
   { name: "grp", summary: "a group", children: [{ name: "clear", summary: "clear it", run }] },
@@ -95,7 +96,7 @@ const where = (text: string) => {
 };
 
 test("an empty line lists the commands; a prefix filters them, names first", () => {
-  assert.deepEqual(at("").labels, ["note", "plain", "grp", "mute", "goto", "tag", "vol", "pakabl", "mode"]);
+  assert.deepEqual(at("").labels, ["ranked", "note", "plain", "grp", "mute", "goto", "tag", "vol", "pakabl", "mode"]);
   assert.deepEqual(at("mo").labels, ["mode"]);
   assert.deepEqual(at("m").labels, ["mute", "mode"]);
   assert.equal(at("m").items[0]!.kind, "command");
@@ -273,7 +274,7 @@ test("a cursor in the middle: the word under it is replaced whole, matched by wh
 test("before the first word: a new word is started in front of the line", () => {
   const r = at("| mute");
   assert.deepEqual(r.replace, { from: 0, to: 0 });
-  assert.equal(r.items.length, 9);
+  assert.equal(r.items.length, 10);
 });
 
 test("`--` ends the options: the rest is positional text", () => {
@@ -393,7 +394,7 @@ test("a command without arguments (or after its last one) still offers its unuse
 
 test("`;` chains: after `; ` completion starts again at the command, and works on the part the caret is in", () => {
   const after = at("mute /Lead; ");
-  assert.deepEqual(after.toolLabels, ["note", "plain", "grp", "mute", "goto", "tag", "vol", "pakabl", "mode"]);
+  assert.deepEqual(after.toolLabels, ["ranked", "note", "plain", "grp", "mute", "goto", "tag", "vol", "pakabl", "mode"]);
   assert.deepEqual(after.replace, { from: 12, to: 12 });
   assert.deepEqual(at("mute /Lead;to").toolLabels, ["goto"]); // no space needed after the `;`
   assert.deepEqual(at("mute /Lead; mo").toolLabels, ["mode"]);
@@ -420,4 +421,60 @@ test("`;` chains: after `; ` completion starts again at the command, and works o
 test("chainSegments is exposed through complete.ts for the page (CmdComplete.chainSegments)", async () => {
   const mod = await import("./complete.js");
   assert.deepEqual(mod.chainSegments("a; b"), [{ start: 0, end: 1 }, { start: 2, end: 4 }]);
+});
+
+test("a bare word that is exactly a tag name shows the silent expansion first (mute drums runs as mute #drums)", () => {
+  const d: CompletionData = { ...data, paths: paths.filter((p) => !/drums/i.test(p.path)) }; // no object is named "drums" here
+  const r = at("mute drums", d);
+  assert.deepEqual(r.setLabels, ["#drums"]);
+  assert.equal(r.items.find((i) => i.kind === "tag")!.insert, "#drums");
+  assert.equal(r.items.find((i) => i.kind === "tag")!.description, "drums runs as #drums (2 tracks)");
+  assert.deepEqual(r.replace, { from: 5, to: 10 });
+  assert.deepEqual(at("mute DRUMS", d).setLabels, ["#drums"]); // case ignored, as the resolver does
+  assert.deepEqual(at("mute fx", d).setLabels[0], "#fx");
+  assert.equal(at("mute fx", d).items.find((i) => i.kind === "tag")!.description, "fx runs as #fx (1 track)");
+});
+
+test("no silent expansion when the word names an object or is only part of a tag, nor for a path, a rest or a text argument; other kinds do not count as naming it", () => {
+  // "drums" names the track /Drums in the shared fixture: it stays an ordinary target
+  assert.equal(at("mute drums").items.some((i) => i.kind === "tag"), false);
+  const d: CompletionData = { ...data, paths: [] };
+  assert.equal(at("mute dru", d).items.some((i) => i.kind === "tag"), false); // not exactly a tag name yet
+  assert.equal(at('mute "drums"', d).items.some((i) => i.kind === "tag"), true); // a quoted word is the same text to the resolver, so it expands too
+  assert.equal(at("goto drums", d).items.some((i) => i.kind === "tag"), false); // rest: no tag fan-out
+  assert.equal(at("mute #drums", d).items.filter((i) => i.kind === "tag").length, 1); // the normal #tag row, not a second one
+  assert.equal(at("mute /drums", d).items.some((i) => i.kind === "tag"), false); // a path is a path
+  assert.equal(at("mute bass line", d).items.some((i) => i.kind === "tag"), false);
+  // a text argument is not a target
+  assert.equal(at("tag drums", d).items.some((i) => i.kind === "tag"), false);
+  // kinds: an object of ANOTHER kind does not count as naming it
+  const onlyDevice: CompletionData = { ...data, paths: [{ path: "/Lead/fx", name: "fx", kind: "device" }] };
+  assert.equal(at("tag x fx", onlyDevice).items.some((i) => i.kind === "tag" && i.label === "#fx"), true); // `tag` targets tracks only
+});
+
+test("silent tag row follows the resolver's rule exactly (tagTargetOf): the own-name rule and the tag's kinds", () => {
+  const base: CompletionData = {
+    ...data,
+    paths: [
+      { path: "/Bass", name: "Bass", kind: "track" },
+      { path: "/Bass/Drum Rack", name: "Drum Rack", kind: "device" },
+      { path: "/Bass/Drum Rack/Kick", name: "Kick", kind: "chain" },
+    ],
+    tags: [{ name: "rack", count: 2, kinds: ["track"] }],
+  };
+  // The word only occurs in a PARENT's name and in a device the argument cannot take: the resolver finds no object, so `rack` expands.
+  const r = at("ranked rack", base);
+  assert.equal(r.setLabels[0], "#rack"); // first, before the path rows that merely contain the word
+  assert.equal(r.items.find((i) => i.kind === "tag")!.description, "rack runs as #rack (2 tracks)");
+  // …but a chain whose OWN name holds the word is an object: an ordinary target, no expansion
+  const named: CompletionData = { ...base, paths: [...base.paths, { path: "/Bass/Rack Kick", name: "Rack Kick", kind: "chain" }] };
+  assert.equal(at("ranked rack", named).items.some((i) => i.kind === "tag"), false);
+  // A tag that sits on no object of the argument's kinds is not expanded (the resolver does not)
+  const onDevice: CompletionData = { ...base, tags: [{ name: "x", count: 1, kinds: ["device"] }] };
+  assert.equal(at("ranked x", onDevice).items.some((i) => i.kind === "tag"), false);
+  const onChain: CompletionData = { ...base, tags: [{ name: "x", count: 1, kinds: ["device", "chain"] }] };
+  assert.equal(at("ranked x", onChain).items.some((i) => i.kind === "tag" && i.label === "#x"), true); // a chain is one of the kinds
+  // Older data without kinds: any kind is assumed
+  const old: CompletionData = { ...base, tags: [{ name: "x", count: 1 }] };
+  assert.equal(at("ranked x", old).items.some((i) => i.label === "#x"), true);
 });

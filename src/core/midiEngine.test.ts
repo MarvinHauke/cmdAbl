@@ -162,6 +162,7 @@ function portSetup() {
     last: async (since) => ({ ok: true, value: { last: since + 1, messages: [] } }),
     blocked: () => [],
     onBlocked: () => () => {},
+    statusBar: async () => false,
     enabled: async () => true,
     setEnabled: async () => true,
     now: () => clock,
@@ -187,7 +188,7 @@ test("listen adds controls to the bound ones; monitor pauses the bound lines whi
   assert.deepEqual(ran, ["a"]);
   await runtime.port.listen("all", { monitor: true, seconds: 10 });
   // a monitor window is not a forward-everything: the script is asked for the bound and added controls, with monitor
-  assert.deepEqual(listens[2], { controls: [{ type: "cc", number: 51 }, { type: "cc", number: 7 }], options: { monitor: true, seconds: 10 } });
+  assert.deepEqual(listens[2], { controls: [{ type: "cc", number: 51 }, { type: "cc", number: 7 }], options: { monitor: true, seconds: 10, status: false } });
   await runtime.intake({ seq: 2, type: "cc", channel: 1, number: 51, value: 0, time: 0 });
   await runtime.intake({ seq: 3, type: "cc", channel: 1, number: 51, value: 10, time: 0 });
   assert.deepEqual(ran, ["a"]); // learning: nothing fired
@@ -208,6 +209,7 @@ test("last asks the script; a bridge failure comes back as the failure", async (
     last: async () => ({ ok: false, code: 5, text: "script not running" }),
     blocked: () => { throw new Error("no bridge"); },
     onBlocked: () => () => {},
+    statusBar: async () => { throw new Error("no settings"); },
     enabled: async () => { throw new Error("no settings"); },
     setEnabled: async () => { throw new Error("no settings"); },
   });
@@ -245,6 +247,7 @@ test("a failing listen changes nothing: no window, no extra controls, the old bo
     last: async () => ({ ok: false, code: 5, text: "down" }),
     blocked: () => [],
     onBlocked: () => () => {},
+    statusBar: async () => false,
     enabled: async () => true,
     setEnabled: async () => true,
   });
@@ -335,6 +338,7 @@ test("a failed listen puts the engine's table back as it was", async () => {
     last: async () => ({ ok: false, code: 5, text: "down" }),
     blocked: () => [],
     onBlocked: () => () => {},
+    statusBar: async () => false,
     enabled: async () => true,
     setEnabled: async () => true,
   });
@@ -381,6 +385,7 @@ test("blocked / onBlocked pass the bridge's list through; a failing read is 'unk
     last: async () => ({ ok: true, value: { last: 0, messages: [] } }),
     blocked: () => current,
     onBlocked: (cb) => (callbacks.push(cb), () => void callbacks.splice(callbacks.indexOf(cb), 1)),
+    statusBar: async () => false,
     enabled: async () => true,
     setEnabled: async () => true,
   });
@@ -422,4 +427,33 @@ test("an event marked monitor never runs a binding (engine and port), but every 
   off();
   await runtime.intake({ seq: 4, type: "cc", channel: 1, number: 9, value: 1, time: 0 });
   assert.equal(seen.length, 3); // unsubscribed
+});
+
+test("midi.statusBar: monitor asks the script for the status bar only when the setting is on; a failing read is off", async () => {
+  const seen: Array<{ monitor?: boolean; seconds?: number; status?: boolean }> = [];
+  let on = false;
+  let broken = false;
+  const runtime = createMidiPort({
+    engine: setup().engine,
+    listen: async (_controls, options) => (seen.push(options), { ok: true, value: { count: 0, monitor: options.monitor === true } }),
+    last: async () => ({ ok: true, value: { last: 0, messages: [] } }),
+    blocked: () => [],
+    onBlocked: () => () => {},
+    statusBar: async () => {
+      if (broken) throw new Error("settings");
+      return on;
+    },
+    enabled: async () => true,
+    setEnabled: async () => true,
+  });
+  await runtime.port.listen("all", { monitor: true, seconds: 5 });
+  on = true;
+  await runtime.port.listen("all", { monitor: true, seconds: 5 });
+  broken = true;
+  await runtime.port.listen("all", { monitor: true, seconds: 5 });
+  await runtime.port.listen("none"); // no monitor: no status option
+  assert.deepEqual(seen.map((o) => o.status), [false, true, false, undefined]);
+  assert.equal(await runtime.port.statusBar(), false); // a failing read is off
+  broken = false;
+  assert.equal(await runtime.port.statusBar(), true);
 });

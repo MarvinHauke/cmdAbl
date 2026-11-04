@@ -37,7 +37,7 @@ test("the snapshot holds the slim tree, completer rows by key, paths and tags", 
   });
   assert.deepEqual(data.completions, { tags: [{ label: "a" }, { label: "b", description: "d" }], words: [{ label: "w" }], ids: [] });
   assert.deepEqual(data.paths.map((p) => [p.path, p.kind]), [["/Kick", "track"], ["/Kick/Eq", "device"], ["/Lead", "track"]]);
-  assert.deepEqual(data.tags, [{ name: "drums", count: 2 }, { name: "fx", count: 1 }]);
+  assert.deepEqual(data.tags, [{ name: "drums", count: 2, kinds: ["track"] }, { name: "fx", count: 1, kinds: ["track"] }]);
   assert.equal(data.tree.length, 2);
   assert.equal(JSON.parse(JSON.stringify(data)).tree[0].name, "tag"); // plain JSON
   assert.equal("run" in data.tree[0]!, false);

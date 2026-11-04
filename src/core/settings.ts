@@ -18,6 +18,8 @@ export const SETTINGS_DEFAULTS = {
   "palette.above": "off" as Above,
   /** MIDI mapping (plan 0018): false drops every incoming message, `map --off`. */
   "map.enabled": true,
+  /** The MIDI monitor and learn also show incoming messages in Live's status bar (off by default). */
+  "midi.statusBar": false,
 };
 
 /** The allowed values of a key whose values are a closed list (a value outside it counts as the wrong type). */
@@ -27,6 +29,7 @@ export type SettingKey = keyof typeof SETTINGS_DEFAULTS;
 export interface SettingsValues {
   "palette.above": Above;
   "map.enabled": boolean;
+  "midi.statusBar": boolean;
 }
 
 /** Does `value` suit the key: the default's type, and one of the allowed values when the key has a list. */

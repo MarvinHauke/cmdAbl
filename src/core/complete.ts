@@ -1,6 +1,7 @@
 import { effectiveOptions, valueLabel, valueNames, type ArgDef, type CommandNode, type OptionDef } from "./commandTree.js";
 import { fallbackOf, findChild, startsOption } from "./parse.js";
 import { chainSegments, pipeAt, quoteIfNeeded, tokenize, type Token } from "./tokenize.js";
+import { matchesNode } from "./match.js"; // the resolver's own-name rule (already in the palette bundle with the matcher)
 
 // Argument completion (plan 0006, "0.1.4: argument completion"): what the palette offers at the
 // cursor, as one pure function over a snapshot. `locate` finds the position (a command word, an
@@ -52,6 +53,8 @@ export interface PathRow {
 export interface TagRow {
   name: string;
   count: number;
+  /** The kinds of the objects that carry the tag (tracks, in practice); absent in older data: any kind is assumed. */
+  kinds?: Array<"track" | "device" | "chain">;
 }
 
 /** What the palette page receives at open (plain JSON) and `complete` works on. */
@@ -378,6 +381,36 @@ function pathRows(data: CompletionData, arg: ArgDef, text: string): Array<Omit<C
   }));
 }
 
+/**
+ * A bare word that the resolver reads as a tag (plan 0008): exactly a tag name, and it names no object. `mute drums` then
+ * runs as `mute #drums`; this row shows that, so the expansion is never silent. Same rule as `tagTargetOf` (resolveArgs.ts):
+ * a word that also names an object stays an ordinary target. Not for `rest` arguments (a tag does not fan out there).
+ */
+function silentTagRow(data: CompletionData, arg: ArgDef, text: string): Array<Omit<CompletionItem, "zone">> {
+  const word = text.trim();
+  if (arg.rest || arg.kind !== "path" || !/^[A-Za-z0-9_-]+$/.test(word)) return [];
+  const tag = data.tags.find((t) => t.name.toLowerCase() === word.toLowerCase());
+  if (!tag) return [];
+  // The resolver's rule (tagTargetOf, resolveArgs.ts): the tag must sit on an object of the argument's kinds, and the word
+  // must name no object of those kinds: neither structurally (a top-level object of that name) nor by the own-name rule.
+  if (arg.kinds && tag.kinds && !tag.kinds.some((k) => arg.kinds!.includes(k))) return [];
+  const lower = word.toLowerCase();
+  const named = data.paths.some(
+    (p) =>
+      (!arg.kinds || arg.kinds.includes(p.kind)) &&
+      (p.path.toLowerCase() === `/${lower}` || matchesNode({ path: p.path, name: p.name }, word)),
+  );
+  if (named) return [];
+  return [
+    {
+      label: `#${tag.name}`,
+      insert: `#${tag.name}`,
+      description: `${word} runs as #${tag.name} (${tag.count} track${tag.count === 1 ? "" : "s"})`,
+      kind: "tag",
+    },
+  ];
+}
+
 function tagRows(data: CompletionData, text: string): Array<Omit<CompletionItem, "zone">> {
   const negate = text.startsWith("!");
   const name = text.replace(/^!?#/, "");
@@ -472,7 +505,8 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
       const tag = !arg.rest && arg.kind === "path" && /^!?#/.test(here.prefix) && !/["']/.test(line[here.from] ?? "");
       if (tag) return reply([...options, ...tagRows(data, here.prefix)], hint);
       if (arg.kind === "path") {
-        const rows = pathRows(data, arg, here.prefix);
+        // First: what a bare tag word will silently turn into.
+        const rows = [...silentTagRow(data, arg, here.prefix), ...pathRows(data, arg, here.prefix)];
         if (arg.complete) rows.push(...candidateRows(data.completions[arg.complete], here.prefix));
         return reply([...options, ...rows], hint);
       }

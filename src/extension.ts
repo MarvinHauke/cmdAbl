@@ -160,6 +160,7 @@ export function activate(activation: ActivationContext) {
     last: (since) => midiLast(getBridge(), since),
     blocked: midiBlocked,
     onBlocked,
+    statusBar: async () => (await settingsStore.get())["midi.statusBar"],
     enabled: mapEnabled,
     setEnabled: async (on) => {
       enabledValue = on; // in effect at once, saved or not

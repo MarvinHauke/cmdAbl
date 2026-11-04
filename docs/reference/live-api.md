@@ -79,6 +79,7 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `midi.onEvent` | script | the pushed event `midi` (also the monitor-marked copies during a monitor window) | – |  |
 | `midi.blocked` | script | the `blocked` list of `midi_listen` and the pushed event `midi_blocked` | – | Controls Live keeps for itself (a Cmd+M mapping, another script): they are never forwarded to cmdAbl. |
 | `midi.onBlocked` | script | the pushed event `midi_blocked` after a map build | – |  |
+| `midi.statusBar` | platform | reads `midi.statusBar` in settings.json | – |  |
 | `midi.enabled` | platform | reads `map.enabled` in settings.json | – |  |
 | `midi.setEnabled` | platform | writes `map.enabled` in settings.json | – |  |
 | `commands.completer` | platform | registers a source of completion candidates under a key | – |  |
