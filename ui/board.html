@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips (←/→/↑/↓ move the highlight while they show); Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. ←/→ in an empty input (or at caret 0) put a chip cursor on the section's chips: Backspace/Delete/Space toggle the removal mark of the chip under it, typing/Esc/Tab return to the input, Enter applies. A readonly section shows chips only; today it is also built last and starts folded ("▸ untagged · 35 tracks", the heading toggles it on click / Enter / Space), because tag is the only user — a second user that marks sections readonly for other reasons needs an explicit `folded?` flag from core and the caller's order kept. The "+ # New tag…" row is pinned above the sections; a created section is added directly below it, focused and in view. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. A section with renamable / removable shows a heading whose name is editable in place (click it, or F2 in the section's input: an inline input; the leading # stays outside) and a × at the right end of the heading: the name's input (Enter takes the name if it matches create.pattern, else shake; Esc cancels the edit only; the heading then shows the new name and, dimmed on the same line, "(was #old)"), × (or Shift+Backspace in an empty input, or Shift+Tab to the buttons and Enter) marks the whole tag for removal (struck through, chips dimmed; the footer says what will be removed; a second click unmarks it). Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names], renamed?: [{ section, to }], removed?: [section], confirmed?: true } on Apply (confirmed with removed: Apply with a tag marked for removal first shows a confirm bar in the footer, "Remove #fx from N tracks?" with Cancel (default, Esc) and Remove and apply): only real differences against the request (a section marked for removal sends only `removed`: its own chip changes and rename are dropped); a created section's id is its name and its items start off. Click to assign: the target is the tag whose add field was focused last (highlighted; footer "Click tracks to add them to #drums") or the New tag field; a click on an untagged chip adds that track to the target as a pending chip (a second click undoes it), or, for the New tag field, collects it in a line below the field ("goes into the new tag: …") until a name + Enter creates the tag with them (Esc clears); chips of other tags don't assign. Keyboard: Tab to the untagged heading, ↓/→ puts a chip cursor on the tracks (←/→/↑/↓ move, Enter or Space assigns to the active target, Esc leaves). Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
+<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows, in its heading line, a fold arrow, the name, an inline input ("+ add track to #tag…", like the tag bar in Live's browser) and the count; below it come its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it). A tag is open by default and starts folded when it has more than FOLD_AFTER (20) tracks (⌥↑ folds, ⌥↓ unfolds, or the arrow); a folded heading shows the pending changes as "+2 ×1"; adding by typing unfolds. The input: typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips (←/→/↑/↓ move the highlight while they show); Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. ←/→ in an empty input (or at caret 0) put a chip cursor on the section's chips: Backspace/Delete/Space toggle the removal mark of the chip under it, typing/Esc/Tab return to the input, Enter applies. A readonly section shows chips only; today it is also built last and starts folded ("▸ untagged · 35 tracks", the heading toggles it on click / Enter / Space), because tag is the only user — a second user that marks sections readonly for other reasons needs an explicit `folded?` flag from core and the caller's order kept. The "+ # New tag…" row is pinned above the sections; a created section is added directly below it, focused and in view. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. A section with renamable / removable shows a heading whose name is editable in place (click it, or F2 in the section's input: an inline input; the leading # stays outside) and a × at the right end of the heading: the name's input (Enter takes the name if it matches create.pattern, else shake; Esc cancels the edit only; the heading then shows the new name and, dimmed on the same line, "(was #old)"), × (or Shift+Backspace in an empty input, or Shift+Tab to the buttons and Enter) marks the whole tag for removal (struck through, chips dimmed; the footer says what will be removed; a second click unmarks it). Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names], renamed?: [{ section, to }], removed?: [section], confirmed?: true } on Apply (confirmed with removed: Apply with a tag marked for removal first shows a confirm bar in the footer, "Remove #fx from N tracks?" with Cancel (default, Esc) and Remove and apply): only real differences against the request (a section marked for removal sends only `removed`: its own chip changes and rename are dropped); a created section's id is its name and its items start off. Click to assign: the target is the tag whose add field was focused last (highlighted; footer "Click tracks to add them to #drums") or the New tag field; a click on an untagged chip adds that track to the target as a pending chip and the track leaves the untagged list (× on the pending chip brings it back), or, for the New tag field, collects it in a line below the field ("goes into the new tag: …", each with ×) until a name + Enter creates the tag with them (Esc clears); the page opens in the New tag field; chips of other tags don't assign. Keyboard: Tab to the untagged heading, ↓/→ puts a chip cursor on the tracks (←/→/↑/↓ move, Enter or Space assigns to the active target, Esc leaves). Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -18,8 +18,12 @@
     .sec { padding: 2px 6px 4px; margin: 0 -6px; border-radius: 3px; }
     .sec.target { background: hsla(0, 0%, 100%, 0.045); box-shadow: inset 2px 0 0 var(--accent); }   /* the tag being added to (typing and clicking untagged tracks) */
     .sec + .sec { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); border-top-left-radius: 0; border-top-right-radius: 0; }
-    .head { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
+    .head { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; min-height: 24px; }
     .head .h { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+    .head .fold { flex: none; width: 24px; height: 24px; margin: -3px 0 -3px -6px; border: none; background: transparent; color: var(--dim); font: inherit; font-size: 11px; padding: 0; text-align: center; cursor: default; border-radius: 3px; }
+    .head .fold:hover { color: var(--text); }
+    .head .pend { flex: none; color: var(--accent); font-size: 11px; }   /* pending changes inside a folded section */
+    .head .addwrap { flex: 0 1 auto; min-width: 12ch; }   /* the add field lives in the heading line; it may shrink, never wrap the chips */
     .head .meta { margin-left: auto; flex: none; color: var(--dim); font-size: 11px; }
     .sec.ro .head .h { color: var(--dim); }
     /* Heading (renamable / removable): the "#" in the accent colour, the name editable in place (click or F2), the
@@ -37,7 +41,7 @@
     .head .act:hover, .head .act:focus-visible { color: hsl(0, 75%, 62%); outline: none; }
     .head .act.on { color: hsl(0, 75%, 62%); }
     .head input.rn { flex: 0 1 auto; min-width: 6ch; box-sizing: border-box; background: var(--bg-row); border: 1px solid var(--accent); border-radius: 2px; outline: none;
-                     color: var(--text); font: inherit; font-weight: 700; line-height: 16px; padding: 0 4px; caret-color: var(--accent); }
+                     color: var(--text); font: inherit; font-weight: 700; line-height: 16px; padding: 3px 4px; caret-color: var(--accent); }
     .head .rnerr { flex: none; color: var(--accent); font-size: 11px; font-weight: 400; }
     .sec.gone .head .h, .sec.gone .head .hash, .sec.gone .head .nm { text-decoration: line-through; color: var(--dim); }
     .sec.gone .chips { opacity: 0.4; }
@@ -51,7 +55,7 @@
     .head .caret { color: var(--dim); width: 1.2ch; flex: none; }
     .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 4px; }
     .chip { display: inline-flex; align-items: baseline; gap: 6px; background: var(--bg-row); border: 1px solid var(--border);
-            border-radius: 2px; padding: 0 6px; line-height: 18px; overflow-wrap: anywhere; min-width: 0; cursor: default; }
+            border-radius: 2px; padding: 0 6px; line-height: 22px; overflow-wrap: anywhere; min-width: 0; cursor: default; }
     .chip .x { color: var(--dim); font-size: 11px; user-select: none; }
     .chip:hover .x { color: var(--text); }
     /* Marked for removal: struck through with an accent outline. Added (not in Live yet): dashed accent ring. */
@@ -60,6 +64,7 @@
     /* The chip cursor (← / → in the add input): a tint and an accent underline; the input caret hides. */
     .chip.pick { cursor: pointer; }
     .chip.pick:hover { border-color: var(--accent); }
+    #collected .chip { color: var(--text); }
     .chip.cur { background: hsla(31, 100%, 67%, 0.22); box-shadow: inset 0 -2px 0 var(--accent); }
     .addwrap.chipmode input { caret-color: transparent; }
     .none { color: var(--dim); font-size: 11px; line-height: 20px; }
@@ -67,17 +72,17 @@
     /* The inline input is the last "chip": a dashed outline, ghost text behind the typed text. */
     .addwrap { position: relative; display: inline-block; max-width: 100%; }
     .addwrap input { position: relative; z-index: 1; box-sizing: border-box; background: var(--bg-row); border: 1px solid var(--dim); border-radius: 2px;
-                     outline: none; color: var(--text); font: inherit; line-height: 16px; padding: 0 6px; caret-color: var(--accent); max-width: 100%; }
+                     outline: none; color: var(--text); font: inherit; line-height: 16px; padding: 3px 6px; caret-color: var(--accent); max-width: 100%; }
     .addwrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
     .addwrap input::placeholder { color: var(--dim); }
-    .ghost { position: absolute; left: 7px; top: 1px; line-height: 16px; white-space: pre; pointer-events: none; color: var(--dim); }
+    .ghost { position: absolute; left: 7px; top: 4px; line-height: 16px; white-space: pre; pointer-events: none; color: var(--dim); }
     .ghost .typed { visibility: hidden; }
     .nomatch { color: var(--accent); font-size: 11px; }
     .shake { animation: shake 0.25s; }
     @keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
 
     /* Suggestions under the chips (focused section only): the highlighted one has an accent border. */
-    .sugs { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 5px; }
+    .sugs { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 4px 0 2px; }
     .sugs:empty { display: none; }
     .chip.sug { cursor: default; color: var(--text); }
     .chip.sug.hi { border-color: var(--accent); color: var(--accent); }
@@ -89,7 +94,7 @@
     #create.target { background: hsla(0, 0%, 100%, 0.045); box-shadow: inset 2px 0 0 var(--accent); }
     #create .crow { display: flex; align-items: center; gap: 8px; }
     /* The tracks collected for the new tag (clicks on untagged chips while this field is the target). */
-    #collected { color: var(--dim); font-size: 11px; line-height: 14px; min-height: 14px; overflow-wrap: anywhere; }
+    #collected { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; color: var(--dim); font-size: 11px; min-height: 24px; overflow-wrap: anywhere; }
     #collected.has { color: var(--text); }
     #collected[hidden] { display: none; }
     #create .plus { color: var(--accent); font-weight: 700; user-select: none; }
@@ -155,6 +160,7 @@
 
     // Click to assign: the target is the tag whose add field was focused last (index into S), or -1 = the "New tag"
     // field; `collected` = track ids clicked while the new-tag field is the target, waiting for a name.
+    const FOLD_AFTER = 20;   // a tag with more tracks than this starts folded (becomes a setting with the settings page)
     let target = -1, quiet = false;
     const collected = [];
 
@@ -176,7 +182,7 @@
     // Esc or Close with pending changes warns first (footer); a second Esc or Close discards,
     // any other key cancels the warning. Without changes it closes at once.
     const hintEl = document.getElementById('hint');
-    const keyHint = hintEl.textContent + (S.some(s => s.renamable || s.removable) ? ' · F2 rename · ⇧⌫ remove tag' : '');
+    const keyHint = hintEl.textContent + (S.some(s => s.renamable || s.removable) ? ' · F2 rename · ⇧⌫ remove tag' : '') + ' · ⌥↑↓ fold';
     // The footer line: what whole tags will be removed (once marked), else the keys.
     function curHint() {
       const gone = S.filter(s => s.removeAll);
@@ -248,9 +254,16 @@
 
     // The chips of a section in display order: its own on items (marked ones stay, struck), then
     // the ones added here in the order added.
+    // A track that is pending in any tag (or collected for the new one) leaves "untagged"; undoing it brings it back.
+    function claimedSet() {
+      const out = new Set(collected);
+      for (const t of S) if (!t.readonly && !t.removeAll) for (const i of t.items) if (i.cur && !i.orig) out.add(i.id);
+      return out;
+    }
     function chipIdx(s) {
       const out = [];
-      s.items.forEach((i, ii) => { if (i.orig) out.push(ii); });
+      const gone = s.readonly ? claimedSet() : null;
+      s.items.forEach((i, ii) => { if (i.orig && !(gone && gone.has(i.id))) out.push(ii); });
       for (const ii of s.added) if (s.items[ii].cur) out.push(ii);
       return out;
     }
@@ -271,21 +284,23 @@
       if (target < 0 || !S[target]) return createInput ? 'Click tracks to collect them for the new tag' : "Focus a tag's add field, then click tracks";
       return S[target].removeAll ? shownName(S[target]) + ' is marked for removal' : 'Click tracks to add them to ' + shownName(S[target]);
     }
-    // Is this track already going into the target (a dashed ring on its untagged chip)?
-    function isPicked(id) {
-      if (target < 0 || !S[target]) return collected.includes(id);
-      const i = S[target].items.find(x => x.id === id);
-      return !!i && i.cur && !i.orig;
-    }
     function renderUntagged() { S.forEach((s, si) => { if (s.readonly && s.chipsEl) renderChips(si); }); }
     const collectedEl = el('div'); collectedEl.id = 'collected';
     function renderCollected() {
       const label = id => candidates.find(c => c.id === id)?.label ?? id;
       collectedEl.hidden = !S.some(s => s.readonly);
       collectedEl.classList.toggle('has', collected.length > 0);
-      collectedEl.textContent = collected.length
-        ? 'goes into the new tag: ' + collected.map(label).join(', ') + ' · name + Enter creates it · Esc clears'
-        : 'Click tracks under untagged to collect them for the new tag';
+      collectedEl.replaceChildren();
+      if (!collected.length) { collectedEl.append(document.createTextNode('Click tracks under untagged to collect them for the new tag')); return; }
+      collectedEl.append(document.createTextNode('goes into the new tag:'));
+      for (const id of collected) {
+        const chip = el('span', 'chip pick');
+        chip.append(el('span', 'l', label(id)), el('span', 'x', '×'));
+        chip.title = 'click to take it out again';
+        chip.addEventListener('mousedown', e => { e.preventDefault(); collected.splice(collected.indexOf(id), 1); renderCollected(); renderUntagged(); updateFooter(); });
+        collectedEl.append(chip);
+      }
+      collectedEl.append(document.createTextNode('name + Enter creates it · Esc clears'));
     }
     function setTarget(t) {
       if (t === target) return;
@@ -301,8 +316,7 @@
       try {
         if (target < 0 || !S[target]) {
           if (!createInput) return;
-          const k = collected.indexOf(id);
-          if (k >= 0) collected.splice(k, 1); else collected.push(id);
+          if (!collected.includes(id)) collected.push(id);
           createInput.focus({ preventScroll: true });
           renderCollected(); renderUntagged(); updateFooter();
           return;
@@ -312,7 +326,6 @@
         const ii = s.items.findIndex(i => i.id === id);
         if (ii < 0 || s.items[ii].orig) return;
         toggleItem(target, ii);
-        renderUntagged();
       } finally { quiet = false; }
     }
 
@@ -403,14 +416,17 @@
           chip.title = i.orig && !i.cur ? 'marked for removal (click to undo)' : !i.orig && i.cur ? 'to be added (click to undo)' : 'click to remove';
           chip.addEventListener('mousedown', e => { e.preventDefault(); toggleItem(si, ii); });
         } else {   // an untagged track: a click adds it to the active target
-          const picked = isPicked(i.id);
-          chip.className = 'chip pick' + (picked ? ' add' : '') + (ii === s.cc ? ' cur' : '');
-          chip.title = (picked ? 'click to undo' : 'click to add to ' + targetName());
+          chip.className = 'chip pick' + (ii === s.cc ? ' cur' : '');
+          chip.title = 'click to add to ' + targetName();
           chip.addEventListener('mousedown', e => { e.preventDefault(); assignTrack(i.id); });
         }
-        s.chipsEl.insertBefore(chip, s.addEl ?? null);
+        s.chipsEl.append(chip);
       }
-      if (!idx.length && s.readonly) s.chipsEl.append(el('span', 'none', 'none'));
+      if (!idx.length) s.chipsEl.append(el('span', 'none', s.readonly ? (s.items.some(i => i.orig) ? 'all assigned' : 'none') : 'no tracks yet'));
+      if (s.readonly && s.metaEl) {
+        const total = s.items.filter(i => i.orig).length;
+        s.metaEl.textContent = '· ' + (idx.length === total ? s.meta : idx.length + ' of ' + total + ' tracks');
+      }
       if (s.cc != null) reveal(si);
     }
 
@@ -439,10 +455,11 @@
       if (focused) reveal(si);
     }
 
-    function refresh(si) { renderChips(si); renderAdd(si); updateFooter(); }
+    function refresh(si) { renderChips(si); renderAdd(si); updatePend(si); if (!S[si].readonly) renderUntagged(); updateFooter(); }
 
     function addItem(si, ii) {
       const s = S[si];
+      setFold(si, false);   // the chip just added must be in view
       s.items[ii].cur = true;
       if (!s.items[ii].orig) { s.added = s.added.filter(x => x !== ii); s.added.push(ii); }
       s.q = ''; s.hi = 0;
@@ -476,7 +493,7 @@
         s.folded = true;
         s.caretEl = el('span', 'caret', '▸');
         head.append(s.caretEl, s.nameEl, s.markEl);
-        if (s.meta) head.append(el('span', 'meta inl', '· ' + s.meta));
+        if (s.meta) { s.metaEl = el('span', 'meta inl', '· ' + s.meta); head.append(s.metaEl); }
         head.tabIndex = 0;
         head.setAttribute('role', 'button');
         head.addEventListener('click', () => toggleFold(si));
@@ -491,8 +508,14 @@
         });
         head.addEventListener('blur', () => { if (s.cc != null) { s.cc = null; renderChips(si); } });
       } else {
-        head.append(s.nameEl, s.markEl);
-        if (s.meta) head.append(el('span', 'meta push', s.meta));
+        // a tag folds too: open by default, folded from FOLD_AFTER tracks; the add field and the count stay in the heading
+        s.folded = s.items.filter(i => i.orig).length > FOLD_AFTER;
+        s.caretEl = el('button', 'fold', s.folded ? '▸' : '▾');
+        s.caretEl.type = 'button'; s.caretEl.tabIndex = -1; s.caretEl.title = 'Fold / unfold the tracks (⌥↑ ⌥↓)';
+        s.caretEl.addEventListener('mousedown', e => e.preventDefault());
+        s.caretEl.addEventListener('click', () => toggleFold(si));
+        head.append(s.caretEl, s.nameEl, s.markEl);
+        if (s.meta) { s.metaEl = el('span', 'meta push', s.meta); head.append(s.metaEl); }
       }
       if (s.removable) {
         s.rmBtn = el('button', 'act' + (s.meta ? '' : ' push'), '×');
@@ -502,7 +525,7 @@
         head.append(s.rmBtn);
       }
       s.chipsEl = el('div', 'chips');
-      s.chipsEl.hidden = !!s.readonly;   // a read-only section starts folded
+      s.chipsEl.hidden = !!s.folded;   // a read-only section always starts folded, a long tag too
       s.el.append(head, s.chipsEl);
       if (!s.readonly) {
         s.addEl = el('span', 'addwrap');
@@ -513,9 +536,11 @@
         s.inputEl.autocomplete = 'off';
         s.inputEl.spellcheck = false;
         s.addEl.append(s.ghostEl, s.inputEl);
-        s.chipsEl.append(s.addEl);
+        s.pendEl = el('span', 'pend');
+        head.insertBefore(s.addEl, s.metaEl ?? s.rmBtn ?? null);
+        head.insertBefore(s.pendEl, s.metaEl ?? s.rmBtn ?? null);
         s.sugEls = el('div', 'sugs');
-        s.el.append(s.sugEls);
+        s.el.insertBefore(s.sugEls, s.chipsEl);
         s.inputEl.addEventListener('input', () => { s.q = s.inputEl.value; s.hi = 0; clearNoMatch(s); renderAdd(si); });
         s.inputEl.addEventListener('focus', () => { setTarget(si); renderAdd(si); });
         s.inputEl.addEventListener('blur', () => { renderAdd(si); if (s.cc != null) { s.cc = null; renderChips(si); } });
@@ -526,7 +551,7 @@
       sectionsBox.append(s.el);
       refreshHead(si);
       renderChips(si);
-      if (!s.readonly) renderAdd(si);
+      if (!s.readonly) { renderAdd(si); updatePend(si); }
     }
 
     // ---- whole-tag actions: rename (inline input in the heading) and remove (marked, struck through) ----
@@ -554,6 +579,7 @@
       if (!s.removable) return;
       s.removeAll = !s.removeAll;
       refreshHead(si);
+      renderUntagged();   // a tag marked for removal sends no additions: its pending tracks show under untagged again
       updateFooter();
     }
     const isValidTagName = name => !!name && (BOARD?.create?.pattern ? validName(name) : true);
@@ -604,12 +630,23 @@
       input.select();
     }
 
-    function toggleFold(si) {
+    function setFold(si, folded) {
       const s = S[si];
-      s.folded = !s.folded;
-      s.chipsEl.hidden = s.folded;
-      s.caretEl.textContent = s.folded ? '▸' : '▾';
-      if (!s.folded) { const r = s.el.getBoundingClientRect(); revealBlock(r.top, r.bottom, false); }   // opened: in view
+      if (!s.chipsEl || !!s.folded === folded) return;
+      s.folded = folded;
+      s.chipsEl.hidden = folded;
+      s.caretEl.textContent = folded ? '▸' : '▾';
+      updatePend(si);
+      if (!folded) { const r = s.el.getBoundingClientRect(); revealBlock(r.top, r.bottom, false); }   // opened: in view
+    }
+    const toggleFold = si => setFold(si, !S[si].folded);
+    // A folded tag hides its chips, so the heading says what is pending inside: "+2" added, "×1" marked for removal.
+    function updatePend(si) {
+      const s = S[si];
+      if (!s.pendEl) return;
+      const add = s.items.filter(i => i.cur && !i.orig).length, rm = s.items.filter(i => i.orig && !i.cur).length;
+      s.pendEl.textContent = s.folded ? [add ? '+' + add : '', rm ? '×' + rm : ''].filter(Boolean).join(' ') : '';
+      s.pendEl.title = 'pending in the folded tracks';
     }
 
     // ---- focus order: the sections' inputs, then the create input ---------------------------
@@ -748,7 +785,13 @@
         });
         if (best >= 0) move(idx[best]);
       }
-      else if (e.key === 'Enter' || e.key === ' ') { stop(); if (!e.repeat) assignTrack(s.items[s.cc].id); }
+      else if (e.key === 'Enter' || e.key === ' ') {
+        stop();
+        if (e.repeat) return;
+        const next = idx[at + 1] ?? idx[at - 1] ?? null;   // the assigned chip leaves the list: the cursor goes on to the next one
+        assignTrack(s.items[s.cc].id);
+        if (!chipIdx(s).includes(s.cc)) { s.cc = next; renderChips(si); revealCursor(si); }
+      }
       else if (e.key === 'Escape') { stop(); s.cc = null; renderChips(si); }
       else if (e.key === 'Tab') { s.cc = null; renderChips(si); }
     }
@@ -756,6 +799,7 @@
     function keyInSection(e, si) {
       const s = S[si];
       if (s.cc != null) { keyOnChip(e, si); return; }
+      if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); setFold(si, e.key === 'ArrowUp'); return; }
       if (e.key === 'F2' && s.renamable) { e.preventDefault(); startRename(si); return; }
       if (e.key === 'Backspace' && e.shiftKey && !s.inputEl.value && s.removable) { e.preventDefault(); toggleRemoveAll(si); return; }
       // While suggestions show, plain ←/→ move the highlight (previous/next, no wrap) instead of the caret
@@ -769,7 +813,7 @@
       }
       if (e.key === 'ArrowLeft' && !e.shiftKey && s.inputEl.selectionStart === 0 && s.inputEl.selectionEnd === 0) {
         const idx = chipIdx(s);
-        if (idx.length) { e.preventDefault(); s.cc = idx[idx.length - 1]; renderChips(si); }
+        if (idx.length) { e.preventDefault(); setFold(si, false); s.cc = idx[idx.length - 1]; renderChips(si); }
         return;
       }
       if (e.key === 'Enter') {
@@ -792,7 +836,7 @@
       } else if (e.key === 'Backspace' && !s.inputEl.value) {
         e.preventDefault();
         const idx = chipIdx(s);
-        if (idx.length) toggleItem(si, idx[idx.length - 1]);   // mark the last chip; again unmarks it; an added one disappears
+        if (idx.length) { setFold(si, false); toggleItem(si, idx[idx.length - 1]); }   // mark the last chip; again unmarks it; an added one disappears
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || (e.ctrlKey && (e.key === 'n' || e.key === 'p'))) {
         e.preventDefault();
         const delta = (e.key === 'ArrowDown' || e.key === 'n') ? 1 : -1;
@@ -844,7 +888,7 @@
       document.getElementById('close').addEventListener('click', requestClose);
       scroll.tabIndex = -1;
       createBox.classList.toggle('target', target === -1 && !!createInput);
-      const first = firstInput();
+      const first = createInput ? { input: createInput } : firstInput();   // opens in the New tag field
       if (first) first.input.focus({ preventScroll: true }); else scroll.focus();   // opens at the top, whatever the first section holds
       scroll.scrollTop = 0;
       requestAnimationFrame(() => { if (!touched) scroll.scrollTop = 0; });
