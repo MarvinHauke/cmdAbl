@@ -876,6 +876,16 @@
         const next = idx[at + 1] ?? idx[at - 1] ?? null;   // the assigned chip leaves the list: the cursor goes on to the next one
         assignTrack(s.items[s.cc].id);
         if (!chipIdx(s).includes(s.cc)) { s.cc = next; renderChips(si); revealCursor(si); }
+        // The tag that got the track: when its top is cut off by the scroll edge, scroll back up to show the whole section,
+        // as far as the cursor stays in view.
+        const t = S[target]?.el;
+        if (t) {
+          const r = t.getBoundingClientRect(), box = scroll.getBoundingClientRect();
+          if (r.bottom > box.top && r.top < box.top) {
+            const need = box.top - r.top, c = s.chipsEl.querySelector('.chip.cur')?.getBoundingClientRect();
+            if (!c || c.bottom + need <= box.bottom) scroll.scrollTop -= need;
+          }
+        }
       }
       else if (e.key === 'Escape') { stop(); s.cc = null; renderChips(si); }
       else if (e.key === 'Tab') { s.cc = null; renderChips(si); }
