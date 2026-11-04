@@ -76,6 +76,7 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `midi.setBindings` | script | operation `midi_listen` (the bound controls) + core's binding table | – | The script forwards exactly the bound controls (and what listen adds); pushed events run the bound lines through the headless runner. |
 | `midi.listen` | script | operation `midi_listen` (all, none or a list; optional monitor window) | – | Forwarded controls no longer reach track input or Cmd+M for as long as they are forwarded. |
 | `midi.last` | script | operation `midi_last` | – | The newest messages the script kept (a ring of 50). |
+| `midi.onEvent` | script | the pushed event `midi` (also the monitor-marked copies during a monitor window) | – |  |
 | `midi.blocked` | script | the `blocked` list of `midi_listen` and the pushed event `midi_blocked` | – | Controls Live keeps for itself (a Cmd+M mapping, another script): they are never forwarded to cmdAbl. |
 | `midi.onBlocked` | script | the pushed event `midi_blocked` after a map build | – |  |
 | `midi.enabled` | platform | reads `map.enabled` in settings.json | – |  |

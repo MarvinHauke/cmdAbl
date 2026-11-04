@@ -14,6 +14,8 @@ export interface MidiMessage {
   channel: number;
   number: number;
   value: number;
+  /** True for a copy pushed during a monitor window: it is shown, and never runs a binding. */
+  monitor?: true;
 }
 
 export type ControlKind = "cc" | "note" | "pb";

@@ -45,6 +45,13 @@ export interface MidiPort {
   blocked(): string[] | null;
   /** Be told when the blocked set changes (the script reports it after every map build). A throwing listener is skipped. */
   onBlocked(listener: (blocked: string[] | null) => void): () => void;
+  /**
+   * Every pushed MIDI event, as it arrives, for a live view (the monitor's cache): the events of the controls the
+   * script listens to AND, during a monitor window, every message of the port (those carry `monitor: true`).
+   * Bound lines never run for `monitor: true` events. Returns an unsubscribe; a throwing listener is skipped.
+   * Keep the listener quick and read-only: it runs on the push path.
+   */
+  onEvent(listener: (event: MidiEvent) => void): () => void;
   /** The `map.enabled` setting: false makes the engine drop every message (`map --off`). */
   enabled(): Promise<boolean>;
   /** Switch the engine on or off; stored in settings.json (`map.enabled`). Resolves false when it could not be saved (it is in effect for this session anyway). */
@@ -74,6 +81,7 @@ export interface MidiRuntime {
 
 export function createMidiPort(deps: MidiPortDeps): MidiRuntime {
   const now = deps.now ?? (() => Date.now());
+  const eventListeners = new Set<(event: MidiEvent) => void>();
   let bound: MidiControl[] = [];
   let extra: "all" | "none" | MidiControl[] = "none";
   let monitorUntil = 0;
@@ -125,6 +133,10 @@ export function createMidiPort(deps: MidiPortDeps): MidiRuntime {
         monitorUntil = 0;
         return { ok: true, value: { count: reply.value.count } };
       },
+      onEvent: (listener) => {
+        eventListeners.add(listener);
+        return () => void eventListeners.delete(listener);
+      },
       blocked: () => {
         try {
           return deps.blocked();
@@ -144,9 +156,17 @@ export function createMidiPort(deps: MidiPortDeps): MidiRuntime {
       setEnabled: (on) => deps.setEnabled(on).catch(() => false),
     },
     async intake(event) {
+      for (const listener of [...eventListeners]) {
+        try {
+          listener(event);
+        } catch {
+          // one broken listener must not stop the others, or the bindings
+        }
+      }
       try {
+        if (event.monitor === true) return; // a monitor-window copy: shown, never run
         if (monitorUntil > now()) return; // learning or monitoring: the lines wait
-        const message: MidiMessage = { type: event.type, channel: event.channel, number: event.number, value: event.value };
+        const message: MidiMessage = { type: event.type, channel: event.channel, number: event.number, value: event.value, ...(event.monitor === true ? { monitor: true as const } : {}) };
         await deps.engine.handle(message);
       } catch {
         // an event must never take the host down

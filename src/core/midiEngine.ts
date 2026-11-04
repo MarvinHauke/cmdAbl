@@ -113,6 +113,7 @@ export function createMidiEngine(deps: MidiEngineDeps): MidiEngine {
     bindings: () => rows.map((r) => r.binding),
 
     handle(message) {
+      if (message.monitor === true) return Promise.resolve([]); // a monitor-window copy is for the live view, never for a binding
       // Messages are decided one at a time, in arrival order (the enabled check may be async); the lines they start run on their own.
       const turn = order.then(() => decide(message));
       order = turn.then(() => {}, () => {});

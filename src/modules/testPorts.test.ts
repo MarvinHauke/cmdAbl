@@ -77,3 +77,13 @@ test("fake api.midi.blocked / onBlocked: a rebuild is simulated by changing midi
   off();
   assert.equal(fake.blockedListeners.length, 0);
 });
+
+test("fake api.midi.onEvent: listeners are kept in fake.eventListeners and can be removed", () => {
+  const fake = createFakeApi();
+  const heard: number[] = [];
+  const off = fake.api.midi.onEvent((e) => heard.push(e.number));
+  for (const l of fake.eventListeners) l({ seq: 1, type: "cc", channel: 1, number: 7, value: 1, time: 0, monitor: true });
+  assert.deepEqual(heard, [7]);
+  off();
+  assert.equal(fake.eventListeners.length, 0);
+});

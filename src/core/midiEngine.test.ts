@@ -398,3 +398,28 @@ test("blocked / onBlocked pass the bridge's list through; a failing read is 'unk
   assert.deepEqual(heard, [null]);
   assert.equal(runtime.port.blocked(), null);
 });
+
+test("an event marked monitor never runs a binding (engine and port), but every listener sees it", async () => {
+  const { engine, ran } = setup();
+  engine.setBindings([bind("CC51", "press", "a")]);
+  assert.deepEqual(await engine.handle({ ...cc(10), monitor: true }), []);
+  await engine.handle(cc(0));
+  assert.deepEqual(ran, []);
+  const { runtime, ran: ranViaPort } = portSetup();
+  await runtime.port.setBindings([bind("CC51", "press", "a")]);
+  const seen: Array<{ number: number; monitor?: true }> = [];
+  const off = runtime.port.onEvent((e) => seen.push({ number: e.number, monitor: e.monitor }));
+  runtime.port.onEvent(() => {
+    throw new Error("broken");
+  });
+  await runtime.intake({ seq: 1, type: "cc", channel: 1, number: 51, value: 10, time: 0, monitor: true }); // during a monitor window
+  assert.deepEqual(ranViaPort, []);
+  assert.deepEqual(seen, [{ number: 51, monitor: true }]); // seen, though the broken listener threw
+  await runtime.intake({ seq: 2, type: "cc", channel: 1, number: 51, value: 0, time: 0 });
+  await runtime.intake({ seq: 3, type: "cc", channel: 1, number: 51, value: 10, time: 0 });
+  assert.deepEqual(ranViaPort, ["a"]); // an ordinary event runs, and the listener sees it too
+  assert.equal(seen.length, 3);
+  off();
+  await runtime.intake({ seq: 4, type: "cc", channel: 1, number: 9, value: 1, time: 0 });
+  assert.equal(seen.length, 3); // unsubscribed
+});

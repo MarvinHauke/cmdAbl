@@ -79,6 +79,8 @@ export interface FakeApi {
   midiBindings: MidiBinding[];
   /** Listeners registered with `api.onSetChange`; call them to simulate a Set change. */
   setListeners: Array<(setId: string | null) => void>;
+  /** Listeners of `api.midi.onEvent`; call them with a MidiEvent to simulate a pushed message. */
+  eventListeners: Array<(event: import("../ableton/bridgeOps.js").MidiEvent) => void>;
   /** What the fake `api.midi.blocked()` answers (default none); call `blockedListeners` after changing it to simulate a map rebuild. */
   midiBlocked: string[] | null;
   blockedListeners: Array<(blocked: string[] | null) => void>;
@@ -124,6 +126,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     setListeners: [],
     midiBlocked: [],
     blockedListeners: [],
+    eventListeners: [],
     mapEnabled: true,
     midiListens: [],
     completers: new Map(),
@@ -190,6 +193,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       last: async (since = 0) => {
         const messages = (options.midiMessages ?? []).filter((m) => m.seq > since);
         return { ok: true, value: { last: Math.max(since, ...messages.map((m) => m.seq)), messages } };
+      },
+      onEvent: (listener) => {
+        fake.eventListeners.push(listener);
+        return () => void fake.eventListeners.splice(fake.eventListeners.indexOf(listener) >>> 0, 1);
       },
       blocked: () => (fake.midiBlocked === null ? null : [...fake.midiBlocked]),
       onBlocked: (listener) => {
