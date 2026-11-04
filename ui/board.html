@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips (←/→/↑/↓ move the highlight while they show); Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. ←/→ in an empty input (or at caret 0) put a chip cursor on the section's chips: Backspace/Delete/Space toggle the removal mark of the chip under it, typing/Esc/Tab return to the input, Enter applies. A readonly section shows chips only; today it is also built last and starts folded ("▸ untagged · 35 tracks", the heading toggles it on click / Enter / Space), because tag is the only user — a second user that marks sections readonly for other reasons needs an explicit `folded?` flag from core and the caller's order kept. The "+ # New tag…" row is pinned above the sections; a created section is added directly below it, focused and in view. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. A section with renamable / removable shows a heading whose name is editable in place (click it, or F2 in the section's input: an inline input; the leading # stays outside) and a × at the right end of the heading: the name's input (Enter takes the name if it matches create.pattern, else shake; Esc cancels the edit only; the heading then shows the new name and, dimmed on the same line, "(was #old)"), × (or Shift+Backspace in an empty input, or Shift+Tab to the buttons and Enter) marks the whole tag for removal (struck through, chips dimmed; the footer says what will be removed; a second click unmarks it). Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names], renamed?: [{ section, to }], removed?: [section], confirmed?: true } on Apply (confirmed with removed: Apply with a tag marked for removal first shows a confirm bar in the footer, "Remove #fx from N tracks?" with Cancel (default, Esc) and Remove and apply): only real differences against the request (a section marked for removal sends only `removed`: its own chip changes and rename are dropped); a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
+<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips (←/→/↑/↓ move the highlight while they show); Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. ←/→ in an empty input (or at caret 0) put a chip cursor on the section's chips: Backspace/Delete/Space toggle the removal mark of the chip under it, typing/Esc/Tab return to the input, Enter applies. A readonly section shows chips only; today it is also built last and starts folded ("▸ untagged · 35 tracks", the heading toggles it on click / Enter / Space), because tag is the only user — a second user that marks sections readonly for other reasons needs an explicit `folded?` flag from core and the caller's order kept. The "+ # New tag…" row is pinned above the sections; a created section is added directly below it, focused and in view. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. A section with renamable / removable shows a heading whose name is editable in place (click it, or F2 in the section's input: an inline input; the leading # stays outside) and a × at the right end of the heading: the name's input (Enter takes the name if it matches create.pattern, else shake; Esc cancels the edit only; the heading then shows the new name and, dimmed on the same line, "(was #old)"), × (or Shift+Backspace in an empty input, or Shift+Tab to the buttons and Enter) marks the whole tag for removal (struck through, chips dimmed; the footer says what will be removed; a second click unmarks it). Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names], renamed?: [{ section, to }], removed?: [section], confirmed?: true } on Apply (confirmed with removed: Apply with a tag marked for removal first shows a confirm bar in the footer, "Remove #fx from N tracks?" with Cancel (default, Esc) and Remove and apply): only real differences against the request (a section marked for removal sends only `removed`: its own chip changes and rename are dropped); a created section's id is its name and its items start off. Click to assign: the target is the tag whose add field was focused last (highlighted; footer "Click tracks to add them to #drums") or the New tag field; a click on an untagged chip adds that track to the target as a pending chip (a second click undoes it), or, for the New tag field, collects it in a line below the field ("goes into the new tag: …") until a name + Enter creates the tag with them (Esc clears); chips of other tags don't assign. Keyboard: Tab to the untagged heading, ↓/→ puts a chip cursor on the tracks (←/→/↑/↓ move, Enter or Space assigns to the active target, Esc leaves). Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -16,7 +16,7 @@
 
     /* One section: heading line (heading, meta right), then chips with the add input last. */
     .sec { padding: 2px 6px 4px; margin: 0 -6px; border-radius: 3px; }
-    .sec:focus-within { background: hsla(0, 0%, 100%, 0.045); }   /* the tag being added to */
+    .sec.target { background: hsla(0, 0%, 100%, 0.045); box-shadow: inset 2px 0 0 var(--accent); }   /* the tag being added to (typing and clicking untagged tracks) */
     .sec + .sec { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); border-top-left-radius: 0; border-top-right-radius: 0; }
     .head { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
     .head .h { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
@@ -58,6 +58,8 @@
     .chip.rm { text-decoration: line-through; color: var(--dim); outline: 1px solid var(--accent); outline-offset: 1px; }
     .chip.add { outline: 1px dashed var(--accent); outline-offset: 1px; }
     /* The chip cursor (← / → in the add input): a tint and an accent underline; the input caret hides. */
+    .chip.pick { cursor: pointer; }
+    .chip.pick:hover { border-color: var(--accent); }
     .chip.cur { background: hsla(31, 100%, 67%, 0.22); box-shadow: inset 0 -2px 0 var(--accent); }
     .addwrap.chipmode input { caret-color: transparent; }
     .none { color: var(--dim); font-size: 11px; line-height: 20px; }
@@ -83,12 +85,19 @@
 
     /* The create entry at the bottom. */
     /* The new-tag row is pinned above all sections: first in the Tab order and always in view. */
-    #create { flex: 0 0 auto; padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+    #create { flex: 0 0 auto; padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+    #create.target { background: hsla(0, 0%, 100%, 0.045); box-shadow: inset 2px 0 0 var(--accent); }
+    #create .crow { display: flex; align-items: center; gap: 8px; }
+    /* The tracks collected for the new tag (clicks on untagged chips while this field is the target). */
+    #collected { color: var(--dim); font-size: 11px; line-height: 14px; min-height: 14px; overflow-wrap: anywhere; }
+    #collected.has { color: var(--text); }
+    #collected[hidden] { display: none; }
     #create .plus { color: var(--accent); font-weight: 700; user-select: none; }
     #create[hidden] { display: none; }
 
     #footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 6px 12px; display: flex; align-items: center; gap: 8px; }
-    #hint { flex: 1; min-width: 0; color: var(--dim); font-size: 10px; line-height: 13px; }
+    #hint { flex: 1; min-width: 0; color: var(--dim); font-size: 11px; line-height: 14px; }
+    #hint.two { min-height: 42px; }   /* three lines reserved for the click-to-assign line + the keys, so the footer doesn't jump */
     #apply { flex: none; border-color: var(--accent); color: var(--accent); }
     #apply:disabled { border-color: var(--dim); color: var(--dim); opacity: 0.5; cursor: default; }
     #close { flex: none; }
@@ -144,6 +153,11 @@
     { const seen = new Set();
       for (const s of S) for (const i of s.items) if (!seen.has(i.id)) { seen.add(i.id); candidates.push({ id: i.id, label: i.label }); } }
 
+    // Click to assign: the target is the tag whose add field was focused last (index into S), or -1 = the "New tag"
+    // field; `collected` = track ids clicked while the new-tag field is the target, waiting for a name.
+    let target = -1, quiet = false;
+    const collected = [];
+
     function changes() {
       const out = [];
       for (const s of S) {
@@ -166,16 +180,17 @@
     // The footer line: what whole tags will be removed (once marked), else the keys.
     function curHint() {
       const gone = S.filter(s => s.removeAll);
-      if (!gone.length) return keyHint;
+      if (!gone.length) { const a = assignHint(); return a ? a + ' · ' + keyHint : keyHint; }
       const part = s => s.heading + (gone.length > 1 ? ' (' + s.items.filter(i => i.orig).length + ')' : '');
       if (gone.length === 1) { const n = gone[0].items.filter(i => i.orig).length; return gone[0].heading + ' will be removed from ' + n + ' track' + (n === 1 ? '' : 's') + ' · Apply to confirm'; }
       return gone.map(part).join(', ') + ' will be removed · Apply to confirm';
     }
     hintEl.textContent = keyHint;
+    if (S.some(s => s.readonly)) hintEl.classList.add('two');
     let armed = false;
     function disarm() { if (!armed) return; armed = false; hintEl.textContent = curHint(); hintEl.style.color = ''; }
     function requestClose() {
-      const n = pending();
+      const n = pending() || (collected.length ? 1 : 0);
       if (n && !armed) {
         armed = true;
         hintEl.textContent = n + ' change' + (n === 1 ? '' : 's') + ' not applied — Esc again to discard';
@@ -218,6 +233,10 @@
 
     function apply(confirmed = false) {
       for (const s of S) if (s.renaming) s.finishEdit(true);   // an open rename is taken first
+      if (collected.length) {   // tracks waiting for the new tag: it needs its name first (a valid one creates it now)
+        if (createInput.value.trim()) submitCreate();
+        if (collected.length) { needName(); return; }
+      }
       const list = changes(), ren = renames(), rem = removals();
       if (!list.length && !ren.length && !rem.length) return;
       if (rem.length && !confirmed) { showConfirm(); return; }
@@ -243,6 +262,58 @@
       i.cur = !i.cur;
       if (!i.orig) { s.added = s.added.filter(x => x !== ii); if (i.cur) s.added.push(ii); }
       refresh(si);
+    }
+
+    // ---- click to assign ---------------------------------------------------------------------
+    const targetName = () => target >= 0 && S[target] ? shownName(S[target]) : 'the new tag';
+    function assignHint() {
+      if (!S.some(s => s.readonly)) return '';
+      if (target < 0 || !S[target]) return createInput ? 'Click tracks to collect them for the new tag' : "Focus a tag's add field, then click tracks";
+      return S[target].removeAll ? shownName(S[target]) + ' is marked for removal' : 'Click tracks to add them to ' + shownName(S[target]);
+    }
+    // Is this track already going into the target (a dashed ring on its untagged chip)?
+    function isPicked(id) {
+      if (target < 0 || !S[target]) return collected.includes(id);
+      const i = S[target].items.find(x => x.id === id);
+      return !!i && i.cur && !i.orig;
+    }
+    function renderUntagged() { S.forEach((s, si) => { if (s.readonly && s.chipsEl) renderChips(si); }); }
+    const collectedEl = el('div'); collectedEl.id = 'collected';
+    function renderCollected() {
+      const label = id => candidates.find(c => c.id === id)?.label ?? id;
+      collectedEl.hidden = !S.some(s => s.readonly);
+      collectedEl.classList.toggle('has', collected.length > 0);
+      collectedEl.textContent = collected.length
+        ? 'goes into the new tag: ' + collected.map(label).join(', ') + ' · name + Enter creates it · Esc clears'
+        : 'Click tracks under untagged to collect them for the new tag';
+    }
+    function setTarget(t) {
+      if (t === target) return;
+      target = t;
+      S.forEach((s, si) => s.el?.classList.toggle('target', si === t));
+      createBox.classList.toggle('target', t === -1);
+      renderUntagged();
+      updateFooter();
+    }
+    // Add (or undo) a track for the active target. The page doesn't scroll: the ring on the clicked chip is the result.
+    function assignTrack(id) {
+      quiet = true;
+      try {
+        if (target < 0 || !S[target]) {
+          if (!createInput) return;
+          const k = collected.indexOf(id);
+          if (k >= 0) collected.splice(k, 1); else collected.push(id);
+          createInput.focus({ preventScroll: true });
+          renderCollected(); renderUntagged(); updateFooter();
+          return;
+        }
+        const s = S[target];
+        if (s.removeAll) return;
+        const ii = s.items.findIndex(i => i.id === id);
+        if (ii < 0 || s.items[ii].orig) return;
+        toggleItem(target, ii);
+        renderUntagged();
+      } finally { quiet = false; }
     }
 
     // ---- search ----------------------------------------------------------------------------
@@ -307,7 +378,7 @@
     // The focused section as a whole: heading, chips, input and suggestion row.
     function reveal(si) {
       const s = S[si];
-      if (!touched || !s || !s.inputEl || document.activeElement !== s.inputEl) return;
+      if (quiet || !touched || !s || !s.inputEl || document.activeElement !== s.inputEl) return;
       const r = s.el.getBoundingClientRect();
       if (r.height <= scroll.clientHeight) { revealBlock(r.top, r.bottom, s.el === sectionsBox.firstElementChild); return; }
       // Taller than the view: the part being worked on (input, chip under the cursor, suggestion row).
@@ -331,6 +402,11 @@
           chip.append(el('span', 'x', '×'));
           chip.title = i.orig && !i.cur ? 'marked for removal (click to undo)' : !i.orig && i.cur ? 'to be added (click to undo)' : 'click to remove';
           chip.addEventListener('mousedown', e => { e.preventDefault(); toggleItem(si, ii); });
+        } else {   // an untagged track: a click adds it to the active target
+          const picked = isPicked(i.id);
+          chip.className = 'chip pick' + (picked ? ' add' : '') + (ii === s.cc ? ' cur' : '');
+          chip.title = (picked ? 'click to undo' : 'click to add to ' + targetName());
+          chip.addEventListener('mousedown', e => { e.preventDefault(); assignTrack(i.id); });
         }
         s.chipsEl.insertBefore(chip, s.addEl ?? null);
       }
@@ -404,9 +480,16 @@
         head.tabIndex = 0;
         head.setAttribute('role', 'button');
         head.addEventListener('click', () => toggleFold(si));
+        head.title = 'Fold / unfold · ↓ picks tracks, Enter adds the one under the cursor to the active tag';
         head.addEventListener('keydown', e => {
+          if (s.cc != null) { keyOnUntagged(e, si); return; }
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleFold(si); }
+          else if ((e.key === 'ArrowDown' || e.key === 'ArrowRight') && !s.folded) {
+            const idx = chipIdx(s);
+            if (idx.length) { e.preventDefault(); e.stopPropagation(); s.cc = idx[0]; renderChips(si); revealCursor(si); }
+          }
         });
+        head.addEventListener('blur', () => { if (s.cc != null) { s.cc = null; renderChips(si); } });
       } else {
         head.append(s.nameEl, s.markEl);
         if (s.meta) head.append(el('span', 'meta push', s.meta));
@@ -434,7 +517,7 @@
         s.sugEls = el('div', 'sugs');
         s.el.append(s.sugEls);
         s.inputEl.addEventListener('input', () => { s.q = s.inputEl.value; s.hi = 0; clearNoMatch(s); renderAdd(si); });
-        s.inputEl.addEventListener('focus', () => renderAdd(si));
+        s.inputEl.addEventListener('focus', () => { setTarget(si); renderAdd(si); });
         s.inputEl.addEventListener('blur', () => { renderAdd(si); if (s.cc != null) { s.cc = null; renderChips(si); } });
         s.inputEl.addEventListener('keydown', e => keyInSection(e, si));
         // A click anywhere in the section (not on a chip) puts the caret in its input.
@@ -462,6 +545,7 @@
       s.nmEl.textContent = hashed ? shown.slice(1) : shown;
       s.markEl.textContent = s.rename !== null && !s.removeAll ? '(was ' + s.heading + ')' : '';
       s.el.classList.toggle('gone', s.removeAll);
+      if (target === si) { renderUntagged(); updateFooter(); }
       s.rmBtn?.classList.toggle('on', s.removeAll);
       if (s.inputEl) { s.inputEl.placeholder = addPlaceholder(s); renderAdd(si); }
     }
@@ -562,18 +646,29 @@
       createInput.style.width = 'calc(' + Math.max(12, BOARD.create.label.length + 1) + 'ch + 14px)';
       createErr = el('span', 'nomatch');
       createErr.hidden = true;
-      createBox.append(el('span', 'plus', '+ #'), wrap, createErr);
+      const row = el('div', 'crow');
+      row.append(el('span', 'plus', '+ #'), wrap, createErr);
+      createBox.append(row, collectedEl);
+      renderCollected();
       createInput.addEventListener('input', () => {
         createErr.hidden = true;
         createInput.style.width = 'calc(' + Math.max(12, BOARD.create.label.length + 1, createInput.value.length + 1) + 'ch + 14px)';
       });
       createInput.addEventListener('keydown', e => keyInCreate(e));
+      createInput.addEventListener('focus', () => setTarget(-1));
+      createBox.addEventListener('mousedown', e => { if (e.target !== createInput) { e.preventDefault(); createInput.focus(); } });
     }
     // A name must fully match pattern (a regular expression); a bad name shows a hint and is not added.
     function validName(name) {
       const pattern = BOARD.create.pattern;
       if (!pattern) return true;
       try { return new RegExp('^(?:' + pattern + ')$').test(name); } catch { return false; }
+    }
+    function needName() {
+      createInput.focus({ preventScroll: true });
+      if (!createErr.hidden) return;   // submitCreate already said why
+      createErr.textContent = 'name the tag first'; createErr.hidden = false;
+      createInput.classList.remove('shake'); void createInput.offsetWidth; createInput.classList.add('shake');
     }
     function submitCreate() {
       const name = createInput.value.trim();
@@ -593,6 +688,10 @@
       const si = S.length - 1;
       buildSection(si);
       sectionsBox.prepend(S[si].el);   // directly below the pinned row, not at the end
+      // The tracks collected while this field was the target go into the new tag (dashed ring, like typed ones).
+      const ns = S[si];
+      for (const id of collected.splice(0)) { const ii = ns.items.findIndex(i => i.id === id); if (ii >= 0) { ns.items[ii].cur = true; ns.added.push(ii); } }
+      renderChips(si); renderAdd(si); renderCollected(); updateFooter();
       scroll.scrollTop = 0;
       S[si].inputEl.focus({ preventScroll: true });   // a new section: type to add a track; it is in view at the top
     }
@@ -618,6 +717,40 @@
       else if (e.key === 'Escape') { e.preventDefault(); leave(); }
       else if (e.key === 'Tab') { e.preventDefault(); leave(); }
       else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) leave();   // not prevented: the key is typed in the input
+    }
+
+    // The chip cursor in the read-only (untagged) section: ←/→ step, ↑/↓ move a row, Enter/Space assign the track to the
+    // active target (or undo it), Esc/Tab leave. Focus stays on the heading.
+    function revealCursor(si) {
+      const c = S[si].chipsEl.querySelector('.chip.cur');
+      if (c) { const r = c.getBoundingClientRect(); revealBlock(r.top, r.bottom, false); }
+    }
+    function keyOnUntagged(e, si) {
+      const s = S[si];
+      const idx = chipIdx(s);
+      const at = idx.indexOf(s.cc);
+      const move = to => { if (to !== undefined && to !== s.cc) { s.cc = to; renderChips(si); } revealCursor(si); };
+      const stop = () => { e.preventDefault(); e.stopPropagation(); };
+      if (e.key === 'ArrowLeft') { stop(); move(idx[Math.max(0, at - 1)]); }
+      else if (e.key === 'ArrowRight') { stop(); move(idx[Math.min(idx.length - 1, at + 1)]); }
+      else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        stop();
+        const els = [...s.chipsEl.querySelectorAll('.chip')];
+        const here = els[at]?.getBoundingClientRect();
+        if (!here) return;
+        const dir = e.key === 'ArrowDown' ? 1 : -1;
+        let best = -1, bestKey = null;
+        els.forEach((c, k) => {
+          const r = c.getBoundingClientRect(), dy = (r.top - here.top) * dir;
+          if (dy < 4) return;   // other rows only, in the wanted direction
+          const key = [dy, Math.abs(r.left - here.left)];
+          if (!bestKey || key[0] < bestKey[0] - 4 || (Math.abs(key[0] - bestKey[0]) <= 4 && key[1] < bestKey[1])) { best = k; bestKey = key; }
+        });
+        if (best >= 0) move(idx[best]);
+      }
+      else if (e.key === 'Enter' || e.key === ' ') { stop(); if (!e.repeat) assignTrack(s.items[s.cc].id); }
+      else if (e.key === 'Escape') { stop(); s.cc = null; renderChips(si); }
+      else if (e.key === 'Tab') { s.cc = null; renderChips(si); }
     }
 
     function keyInSection(e, si) {
@@ -675,7 +808,9 @@
       if (e.key === 'Enter') {
         e.preventDefault();
         if (e.repeat) return;
-        if (createInput.value.trim()) submitCreate(); else apply();
+        if (createInput.value.trim()) submitCreate();
+        else if (collected.length) needName();   // tracks waiting, no name yet
+        else apply();
       } else if (e.key === 'Tab' && !e.shiftKey && createInput.value) {
         e.preventDefault();   // no suggestions here: stay in the field
         createInput.classList.remove('shake'); void createInput.offsetWidth; createInput.classList.add('shake');
@@ -684,7 +819,9 @@
         jump(-1, e.key === 'ArrowDown' ? 1 : -1);
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        if (createInput.value) { createInput.value = ''; createInput.dispatchEvent(new Event('input')); } else requestClose();
+        if (createInput.value) { createInput.value = ''; createInput.dispatchEvent(new Event('input')); }
+        else if (collected.length) { collected.length = 0; renderCollected(); renderUntagged(); updateFooter(); }
+        else requestClose();
       }
     }
     // Focus on nothing (after a click on a button): Esc closes, Enter applies.
@@ -692,7 +829,7 @@
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement || e.repeat) return;
       if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
       else if (e.key === 'Enter') { e.preventDefault(); apply(); }
-      else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) firstInput()?.input.focus();   // typing starts the first input
+      else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) (inputs().find(x => x.si === target) ?? firstInput())?.input.focus();   // typing starts the first input
     });
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -706,6 +843,7 @@
       confirmBox.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelConfirm(); } });
       document.getElementById('close').addEventListener('click', requestClose);
       scroll.tabIndex = -1;
+      createBox.classList.toggle('target', target === -1 && !!createInput);
       const first = firstInput();
       if (first) first.input.focus({ preventScroll: true }); else scroll.focus();   // opens at the top, whatever the first section holds
       scroll.scrollTop = 0;
