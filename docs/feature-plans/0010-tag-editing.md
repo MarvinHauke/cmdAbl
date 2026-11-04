@@ -165,15 +165,19 @@ board as the keyboard path (decision 5).
 Today the board removes a track from a tag (× on a chip) and creates tags, but it can't rename a tag or
 remove a whole tag; that needs `tag -r` or `tag --set 0`.
 
-- **Each tag section's heading gets two actions:**
-  - **✎ rename:** the heading becomes an inline input. Enter takes the name, checked against the same
+- **Each tag section's heading gets two actions** (look refined after the Live test, 2026-11-04: the
+  heading reads `#name` with an accent `#`; a click on the name renames it; a bigger × at the row's end;
+  the rename note `(was #old)` sits on the heading line; the add field is a real input with a focus
+  highlight):
+  - **rename:** the heading becomes an inline input. Enter takes the name, checked against the same
     pattern as a new tag; Esc cancels the edit.
   - **× remove:** the section is marked (struck through), and the footer says "#fx will be removed from
     N tracks". A second click unmarks it.
 - **Apply sends everything at once:**
   - renames use the `tag -r` logic (an existing name merges);
-  - removing a whole tag asks once more after the board closes ("Remove #fx from N tracks?", Cancel
-    first). Cancel applies nothing from that board;
+  - removing a whole tag is confirmed **inside the board** (user, 2026-11-04): Apply with a marked tag
+    shows a confirm bar in the footer ("Remove #fx from N tracks?", Cancel by default, "Remove and
+    apply"). Cancel returns to editing; there is no second window afterwards;
   - removing one track (× on a chip) stays without a question;
   - the log gets the change and undo lines as usual.
 - **Board contract (additive):**
