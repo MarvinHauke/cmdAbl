@@ -63,10 +63,13 @@ gets a short list of the core features to try by hand, plus what only they can c
   outside the test list.
 - **Only the architect pushes or opens pull requests, and only when the user asks.**
 - `scripts/agents.sh` opens core, modules, bridge and reviewer in one tmux window `cmdabl-agents`
-  and starts the architect in the current pane, resuming each by the session id in its agent file.
+  and starts the architect in the current pane, each as a **fresh** session (model from its agent
+  file; the agent file, this file and STATUS are the hand-over). `--resume` continues an agent's stored
+  session instead: use it only for unfinished work, since a long session reloads its whole history.
   `scripts/agents.sh ui` adds the UI agent, `scripts/agents.sh docs` the documentation agent;
-  `scripts/agents.sh core reviewer` or `… architect`
-  starts only those; `DRY_RUN=1` prints the commands.
+  `scripts/agents.sh core reviewer` or `… architect` starts only those.
+  `scripts/agents.sh stop ui docs` ends those agents; `stop` alone ends every peer, never the
+  architect or the pane it runs in. `DRY_RUN=1` prints the commands.
 
 ## Workflow
 

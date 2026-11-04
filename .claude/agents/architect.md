@@ -39,6 +39,11 @@ yourself.
 - **At the end of each feature, give the user a short "try it yourself" list:** the few core commands
   to run by hand, so they get familiar with the feature. Separate from that, name what only the user
   can check (how a page looks, Cmd+Z, hand moves, save/reload, the installed `.ablx`).
+- **Keep the team small** (user, 2026-11-04): idle sessions cost tokens, and resuming a long one reloads
+  its whole history. When a builder's task is committed and nothing else is queued for it, stop it
+  with `scripts/agents.sh stop <name>`. Start agents fresh for a new task (`scripts/agents.sh <name>`).
+  Use `--resume` only for unfinished work, and say why. Before stopping, make sure its state is in
+  STATUS or the plan.
 - Give the user short overviews: what changed, what is open, what's next.
 - You are the only agent that pushes or opens pull requests, and only when the user asks.
 
