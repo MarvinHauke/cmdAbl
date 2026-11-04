@@ -44,6 +44,10 @@ yourself.
   with `scripts/agents.sh stop <name>`. Start agents fresh for a new task (`scripts/agents.sh <name>`).
   Use `--resume` only for unfinished work, and say why. Before stopping, make sure its state is in
   STATUS or the plan.
+- **UX before handover:** look at `cmdabl_capture` screenshots of new or changed pages against the UX
+  checklist in `.claude/agents/ui.md` before giving the user a test list, so the user only judges
+  taste. The checklist stays short (about 8–10 items): add an item when a new kind of problem shows up
+  and it's clearly general, or ask the user when unsure. Merge or drop items rather than grow it.
 - **End of a feature** (after the user's review):
   1. STATUS and the plan are up to date.
   2. Stop every builder that worked on it (never compact builders: a fresh start is cheaper than a
