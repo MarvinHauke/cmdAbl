@@ -28,6 +28,8 @@ export function buildBoard(tracks: BoardTrack[]): BoardRequest {
       heading: `#${name}`,
       meta: `${count} ${count === 1 ? "track" : "tracks"}`,
       items: tracks.map((t) => ({ id: t.id, label: t.label, on: t.tags.includes(name) })),
+      renamable: true,
+      removable: true,
     };
   });
   const untagged = tracks.filter((t) => t.tags.length === 0);
@@ -75,4 +77,44 @@ export function groupChanges(answer: BoardAnswer): { perTrack: Map<string, Track
   // unticks the same track, the tick wins (a new section only ever adds).
   for (const entry of perTrack.values()) entry.remove = entry.remove.filter((n) => !entry.add.includes(n));
   return { perTrack };
+}
+
+const dedupe = (names: string[]): string[] => [...new Set(names)];
+
+/** What the board asked for besides chip changes: renames (old -> new name) and whole tags to remove. */
+export interface BoardTagEdits {
+  renames: Map<string, string>;
+  removed: Set<string>;
+  /** A rename target that is not a tag name (as typed). */
+  bad?: string;
+}
+
+/** Renames and removals of the answer. Only sections of the request (`tag:<name>`) count; a removed section wins over its rename; a rename to the same name is dropped. */
+export function boardTagEdits(answer: BoardAnswer): BoardTagEdits {
+  const nameOf = (section: string): string | undefined => (section.startsWith("tag:") ? section.slice(4) : undefined);
+  const removed = new Set((answer.removed ?? []).map(nameOf).filter((n): n is string => n !== undefined));
+  const renames = new Map<string, string>();
+  for (const r of answer.renamed ?? []) {
+    const old = nameOf(r.section);
+    if (old === undefined || removed.has(old)) continue;
+    const checked = normalizeTagNames([r.to]);
+    if (!checked.ok || checked.names.length !== 1) return { renames, removed, bad: r.to };
+    if (checked.names[0] !== old) renames.set(old, checked.names[0]!);
+  }
+  return { renames, removed };
+}
+
+/**
+ * One track's tags after the board: renames first (a track with both names keeps one), then the removals of whole tags,
+ * then the chip changes (their names follow a rename; a removed tag is never added again).
+ */
+export function finalTags(before: string[], change: TrackChange | undefined, edits: BoardTagEdits): string[] {
+  const follow = (names: string[]): string[] => names.map((t) => edits.renames.get(t) ?? t).filter((t) => !edits.removed.has(t));
+  let tags = dedupe(before.map((t) => edits.renames.get(t) ?? t)).filter((t) => !edits.removed.has(t)); // renamed once, not through follow() again
+  if (change) {
+    tags = dedupe([...tags, ...follow(change.add)]);
+    const drop = new Set(follow(change.remove));
+    tags = tags.filter((t) => !drop.has(t));
+  }
+  return tags;
 }
