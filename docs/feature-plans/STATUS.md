@@ -23,10 +23,13 @@ All releases were tested in Live, including the installed `.ablx`.
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
-- In work: `;` chains (plan 0017), built and Live-tested through MCP on `feat/chain`. Next: the simple
-  MIDI mapping (plan 0018, trigger mode with operators): the spike is done on `feat/map` (UDP push,
-  under 2 ms). Open from the spike: do Cmd+M and cmdAbl both act on one control? All plans are public since
-  2026-11-03.
+- In work on `feat/map` (not pushed): `;` chains (0017, Live-tested); the simple MIDI mapping (0018:
+  `map`, `map learn`, `midi monitor`, operators, Remote Script 0.1.14), live pages (localhost,
+  load and route tokens, long polling), the Cmd+M conflict warning. Live-tested with the UC4
+  (2026-11-04): bindings, hold, learn, the status bar, the Cmd+M warning in `map` and `map -l`.
+  Open: `midi monitor` live and its "Taken in Live" list in Live; the learn text for taken controls
+  (offer: "Controls taken in Live (Cmd+M) can't be learned: …"); using.md docs; release 0.1.5.
+  Docs note: save the Set after the first `map`, or the bindings won't load after a restart.
 - How testing works since 0.1.3: the architect runs Live test lists through the `cmdabl_*` MCP tools
   (plan 0016) once the user has started `npm start` with a test Set; the user gets a short list of
   the core features to try by hand (`CLAUDE.md`, "Agent team").
