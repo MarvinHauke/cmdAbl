@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips (←/→/↑/↓ move the highlight while they show); Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. ←/→ in an empty input (or at caret 0) put a chip cursor on the section's chips: Backspace/Delete/Space toggle the removal mark of the chip under it, typing/Esc/Tab return to the input, Enter applies. A readonly section shows chips only. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. A section with renamable / removable shows ✎ / × in its heading: ✎ (or F2 in the section's input) turns the heading into an inline input (Enter takes the name if it matches create.pattern, else shake; Esc cancels the edit only; the heading then shows the new name with a "renamed" marker), × (or Shift+Backspace in an empty input, or Shift+Tab to the buttons and Enter) marks the whole tag for removal (struck through, chips dimmed; the footer says what will be removed; a second click unmarks it). Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names], renamed?: [{ section, to }], removed?: [section] } on Apply: only real differences against the request (a section marked for removal sends only `removed`: its own chip changes and rename are dropped); a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
+<!-- board surface (see src/core/ui.ts BoardRequest, plan 0010). In: BOARD_PLACEHOLDER = { title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }. A section shows its on items as chips with × (a click marks one for removal: struck through with an accent outline; another click unmarks it) and, after them, an inline input ("add…", like the tag bar in Live's browser): typing searches the section's items that are not on (or are pending removal), best match as ghost text plus up to 6 suggestion chips (←/→/↑/↓ move the highlight while they show); Tab puts the highlighted one into the input (stays in the field; on an empty input Tab leaves it as usual), Enter adds the highlighted one as a chip with a dashed accent ring. ←/→ in an empty input (or at caret 0) put a chip cursor on the section's chips: Backspace/Delete/Space toggle the removal mark of the chip under it, typing/Esc/Tab return to the input, Enter applies. A readonly section shows chips only. create adds an empty section from an input at the bottom (name checked against pattern, a regular expression the whole name must match). A created section with nothing added sends nothing. A section with renamable / removable shows a heading whose name is editable in place (click it, or F2 in the section's input: an inline input; the leading # stays outside) and a × at the right end of the heading: the name's input (Enter takes the name if it matches create.pattern, else shake; Esc cancels the edit only; the heading then shows the new name and, dimmed on the same line, "(was #old)"), × (or Shift+Backspace in an empty input, or Shift+Tab to the buttons and Enter) marks the whole tag for removal (struck through, chips dimmed; the footer says what will be removed; a second click unmarks it). Out (close_and_send): '' when closed (Close, Esc; with pending changes the first one only warns in the footer, the second discards), or JSON { changes: [{ section, item, on }], created: [names], renamed?: [{ section, to }], removed?: [section], confirmed?: true } on Apply (confirmed with removed: Apply with a tag marked for removal first shows a confirm bar in the footer, "Remove #fx from N tracks?" with Cancel (default, Esc) and Remove and apply): only real differences against the request (a section marked for removal sends only `removed`: its own chip changes and rename are dropped); a created section's id is its name and its items start off. Text goes in with textContent only (headings and labels are user data). The board's title is not drawn: the dialog already names the command. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -15,20 +15,31 @@
     #scroll:focus { outline: none; }
 
     /* One section: heading line (heading, meta right), then chips with the add input last. */
-    .sec + .sec { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .sec { padding: 2px 6px 4px; margin: 0 -6px; border-radius: 3px; }
+    .sec:focus-within { background: hsla(0, 0%, 100%, 0.045); }   /* the tag being added to */
+    .sec + .sec { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); border-top-left-radius: 0; border-top-right-radius: 0; }
     .head { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
     .head .h { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
     .head .meta { margin-left: auto; flex: none; color: var(--dim); font-size: 11px; }
     .sec.ro .head .h { color: var(--dim); }
-    /* Heading actions (renamable / removable): small dim glyph buttons; the heading input while renaming. */
-    .head .act { flex: none; border: none; background: transparent; color: var(--dim); font: inherit; font-size: 11px; line-height: 14px; padding: 0 3px; cursor: default; border-radius: 2px; }
-    .head .act:hover, .head .act:focus-visible { color: var(--accent); outline: none; }
-    .head .act.on { color: var(--accent); }
-    .head .renamed { flex: none; color: var(--dim); font-size: 11px; }
-    .head input.rn { flex: 1; min-width: 0; box-sizing: border-box; background: transparent; border: 1px dashed var(--accent); border-radius: 2px; outline: none;
-                     color: var(--accent); font: inherit; font-weight: 700; line-height: 16px; padding: 0 6px; caret-color: var(--accent); }
-    .head .rnerr { flex: none; color: var(--accent); font-size: 11px; }
-    .sec.gone .head .h { text-decoration: line-through; color: var(--dim); }
+    /* Heading (renamable / removable): the "#" in the accent colour, the name editable in place (click or F2), the
+       "(was #old)" note dimmed on the same line, and × at the right end (a 24 px hit area, red on hover). */
+    .head { align-items: center; }
+    .head .hash { color: var(--accent); }
+    .head .nm { color: var(--text); }
+    .sec.ro .head .nm { color: var(--dim); }
+    .head .nm.edit { cursor: text; border-radius: 2px; }
+    .head .nm.edit:hover { text-decoration: underline dotted var(--dim); text-underline-offset: 3px; }
+    .head .renamed { flex: none; color: var(--dim); font-size: 11px; font-weight: 400; }
+    .head .push { margin-left: auto; }
+    .head .act { flex: none; width: 24px; height: 24px; margin: -3px 0; border: none; background: transparent; color: var(--dim); font: inherit; font-size: 15px; line-height: 24px;
+                 padding: 0; text-align: center; cursor: default; border-radius: 3px; }
+    .head .act:hover, .head .act:focus-visible { color: hsl(0, 75%, 62%); outline: none; }
+    .head .act.on { color: hsl(0, 75%, 62%); }
+    .head input.rn { flex: 0 1 auto; min-width: 6ch; box-sizing: border-box; background: var(--bg-row); border: 1px solid var(--accent); border-radius: 2px; outline: none;
+                     color: var(--text); font: inherit; font-weight: 700; line-height: 16px; padding: 0 4px; caret-color: var(--accent); }
+    .head .rnerr { flex: none; color: var(--accent); font-size: 11px; font-weight: 400; }
+    .sec.gone .head .h, .sec.gone .head .hash, .sec.gone .head .nm { text-decoration: line-through; color: var(--dim); }
     .sec.gone .chips { opacity: 0.4; }
 
     .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 4px; }
@@ -46,9 +57,9 @@
 
     /* The inline input is the last "chip": a dashed outline, ghost text behind the typed text. */
     .addwrap { position: relative; display: inline-block; }
-    .addwrap input { position: relative; z-index: 1; box-sizing: border-box; background: transparent; border: 1px dashed var(--dim); border-radius: 2px;
+    .addwrap input { position: relative; z-index: 1; box-sizing: border-box; background: var(--bg-row); border: 1px solid var(--dim); border-radius: 2px;
                      outline: none; color: var(--text); font: inherit; line-height: 16px; padding: 0 6px; caret-color: var(--accent); }
-    .addwrap input:focus { border-color: var(--accent); }
+    .addwrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
     .addwrap input::placeholder { color: var(--dim); }
     .ghost { position: absolute; left: 7px; top: 1px; line-height: 16px; white-space: pre; pointer-events: none; color: var(--dim); }
     .ghost .typed { visibility: hidden; }
@@ -73,6 +84,13 @@
     #apply { flex: none; border-color: var(--accent); color: var(--accent); }
     #apply:disabled { border-color: var(--dim); color: var(--dim); opacity: 0.5; cursor: default; }
     #close { flex: none; }
+    /* The confirm bar (Apply with a whole tag marked for removal): replaces the footer's line and buttons. */
+    #footer.confirming { background: hsla(31, 100%, 67%, 0.12); border-top-color: var(--accent); }
+    #confirm { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+    #confirm[hidden] { display: none; }
+    #confirmText { flex: 1; min-width: 0; color: var(--accent); font-weight: 700; overflow-wrap: anywhere; }
+    #confirmNo { flex: none; border-color: var(--accent); color: var(--accent); }
+    #confirmYes { flex: none; border-color: hsl(0, 75%, 62%); color: hsl(0, 75%, 62%); }
   </style>
 </head>
 <body>
@@ -85,6 +103,7 @@
     <span id="hint">type to add · ←→↑↓ pick · Tab accept · Enter add · ← chips · ⌫ remove · ↑↓ move · Enter = apply · Esc</span>
     <button id="apply" disabled></button>
     <button id="close">Close</button>
+    <div id="confirm" hidden><span id="confirmText"></span><button id="confirmNo" type="button">Cancel</button><button id="confirmYes" type="button">Remove and apply</button></div>
   </div>
 
   <script>
@@ -127,7 +146,9 @@
     }
     const renames = () => S.filter(s => s.rename !== null && !s.removeAll).map(s => ({ section: s.id, to: s.rename }));
     const removals = () => S.filter(s => s.removeAll).map(s => s.id);
-    const pending = () => changes().length + renames().length + removals().length;
+    // A rename still being typed counts too (valid and different), so Apply is live while the input is open.
+    const drafts = () => S.filter(s => s.renaming && s.draftOk && s.draftOk()).length;
+    const pending = () => changes().length + renames().length + removals().length + drafts();
     function createdNames() { return S.filter(s => s.created && s.items.some(i => i.cur)).map(s => s.id); }
 
     // Esc or Close with pending changes warns first (footer); a second Esc or Close discards,
@@ -161,12 +182,40 @@
     // A click anywhere but on Close also cancels the warning (the count shown would be stale).
     document.addEventListener('mousedown', e => { if (!(e.target instanceof Element && e.target.closest('#close'))) disarm(); }, true);
 
-    function apply() {
+    // Apply with a whole tag marked for removal asks first (a bar in the footer: Cancel is the default, Esc cancels;
+    // the marks stay). The answer then carries `confirmed: true` next to `removed`.
+    const footerEl = document.getElementById('footer'), confirmBox = document.getElementById('confirm');
+    const footerBits = ['hint', 'apply', 'close'].map(id => document.getElementById(id));
+    let confirming = false, beforeConfirm = null;
+    function showConfirm() {
+      const gone = S.filter(s => s.removeAll);
+      const tracks = new Set();
+      for (const s of gone) for (const i of s.items) if (i.orig) tracks.add(i.id);
+      document.getElementById('confirmText').textContent = 'Remove ' + gone.map(s => s.heading).join(', ') + ' from ' + tracks.size + ' track' + (tracks.size === 1 ? '' : 's') + '?';
+      beforeConfirm = document.activeElement;
+      confirming = true;
+      footerEl.classList.add('confirming');
+      footerBits.forEach(b => { b.hidden = true; });
+      confirmBox.hidden = false;
+      document.getElementById('confirmNo').focus();
+    }
+    function cancelConfirm(refocus = true) {
+      if (!confirming) return;
+      confirming = false;
+      footerEl.classList.remove('confirming');
+      footerBits.forEach(b => { b.hidden = false; });
+      confirmBox.hidden = true;
+      if (refocus) (beforeConfirm instanceof HTMLElement && beforeConfirm !== document.body && document.contains(beforeConfirm) ? beforeConfirm : inputs()[0]?.input)?.focus({ preventScroll: true });
+    }
+
+    function apply(confirmed = false) {
+      for (const s of S) if (s.renaming) s.finishEdit(true);   // an open rename is taken first
       const list = changes(), ren = renames(), rem = removals();
       if (!list.length && !ren.length && !rem.length) return;
+      if (rem.length && !confirmed) { showConfirm(); return; }
       const out = { changes: list, created: createdNames() };
       if (ren.length) out.renamed = ren;
-      if (rem.length) out.removed = rem;
+      if (rem.length) { out.removed = rem; out.confirmed = true; }
       send(JSON.stringify(out));
     }
 
@@ -225,6 +274,7 @@
     const applyBtn = document.getElementById('apply');
 
     function updateFooter() {
+      if (confirming) cancelConfirm(false);   // the marks changed under the question: ask again on Apply
       const n = pending();
       if (!armed) { hintEl.textContent = curHint(); hintEl.style.color = ''; }
       applyBtn.textContent = (BOARD?.apply?.label || 'Apply') + ' (' + n + ' change' + (n === 1 ? '' : 's') + ')';
@@ -296,7 +346,7 @@
       const best = sugs.length ? s.items[sugs[s.hi]].label : '';
       const rest = ghostRest(best, s.q);
       s.ghostEl.replaceChildren(el('span', 'typed', s.q), document.createTextNode(rest));
-      s.inputEl.style.width = 'calc(' + Math.max(6, s.q.length + rest.length + 1) + 'ch + 14px)';
+      s.inputEl.style.width = 'calc(' + Math.max(14, s.q.length + rest.length + 1) + 'ch + 14px)';
       s.rest = rest;
       s.sugEls.replaceChildren();
       if (focused) sugs.forEach((ii, k) => {
@@ -334,24 +384,25 @@
       s.el = el('div', 'sec' + (s.readonly ? ' ro' : ''));
       const head = el('div', 'head');
       s.headEl = head;
-      s.nameEl = el('span', 'h', s.heading);
+      s.nameEl = el('span', 'h');
+      s.hashEl = el('span', 'hash');
+      s.nmEl = el('span', 'nm' + (s.renamable ? ' edit' : ''));
+      s.nameEl.append(s.hashEl, s.nmEl);
+      if (s.renamable) {
+        s.nmEl.title = 'Click to rename (F2)';
+        s.nmEl.addEventListener('mousedown', e => e.preventDefault());
+        s.nmEl.addEventListener('click', () => startRename(si));
+      }
       s.markEl = el('span', 'renamed');
       head.append(s.nameEl, s.markEl);
-      if (s.renamable) {
-        s.editBtn = el('button', 'act', '✎');
-        s.editBtn.type = 'button'; s.editBtn.title = 'Rename (F2)';
-        s.editBtn.addEventListener('mousedown', e => e.preventDefault());
-        s.editBtn.addEventListener('click', () => startRename(si));
-        head.append(s.editBtn);
-      }
+      if (s.meta) head.append(el('span', 'meta push', s.meta));
       if (s.removable) {
-        s.rmBtn = el('button', 'act', '×');
+        s.rmBtn = el('button', 'act' + (s.meta ? '' : ' push'), '×');
         s.rmBtn.type = 'button'; s.rmBtn.title = 'Remove the whole tag (⇧⌫)';
         s.rmBtn.addEventListener('mousedown', e => e.preventDefault());
         s.rmBtn.addEventListener('click', () => toggleRemoveAll(si));
         head.append(s.rmBtn);
       }
-      if (s.meta) head.append(el('span', 'meta', s.meta));
       s.chipsEl = el('div', 'chips');
       s.el.append(head, s.chipsEl);
       if (!s.readonly) {
@@ -359,7 +410,7 @@
         s.ghostEl = el('span', 'ghost');
         s.inputEl = el('input');
         s.inputEl.type = 'text';
-        s.inputEl.placeholder = 'add…';
+        s.inputEl.placeholder = '+ add track…';
         s.inputEl.autocomplete = 'off';
         s.inputEl.spellcheck = false;
         s.addEl.append(s.ghostEl, s.inputEl);
@@ -387,9 +438,11 @@
     }
     function refreshHead(si) {
       const s = S[si];
-      if (!s.nameEl) return;
-      s.nameEl.textContent = shownName(s);
-      s.markEl.textContent = s.rename !== null && !s.removeAll ? 'renamed (was ' + s.heading + ')' : '';
+      if (!s.nmEl) return;
+      const shown = shownName(s), hashed = shown.startsWith('#');
+      s.hashEl.textContent = hashed ? '#' : '';
+      s.nmEl.textContent = hashed ? shown.slice(1) : shown;
+      s.markEl.textContent = s.rename !== null && !s.removeAll ? '(was ' + s.heading + ')' : '';
       s.el.classList.toggle('gone', s.removeAll);
       s.rmBtn?.classList.toggle('on', s.removeAll);
     }
@@ -403,36 +456,42 @@
     const isValidTagName = name => !!name && (BOARD?.create?.pattern ? validName(name) : true);
     function startRename(si) {
       const s = S[si];
-      if (!s.renamable || s.renaming) return;
+      if (!s.renamable || s.renaming || s.removeAll) return;
       s.renaming = true;
       const input = el('input', 'rn');
       input.type = 'text'; input.autocomplete = 'off'; input.spellcheck = false;
-      input.value = shownName(s);
+      input.value = shownName(s).replace(/^#/, '');   // the # stays outside the edit
+      input.style.width = 'calc(' + Math.max(8, input.value.length + 2) + 'ch + 10px)';
       const err = el('span', 'rnerr');
-      s.nameEl.replaceWith(input);
+      s.nmEl.replaceWith(input);
       input.after(err);
       const done = (commit) => {
         if (!s.renaming) return;
         if (commit) {
           const name = input.value.trim();
-          if (name === shownName(s)) { /* unchanged */ }
+          const bare = t => t.replace(/^#/, '');
+          if (bare(name) === bare(shownName(s))) { /* unchanged */ }
           else if (!isValidTagName(name)) {
             err.textContent = 'not a valid name';
             input.classList.remove('shake'); void input.offsetWidth; input.classList.add('shake');
             return;   // stay in the edit
-          } else s.rename = name === s.heading || name === s.heading.replace(/^#/, '') ? null : name;
+          } else s.rename = bare(name) === bare(s.heading) ? null : name;
         }
-        s.renaming = false;
+        s.renaming = false; s.finishEdit = null; s.draftOk = null;
         input.removeEventListener('blur', onBlur);
-        input.replaceWith(s.nameEl);
+        input.replaceWith(s.nmEl);
         err.remove();
         refreshHead(si);
         updateFooter();
         s.inputEl?.focus({ preventScroll: true });
       };
-      const onBlur = () => done(false);   // clicking elsewhere cancels the edit
+      s.finishEdit = done;
+      const bare0 = t => t.replace(/^#/, '');
+      s.draftOk = () => { const n = input.value.trim(); return bare0(n) !== bare0(shownName(s)) && isValidTagName(n); };
+      // Clicking elsewhere takes a valid name (like renaming in Finder) and drops an invalid or unchanged one.
+      const onBlur = () => done(s.draftOk());
       input.addEventListener('blur', onBlur);
-      input.addEventListener('input', () => { err.textContent = ''; });
+      input.addEventListener('input', () => { err.textContent = ''; updateFooter(); input.style.width = 'calc(' + Math.max(8, input.value.length + 2) + 'ch + 10px)'; });
       input.addEventListener('keydown', e => {
         e.stopPropagation();   // the board's own keys stay out of the edit
         if (e.key === 'Enter') { e.preventDefault(); if (!e.repeat) done(true); }
@@ -472,7 +531,7 @@
       createInput.style.width = 'calc(' + Math.max(12, BOARD.create.label.length + 1) + 'ch + 14px)';
       createErr = el('span', 'nomatch');
       createErr.hidden = true;
-      createBox.append(el('span', 'plus', '⊕'), wrap, createErr);
+      createBox.append(el('span', 'plus', '+ #'), wrap, createErr);
       createInput.addEventListener('focus', revealCreate);
       createInput.addEventListener('input', () => {
         createErr.hidden = true;
@@ -605,7 +664,10 @@
       S.forEach((_, si) => buildSection(si));
       buildCreate();
       updateFooter();
-      document.getElementById('apply').addEventListener('click', apply);
+      document.getElementById('apply').addEventListener('click', () => apply());
+      document.getElementById('confirmNo').addEventListener('click', () => cancelConfirm());
+      document.getElementById('confirmYes').addEventListener('click', () => apply(true));
+      confirmBox.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelConfirm(); } });
       document.getElementById('close').addEventListener('click', requestClose);
       scroll.tabIndex = -1;
       const first = inputs()[0];
