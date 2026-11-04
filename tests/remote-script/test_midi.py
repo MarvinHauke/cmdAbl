@@ -153,11 +153,24 @@ class Blocked(unittest.TestCase):
         svc.build_map(FakeMidiMap(deny=[("cc", 0, 51), ("note", 3, 60), ("pb", 1, None)]), "H", "M")
         self.assertEqual(sorted(svc.blocked), ["CC51/ch1", "N60/ch4", "PB/ch2"])
 
-    def test_in_monitor_mode_only_the_listened_controls_count(self):
+    def test_in_monitor_mode_every_refused_control_counts_listened_ones_first(self):
         svc = self.listened()
         svc.op_listen({"controls": [{"type": "cc", "number": 51, "channel": 1}], "monitor": True}, None)
-        svc.build_map(FakeMidiMap(deny=[("cc", 0, 51), ("cc", 0, 52)]), "H", "M")
+        svc.build_map(FakeMidiMap(deny=[("cc", 0, 3), ("cc", 0, 51), ("cc", 0, 52)]), "H", "M")
+        self.assertEqual(svc.blocked, ["CC51/ch1", "CC3/ch1", "CC52/ch1"])
+
+    def test_outside_a_window_unlistened_refused_controls_are_not_reported(self):
+        svc = self.listened()
+        svc.build_map(FakeMidiMap(deny=[("cc", 0, 3), ("cc", 0, 51)]), "H", "M")
         self.assertEqual(svc.blocked, ["CC51/ch1"])
+
+    def test_the_cap_never_hides_a_listened_control(self):
+        svc = self.listened()
+        svc.op_listen({"controls": [{"type": "cc", "number": 51, "channel": 1}], "monitor": True}, None)
+        deny = [("cc", 0, n) for n in range(0, 51)] + [("cc", 1, n) for n in range(128)] + [("cc", 0, 51)]
+        svc.build_map(FakeMidiMap(deny=deny), "H", "M")
+        self.assertEqual(len(svc.blocked), 64)
+        self.assertEqual(svc.blocked[0], "CC51/ch1")
 
     def test_a_forward_call_that_does_not_say_means_unknown_and_nothing_listened_means_none_blocked(self):
         svc = self.listened()

@@ -682,7 +682,7 @@ addition if the chain's switch turns out not to match the visible button.
   `status: false` switches it off.
 - **Blocked controls** (script 0.1.12): `Live.MidiMap.forward_midi_*` should answer with a bool; `False` means Live keeps the
   control (the user mapped it with Cmd+M, or another script has it). `build_map` collects the refused *listened* controls
-  (`"CC51/ch1"`, `"N60/ch2"`, `"PB/ch1"`, the mapping syntax; at most 64); a call that raises counts as refused; if no call
+  (`"CC51/ch1"`, `"N60/ch2"`, `"PB/ch1"`, the mapping syntax; at most 64; while a monitor window is open every refused control counts, listened ones first, so the monitor can show what Live keeps for itself); a call that raises counts as refused; if no call
   answers with a bool the set is `null` (unknown). The `midi_listen` reply carries `blocked` (the result of the previous
   build: Live rebuilds the map later), and every build whose set differs from the last one pushed sends
   `{"v":1,"event":"midi_blocked","blocked":[…]|null}` and logs `blocked by Live: …`.

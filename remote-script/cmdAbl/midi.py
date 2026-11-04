@@ -211,10 +211,10 @@ class MidiService(object):
         """Forward the listened controls (all of them while monitoring). `midi_map` is `Live.MidiMap`. Returns how many.
 
         The forward calls should answer with a bool (False = Live refused: the control is mapped elsewhere). A listened
-        control that was refused goes into `self.blocked`; when no call answers with a bool, `blocked` is None (unknown).
+        control that was refused goes into `self.blocked` (while monitoring, any refused control does); when no call answers with a bool, `blocked` is None (unknown).
         """
         count = 0
-        refused = []
+        refused, others = [], []
         answered = False
         self.forward_errors = 0
         for kind, ch, n in expand("all" if self.monitoring() else self.spec):
@@ -231,9 +231,12 @@ class MidiService(object):
             count += 1
             if isinstance(ok, bool):
                 answered = True
-                if not ok and (kind, ch, n) in self._wanted and len(refused) < MAX_BLOCKED:
-                    refused.append(control_label(kind, ch, n))
-        self.blocked = refused if (answered or count == 0) else None
+                if not ok:
+                    (refused if (kind, ch, n) in self._wanted else others).append(control_label(kind, ch, n))
+        # Listened controls come first, so a cap never hides one; while monitoring, every refused control counts
+        # (the monitor shows what Live keeps for itself), otherwise only the listened ones.
+        found = refused + (others if self.monitoring() else [])
+        self.blocked = found[:MAX_BLOCKED] if (answered or count == 0) else None
         return count
 
     def take_blocked_change(self):
