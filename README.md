@@ -33,7 +33,7 @@ SDK, with a small Remote Script for what the SDK cannot do.
 
 Tag tracks by what they are: `tag /Lead fx synth`. After that, `mute #fx` reaches every track tagged `fx` at once,
 `mute !#drums` every regular track without the tag, and `mute drums` works when no track name matches it. `tag -l`
-opens the tag board, where you add and remove the tags of every track. Tags are saved with the Set, and they need
+opens the tag board, where you add, rename and remove tags. Tags are saved with the Set, and they need
 the [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/).
 
 ![Screen recording of the tag board: tag -l opens it; Synth is typed and added to drums; the arrow keys move to the Lead chip under fx and mark it for removal; Enter applies the 2 changes](docs/assets/images/tags.gif)
@@ -66,8 +66,12 @@ These commands ship with cmdAbl. Each feature is a module that declares its comm
 - `arm`: toggle record arm on tracks.
 - `vol`: change the fader level of tracks in dB, by a step or to a level.
 - `tag`: tag tracks; `tag -l` opens the tag board, `tag -e` switches one tag on many tracks, `tag -r` renames a tag.
+- `map`, `midi`: bind a MIDI control to a command line, for example `map CC37 | mute #drums --set 0`; watch what your
+  controller sends. Needs the Remote Script.
 - `help`, `man`, `lom`: list the commands; show a command's full page in Live, or open the Live manual or the cmdAbl
   documentation; show the Live Object Model path of a track, device or chain.
+- `;`: run several commands in one line, such as `mute #drums; vol -6 #bass`. The parts run in order, and each is one
+  undo step.
 - `note`: open the Markdown note of the Live Set.
 - `history`: manage the list of recent commands.
 - `pakabl`: install and manage Ableton Live extensions.
