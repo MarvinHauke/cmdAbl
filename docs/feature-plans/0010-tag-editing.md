@@ -183,6 +183,8 @@ remove a whole tag; that needs `tag -r` or `tag --set 0`.
 - **Board contract (additive):**
   - section `renamable?: boolean`, `removable?: boolean`;
   - answer `renamed?: [{ section, to }]`, `removed?: [section]`.
+  - answer `confirmed?: true` (kept only with a non-empty `removed`; reviewer, 2026-11-04). A module
+    applies `removed` only when it is confirmed; otherwise it asks once itself (an old or other page).
 
   Old callers are unaffected. A rename plus a removal of the same section: the removal wins.
 - **Work:**
