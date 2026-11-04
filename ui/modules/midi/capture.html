@@ -72,9 +72,11 @@
     empty.textContent = learn ? 'Move a control…' : 'Waiting for MIDI…';
 
     let finished = false;
+    let inflight = null;   // the one request in flight (aborted when the page closes)
     function send(value) {
       if (finished) return;
       finished = true;
+      inflight?.abort();
       const m = { method: 'close_and_send', params: [value] };
       if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
       else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
@@ -161,12 +163,13 @@
       let delay = 5;
       const before = since, started = Date.now();
       try {
-        const ctl = new AbortController();
+        const ctl = inflight = new AbortController();
         const timer = setTimeout(() => ctl.abort(), 3000);   // the source holds a request for 1 s at most
         const url = LIVE.base + '/messages' + (since === null ? '' : '?since=' + encodeURIComponent(since));
         const res = await fetch(url, { headers: { Authorization: 'Bearer ' + LIVE.token }, signal: ctl.signal, cache: 'no-store' });
         clearTimeout(timer);
         const answer = await res.json();
+        if (answer?.error === 'closed') return;   // the dialog is closing: stop asking
         if (!res.ok || answer?.error) throw new Error('no answer');
         if (failures >= MAX_FAILS) unavailable(false);
         failures = 0;
