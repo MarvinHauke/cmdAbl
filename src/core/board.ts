@@ -53,7 +53,15 @@ export function capBoard(request: BoardRequest): { request: BoardRequest; cut: b
     }
     const meta = clip(section.meta).trim();
     if (heading !== section.heading) cut = true;
-    sections.push({ id, heading, ...(meta ? { meta } : {}), items, ...(section.readonly === true ? { readonly: true } : {}) });
+    sections.push({
+      id,
+      heading,
+      ...(meta ? { meta } : {}),
+      items,
+      ...(section.readonly === true ? { readonly: true } : {}),
+      ...(section.renamable === true ? { renamable: true } : {}),
+      ...(section.removable === true ? { removable: true } : {}),
+    });
   }
   if ((request.sections?.length ?? 0) > MAX_SECTIONS) cut = true;
   return {
@@ -76,6 +84,10 @@ export function capBoard(request: BoardRequest): { request: BoardRequest; cut: b
  * really change the item (a created section starts with nothing on); of two changes to the same
  * section and item the last wins. `created` entries must be non-empty, unique, not existing
  * section ids and match `create.pattern` completely (no `create` in the request: none are kept).
+ * `renamed` and `removed` (plan 0010): only for sections of the request flagged `renamable` / `removable`; a new
+ * name is trimmed, non-empty, at most MAX_TEXT characters, differs from the section id and matches `create.pattern`
+ * when the request has one; the last rename of a section wins; `removed` wins over `renamed` for the same section.
+ * Both are left out of the answer when empty, so old callers see exactly what they saw before.
  */
 export function parseBoardAnswer(raw: string | null | undefined, request: BoardRequest, log: (line: string) => void = (line) => logger("board").warn(line)): BoardAnswer | null {
   if (!raw) return null;
@@ -90,9 +102,19 @@ export function parseBoardAnswer(raw: string | null | undefined, request: BoardR
     log("board answer is not an object");
     return null;
   }
-  const { changes: rawChanges, created: rawCreated } = value as { changes?: unknown; created?: unknown };
-  if ((rawChanges !== undefined && !Array.isArray(rawChanges)) || (rawCreated !== undefined && !Array.isArray(rawCreated))) {
-    log("board answer has changes or created that are not lists");
+  const { changes: rawChanges, created: rawCreated, renamed: rawRenamed, removed: rawRemoved } = value as {
+    changes?: unknown;
+    created?: unknown;
+    renamed?: unknown;
+    removed?: unknown;
+  };
+  if (
+    (rawChanges !== undefined && !Array.isArray(rawChanges)) ||
+    (rawCreated !== undefined && !Array.isArray(rawCreated)) ||
+    (rawRenamed !== undefined && !Array.isArray(rawRenamed)) ||
+    (rawRemoved !== undefined && !Array.isArray(rawRemoved))
+  ) {
+    log("board answer has changes, created, renamed or removed that are not lists");
     return null;
   }
 
@@ -136,7 +158,31 @@ export function parseBoardAnswer(raw: string | null | undefined, request: BoardR
     const current = bySection.get(c.section)?.items.find((i) => i.id === c.item)?.on ?? false; // a created section starts off
     return c.on !== current;
   });
-  return { changes, created };
+
+  // Whole-section removals: only sections of the request flagged `removable`, once each.
+  const removed: string[] = [];
+  for (const entry of (rawRemoved ?? []) as unknown[]) {
+    if (typeof entry !== "string" || removed.includes(entry)) continue;
+    if (bySection.get(entry)?.removable === true) removed.push(entry);
+  }
+  // Renames: a `renamable` section of the request, a new name that fits `create.pattern` (no create: any non-empty text),
+  // not the section's own id; the last rename of a section wins; a removed section is not renamed.
+  const renames = new Map<string, string>();
+  if (!request.create?.pattern || pattern) {
+    for (const entry of (rawRenamed ?? []) as unknown[]) {
+      if (!entry || typeof entry !== "object") continue;
+      const { section, to } = entry as { section?: unknown; to?: unknown };
+      if (typeof section !== "string" || typeof to !== "string") continue;
+      const name = to.trim();
+      if (!name || name.length > MAX_TEXT || name === section) continue;
+      if (bySection.get(section)?.renamable !== true || removed.includes(section)) continue;
+      if (pattern && !pattern.test(name)) continue;
+      renames.delete(section); // re-insert: order follows the last mention
+      renames.set(section, name);
+    }
+  }
+  const renamed = [...renames].map(([section, to]) => ({ section, to }));
+  return { changes, created, ...(renamed.length ? { renamed } : {}), ...(removed.length ? { removed } : {}) };
 }
 
 /**

@@ -201,7 +201,10 @@ export interface ModuleApi {
    * (unknown ids, readonly sections, no-ops and names not matching `create.pattern` are already
    * dropped), or null when closed. `cut` says the request was capped (40 sections × 200 items ×
    * 300 characters) or had entries dropped, so the module can say "list cut". Nothing is applied
-   * by the page: write the changes, then show a new board if wanted. Section and item ids must be at most 300 characters (longer ones are dropped, `cut` is true); `create.pattern` is used as given.
+   * by the page: write the changes, then show a new board if wanted. A section flagged `renamable` / `removable` gets a rename / remove
+   * action on its heading; the answer then also carries `renamed: [{ section, to }]` (a new name that matches `create.pattern`; an
+   * existing name means merge: the module decides) and `removed: [section]` (the whole section; wins over a rename of it). Both are
+   * absent when empty. Removing a whole section is destructive: confirm with `api.confirm` after the board closes, before writing. Section and item ids must be at most 300 characters (longer ones are dropped, `cut` is true); `create.pattern` is used as given.
    */
   ui: {
     board(request: BoardRequest): Promise<{ answer: BoardAnswer | null; cut: boolean }>;

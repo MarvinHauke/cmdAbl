@@ -154,6 +154,17 @@ export interface BoardRequest {
     items: Array<{ id: string; label: string; on: boolean }>;
     /** Only the `on` items, as chips without a remove button and without a checkbox list. */
     readonly?: boolean;
+    /**
+     * The heading gets a rename action (✎): the page answers `renamed: [{ section, to }]` with `to` checked against
+     * `create.pattern` (no pattern: any non-empty text). An existing name is allowed (the module merges). Created sections are not renamable.
+     */
+    renamable?: boolean;
+    /**
+     * The heading gets a remove action (×) that marks the WHOLE section for removal (struck through, undoable until Apply):
+     * the page answers `removed: [section]`. Removing one item (× on a chip) is an ordinary change. A section both
+     * renamed and removed counts as removed.
+     */
+    removable?: boolean;
   }>;
   /** Offer a "new section" entry (a text field); `pattern` is a regular expression a name must fully match. */
   create?: { label: string; pattern?: string };
@@ -169,6 +180,20 @@ export interface BoardAnswer {
   changes: Array<{ section: string; item: string; on: boolean }>;
   /** Names of new sections, each matching `create.pattern`, in the order the user added them. */
   created: string[];
+  /**
+   * Sections of the request flagged `renamable` that the user renamed (`to` is trimmed, matches `create.pattern`, differs
+   * from the section id; the last rename of a section wins). Absent when there are none (old callers never see it).
+   */
+  renamed?: Array<{ section: string; to: string }>;
+  /**
+   * The parser checks each entry alone, not the combinations: a module may get A→X while X is removed, A→B together
+   * with B→A (a swap), or A→X together with B→X (a merge). Order the writes (removals first, renames through a temporary
+   * name for a swap) or refuse such a case with a clear message; write them as one undo step (`api.tracks.transaction`).
+   *
+   * `removed`: sections of the request flagged `removable` that the user marked for removal; wins over a rename of the same
+   * section. Absent when there are none.
+   */
+  removed?: string[];
 }
 
 export interface Ui {
