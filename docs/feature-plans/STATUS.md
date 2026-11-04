@@ -23,6 +23,9 @@ All releases were tested in Live, including the installed `.ablx`.
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
+- Tag board rename/remove (0010): built and Live-tested 2026-11-04 on `feat/tag-board-edit` (rename
+  in place, × with the confirm bar in the board, pinned new-tag row, untagged folded, add field names its
+  tag).
 - In work on `feat/map` (not pushed): `;` chains (0017, Live-tested); the simple MIDI mapping (0018:
   `map`, `map learn`, `midi monitor`, operators, Remote Script 0.1.14), live pages (localhost,
   load and route tokens, long polling), the Cmd+M conflict warning. Live-tested with the UC4
@@ -61,8 +64,12 @@ Older checks that were never reported; most can now run through MCP.
 
 ## Backlog (not ordered)
 
-- Tag board (user, 2026-11-03): rename a tag in `tag -l`; remove a whole tag (× on the section) with a
-  warning first; removing a track from a tag (× on a chip) stays without a warning, as today.
+- Group-aware toggles (user, 2026-11-04): today `mute #synth` then `mute #drums` toggles each track on
+  its own, so a track in both tags (e.g. Vermona) is unmuted again by the second command. That's logical,
+  but not what a user expects. Idea: when a toggle hits several targets, toggle the group as one, like
+  Live's multi-select buttons. If any target is off, turn all on; if all are on, turn all off. `--set`
+  stays as it is. Check against `--pick`, chains and pads, and whether it belongs to the link layer
+  (0015) as a rule for on/off states.
 
 - Device on/off (user, 2026-10-22): its own module `bypass` with the short alias `bp` (command aliases
   exist in the tree). It switches a device's "Device On" (SDK `parameters[0]`, no Remote Script). Rules as

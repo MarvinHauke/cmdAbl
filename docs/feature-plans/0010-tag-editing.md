@@ -160,7 +160,7 @@ with the new-tag row (bare `#` = the tag list, as elsewhere). Usage: `tag --edit
 `OptionDef.valueDefault`). `tag -e #` is single-select: Enter picks the tag (`73f0079`, `702fcca`). It ships with the
 board as the keyboard path (decision 5).
 
-## Rename and remove whole tags in the board (user, 2026-11-04)
+## Rename and remove whole tags in the board (user, 2026-11-04; Live-tested 2026-11-04)
 
 Today the board removes a track from a tag (× on a chip) and creates tags, but it can't rename a tag or
 remove a whole tag; that needs `tag -r` or `tag --set 0`.
