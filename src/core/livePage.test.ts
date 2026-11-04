@@ -210,3 +210,146 @@ test("the served page carries a Content-Security-Policy that keeps the token and
     assert.equal(headers["referrer-policy"], "no-referrer");
   });
 });
+
+// ── waiting routes (long polling) ───────────────────────────────────────────────────────────────
+
+/** A source the test controls: `push` resolves the held wait. */
+function source() {
+  const waiters: Array<(value: unknown) => void> = [];
+  const cancelled: boolean[] = [];
+  const asked: Array<number | null> = [];
+  return {
+    asked,
+    cancelled,
+    push: (value: unknown) => waiters.splice(0).forEach((w) => w(value)),
+    held: () => waiters.length,
+    route: {
+      wait: (since: number | null, cancel: { onCancel(cb: () => void): void }) => {
+        asked.push(since);
+        return new Promise<unknown>((resolve) => {
+          waiters.push(resolve);
+          cancel.onCancel(() => {
+            cancelled.push(true);
+            waiters.length = 0;
+          });
+        });
+      },
+    },
+  };
+}
+const tick = (ms = 10) => new Promise((r) => setTimeout(r, ms));
+
+test("a waiting route answers as soon as data arrives, with the since it was asked", async () => {
+  await withServer({}, async ({ pages, get }) => {
+    const src = source();
+    const s = pages.open("monitor", HTML, { feed: src.route, plain: () => 1 })!;
+    const auth = { Authorization: `Bearer ${await routeToken(get, s.url)}` };
+    assert.equal((await get("/live/monitor/feed?since=0")).status, 401); // the token is needed here too
+    const started = Date.now();
+    const answer = get("/live/monitor/feed?since=41", auth);
+    await tick(30);
+    assert.equal(src.held(), 1); // held, not answered
+    src.push({ last: 42, rows: [1] });
+    const r = await answer;
+    assert.deepEqual(JSON.parse(r.text), { last: 42, rows: [1] });
+    assert.ok(Date.now() - started < 500, "answered as soon as data arrived, not at the timeout");
+    assert.deepEqual(src.asked, [41]);
+    assert.equal(src.cancelled.length, 1); // the wait's cancel callbacks ran when it ended normally
+    assert.equal(JSON.parse((await get("/live/monitor/plain", auth)).text), 1); // plain routes still answer at once
+    // no since (the page's first request) is null, a real 0 is 0; a bad since is null
+    const none = get("/live/monitor/feed", auth);
+    await tick(); src.push("a"); await none;
+    const bad = get("/live/monitor/feed?since=abc", auth);
+    await tick(); src.push("b"); await bad;
+    const zero = get("/live/monitor/feed?since=0", auth);
+    await tick(); src.push("c"); await zero;
+    assert.deepEqual(src.asked, [41, null, null, 0]);
+  });
+});
+
+test("nothing new within the hold: a { timeout: true } answer, and the wait is cancelled", async () => {
+  await withServer({}, async () => {});
+  // a short hold so the test is quick
+  let pages!: LivePages;
+  const server = http.createServer((req, res) => void (pages.handle(req, res) || res.writeHead(404).end()));
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  const port = (server.address() as AddressInfo).port;
+  pages = createLivePages({ port, available: () => true, waitMs: 60 });
+  const get = (path: string, headers: Record<string, string>) =>
+    new Promise<{ status: number; text: string }>((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path, headers: { Host: `localhost:${port}`, ...headers } }, (res) => {
+        let text = "";
+        res.on("data", (c) => (text += c));
+        res.on("end", () => resolve({ status: res.statusCode ?? 0, text }));
+      }).on("error", reject);
+    });
+  try {
+    const src = source();
+    const s = pages.open("monitor", HTML, { feed: src.route })!;
+    const auth = { Authorization: `Bearer ${await routeToken((p, h) => get(p, h ?? {}), s.url)}` };
+    const started = Date.now();
+    const r = await get("/live/monitor/feed?since=1", auth);
+    assert.deepEqual(JSON.parse(r.text), { timeout: true });
+    assert.ok(Date.now() - started >= 55);
+    assert.deepEqual(src.cancelled, [true]);
+    assert.equal(src.held(), 0);
+  } finally {
+    await new Promise((r) => server.close(r));
+  }
+});
+
+test("closing the dialog releases a held request; a second waiting request replaces the first", async () => {
+  await withServer({}, async ({ pages, get }) => {
+    const src = source();
+    const s = pages.open("monitor", HTML, { feed: src.route })!;
+    const auth = { Authorization: `Bearer ${await routeToken(get, s.url)}` };
+    const first = get("/live/monitor/feed?since=1", auth);
+    await tick(20);
+    const second = get("/live/monitor/feed?since=2", auth);
+    assert.deepEqual(JSON.parse((await first).text), { replaced: true }); // answered at once, not left hanging
+    await tick(20);
+    assert.equal(src.cancelled.length, 1); // the first wait was cancelled
+    s.close(); // the dialog ends while the second is held
+    const closed = await second;
+    assert.deepEqual(JSON.parse(closed.text), { error: "closed" });
+    assert.equal(src.cancelled.length, 2);
+    assert.equal(src.held(), 0);
+  });
+});
+
+test("a client that goes away cancels its wait; a throwing or rejecting wait answers { error }", async () => {
+  await withServer({}, async ({ pages, port, get }) => {
+    const src = source();
+    const s = pages.open("monitor", HTML, {
+      feed: src.route,
+      throws: {
+        wait: () => {
+          throw new Error("internal secret");
+        },
+      },
+      rejects: { wait: async () => Promise.reject(new Error("internal secret")) },
+    })!;
+    const auth = { Authorization: `Bearer ${await routeToken(get, s.url)}` };
+    const req = http.get({ host: "127.0.0.1", port, path: "/live/monitor/feed?since=1", headers: { Host: `localhost:${port}`, ...auth } });
+    req.on("error", () => {});
+    await tick(30);
+    assert.equal(src.held(), 1);
+    req.destroy(); // the page navigated away / the socket dropped
+    await tick(30);
+    assert.deepEqual(src.cancelled, [true]);
+    assert.equal(src.held(), 0);
+    for (const route of ["throws", "rejects"]) {
+      const r = await get(`/live/monitor/${route}`, auth);
+      assert.deepEqual(JSON.parse(r.text), { error: "no answer" }, route); // no internal text
+    }
+  });
+});
+
+test("an object route without a wait function is not a route", async () => {
+  await withServer({}, async ({ pages, get }) => {
+    const s = pages.open("monitor", HTML, { odd: {} as never, nulled: null as never })!;
+    const auth = { Authorization: `Bearer ${await routeToken(get, s.url)}` };
+    assert.equal((await get("/live/monitor/odd", auth)).status, 404);
+    assert.equal((await get("/live/monitor/nulled", auth)).status, 404);
+  });
+});

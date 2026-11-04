@@ -212,6 +212,11 @@ export interface ModuleApi {
      * `const LIVE = /*LIVE_PLACEHOLDER*\/null;` and gets `{ base, token }` there; it polls (about every 100 ms) and never
      * writes. A route function must be read-only and quick (about 100 ms, else the page gets `{ error }`), and returns
      * plain JSON data (at most 256 KB); a throw gives `{ error }`. The routes and the token end with the dialog.
+     * A route may also WAIT (long polling): `{ wait: (since, cancel) => Promise<data> }`. The server holds the request
+     * (`GET <base>/<route>?since=<n>`, the page's last seen number; `since` is null when the page sent none, its first request: answer at once) until `wait` resolves with data
+     * newer than `since`, or 1000 ms pass (then `{ timeout: true }`); a newer request replaces a held one
+     * (`{ replaced: true }`), and the dialog closing answers `{ error: "closed" }`. `cancel.onCancel(cb)` runs once when the
+     * wait ends for any reason (answered, timeout, replaced, client gone, closed): drop your listeners there.
      * Without the server (port taken) the page opens as a data page with `LIVE = null`: it must work without polling.
      * Resolves with the string the page returns on close, or null if dismissed, like `dialog`.
      */

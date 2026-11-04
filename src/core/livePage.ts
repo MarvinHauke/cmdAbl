@@ -20,8 +20,27 @@ import { withBudget } from "./completeSnapshot.js";
 // Both tokens are 128 bits, minted per dialog, revoked when the dialog closes, and never logged. Nothing here writes.
 // This is registered in release builds too (unlike the dev routes).
 
+/**
+ * Passed to a waiting route: the wait is over (the request was answered, replaced, aborted or the dialog closed).
+ * Drop what you listen to in `onCancel`; it is called at most once, also when the wait ends normally.
+ */
+export interface LiveCancel {
+  readonly cancelled: boolean;
+  onCancel(callback: () => void): void;
+}
+
+/**
+ * One route: a plain read function (answered at once, under the 100 ms budget), or a WAITING route (long polling):
+ * the server holds the request until `wait` resolves, or `WAIT_MS` (1000 ms) pass, whichever comes first.
+ * `since` is what the page last saw (`?since=<number>` on the request; `null` when the page sent none, i.e. its first
+ * request: answer with what you have at once). A real number, 0 included, means "hold until something newer":
+ * resolve as soon as the source has something NEWER than that, with the data. On the timeout the page gets `{ "timeout": true }`; if its next request
+ * replaced this one, `{ "replaced": true }`; if the dialog closed, `{ "error": "closed" }`.
+ */
+export type LiveRoute = (() => unknown | Promise<unknown>) | { wait: (since: number | null, cancel: LiveCancel) => unknown | Promise<unknown> };
+
 /** The read-only data sources of one live page: `{ monitor: () => rows }` is served at `/live/<page>/monitor`. */
-export type LiveRoutes = Record<string, () => unknown | Promise<unknown>>;
+export type LiveRoutes = Record<string, LiveRoute>;
 
 /** One open live page: the URL the dialog loads, and `close()` which revokes the token and the routes. */
 export interface LiveSession {
@@ -48,11 +67,15 @@ export interface LivePagesDeps {
   available: () => boolean;
   /** Longest wait for one route (default 100 ms). */
   budgetMs?: number;
+  /** Longest hold of a waiting route (default 1000 ms). */
+  waitMs?: number;
   /** A fresh token (default 16 random bytes as 32 hex characters); tests pass their own. */
   newToken?: () => string;
 }
 
 export const LIVE_BUDGET_MS = 100;
+/** How long a waiting route holds a request at most. */
+export const WAIT_MS = 1000;
 export const MAX_LIVE_ANSWER = 256 * 1024;
 const PAGE_NAME = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const TOKEN = /(?:^|&)t=([0-9a-f]{32})(?:&|$)/;
@@ -67,6 +90,7 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
   const log = logger("live");
   const origin = `http://localhost:${deps.port}`;
   const budgetMs = deps.budgetMs ?? LIVE_BUDGET_MS;
+  const waitMs = deps.waitMs ?? WAIT_MS;
   const newToken = deps.newToken ?? (() => crypto.randomBytes(16).toString("hex"));
   interface Session {
     name: string;
@@ -77,6 +101,8 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
     html: string;
     routes: LiveRoutes;
     loaded: boolean;
+    /** The one waiting request of this dialog; a second replaces it. */
+    waiter?: { end(how: unknown): void };
   }
   const sessions = new Map<string, Session>();
 
@@ -114,8 +140,21 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
     const bearer = typeof header === "string" ? /^Bearer ([0-9a-f]{32})$/.exec(header)?.[1] : undefined;
     if (bearer === undefined || !sameToken(bearer, session.routeToken)) return send(res, 401, "unauthorized");
     const route = parts[1] ?? "";
-    if (!Object.prototype.hasOwnProperty.call(session.routes, route) || typeof session.routes[route] !== "function") return send(res, 404, "not found");
-    const answer = await withBudget<unknown>(() => session.routes[route]!(), budgetMs, { error: "no answer" }, (why) => log.debug(`route ${session.name}/${route}: ${why}`));
+    if (!Object.prototype.hasOwnProperty.call(session.routes, route)) return send(res, 404, "not found");
+    const entry = session.routes[route];
+    if (typeof entry === "object" && entry !== null && typeof entry.wait === "function") {
+      return hold(req, res, session, route, entry.wait, (() => {
+        const given = /(?:^|&)since=(\d{1,15})(?:&|$)/.exec(query)?.[1];
+        return given === undefined ? null : Number(given); // no (or a bad) since = the page's first request: null
+      })());
+    }
+    if (typeof entry !== "function") return send(res, 404, "not found");
+    const answer = await withBudget<unknown>(() => entry(), budgetMs, { error: "no answer" }, (why) => log.debug(`route ${session.name}/${route}: ${why}`));
+    sendData(res, answer);
+  }
+
+  /** The answer as JSON: `{ error }` for what cannot be serialised or is too large. */
+  function sendData(res: http.ServerResponse, answer: unknown): void {
     let text: string;
     try {
       text = JSON.stringify(answer === undefined ? null : answer);
@@ -124,6 +163,66 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
     }
     if (text.length > MAX_LIVE_ANSWER) text = JSON.stringify({ error: "answer too large" });
     send(res, 200, text, "application/json");
+  }
+
+  /** A waiting route: hold the request until the source answers, the time is up, a newer request replaces it, the client leaves or the dialog closes. */
+  function hold(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    session: Session,
+    route: string,
+    wait: (since: number | null, cancel: LiveCancel) => unknown | Promise<unknown>,
+    since: number | null,
+  ): Promise<void> {
+    session.waiter?.end({ replaced: true }); // at most one waiting request per dialog
+    return new Promise<void>((resolve) => {
+      let done = false;
+      const callbacks: Array<() => void> = [];
+      const cancel: LiveCancel = {
+        get cancelled() {
+          return done;
+        },
+        onCancel(callback) {
+          if (done) queueMicrotask(callback);
+          else callbacks.push(callback);
+        },
+      };
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const end = (how: unknown): void => {
+        if (done) return;
+        done = true;
+        if (timer) clearTimeout(timer);
+        if (session.waiter === waiter) session.waiter = undefined;
+        for (const callback of callbacks.splice(0)) {
+          try {
+            callback();
+          } catch {
+            // a broken cancel callback must not keep the socket
+          }
+        }
+        if (!res.destroyed && !res.writableEnded) sendData(res, how);
+        resolve();
+      };
+      const waiter = { end };
+      session.waiter = waiter;
+      timer = setTimeout(() => end({ timeout: true }), waitMs);
+      (timer as { unref?: () => void }).unref?.();
+      res.on("close", () => end(undefined)); // the client went away (res 'close' fires on a disconnect in every Node version): free everything, answer nobody
+      let pending: unknown;
+      try {
+        pending = wait(since, cancel);
+      } catch (e: unknown) {
+        log.debug(`route ${session.name}/${route} wait: ${e instanceof Error ? e.message : String(e)}`);
+        return end({ error: "no answer" });
+      }
+      Promise.resolve(pending).then(
+        (value) => end(value),
+        (e: unknown) => {
+          log.debug(`route ${session.name}/${route} wait: ${e instanceof Error ? e.message : String(e)}`);
+          end({ error: "no answer" });
+        },
+      );
+    });
   }
 
   return {
@@ -135,6 +234,7 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
       return {
         url: `${origin}/live/${name}?t=${session.loadToken}`,
         close: () => {
+          session.waiter?.end({ error: "closed" }); // release a held request
           if (sessions.get(name) === session) {
             sessions.delete(name);
             log.debug(`live page "${name}" closed`);
