@@ -61,6 +61,8 @@ gets a short list of the core features to try by hand, plus what only they can c
   says whose turn it is. Report what passed with the log lines; hand the rest (how dialogs look,
   Cmd+Z, hand moves, anything that asks) to the user. Never run commands that delete or rename
   outside the test list.
+- **A message to an agent that isn't running** (stopped, or the send fails): send it to
+  `cmdabl-architect` instead, naming the intended agent. The architect starts that agent or handles it.
 - **Only the architect pushes or opens pull requests, and only when the user asks.**
 - `scripts/agents.sh` opens core, modules, bridge and reviewer in one tmux window `cmdabl-agents`
   and starts the architect in the current pane, each as a **fresh** session (model from its agent
