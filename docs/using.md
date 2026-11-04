@@ -1,7 +1,7 @@
 # Using cmdAbl
 
 This page is for daily use, after [Getting started](getting-started.md). It covers the palette, how to name the
-objects of your Set, the pick list, tags, the log and the history. The exact usage of every command is in the
+objects of your Set, the pick list, tags, several commands in one line, MIDI mapping, the log and the history. The exact usage of every command is in the
 [command reference](reference/commands.md). In the palette, `<command> --help` shows a short usage line and
 `man <command>` shows the full page.
 
@@ -32,6 +32,8 @@ After a command name, the list below the prompt shows what fits at the cursor:
 
 - targets, where the command takes one: your recent lines first, then tracks, chains, `#` tags (with the number of
   tracks each one has) and values;
+- a bare word that runs as a tag: when you type `mute drums` and `drums` is a tag but no object's name, the first
+  row is `#drums` with the note "drums runs as #drums (2 tracks)". It shows what the word will do;
 - options, after you type `-`, and the values an option takes;
 - subcommands, for a command that has them, such as `pakabl`;
 - extension ids for `pakabl install`, tag names for `tag -r` and `tag -e`, and commands for `man`.
@@ -291,62 +293,95 @@ tracks.
 
 ### The tag board
 
-`tag -l` (or `tag --list`) opens the tag board. It shows one section per tag.
+`tag -l` (or `tag --list`) opens the tag board. It shows one section per tag. The board opens with the cursor in the
+**New tag** row.
 
 ![Screen recording of the tag board: tag -l opens it; Synth is typed and added to drums; the arrow keys move to the Lead chip under fx and mark it for removal; Enter applies the 2 changes](assets/images/tags.gif)
 
 *`tag -l`: add tracks to tags, mark a chip for removal, apply. The log lists what changed.*
 
-Each section has:
+Each tag's heading line holds a fold arrow, the tag's name, an **add…** input and the number of tracks. Below it,
+the tag's tracks sit as chips.
 
-- the tag's tracks as chips. Click a chip's **×** to mark that track for removal. It is struck through. A second
-  click unmarks it.
-- an **add…** input. Type a track's name, and the best match shows as ghost text. The tracks that do not carry the
-  tag yet show as up to six chips below it. `Tab` puts the highlighted track in the field, and `Enter` adds it. A
-  click on a suggestion adds it too. A new chip has a dashed ring. "no match" means nothing was added.
+- **Add a track.** Type a track's name in **add…**. The best match shows as ghost text, and the tracks that do not
+  carry the tag yet show as up to six chips below it. `Tab` puts the highlighted track in the field, and `Enter`
+  adds it. A click on a suggestion adds it too. A new chip has a dashed ring. "no match" means nothing was added.
+- **Remove a track from a tag.** Only the **×** on a chip removes it (or `Backspace` on a chip you selected). The
+  chip is struck through, and a second press unmarks it. A click on a chip's name only selects the chip, so a stray
+  click removes nothing.
+- **Fold a tag.** The arrow in the heading, or `Space` on the heading, folds a tag. A tag with more than 20 tracks
+  starts folded; a folded heading shows its pending changes, such as `+2 ×1`.
 
-At the bottom, **new tag…** creates a tag. Type a name and press `Enter`.
+**Untagged tracks.** The last section, **untagged**, lists the tracks without a tag, folded at first. It has no
+input; a track leaves it when you add it to a tag.
 
+- **Click an untagged track to add it to the target tag.** The target is the tag whose **add…** field or chips you
+  were in last. It is highlighted, and the footer says "Click tracks to add them to #drums". The track leaves
+  **untagged** and shows as a chip with a dashed ring in the target. The **×** on that chip brings it back.
+- With the keyboard: `Tab` to the **untagged** heading. `→` (or `Enter`) unfolds it, and `→` again steps onto the
+  tracks. `←` `→` `↑` `↓` move, `Enter` or `Space` adds the track to the target, and `Esc` leaves.
+- A click on a chip in another tag's section adds nothing, so a track is not tagged twice by accident.
+- A track whose last tag you remove returns as a dashed card under **untagged**. You can give it another tag in the
+  same change. A tag whose tracks are all marked for removal is struck through and says "tag goes away".
+
+**New tag.** The **New tag** row at the top creates a tag.
+
+- Click untagged tracks to collect them: they show below the field as "goes into the new tag: …", each with a **×**.
+  Collecting before or after typing the name makes no difference.
+- Type a name and press `Enter`. The tag is created with the collected tracks. `Esc` clears the collection.
 - Names are saved in lowercase, so "Perc" becomes `perc`.
 - A name that already exists is refused with "exists already". Add the track in that tag's **add…** input instead.
 - A name with other characters is refused with "not a valid name".
-- Add tracks to the new tag in its **add…** input. A new tag with no track is not kept.
+- A new tag with no track is not kept.
 
-The **untagged** section lists the tracks without a tag. It is read-only.
+**Rename a tag.** Click the tag's name, or press `F2` in its **add…** input or on its heading. The name becomes an
+input. `Enter` takes the name, `Esc` cancels the edit. A name with other characters shakes and is not taken. After a
+rename the heading shows the new name and, dimmed, "(was #old)". If the new name exists already, the two tags merge,
+as with [`tag -r`](#tag-r-rename-a-tag).
+
+**Remove a tag from every track.** Click the **×** at the right end of the heading, or press `Shift+Backspace` in an
+empty **add…** input. The section is struck through, and the footer says what will be removed. A second click
+unmarks it. When you press **Apply**, a bar in the footer asks "Remove #fx from N tracks?". **Cancel** is the
+default (`Esc` too) and returns you to editing; **Remove and apply** goes on. A single chip's **×** asks nothing.
 
 ![The tag board: one section per tag, with its tracks as chips and an add field; the untagged tracks are listed at the bottom](assets/images/tag-board.png)
 
 Live does not change until you press **Apply (N changes)**. Then the board closes. **Close** with nothing applied
 changes nothing and shows no message.
 
-**Keys in an add… input:**
+**Moving around.** The keys work like a file tree: `↑` and `↓` move between the headings (the **New tag** row, each
+tag, **untagged**); `→` goes in, `←` goes out.
 
-| Key | What it does |
-| --- | --- |
-| typing | Suggests tracks. |
-| `Tab` | Puts the highlighted track in the field. In an empty field, it moves on as usual. |
-| `Enter` | Adds the highlighted track. With no match, nothing is added. In an empty field, it applies. |
-| `↑` `↓` | Move through the suggestions. Without suggestions, they go to the other tags. |
-| `←` `→` | Move through the suggestions. Without suggestions, `←` at the start of the field moves onto the last chip. |
-| `Alt+←` `Alt+→` | Move the cursor in the typed text. |
-| `Backspace` | In an empty field, marks the last chip for removal. A second press unmarks it. |
-| `Esc` | Clears the typed text. In an empty field, it closes the board. |
+| Where you are | Key | What it does |
+| --- | --- | --- |
+| A heading | `↑` `↓` | Go to the previous or next heading. |
+| A heading | `→` | Unfolds a folded tag. On an open one, goes into its **add…** field. |
+| A heading | `Enter` | Opens a folded tag and goes into its field. That tag becomes the target. |
+| A heading | `Space` | Folds or unfolds. |
+| A heading | `←` | Folds an open tag. |
+| The **untagged** heading | `→` `Enter` | Unfolds it; again, steps onto the tracks. |
+| A heading | `F2` | Renames the tag. |
+| An **add…** field | typing | Suggests tracks. |
+| An **add…** field | `Tab` | Puts the highlighted track in the field. In an empty field, it moves on as usual. |
+| An **add…** field | `Enter` | Adds the highlighted track. With no match, nothing is added. In an empty field, it applies. |
+| An **add…** field | `↑` `↓` | Move through the suggestions. Without suggestions, they go to the other headings. |
+| An **add…** field | `→` | At the end of the text (an empty field too), goes onto the first chip. |
+| An **add…** field | `←` | At the start of the text, goes out to the heading. |
+| An **add…** field | `Alt+←` `Alt+→` | Move the cursor in the typed text. |
+| An **add…** field | `Backspace` | In an empty field, marks the last chip for removal. A second press unmarks it. |
+| An **add…** field | `Shift+Backspace` | In an empty field, marks the whole tag for removal. |
+| An **add…** field | `Esc` | Clears the typed text. In an empty field, it closes the board. |
+| A chip | `←` `→` | Step through the chips. `→` on the last chip stays. `←` on the first returns to the field. |
+| A chip | `Backspace` `Delete` | Mark the chip for removal. A second press unmarks it. A chip you just added disappears. |
+| A chip | `↑` `↓` | Go to the heading, or to the next one. |
+| A chip | `Enter` | Applies, when the field is empty. |
+| A chip | `Esc` `Tab`, or a letter | Return to the field. |
 
-**Keys on a chip** (after `←` onto it):
-
-| Key | What it does |
-| --- | --- |
-| `←` `→` | Step through the chips. `→` past the last chip returns to the field. |
-| `Backspace` `Delete` `Space` | Mark the chip for removal. A second press unmarks it. A chip you just added disappears. |
-| `↑` `↓` | Go to the other tags. |
-| `Enter` | Applies, when the field is empty. |
-| `Esc` `Tab`, or a letter | Return to the field. |
-
-In the **new tag…** input, `Enter` adds the name, or applies when the input is empty. `Tab` stays in the field,
-and `↑` and `↓` go to the other tags. The board scrolls to keep the section you work in in view.
+The **New tag** row works the same way, with the collected tracks as its chips. `Enter` there creates the tag, or
+applies when the field and the collection are empty. The board scrolls to keep the section you work in in view.
 
 `Esc` with pending changes (and **Close**) warns "N changes not applied — Esc again to discard". Any other key, or
-any click except Close, cancels the warning. The footer hint of the board lists the main keys.
+any click except Close, cancels the warning. The footer shows the main keys.
 
 ### `tag -e`: one tag on many tracks
 
@@ -452,6 +487,108 @@ and editing it in one changes it for both. Collect All and Save keeps the note.
 
 **After a save.** A save is quiet; `cmdabl log` shows "note saved". If saving fails, the message says so, and the next
 `note` opens your text again until cmdAbl restarts.
+
+## Several commands in one line: `;`
+
+`mute #drums; vol -6 #bass` runs both commands in one line.
+
+- The parts run in order.
+- A part that fails does not stop the rest, as in a shell.
+- When all parts work, nothing is shown. If one fails, a window lists each part with a tick or a cross.
+- Each part is its own undo step in Live: one `Cmd+Z` undoes one part.
+- If a part needs an answer from a pick list, the list opens in turn. `Esc` on it stops the chain; the parts before
+  it stay done.
+- `;` splits an unquoted line everywhere, also in free text. `find a;b` is two commands. To search for the
+  character, quote it: `find "a;b"`.
+- Empty parts and a `;` at the end are ignored.
+- The history keeps the whole line.
+
+A bare `|` outside quotes is an error in every command except [`map`](#midi-mapping), where it separates the control
+from the command line. Quote it to use it as text: `find "a|b"`.
+
+## MIDI mapping
+
+`map` binds a control on your MIDI controller (a button, a knob or a fader) to a cmdAbl command line. When you press
+the button, the line runs. `midi monitor` shows what your controller sends.
+
+**What you need.**
+
+- The [Remote Script](remote-script.md), version 0.1.14 or newer. After an update, run `cmdabl setup`, then restart
+  Live.
+- Your controller as the **Input** of the cmdAbl row under **Control Surface** in Live's **Settings → Tempo & MIDI →
+  MIDI**. Live has no other way to pass a controller to a Remote Script.
+
+**Bind a control.**
+
+```
+map <control> [press|release|hold|toggle] | <command line>
+```
+
+- The control is `CC37` (a controller number), `N36` (a note) or `PB` (pitch bend). Add `/ch2` to listen to channel 2
+  only: `CC37/ch2`.
+- Everything after `|` is the command line. A `;` in it belongs to the line and is not split.
+- The first word of the line must be a command cmdAbl knows.
+- Binding the same control and operator again replaces the line.
+
+The **operator** says when the line runs and what `{}` in the line becomes:
+
+| Operator | Runs when | `{}` becomes |
+| --- | --- | --- |
+| `press` (the default) | the control goes down: a note-on, or a CC going from 0 to any value above 0 | — |
+| `release` | the control comes up: a note-off, or a CC going back to 0 | — |
+| `hold` | the control goes down and comes up | 1 when it goes down, 0 when it comes up |
+| `toggle` | on every press | 1, then 0, then 1, and so on |
+
+`press` and `release` hand over no value, so `{}` with them is a usage error (exit code 2).
+
+```
+map CC37 | mute #drums --set 0            # a button unmutes the drums tracks
+map N36 hold | mute #drums --set {}       # muted while the note is held
+map CC37/ch2 toggle | solo #lead --set {} # each press switches solo on, then off
+```
+
+**A button that latches on its own.** Some controllers send a value when you press a button and send 0 on the next
+press. Bind it with `hold`: `{}` is 1 while the controller's value is above 0, and 0 at 0, so Live follows the button.
+
+**Learn a control.** `map learn [operator] | <command line>` opens a small page that says "Move a control". Move the
+control on your controller. The page shows it and closes by itself, and the control is bound. `Esc` binds nothing.
+`map learn toggle | mute #fx --set {}` learns a control for a `toggle` binding.
+
+**List, remove, switch off.**
+
+- `map -l` lists the bindings of the Set as numbered rows, for example `1  CC37  toggle  | solo #lead --set {}`.
+- `map --rm 2` removes binding 2. The numbers come from `map -l`.
+- `map --off` stops all MIDI mapping and `map --on` starts it again. The choice is kept.
+
+**How a bound line runs.** It runs without dialogs. If a name in the line fits more than one object, nothing runs
+and the log says so, so use exact paths or tags in bound lines. Each part is one undo step, and the run does not go
+into the history. While a line is still running, the same control's next press is dropped, except for `hold`, where
+the latest value waits and runs once the line finishes.
+
+**Save the Set after the first `map`.** Bindings belong to the Live Set. The first `map` gives the Set an id, so
+Live marks the Set as changed. If you do not save the Set, the bindings are not loaded after you restart Live. Each Set has its
+own bindings.
+
+**Controls taken in Live.** A control that you mapped in Live with `Cmd+M`, or that another control surface uses, goes to Live and not to cmdAbl. cmdAbl
+cannot use it: `map` warns when you bind it ("⚠ CC51 is taken in Live …, so cmdAbl doesn't receive it"), and `map -l` marks the row "⚠ taken in Live". Remove the mapping in
+Live, or use another control.
+
+**`midi monitor`** opens a page that lists the controls your controller sends, one row per control, with type, channel,
+number and value. A control you move for the first time is added on top, and its value updates in place. The row of the control that moved last is marked. A section **Taken in Live** lists controls that Live kept for
+itself during that time. `Enter` or `Esc` closes the page. While it is open, bound controls do not run their lines.
+If the page cannot show live values, it shows the newest messages as a list when you press `Enter`.
+
+### Settings
+
+cmdAbl keeps its settings in `settings.json`, in cmdAbl's data folder (the Extensions Data folder in Ableton's
+Application Support). A missing file means the defaults. A value of the wrong type is
+ignored with a warning in the log.
+
+| Key | Values | What it does |
+| --- | --- | --- |
+| `"palette.above"` | `"off"` (default), `"hints"`, `"options"` | The footer switch of the palette, [above](#show-the-options-above-the-prompt). |
+| `"map.enabled"` | `true` (default), `false` | `false` drops every incoming MIDI message. `map --off` and `map --on` set it. |
+| `"midi.statusBar"` | `true`, `false` (default) | `true` also shows incoming MIDI in Live's status bar while `midi monitor` or `map learn` is open. |
 
 ## What the palette tells you
 
