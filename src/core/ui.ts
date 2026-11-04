@@ -191,9 +191,12 @@ export interface BoardAnswer {
    * name for a swap) or refuse such a case with a clear message; write them as one undo step (`api.tracks.transaction`).
    *
    * `removed`: sections of the request flagged `removable` that the user marked for removal; wins over a rename of the same
-   * section. Absent when there are none.
+   * section. Absent when there are none. `removed` is applied only when `confirmed` is true (the page asked the user before it
+   * closed), or after the module's own question (`api.confirm`) when it is not.
    */
   removed?: string[];
+  /** True when the page itself asked the user to confirm the removals before closing; kept only together with a non-empty `removed`. */
+  confirmed?: true;
 }
 
 export interface Ui {

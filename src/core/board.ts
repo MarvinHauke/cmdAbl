@@ -102,7 +102,8 @@ export function parseBoardAnswer(raw: string | null | undefined, request: BoardR
     log("board answer is not an object");
     return null;
   }
-  const { changes: rawChanges, created: rawCreated, renamed: rawRenamed, removed: rawRemoved } = value as {
+  const { changes: rawChanges, created: rawCreated, renamed: rawRenamed, removed: rawRemoved, confirmed: rawConfirmed } = value as {
+    confirmed?: unknown;
     changes?: unknown;
     created?: unknown;
     renamed?: unknown;
@@ -182,7 +183,7 @@ export function parseBoardAnswer(raw: string | null | undefined, request: BoardR
     }
   }
   const renamed = [...renames].map(([section, to]) => ({ section, to }));
-  return { changes, created, ...(renamed.length ? { renamed } : {}), ...(removed.length ? { removed } : {}) };
+  return { changes, created, ...(renamed.length ? { renamed } : {}), ...(removed.length ? { removed } : {}), ...(removed.length && rawConfirmed === true ? { confirmed: true as const } : {}) };
 }
 
 /**

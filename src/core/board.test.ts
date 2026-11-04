@@ -205,3 +205,13 @@ test("parseBoardAnswer: renamed or removed that are not lists make the answer un
   assert.equal(parseEdit({ removed: { a: 1 } }), null);
   assert.deepEqual(parseEdit({ changes: [], created: [] }), { changes: [], created: [] }); // old answers are exactly as before
 });
+
+test("parseBoardAnswer: confirmed is kept only as true and only together with a non-empty removed", () => {
+  assert.deepEqual(parseEdit({ removed: ["fx"], confirmed: true }), { changes: [], created: [], removed: ["fx"], confirmed: true });
+  assert.equal(parseEdit({ removed: ["fx"], confirmed: "yes" })!.confirmed, undefined);
+  assert.equal(parseEdit({ removed: ["fx"], confirmed: false })!.confirmed, undefined);
+  assert.equal(parseEdit({ removed: ["fx"] })!.confirmed, undefined);
+  assert.equal(parseEdit({ removed: [], confirmed: true })!.confirmed, undefined); // nothing removed
+  assert.equal(parseEdit({ removed: ["nope"], confirmed: true })!.confirmed, undefined); // the removal was dropped
+  assert.deepEqual(parseEdit({ changes: [], created: [], confirmed: true }), { changes: [], created: [] });
+});
