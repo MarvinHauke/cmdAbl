@@ -25,8 +25,9 @@
     #hint { margin-top: 3px; color: var(--dim); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
 
     #list { flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 4px 0; }
-    .msg { display: grid; grid-template-columns: 52px 92px 40px 44px 1fr; gap: 0 8px; padding: 2px 12px; line-height: 18px; white-space: nowrap; }
+    .msg { display: grid; grid-template-columns: 92px 40px 44px 1fr; gap: 0 8px; padding: 2px 12px; line-height: 18px; white-space: nowrap; }
     .msg > span { overflow: hidden; text-overflow: ellipsis; }
+    .msg.timed { grid-template-columns: 52px 92px 40px 44px 1fr; }   /* SHOW_TIME: the +N.Ns column in front */
     .msg .t { color: var(--dim); font-size: 11px; text-align: right; }
     .msg .k { font-weight: 600; }
     .msg .c, .msg .n { color: var(--dim); }
@@ -55,6 +56,8 @@
     const CAPTURE = /*CAPTURE_PLACEHOLDER*/null;
     const LIVE = /*LIVE_PLACEHOLDER*/null;   // { base, token } when the live source is reachable, else null
 
+    // The time column (+N.Ns since the page opened) is off by default; it returns as an option on the MIDI settings page.
+    const SHOW_TIME = false;
     const FALLBACK_NOTE = "When you press Enter, cmdAbl reads what you moved. This page can't show it live.";
     const KIND = { cc: 'CC', note_on: 'Note on', note_off: 'Note off', pb: 'Pitch bend' };
     const learn = CAPTURE?.mode === 'learn';
@@ -103,9 +106,10 @@
         let row = rows.get(key);
         if (!row) {
           const el = document.createElement('div');
-          el.className = 'msg';
-          row = { el, t: cell('t', ''), v: cell('v', '') };
-          el.append(row.t, cell('k', KIND[m.type] ?? String(m.type ?? '')), cell('c', 'ch ' + (m.channel ?? '')),
+          el.className = 'msg' + (SHOW_TIME ? ' timed' : '');
+          row = { el, t: SHOW_TIME ? cell('t', '') : null, v: cell('v', '') };
+          if (row.t) el.append(row.t);
+          el.append(cell('k', KIND[m.type] ?? String(m.type ?? '')), cell('c', 'ch ' + (m.channel ?? '')),
                     cell('n', m.type === 'pb' ? '' : '#' + (m.number ?? '')), row.v);
           rows.set(key, row);
           if (empty.parentNode) empty.remove();
@@ -116,8 +120,10 @@
             last.remove();
           }
         }
-        const secs = typeof m.time === 'number' && typeof answer.opened === 'number' ? (m.time - answer.opened) / 1000 : NaN;
-        setText(row.t, Number.isFinite(secs) ? '+' + Math.max(0, secs).toFixed(1) + 's' : '');
+        if (row.t) {
+          const secs = typeof m.time === 'number' && typeof answer.opened === 'number' ? (m.time - answer.opened) / 1000 : NaN;
+          setText(row.t, Number.isFinite(secs) ? '+' + Math.max(0, secs).toFixed(1) + 's' : '');
+        }
         setText(row.v, String(m.value ?? ''));
         if (fresh !== row) { fresh?.el.classList.remove('fresh'); row.el.classList.add('fresh'); fresh = row; }
       }
