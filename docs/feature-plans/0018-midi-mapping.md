@@ -284,7 +284,8 @@ No bugs: `map learn` on a live page closes by itself, `midi monitor` lists Cmd+M
 in Live", and bindings survive save and reopen. **Change for 0.1.5 (user):** Live's status bar no
 longer shows incoming MIDI by default. Setting `midi.statusBar` (boolean, default false) in
 `settings.json`; the monitor page is where values show. It moves to a MIDI settings page with the
-settings pattern (0.1.6).
+settings pattern (0.1.6). The monitor's `+N.Ns` time column goes from the default page too (user);
+it comes back as an option there, as +seconds or as a timestamp.
 
 ### Live pages (user, 2026-11-04: the localhost variant)
 

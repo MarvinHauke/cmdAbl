@@ -218,6 +218,13 @@ Click-to-assign was Live-tested by the user (ui `3570512`). Four changes, ui onl
 - every tag section can fold; sections with more than 20 tracks start folded (a named constant, a
   setting once the settings page exists).
 
+After the user's hand test (2026-11-04):
+- only × (or Backspace on a selected chip) removes; a click on the name only selects;
+- the New tag row looks like a tag row (field, chips below); its help is in the footer;
+- a track left without tags shows as a dashed card under untagged and can be reassigned in the same
+  Apply; a tag losing its last track shows "tag goes away";
+- keys like a file tree: ↑/↓ move through the rows, ←/→ on a heading fold and unfold (⌥↑↓ dropped).
+
 For 0.1.6 (with the settings page and the help pattern, see STATUS): a gear button and `tag config`
 for the board's settings, and a footer help line that follows the mouse (like Live's Info View, can
 be switched off).
