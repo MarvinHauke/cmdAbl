@@ -314,8 +314,16 @@ midi monitor                         # live view of incoming messages
    additive ModuleApi change). Modules declare read functions; core serves them under the token.
 6. **Tests:** pages are checked in a browser with a fake live source, the same interface as the server.
 
+**Long polling (user, 2026-11-04):** instead of a fixed 30 ms timer, the page sends a request with
+`since`. cmdAbl holds it until a newer message arrives (at most 1 s), then answers at once. Values show
+without delay, and an idle page makes about one request per second. Waiting routes are capped at 1 s;
+plain routes keep the 100 ms budget.
+
 **First live pages:**
-- **`midi monitor`:** the last messages update live (newest first), and the status bar keeps working.
+- **`midi monitor`:** the last messages update live (one row per control, updated in place), and the
+  status bar keeps working. A section "Taken in Live: CC51 ch1 …" lists the controls Live refused to
+  forward during the window (Cmd+M or another control surface), so the user sees them before binding
+  (user, 2026-11-04).
 - **`map learn`:** the page closes by itself on the first control that moves, after a short debounce of
   about 150 ms. The page shows the control before closing. Enter and Esc still work.
 - **Later:** the completion server (plan 0006) on the same mechanism.
