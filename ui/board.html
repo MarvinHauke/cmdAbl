@@ -462,6 +462,7 @@
       if (!idx.length && !s.readonly) s.chipsEl.append(el('span', 'none', 'no tracks yet'));
       if (s.readonly && s.metaEl) {
         const total = s.items.filter(i => i.u).length, cards = idx.filter(ii => !s.items[ii].u).length;
+        if (cards && s.folded && !s.autoOpened) { s.autoOpened = true; setFold(si, false); }   // the first card opens untagged once, so the result is in view
         s.metaEl.textContent = '· ' + (!idx.length ? 'none left' : cards ? idx.length + (idx.length === 1 ? ' track' : ' tracks') + ' · ' + cards + ' will be untagged' : idx.length === total ? s.meta : idx.length + ' of ' + total + ' tracks');
       }
       if (s.cc != null) reveal(si);
