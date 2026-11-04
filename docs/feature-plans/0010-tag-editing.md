@@ -92,9 +92,12 @@ untagged                                       4 tracks
   at the start) moves a chip cursor onto the chips; ←/→ step through them, Backspace/Delete/Space
   toggle the mark of the chip under the cursor, → past the last chip or typing returns to the input
   (user, Live test).
-- **←/→ and ↑/↓** move through the suggestions while they show (←/→ added after the Live test;
-  Cmd/Alt+←/→ still move the caret), otherwise to the previous or next tag's
-  input. **Enter applies whenever there is nothing to add**: in an empty input, an empty "new tag…" or on
+- **↑/↓** move the highlight through the suggestions while they show, otherwise to the previous or
+  next tag's input. **The suggestion row is a selection**: → from the end of the field enters it on
+  the highlighted suggestion (shown filled); ←/→ walk it (→ on the last stays); ← on the first goes
+  back to the field (caret at the end); a typed character or Backspace goes back and edits the text;
+  Esc leaves the row (a second Esc clears the field); Enter adds, Tab takes it into the field. →
+  into the chips only applies while no suggestions show. **Enter applies whenever there is nothing to add**: in an empty input, an empty "new tag…" or on
   the chip cursor, if its field is empty (user, Live test 2026-10-20; `f8e4135`). **Esc** clears the input, then closes.
 - **`new tag…` input** at the bottom: Enter checks the name and adds an empty section with the
   focus in its `add…` input. A tag with no track added is not kept. A name that already exists (ignoring case
