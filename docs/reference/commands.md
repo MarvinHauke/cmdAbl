@@ -492,9 +492,9 @@ Tools for the MIDI input that map uses. midi monitor shows the last messages the
 
 #### `midi monitor`
 
-show the last 20 incoming MIDI messages
+watch the MIDI messages the controller sends
 
-Opens a small page that says Move a control, then press Enter. Everything the controller sends meanwhile is listed afterwards, newest first, with type, channel, number and value. While the page is open, bound controls do not run their lines. Needs the cmdAbl Remote Script and cmdAbl set as a MIDI input in Live's settings.
+Opens a small page that lists what the controller sends, live, newest first, with type, channel, number and value. Move some controls to see their names, then press Enter or Esc to close it. While the page is open, bound controls do not run their lines. Needs the cmdAbl Remote Script and cmdAbl set as a MIDI input in Live's settings.
 
 **Usage:** `midi monitor`
 
@@ -506,7 +506,7 @@ Opens a small page that says Move a control, then press Enter. Everything the co
 midi monitor
 ```
 
-move some controls, press Enter, read the list
+watch the controls you move
 
 ## Tags
 

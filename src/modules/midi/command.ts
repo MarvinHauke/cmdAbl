@@ -13,19 +13,23 @@ export function registerMidi(api: ModuleApi, template: string): void {
     children: [
       {
         name: "monitor",
-        summary: "show the last 20 incoming MIDI messages",
+        summary: "watch the MIDI messages the controller sends",
         description:
-          "Opens a small page that says Move a control, then press Enter. Everything the controller sends meanwhile is listed afterwards, " +
-          "newest first, with type, channel, number and value. While the page is open, bound controls do not run their lines. Needs the cmdAbl " +
+          "Opens a small page that lists what the controller sends, live, newest first, with type, channel, number and value. Move some controls to see " +
+          "their names, then press Enter or Esc to close it. While the page is open, bound controls do not run their lines. Needs the cmdAbl " +
           "Remote Script and cmdAbl set as a MIDI input in Live's settings.",
-        examples: [{ line: "midi monitor", note: "move some controls, press Enter, read the list" }],
+        examples: [{ line: "midi monitor", note: "watch the controls you move" }],
         requires: ["bridge"],
         run: async (): Promise<CommandResult> => {
-          const caught = await captureMessages(api, "Move some controls", "then press Enter to see what arrived", "midi monitor", "monitor", template);
+          const caught = await captureMessages(api, "Move some controls", "Enter or Esc closes it", "midi monitor", "monitor", template);
           if (!isCaptured(caught)) return caught;
-          if (!caught.done) return ok();
-          if (caught.messages.length === 0) return fail(ExitCode.FAILURE, "midi monitor: nothing arrived. Is the controller connected and cmdAbl set as an input in Live's MIDI settings?");
-          return ok(monitorLines(caught.messages).join("\n"));
+          // With the live view, closing just ends the window, quietly; without it (the page answered "list") the list is the only output.
+          if (caught.fallback) {
+            return caught.messages.length === 0
+              ? fail(ExitCode.FAILURE, "midi monitor: nothing arrived. Is the controller connected and cmdAbl set as an input in Live's MIDI settings?")
+              : ok(monitorLines(caught.messages).join("\n"));
+          }
+          return { ...ok(), log: [`midi monitor: ${caught.messages.length} message(s) seen`] };
         },
       },
     ],

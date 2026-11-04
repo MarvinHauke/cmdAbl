@@ -17,6 +17,8 @@ export const capturePage = (title: string, hint: string, mode: CaptureMode = "mo
 export interface Captured {
   /** Enter was pressed (false: Esc or dismissed). */
   done: boolean;
+  /** The page had no live view (it answered "list"): the command should show what came in. */
+  fallback: boolean;
   /** What came in while the page was open, oldest first. */
   messages: MidiMessage[];
 }
@@ -76,7 +78,7 @@ export async function captureMessages(
   const got = await api.midi.last(since);
   await api.midi.listen("none"); // ends the monitor window; the bound controls stay forwarded
   if (!got.ok) return fail(got.code, `${name}: ${got.text}`);
-  return { done: answer === "go", messages: got.value.messages };
+  return { done: answer === "go" || answer === "list", fallback: answer === "list", messages: got.value.messages };
 }
 
 /** Narrow the union: a captured window or a failure result. */
