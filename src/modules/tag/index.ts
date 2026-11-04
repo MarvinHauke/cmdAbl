@@ -87,11 +87,11 @@ export function activate(api: ModuleApi): void {
     const gone = [...edits.renames.entries()].find(([, to]) => edits.removed.has(to));
     if (gone) return fail(ExitCode.USAGE, `tag: #${gone[0]} cannot be renamed to #${gone[1]}, which is being removed in the same Apply`);
 
-    // Removing whole tags asks once, after the board has closed. Cancel applies nothing from this board.
-    const removing = [...edits.removed];
-    if (removing.length > 0) {
+    // Removing whole tags: the board asks in its own confirm bar and sets `confirmed`. An answer without it (an older or
+    // another page) is asked once here; Cancel applies nothing from this board.
+    if (edits.removed.size > 0 && answer.confirmed !== true) {
       const carrying = nodes.filter((n) => api.tags.of(n).some((t) => edits.removed.has(t)));
-      const names = removing.map((t) => `#${t}`).join(", ");
+      const names = [...edits.removed].map((t) => `#${t}`).join(", ");
       const sure = await api.confirm(`Remove ${names} from ${carrying.length} ${carrying.length === 1 ? "track" : "tracks"}?`, "Remove");
       if (!sure) return ok("tag: cancelled; nothing from the board was applied");
     }
@@ -195,7 +195,7 @@ export function activate(api: ModuleApi): void {
       "Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx " +
       "reaches every track tagged fx. With --edit and a tag (tag --edit fx) every regular and return track is listed with a button " +
       "that is lit where it carries the tag: mark tracks with Tab and press Enter to switch the tag on or off on each of them; " +
-      "tag --edit without a tag (or tag --edit #) first asks which tag, and a name that is not in that list creates it. With --rename and two names (tag --rename fx effects) the tag changes its name on every regular and return track that carries it, and writes nothing else; if the new name exists already the two tags merge, a track with both keeps one, and the result says so because renaming back cannot split them again. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Each tag heading has a pencil to rename the tag (a name that exists already merges) and a cross to remove the whole tag; removing whole tags asks once after the board closes, and Cancel applies nothing from that board. Apply writes the changes (renames, then removals, then the chip changes) and shows nothing; Close changes nothing. " +
+      "tag --edit without a tag (or tag --edit #) first asks which tag, and a name that is not in that list creates it. With --rename and two names (tag --rename fx effects) the tag changes its name on every regular and return track that carries it, and writes nothing else; if the new name exists already the two tags merge, a track with both keeps one, and the result says so because renaming back cannot split them again. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Each tag heading has a pencil to rename the tag (a name that exists already merges) and a cross to remove the whole tag; removing whole tags asks once before Apply goes through. Apply writes the changes (renames, then removals, then the chip changes) and shows nothing; Close changes nothing. " +
       "With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target " +
       "that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. " +
       "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +

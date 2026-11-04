@@ -61,22 +61,28 @@ test("Apply renames a tag (merging into an existing name) and logs the change an
   assert.equal(fake.confirms.length, 0); // renames ask nothing
 });
 
-test("removing whole tags asks once: 'Remove #fx from 2 tracks?'", async () => {
-  const { fake, run } = setup({ Lead: ["fx", "synth"], Bass: ["fx"], Drums: ["drums"] }, { removed: ["tag:fx"] });
+test("an answer the board confirmed (confirmed: true) removes without a second question", async () => {
+  const { fake, run } = setup({ Lead: ["fx", "synth"], Bass: ["fx"], Drums: ["drums"] }, { removed: ["tag:fx"], confirmed: true });
   const r = (await run())!;
-  assert.deepEqual(fake.confirms, ["Remove #fx from 2 tracks?"]);
   assert.equal(r.code, ExitCode.OK);
+  assert.equal(fake.confirms.length, 0);
   assert.deepEqual(fake.tagStore.get("Lead"), ["synth"]);
   assert.deepEqual(fake.tagStore.get("Bass") ?? [], []);
+  assert.match((r.log ?? []).join("\n"), /undo: tag --set 1 \/Bass fx/);
 });
 
-test("several tags: one question with the distinct track count", async () => {
-  const { fake, run } = setup({ Lead: ["fx", "pad"], Bass: ["fx"], Drums: ["pad"] }, { removed: ["tag:fx", "tag:pad"] });
-  await run();
-  assert.deepEqual(fake.confirms, ["Remove #fx, #pad from 3 tracks?"]);
+test("without confirmed the module asks once: 'Remove #fx from 2 tracks?' (several tags: one question, distinct tracks)", async () => {
+  const one = setup({ Lead: ["fx", "synth"], Bass: ["fx"], Drums: ["drums"] }, { removed: ["tag:fx"] });
+  const r = (await one.run())!;
+  assert.deepEqual(one.fake.confirms, ["Remove #fx from 2 tracks?"]);
+  assert.equal(r.code, ExitCode.OK);
+  assert.deepEqual(one.fake.tagStore.get("Lead"), ["synth"]);
+  const many = setup({ Lead: ["fx", "pad"], Bass: ["fx"], Drums: ["pad"] }, { removed: ["tag:fx", "tag:pad"] });
+  await many.run();
+  assert.deepEqual(many.fake.confirms, ["Remove #fx, #pad from 3 tracks?"]);
 });
 
-test("Cancel applies nothing from the board and says so", async () => {
+test("without confirmed, Cancel applies nothing from the board and says so", async () => {
   const { fake, run } = setup(
     { Lead: ["fx"], Bass: ["pad"] },
     { removed: ["tag:fx"], renamed: [{ section: "tag:pad", to: "keys" }], changes: [{ section: "tag:pad", item: "Lead", on: true }] },
@@ -120,5 +126,4 @@ test("a swap (A->B and B->A) works; a rename to a tag removed in the same Apply 
   assert.equal(r.code, ExitCode.USAGE);
   assert.match(r.message!, /cannot be renamed to #b, which is being removed/);
   assert.deepEqual(clash.fake.tagStore.get("Lead"), ["a"]);
-  assert.equal(clash.fake.confirms.length, 0);
 });
