@@ -9,7 +9,7 @@
            LIVE_PLACEHOLDER = null | { base, token }: the live source. With it the page long-polls GET <base>/messages?since=<last>
            (Authorization: Bearer <token>; the source holds a request up to ~1 s until something newer arrives, the next request follows at once); the answer is { opened, last, messages: [{ seq, type: "cc"|"note_on"|"note_off"|"pb",
            channel 1-16, number, value, time }] } (the newest 20, OLDEST first; the page keeps one row per control, value updated in place), plus `blocked`: the controls Live refused to forward
-           (shown as "Taken in Live: …"; [] hides it, null = unknown), or { error }.
+           (shown as "Taken in Live: …"; [] or null hides it), or { error }.
            null (or a source that stays unreachable) = the fallback: no list, "live view unavailable", Enter reads.
        Out (close_and_send): "go" on Enter while the live view works, "list" on Enter without a working live view (LIVE null, unreachable, or before the first answer), "go" in learn mode ~150 ms after the first control moved; "" on Esc. The module reads the
            newest control itself afterwards (api.midi.last), so the page sends no control.
@@ -139,7 +139,7 @@
     function drawBlocked(answer) {
       if (!('blocked' in answer)) return;   // a source without the field: nothing to say
       const b = answer.blocked;
-      const text = b === null ? 'Taken in Live: unknown' : Array.isArray(b) && b.length ? 'Taken in Live: ' + b.map(blockedLabel).filter(Boolean).join(', ') : '';
+      const text = Array.isArray(b) && b.length ? 'Taken in Live: ' + b.map(blockedLabel).filter(Boolean).join(', ') : '';
       setText(blockedEl, text);
     }
 
