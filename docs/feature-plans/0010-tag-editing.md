@@ -177,6 +177,16 @@ remove a whole tag; that needs `tag -r` or `tag --set 0`.
   - the "+ # New tag…" row is pinned at the top;
   - a created tag appears directly below it with its add field focused;
   - "untagged" is the last section, collapsed by default ("▸ untagged · N tracks"), with no add field.
+- **Click to assign** (user, 2026-11-04, for 0.1.5):
+  - **The active target** is the tag whose add field was last focused, or the "New tag" field. It's
+    highlighted, and the footer says "Click tracks to add them to #drums".
+  - **Clicking a chip under "untagged"** adds that track to the active tag as a pending chip (dashed
+    ring). A second click undoes it.
+  - **Without an active tag,** a click moves focus to "+ # New tag…" and collects the track in a line
+    below it ("goes into the new tag: …"). Name + Enter creates the tag with those tracks; the order
+    (collect first, name first) doesn't matter. Esc clears the collection.
+  - **Clicks on chips in other tag sections** don't assign (no accidental double tagging).
+  - **Contract:** unchanged. A created section's items can be turned on in the same answer.
 - **Apply sends everything at once:**
   - renames use the `tag -r` logic (an existing name merges);
   - removing a whole tag is confirmed **inside the board** (user, 2026-11-04): Apply with a marked tag
