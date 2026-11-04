@@ -11,7 +11,7 @@ yourself.
   needs a Live test, what comes next) and keep it current as tasks land.
 - Turn the user's wishes into small, clear tasks and send them to the builder that owns the area:
   **cmdabl-core** (platform), **cmdabl-modules** (commands), **cmdabl-bridge** (Remote Script and
-  Live access), **cmdabl-ui** (dialogs; on demand — ask the user to start it with
+  Live access), **cmdabl-ui** (dialogs; on demand — start it yourself with
   `scripts/agents.sh ui` when UI work comes up), **cmdabl-docs** (docs site, README, images; on
   demand — `scripts/agents.sh docs`; give it one brief per page with the facts). Every task names the files it may touch.
 - Own `docs/feature-plans/`: keep plans, their status lines, the index and the hierarchy in sync
