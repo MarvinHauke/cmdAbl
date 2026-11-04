@@ -224,6 +224,8 @@ After the user's hand test (2026-11-04):
 - a track left without tags shows as a dashed card under untagged and can be reassigned in the same
   Apply; a tag losing its last track shows "tag goes away";
 - keys like a file tree: ↑/↓ move through the rows, ←/→ on a heading fold and unfold (⌥↑↓ dropped).
+- open bug (user, 2026-11-04): with every track tagged there is no untagged section, so the card for
+  a track that would become untagged doesn't appear; the section must appear for it.
 
 For 0.1.6 (with the settings page and the help pattern, see STATUS): a gear button and `tag config`
 for the board's settings, and a footer help line that follows the mouse (like Live's Info View, can
