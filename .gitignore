@@ -20,6 +20,9 @@ logs/
 __pycache__/
 *.pyc
 
+# Docs exclusions
+docs/userfindings.md
+
 # MkDocs build output
 site/
 
