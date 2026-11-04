@@ -95,6 +95,11 @@ Older checks that were never reported; most can now run through MCP.
   - one help pattern: a quiet help line that follows the mouse and focus (like Live's Info View, can
     be switched off), used by the board footer and the palette's hint panel (0006);
   - note: timestamped entries with view and edit modes (0013).
+  - one keyboard model for every selection list (user, 2026-11-05): the palette rows, the pick list,
+    the board's suggestions and chips. → from the end of a field enters the list, ←/→ (and ↑/↓ by
+    row) move in it, ← on the leftmost item returns to the field, typing returns to the field and
+    types; file-tree rules (↑↓ between sections, → into, ← out) where a page has sections. The board
+    (0010) is the first page built this way.
   A new UI surface, so the contract part needs the user's approval.
 
 - Ideas from ClyphX (2026-10-20): plan 0009 — `;` action lists with aliases (0.1.3); `.`,
