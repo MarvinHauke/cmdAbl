@@ -26,12 +26,11 @@ All releases were tested in Live, including the installed `.ablx`.
 - Tag board rename/remove (0010): built and Live-tested 2026-11-04 on `feat/tag-board-edit` (rename
   in place, × with the confirm bar in the board, pinned new-tag row, untagged folded, add field names its
   tag). Click-to-assign (`3570512`) Live-tested by the user 2026-11-04.
-- **0.1.5 rest (user, 2026-11-04):** the small user findings go in before the release:
-  - ui: board focus starts in "New tag", the add field in the header row, a clicked untagged chip
-    moves to its target, long sections fold (0010);
-  - core: suggestions show silent tag expansions (`drums` → `#drums`, 0006); setting `midi.statusBar`
-    (default false);
-  - modules: `midi monitor` and `map learn` show the status bar only with `midi.statusBar` (0018).
+- **0.1.5 user findings: built and tested 2026-11-04** (ui `c41d063`…`80dcb30`, core `4e8520a`): board
+  focus in New tag, add field in the heading, only × removes, orphaned tracks as cards, "tag goes
+  away", fold above 20 tracks, file-tree keys; suggestions show silent tag expansions;
+  `midi.statusBar` (default off); monitor time column off. Open: docs (cmdabl-docs, briefed), the
+  installed `.ablx`, release 0.1.5.
 - In work on `feat/map` (not pushed): `;` chains (0017, Live-tested); the simple MIDI mapping (0018:
   `map`, `map learn`, `midi monitor`, operators, Remote Script 0.1.14), live pages (localhost,
   load and route tokens, long polling), the Cmd+M conflict warning. Live-tested with the UC4
