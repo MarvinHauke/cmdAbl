@@ -58,7 +58,7 @@ control surface. Nobody types `cmdabl setup` to install.
   action as a button at the end of the row.
 - **An action button** closes the page with `{ "action": [sectionIndex, itemIndex] }`. Core looks the action up
   **in the result it sent**. It then runs the action's `command` line through the normal run path
-  (e.g. `cmdabl setup copy`) or opens the `url` with `openUrl`. The page never sends a command
+  (e.g. `cmdabl setup script`) or opens the `url` with `openUrl`. The page never sends a command
   line, a shell command or a URL; an index that doesn't point at an action is ignored.
 - After a command action, core reopens the setup page so the user sees the new state (for `cmdabl
   setup` only: the flow is setup's, not a general notify loop).
@@ -71,7 +71,7 @@ disk, `karabiner_cli`, the Remote Script's `hello`, and the version shipped with
 | Row | ✓ | ! | ✗ | Button |
 |---|---|---|---|---|
 | Karabiner | "`:` opens cmdAbl" | not installed: "Without Karabiner, `:` doesn't open cmdAbl; only the right-click menu does. Strongly recommended." · installed, rule not added or not enabled | — (never red, Q8) | **Get Karabiner** (url) · **Add rule** (import link, §3) |
-| Remote Script | installed and current | missing · older than shipped ("Installed 0.1.14, this cmdAbl brings 0.1.15") | copy failed | **Copy** · **Update** (command `cmdabl setup copy`) |
+| Remote Script | installed and current | missing · older than shipped ("Installed 0.1.14, this cmdAbl brings 0.1.15") | copy failed | **Copy** · **Update** (command `cmdabl setup script`) |
 | Live restart | — | the copy on disk is newer than the running script: "Restart Live once to load it" | — | none |
 | Control surface | the script answers `hello` | installed, Live started after the copy, and no answer: "Choose cmdAbl in Settings → Tempo & MIDI → Control Surface" | — | **How** (docs url) |
 | Data folder | writable | — | not writable | none |
@@ -87,7 +87,7 @@ disk, `karabiner_cli`, the Remote Script's `hello`, and the version shipped with
   with `openUrl`. The rule is served by cmdAbl's local server: `GET /karabiner/cmdabl.json` on
   `127.0.0.1:27184`, read-only, the same file as `karabiner/cmdabl.json`. Karabiner then asks "Import" and
   "Enable": two clicks.
-- **Verified (step 0, 2026-11-05):** Karabiner accepts an `http://127.0.0.1` URL. The link
+- **Verified (step 0, 2026-11-05; Add rule checked by the user in Live: the dialog opens and the page comes back):** Karabiner accepts an `http://127.0.0.1` URL. The link
   `karabiner://karabiner/assets/complex_modifications/import?url=http%3A%2F%2F127.0.0.1%3A27199%2Fkarabiner%2Fcmdabl.json`
   (a temporary server) made Karabiner fetch the file and show its Import dialog with the cmdAbl rule.
   `cmdabl setup karabiner` (link the file) stays as the fallback.
@@ -125,7 +125,7 @@ install still goes through the page's **Copy** button unless the setting is on.
 ### 6. `cmdabl setup` subcommands
 
 - `cmdabl setup` shows the page (always, whatever `setup.openOnStart` says).
-- `cmdabl setup copy` copies or updates the Remote Script (the button's command; also usable by hand).
+- `cmdabl setup script` (named after what it sets up, like `karabiner`; was `copy`, user 2026-11-05) copies or updates the Remote Script (the button's command; also usable by hand).
 - `cmdabl setup karabiner` links the rule the old way (the fallback).
 - Headless (MCP `cmdabl_run`): the rows come back as text lines with their marks, so agents can test
   them without a dialog.
