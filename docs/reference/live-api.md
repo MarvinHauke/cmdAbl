@@ -69,6 +69,7 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `ui.board` | platform | the board editor surface (sections of on/off items) | – |  |
 | `commands.roots` | platform | reads the declared command tree | – |  |
 | `commands.usage` | platform | renders the short --help text for a command path | – |  |
+| `commands.defaults` | platform | reads the usable default commands (command → line) | – |  |
 | `commands.help` | platform | renders --help text for a command path | – |  |
 | `onSetChange` | script | operation `set_id`, polled every few seconds while a module listens | – | The id lives in the Set (Song.set_data); the listener hears it when the script first answers and when it differs. |
 | `ui.livePage` | platform | a dialog on http://localhost:27184/live/&lt;page> with read-only routes under a one-time token | – | The read-only exception to the dialog rule (plan 0018): the page polls the module's route functions while open; it never writes. |
@@ -82,6 +83,8 @@ What a module's port method does in Live. `sdk` calls need no Remote Script; `sc
 | `midi.statusBar` | platform | reads `midi.statusBar` in settings.json | – |  |
 | `midi.enabled` | platform | reads `map.enabled` in settings.json | – |  |
 | `midi.setEnabled` | platform | writes `map.enabled` in settings.json | – |  |
+| `settings.declare` | platform | declares the module's settings group (the Settings page is generated from it) | – |  |
+| `settings.get` | platform | reads one declared key of settings.json (the default when missing or wrong) | – |  |
 | `commands.completer` | platform | registers a source of completion candidates under a key | – |  |
 | `commands.add` | platform | declares a node on the command tree | – |  |
 

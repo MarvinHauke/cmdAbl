@@ -51,6 +51,8 @@ const stub: ModuleApi = {
   dialog: async () => {
     throw new Error("a module opened a dialog while being activated; declare commands only");
   },
+  // Declaring settings is allowed at activation (the settings page is built later); the generator only needs the commands.
+  settings: { declare: () => {}, get: async () => undefined as never },
   commands: { add: (command) => void registry.add(command), completer: () => {} },
   pick: async () => null,
   onPick: () => {},

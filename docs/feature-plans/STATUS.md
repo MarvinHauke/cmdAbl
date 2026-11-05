@@ -68,8 +68,6 @@ All releases were tested in Live, including the installed `.ablx`.
 
 ## Small items
 
-- `npm run docs:reference` fails: the fake api in `scripts/command-reference-main.ts` has no `settings` (since 0019 phase 1; module `activate` calls `api.settings.declare`). Found 2026-11-05 during the layout move; the generated `docs/reference/commands.md` is stale until it is fixed.
-
 - `npm start` sometimes ends with "Failed to connect to Live within 10s" although the extension loaded
   fully (2026-11-05, 3 of 7 restarts); a second try connects. CLI timeout, not cmdAbl.
 - Settings page: an emptied int field counts as "1 change" on Apply, though it falls back to the last
