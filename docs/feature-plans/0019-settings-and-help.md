@@ -92,8 +92,10 @@ interface ModuleApi {
 ```
 
 - The store keeps working on plain keys. Today's `SETTINGS_DEFAULTS` table becomes core's own
-  declarations (group "cmdAbl": `palette.above`, `ui.helpLine`; group "MIDI": `map.enabled`,
-  `midi.statusBar`). The file format doesn't change, and existing files stay valid.
+  declarations, one group per command so every group id is a command with its `config`
+  (2026-11-05, during 1a): `cmdabl` (`palette.above`; `ui.helpLine` in phase 2), `map` "MIDI mapping"
+  (`map.enabled`) and `midi` "MIDI monitor" (`midi.statusBar`). The file format doesn't change, and
+  existing files stay valid.
 - Validation moves from "the default's type" to the declaration: bool, an enum value from `choices`, or
   an int within `min…max`. A wrong value means the default and one warning, as today.
 - **Modules don't write settings directly.** Only the settings page changes them, plus core-owned
@@ -149,6 +151,8 @@ interface ModuleApi {
 - `<module> config`: added by the platform to every module with a command, since each config page has at
   least its default-command row (§7). It's a subcommand
   in the tree that the module doesn't write itself, documented in `man` like `--help`.
+  **It takes the word `config`:** `tag config` used to address a track named "config" and now opens
+  the settings; `tag "config"` keeps the old meaning. The help text and the 0.1.6 release notes say so.
 - **The gear button** in a page's footer (board, note, MIDI monitor): a page can't open a second dialog,
   so the gear closes the page with `{ "settings": true }`, and core opens the settings page on that
   module's group. When the settings page closes, core runs the page's command line again, so the user
