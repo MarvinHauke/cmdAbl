@@ -169,6 +169,7 @@
           if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commit(); save(); }
           else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); e.stopPropagation(); commit(); inp.blur(); moveTo(idx + (e.key === 'ArrowUp' ? -1 : 1)); }
           else if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); inp.value = String(r.value); inp.blur(); requestClose(); }
+          else if (e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); commit(); tabFrom(idx, e.shiftKey, true); }
           else if (e.key.length > 1 || e.ctrlKey || e.metaKey) e.stopPropagation();   // caret keys and shortcuts stay with the field
         });
         r.refresh = () => { if (document.activeElement !== inp) inp.value = String(r.value); minus.disabled = r.value <= row.min; plus.disabled = r.value >= row.max; };
@@ -209,6 +210,28 @@
       R.forEach((r, k) => r.el.classList.toggle('cur', k === cur));
       if (scroll) R[cur].el.scrollIntoView({ block: 'nearest' });
       updateFooter();
+    }
+
+    // Tab never uses the browser's order (it would jump to the topmost number field): rows, number fields and footer buttons by hand.
+    function enterRow(i, fromField) {
+      moveTo(i);
+      const r = R[cur];
+      if (r.input && fromField) { r.input.focus({ preventScroll: true }); r.input.select(); }
+      else { if (document.activeElement && document.activeElement !== scrollEl) document.activeElement.blur(); scrollEl.focus({ preventScroll: true }); }
+    }
+    function tabFrom(idx, back, fromField) {
+      const next = idx + (back ? -1 : 1);
+      if (next >= 0 && next < R.length) { enterRow(next, fromField); return; }
+      if (back) { enterRow(idx, false); return; }
+      R[idx].input?.blur();
+      (applyEl.disabled ? document.getElementById('cancel') : applyEl).focus({ preventScroll: true });
+    }
+    function tabFromFooter(el, back) {
+      const cancel = document.getElementById('cancel');
+      if (el === applyEl && back) enterRow(R.length - 1, true);
+      else if (el === applyEl) cancel.focus();
+      else if (back) (applyEl.disabled ? enterRow(R.length - 1, true) : applyEl.focus());
+      else enterRow(0, true);
     }
 
     const KEYS = '↑↓ row · ←→ change · ⇧ ×10 · Space toggle';
@@ -271,6 +294,20 @@
       if (confirming) return;   // handled in the capture listener above
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const r = R[cur];
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const a = document.activeElement;
+        if (!r) return;
+        if (a === applyEl || a === document.getElementById('cancel')) tabFromFooter(a, e.shiftKey);
+        else if (r.input && !e.shiftKey && a !== r.input) { r.input.focus({ preventScroll: true }); r.input.select(); }   // on an int row: Tab enters its field
+        else tabFrom(cur, e.shiftKey, false);
+        return;
+      }
+      { const a = document.activeElement;
+        if (a === applyEl || a === document.getElementById('cancel')) {   // a footer button has focus: Enter/Space press it, Esc closes, nothing reaches the rows
+          if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
+          return;
+        } }
       if (e.key === 'ArrowDown') { e.preventDefault(); moveTo(cur + 1); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); moveTo(cur - 1); }
       else if (!r) { if (e.key === 'Escape') send(''); }
