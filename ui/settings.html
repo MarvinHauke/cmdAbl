@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<!-- settings surface (see src/core/ui.ts SettingsRequest, plan 0019 §2). PLACEHOLDER written by cmdabl-core so the build
+     and the round-trip can be tested: cmdabl-ui replaces this file. In: SETTINGS_PLACEHOLDER = SettingsRequest.
+     Out (close_and_send): JSON { changes: { [key]: value }, open?: target } on Enter, '' on Esc. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark" />
+  <title>cmdAbl Settings</title>
+  <style>
+    /*SHARED_CSS_PLACEHOLDER*/
+    body { padding: 16px; }
+    .row { margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const SETTINGS = /*SETTINGS_PLACEHOLDER*/null;
+    const changes = {};
+    function send(value) {
+      const m = { method: 'close_and_send', params: [value] };
+      if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
+      else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
+    }
+    const root = document.getElementById('root');
+    for (const g of SETTINGS?.groups ?? []) {
+      const h = document.createElement('h3'); h.textContent = g.heading; root.appendChild(h);
+      for (const row of g.items) {
+        const div = document.createElement('div'); div.className = 'row';
+        const label = document.createElement('span'); label.textContent = row.label + ' '; div.appendChild(label);
+        if (row.kind === 'bool') {
+          const c = document.createElement('input'); c.type = 'checkbox'; c.checked = row.value;
+          c.addEventListener('change', () => { changes[row.key] = c.checked; }); div.appendChild(c);
+        } else if (row.kind === 'enum') {
+          const s = document.createElement('select');
+          for (const ch of row.choices) { const o = document.createElement('option'); o.value = ch.value; o.textContent = ch.label; s.appendChild(o); }
+          s.value = row.value; s.addEventListener('change', () => { changes[row.key] = s.value; }); div.appendChild(s);
+        } else if (row.kind === 'int') {
+          const n = document.createElement('input'); n.type = 'number'; n.min = row.min; n.max = row.max; n.value = row.value;
+          n.addEventListener('change', () => { changes[row.key] = Number(n.value); }); div.appendChild(n);
+        } else {
+          const b = document.createElement('button'); b.textContent = row.summary; b.addEventListener('click', () => send(JSON.stringify({ changes, open: row.target }))); div.appendChild(b);
+        }
+        root.appendChild(div);
+      }
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') send(JSON.stringify({ changes }));
+      else if (e.key === 'Escape') send('');
+    });
+  </script>
+</body>
+</html>

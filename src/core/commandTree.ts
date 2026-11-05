@@ -205,6 +205,12 @@ export interface CommandNode<P = unknown, V = string> {
   pickState?: PickState;
   /** Leaf node only. */
   run?: CommandRun<P, V>;
+  /**
+   * Top-level commands only, set by the platform (never by a module): the `<command> config` subcommand that opens the
+   * command's settings (plan 0019). The parser matches the word `config` right after the command when the command has no
+   * subcommand of that name; the node is a runnable leaf without arguments. `--help` and `man` list it.
+   */
+  config?: CommandNode<P, V>;
 }
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
@@ -510,6 +516,7 @@ function sections(node: CommandNode<any, any>): string[] {
     lines.push("", "commands:");
     for (const child of node.children) lines.push(`  ${child.name.padEnd(12)} ${child.summary}`);
   }
+  if (node.config) lines.push("", "settings:", `  ${`${node.name} config`.padEnd(12)} ${node.config.summary}`);
   const described = (node.args ?? []).filter((arg) => arg.summary);
   if (described.length) {
     lines.push("", "arguments:");
@@ -552,7 +559,7 @@ export function shortHelpText(node: CommandNode<any, any>, path: string[], more?
 }
 
 /** The tree without handlers — plain JSON for the palette webview. */
-export type SerializedNode = Omit<CommandNode<never, never>, "run" | "children" | "pickState"> & {
+export type SerializedNode = Omit<CommandNode<never, never>, "run" | "children" | "pickState" | "config"> & {
   children?: SerializedNode[];
   runnable: boolean;
 };
@@ -606,7 +613,7 @@ export function completionTree(roots: readonly CommandNode<any, any>[]): Seriali
 }
 
 export function serializeTree(roots: CommandNode<any, any>[]): SerializedNode[] {
-  return roots.map(({ run, children, pickState: _pickState, ...rest }) => ({
+  return roots.map(({ run, children, pickState: _pickState, config: _config, ...rest }) => ({
     ...rest,
     runnable: Boolean(run),
     ...(children?.length ? { children: serializeTree(children) } : {}),

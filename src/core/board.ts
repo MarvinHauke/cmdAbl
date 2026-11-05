@@ -67,6 +67,8 @@ export function capBoard(request: BoardRequest): { request: BoardRequest; cut: b
   return {
     request: {
       title: clip(request.title),
+      ...(request.gear === true ? { gear: true } : {}),
+      ...(typeof request.foldAfter === "number" && Number.isInteger(request.foldAfter) && request.foldAfter >= 1 && request.foldAfter <= 500 ? { foldAfter: request.foldAfter } : {}),
       sections,
       ...(request.create
         ? { create: { label: clip(request.create.label), ...(request.create.pattern ? { pattern: request.create.pattern } : {}) } }

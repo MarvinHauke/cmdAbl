@@ -1,0 +1,48 @@
+{
+  "title": "cmdAbl Settings",
+  "focus": "tag",
+  "help": true,
+  "groups": [
+    {
+      "id": "cmdabl",
+      "heading": "cmdAbl",
+      "items": [
+        {
+          "key": "palette.above",
+          "label": "Help above the prompt",
+          "help": "Show the command's options above the prompt while you type: Help is a read-only panel, Options a list you can pick from. Off keeps the palette clean.",
+          "kind": "enum",
+          "value": "hints",
+          "default": "off",
+          "choices": [
+            { "value": "off", "label": "Off" },
+            { "value": "hints", "label": "Help" },
+            { "value": "options", "label": "Options" }
+          ]
+        },
+        {
+          "key": "link:defaults",
+          "label": "Default commands",
+          "help": "A bare command word runs a line you choose (phase 1b: core sends no link rows yet).",
+          "kind": "link",
+          "target": "defaults",
+          "summary": "3 set"
+        }
+      ]
+    },
+    {
+      "id": "map",
+      "heading": "MIDI mapping",
+      "items": [
+        { "key": "map.enabled", "label": "Mapping on", "help": "Run the MIDI bindings. Off drops every incoming message (the same as map --off).", "kind": "bool", "value": false, "default": true }
+      ]
+    },
+    {
+      "id": "tag",
+      "heading": "Tags",
+      "items": [
+        { "key": "tag.foldAfter", "label": "Fold after", "help": "Tags with more tracks than this start folded on the board.", "kind": "int", "value": 20, "default": 20, "min": 1, "max": 500 }
+      ]
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import { adviseRemoteScript } from "./setupAdvice.js";
 import { measureCurve, type CurveDeps } from "./curve.js";
 import { commandListText } from "./topics.js";
 import { appLog, clockText, dayText, type Log } from "./log.js";
+import type { SettingsFlow } from "./settingsSurface.js";
 
 // The only commands baked into cmdAbl itself — what a first-time user needs
 // before any module is involved. Everything else is a module
@@ -26,9 +27,14 @@ export interface BuiltinsDeps {
   log?: Pick<Log, "entries" | "setDebug" | "debugOn">;
   /** The ports of `cmdabl curve` (absent: it answers exit 5). */
   curve?: CurveDeps;
+  /** The settings page, for `cmdabl config` (plan 0019); absent: it answers exit 5. */
+  settings?: Pick<SettingsFlow, "open" | "groups">;
 }
 
 export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps = {}): void {
+  // The group ids `cmdabl config` completes (core's first, then the modules').
+  registry.completer("settings-groups", () => (deps.settings?.groups() ?? []).map((g) => ({ label: g.id, description: g.heading })));
+
   registry.add({
     name: "help",
     topic: "Look things up",
@@ -70,6 +76,25 @@ export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps =
             running,
           });
           return ok(`${installedText}\n\n${advice}\n${REMOTE_SCRIPT_DOCS_URL}`);
+        },
+      },
+      {
+        name: "config",
+        summary: "open the settings of cmdAbl and its modules",
+        description:
+          "Opens the Settings page: one group per module that declares settings (cmdAbl, MIDI mapping, tag, …), core's first. " +
+          "Change values with the keys (↑/↓ rows, ←/→ a choice or number, Space a switch) and press Enter to save; Esc leaves without saving. " +
+          "With a group the page opens on it. <command> config (tag config, map config) shows just that command's group; " +
+          "`config` right after such a command is this word now, so to name a track called config, quote it (tag \"config\").",
+        examples: [
+          { line: "cmdabl config", note: "all settings" },
+          { line: "cmdabl config tag", note: "open on the tag group" },
+        ],
+        args: [{ name: "group", kind: "text", required: false, complete: "settings-groups", summary: "a group to open on (a module's name)" }],
+        run: async (invocation) => {
+          if (!deps.settings) return fail(ExitCode.UNAVAILABLE, "config: the settings are not available in this build");
+          const group = invocation.args[0]?.[0];
+          return deps.settings.open(typeof group === "string" ? { group } : {});
         },
       },
       {

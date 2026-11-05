@@ -159,6 +159,8 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "midi.statusBar", via: "platform", call: "reads `midi.statusBar` in settings.json", lom: [] },
   { port: "midi.enabled", via: "platform", call: "reads `map.enabled` in settings.json", lom: [] },
   { port: "midi.setEnabled", via: "platform", call: "writes `map.enabled` in settings.json", lom: [] },
+  { port: "settings.declare", via: "platform", call: "declares the module's settings group (the Settings page is generated from it)", lom: [] },
+  { port: "settings.get", via: "platform", call: "reads one declared key of settings.json (the default when missing or wrong)", lom: [] },
   { port: "commands.completer", via: "platform", call: "registers a source of completion candidates under a key", lom: [] },
   { port: "commands.add", via: "platform", call: "declares a node on the command tree", lom: [] },
 ];

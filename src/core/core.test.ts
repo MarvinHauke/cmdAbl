@@ -295,7 +295,7 @@ test("cmdabl: a group on the tree — usage generated, unknown subcommand is a u
   const bad = await run("cmdabl nope");
   assert.equal(bad.result.code, ExitCode.USAGE);
   assert.match(bad.result.message ?? "", /unknown subcommand "nope"/);
-  assert.match(bad.result.message ?? "", /valid: setup, log, curve, bridge/);
+  assert.match(bad.result.message ?? "", /valid: setup, config, log, curve, bridge/);
   // the old flags are gone
   assert.equal((await run("cmdabl --setup")).result.code, ExitCode.USAGE);
   assert.equal((await run("cmdabl --bridge")).result.code, ExitCode.USAGE);

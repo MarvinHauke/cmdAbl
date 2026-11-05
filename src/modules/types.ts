@@ -20,6 +20,8 @@ export type { BindingsSet, ListenOptions, MidiPort } from "../core/midiPort.js";
 export type { MidiBinding } from "../core/midiEngine.js";
 export type { MidiControl, MidiMessage, OperatorName } from "../core/midi.js";
 import type { BoardAnswer, BoardRequest, PickPreview, StateChange } from "../core/ui.js";
+import type { SettingDef } from "../core/settings.js";
+export type { SettingDef } from "../core/settings.js";
 import type { BridgeResult } from "../ableton/bridgeProtocol.js";
 import type { TagsWritten } from "../ableton/bridgeOps.js";
 
@@ -115,6 +117,26 @@ export interface FilesPort {
   write(name: string, text: string): Promise<boolean>;
 }
 
+/** Declared settings (plan 0019): the settings page is generated from what modules declare here. */
+export interface SettingsPort {
+  /**
+   * Declare this module's settings, once, at activation. The group is shown on the Settings page under `heading`, and
+   * `<module> config` (e.g. `tag config`) opens just that group. Every key must be `<module>.<name>` (the module's
+   * `name`, else its first command; declare after `name` is set or after the first `commands.add`); a key outside that
+   * namespace, a bad declaration or a key declared twice is a warning in the log and that item is dropped. Kinds: `bool`,
+   * `enum` (`choices: [{ value, label }]`) and `int` (`min`…`max`); the default must fit its kind. Modules never write
+   * settings: only the Settings page does. Never throws.
+   */
+  declare(group: { heading: string; items: SettingDef[] }): void;
+  /**
+   * The current value of one of this module's settings, `name` being the full key (`tag.foldAfter`) or just the part
+   * after the module's name (`foldAfter`). The declared default when the file has no value or a wrong one; read the
+   * file again whenever it changed, so a new value applies at the next run. `undefined` for a key nobody declared.
+   * Never throws.
+   */
+  get<T = unknown>(name: string): Promise<T>;
+}
+
 export interface LiveSetPort {
   /** The addressable objects of the current Set, flattened (tracks, devices, chains), with unique-able paths. */
   nodes(): ObjectNode[];
@@ -131,6 +153,8 @@ export interface ModuleApi {
   set: SetPort;
   /** The module's own files (plan 0013). */
   files: FilesPort;
+  /** The module's declared settings (plan 0019). */
+  settings: SettingsPort;
   /**
    * Be told when the Live Set is (re)available or has changed: `listener` gets the Set's id (plan 0013; null = the
    * Set has none yet) once the Remote Script answers for the first time (also after it came up later than the

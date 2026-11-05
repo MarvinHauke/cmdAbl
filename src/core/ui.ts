@@ -3,7 +3,7 @@ import type { PaletteItem, PaletteResult, ResultSection } from "./types.js";
 import type { CompletionData } from "./complete.js";
 import { PALETTE_WIDTH, paletteHeight } from "./paletteSize.js";
 import type { LivePages, LiveRoutes } from "./livePage.js";
-import { takePaletteAnswer, type PaletteSettings } from "./settings.js";
+import { takePaletteAnswer, type PaletteRequestSettings, type PaletteSettings } from "./settings.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsText } from "./notifySize.js";
 import { boardSize, parseBoardAnswer } from "./board.js";
@@ -17,6 +17,8 @@ import { openUrl } from "./openUrl.js";
 import { wantsOpen } from "./pickResult.js";
 import notifyTemplate from "../../ui/feedback.html";
 import boardTemplate from "../../ui/board.html";
+import settingsTemplate from "../../ui/settings.html";
+import { isGearAnswer, parseSettingsAnswer, settingsSize } from "./settingsSurface.js";
 
 // The UI contract. The platform never touches an HTML file directly — it talks
 // to three "surfaces", each defined only by the data it receives and the value
@@ -38,10 +40,15 @@ export interface PromptRequest {
    */
   completion?: CompletionData;
   /**
-   * The palette's stored settings (plan 0006 "Two zones"), for the page to start with. The page returns
-   * changed settings in `PaletteResult.settings` (see `createDefaultUi`'s `onSettings`).
+   * The palette's stored settings (plan 0006 "Two zones"), for the page to start with: `above` is the value of
+   * `palette.above`; `gear` says whether the page draws the settings button (plan 0019: false when `above` is
+   * "off", the clean palette: no gear and no extra footer elements). The page no longer changes settings itself
+   * (the footer switch is gone); it still returns a changed `above` in `PaletteResult.settings` for one release.
+   *
+   * The gear answers `{ "settings": true, "text": "<what is in the prompt now>" }` (nothing else): core opens
+   * the settings page, and afterwards the palette again with `text` in the prompt and the caret at its end.
    */
-  settings?: PaletteSettings;
+  settings?: PaletteRequestSettings;
   /**
    * Open with this text in the input and the caret at `cursor` (0 = at the
    * start): used when a pick list's Tab put an object into the prompt, e.g.
@@ -144,6 +151,20 @@ export interface NotifyRequest {
  */
 export interface BoardRequest {
   title: string;
+  /**
+   * Draw the settings gear in the footer (plan 0019; set by the platform, not by the module: the command has
+   * settings). The gear answers `{ "settings": true }` (nothing else; with pending changes the page asks
+   * "Discard changes and open settings?" first). Core then opens the settings, and afterwards runs the command
+   * line again, so the board comes back (also after Esc on the settings). The module only sees a closed board.
+   * The WHOLE line runs again: a command that writes before it opens its board would write twice, so only commands
+   * that read first and write after the board closes (`tag --list`, `tag --edit`) may be run with a gear.
+   */
+  gear?: boolean;
+  /**
+   * A section with more `on` items than this starts folded (plan 0019: the module passes `tag.foldAfter`). Whole
+   * number 1–500; anything else is dropped by core and the page uses its own default (20).
+   */
+  foldAfter?: number;
   sections: Array<{
     /** Stable key the answer refers to. */
     id: string;
@@ -199,7 +220,43 @@ export interface BoardAnswer {
   confirmed?: true;
 }
 
+// ── the settings surface (plan 0019 §2) ─────────────────────────────────────
+
+/** One row of the settings page. `value` is the stored value, `default` what a reset goes back to. */
+export type SettingsRow =
+  | { key: string; label: string; help: string; kind: "bool"; value: boolean; default: boolean }
+  | { key: string; label: string; help: string; kind: "enum"; value: string; default: string; choices: { value: string; label: string }[] }
+  | { key: string; label: string; help: string; kind: "int"; value: number; default: number; min: number; max: number }
+  /**
+   * A button that leads to another page instead of a value. It closes the page with `{ changes, open: target }`;
+   * core saves the changes first, then opens the target. Core sends none in phase 1a (the defaults page comes in
+   * 1b); the page renders them from 1a on. `summary` is the dim text on the button ("3 set").
+   */
+  | { key: string; label: string; help: string; kind: "link"; target: string; summary: string };
+
+/** Sections of the page, one per declaring module (core first, then modules by name). Capped: 20 groups × 50 rows, texts up to 300 characters. */
+export interface SettingsRequest {
+  /** "cmdAbl Settings", "tag Settings" (the page title; the dialog does not draw it). */
+  title: string;
+  /** A group id: the page scrolls to it and puts the cursor on its first row. Absent: the top. */
+  focus?: string;
+  /** `ui.helpLine` (phase 2): whether the page's help line follows the hover. Absent until then. */
+  help?: boolean;
+  groups: Array<{ id: string; heading: string; items: SettingsRow[] }>;
+}
+
+/**
+ * What the page answers on Enter (Esc answers '' and nothing is saved): only real differences, `changes` by key.
+ * `open` is the `target` of a link row that closed the page. Core checks it all with `parseSettingsAnswer`.
+ */
+export interface SettingsAnswer {
+  changes: Record<string, boolean | string | number>;
+  open?: string;
+}
+
 export interface Ui {
+  /** The settings page: resolves with the validated answer, or null when closed (Esc) or unreadable. */
+  settings(request: SettingsRequest): Promise<SettingsAnswer | null>;
   /** Resolves with what the user entered or picked, or null if they dismissed it. */
   prompt(request: PromptRequest): Promise<PaletteResult | null>;
   /**
@@ -237,6 +294,11 @@ export function createDefaultUi(
   onSettings?: (settings: PaletteSettings) => void,
   /** The live pages the trigger server serves; absent: live pages open as data pages. */
   live?: LivePages,
+  /**
+   * A page's gear (plan 0019): the board or the palette answered `{ "settings": true }`. Core opens the settings and
+   * runs the page's command line again. The surface itself answers null (closed) for it. `text` is the palette's prompt.
+   */
+  onGear?: (gear: { surface: "board" | "palette"; text?: string }) => void,
 ): Ui {
   const show = (name: string, html: string, width: number, height: number): Promise<string | null> =>
     // A failure is already logged by the queue; here it only counts as dismissed.
@@ -251,7 +313,7 @@ export function createDefaultUi(
         SETTINGS: request.settings ?? null,
       });
       const raw = await show("palette", html, PALETTE_WIDTH, paletteHeight(request.settings?.above));
-      return takePaletteAnswer(raw, onSettings, (bad) => logger("ui").error(`malformed palette result: ${bad.slice(0, 200)}`));
+      return takePaletteAnswer(raw, onSettings, (bad) => logger("ui").error(`malformed palette result: ${bad.slice(0, 200)}`), (gear) => onGear?.({ surface: "palette", text: gear.text }));
     },
 
     async select(request) {
@@ -284,7 +346,19 @@ export function createDefaultUi(
     async board(request) {
       const html = fillTemplate(boardTemplate, { BOARD: request });
       const { width, height } = boardSize(request);
-      return parseBoardAnswer(await show("board", html, width, height), request);
+      const raw = await show("board", html, width, height);
+      // The gear: only where the request drew it. Counts as closed; core opens the settings and runs the command again.
+      if (request.gear === true && isGearAnswer(raw)) {
+        onGear?.({ surface: "board" });
+        return null;
+      }
+      return parseBoardAnswer(raw, request);
+    },
+
+    async settings(request) {
+      const html = fillTemplate(settingsTemplate, { SETTINGS: request });
+      const { width, height } = settingsSize(request);
+      return parseSettingsAnswer(await show("settings", html, width, height), request);
     },
 
     async page(name, html, width, height) {

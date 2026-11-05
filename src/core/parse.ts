@@ -72,6 +72,13 @@ export function parse<P = unknown>(fullInput: string, roots: CommandNode<P, any>
 
   if (!node) return error(ExitCode.NOT_FOUND, `unknown command: "${tokens[0]!.value}"`);
 
+  // `<command> config`: the settings subcommand the platform added (CommandNode.config). A real subcommand of that name wins (the walk took it).
+  if (path.length === 1 && node.config && tokens[i]?.value === "config" && !tokens[i]!.quoted && !pipe) {
+    node = node.config;
+    path.push("config");
+    i++;
+  }
+
   let isGroup = (node.children?.length ?? 0) > 0;
   const rest = tokens.slice(i);
   const endOfOptions = rest.findIndex((t) => startsOption(input, t) && t.value === "--");

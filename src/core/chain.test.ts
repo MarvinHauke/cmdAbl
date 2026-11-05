@@ -183,7 +183,7 @@ test("Tab on a pick list (fill) ends the chain and reopens the palette", async (
 
 function headlessSetup() {
   const calls: string[] = [];
-  const ui: Ui = { prompt: async () => null, select: async () => null, notify: () => {}, board: async () => null, page: async () => null, livePage: async () => null };
+  const ui: Ui = { prompt: async () => null, select: async () => null, notify: () => {}, settings: async () => null, board: async () => null, page: async () => null, livePage: async () => null };
   const gate = createUiGate(ui);
   const registry = new CommandRegistry();
   const named = (name: string): Command["run"] => (inv) => {

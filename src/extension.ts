@@ -26,7 +26,8 @@ import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/ui.js";
 import { createModuleFiles } from "./core/files.js";
-import { createSettingsStore, toPaletteSettings } from "./core/settings.js";
+import { createSettingsRegistry, createSettingsStore, toPaletteRequestSettings } from "./core/settings.js";
+import { createSettingsFlow } from "./core/settingsSurface.js";
 import { tokenFilePath } from "./ableton/bridgeToken.js";
 import * as path from "node:path";
 import { createUiGate, runHeadless } from "./core/headless.js";
@@ -63,15 +64,22 @@ export function activate(activation: ActivationContext) {
   const dialogs = createDialogQueue();
   // The gate passes everything through to the real dialogs, except during a headless run (plan 0016).
   // cmdAbl's own settings (settings.json in the data folder); the palette page returns changes with its result.
-  const settingsStore = createSettingsStore({ base: dataFolder, warn: (text) => logger("settings").warn(text) });
+  // Declared settings (plan 0019): core's groups are in the registry from the start, the modules declare theirs at activation.
+  const settingsRegistry = createSettingsRegistry((text) => logger("settings").warn(text));
+  const settingsStore = createSettingsStore({ base: dataFolder, registry: settingsRegistry, warn: (text) => logger("settings").warn(text) });
+  // A page's gear (plan 0019): remembered here, taken by the run (board) or the palette loop right after the page closed.
+  let pendingGear: { surface: "board" | "palette"; text?: string } | undefined;
   // Live pages (plan 0018): a module's dialog may read from it through token-guarded routes of the trigger server.
   // Registered in release builds too; unavailable (data-page fallback) when the port is taken.
   let trigger: { listening(): boolean } | undefined;
   const livePages = createLivePages({ port: TRIGGER_PORT, available: () => trigger?.listening() === true });
   const gate = createUiGate(
-    createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.above": settings.above }), livePages),
+    createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.above": settings.above }), livePages, (gear) => {
+      pendingGear = gear;
+    }),
   );
   const ui: Ui = gate.ui;
+  const settingsFlow = createSettingsFlow({ registry: settingsRegistry, store: settingsStore, ui, log: (line) => logger("settings").warn(line) });
   const providers: { provider: Provider; priority: number }[] = [];
   // The items of the palette that is open (or was opened last): a picked object row is found here.
   let paletteItems: PaletteItem[] = [];
@@ -123,6 +131,14 @@ export function activate(activation: ActivationContext) {
     return answer;
   }
   let isOpen = false;
+  /** The line the palette (or /show) is running now; the board's gear belongs to its command (plan 0019). */
+  let activeLine: string | undefined;
+  /** The settings group of the running command: its first word, when that module declared settings. Not for `;` chains. */
+  function activeGroup(): string | undefined {
+    if (activeLine === undefined || activeLine.includes(";")) return undefined;
+    const root = activeLine.trim().split(/\s+/)[0] ?? "";
+    return settingsFlow.has(root) ? root : undefined;
+  }
 
   function showFeedback(message: string): void {
     ui.notify({ text: message, code: ExitCode.OK });
@@ -132,6 +148,7 @@ export function activate(activation: ActivationContext) {
   // `cmdabl curve` measures the first regular track (plan 0012): no fader moves, nothing is written.
   const firstTrack = () => liveNodes().find((n) => n.kind === "track" && n.scope === "regular");
   registerBuiltins(registry, {
+    settings: settingsFlow,
     bridge: () => getBridge(),
     curve: {
       hasTrack: () => firstTrack() !== undefined,
@@ -216,7 +233,16 @@ export function activate(activation: ActivationContext) {
     },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
-    ui: { board: (request) => runBoard(ui, request), livePage: (name, html, width, height, routes) => ui.livePage(name, html, width, height, routes) },
+    // Declared settings; a module sees its own namespace (replaced per module below).
+    settings: {
+      declare: () => void logger("settings").warn("a module declared settings before it was named; dropped"),
+      get: async () => undefined as never,
+    },
+    ui: {
+      // The gear (plan 0019) is drawn only for a command that has settings: `tag --list` → the group `tag`.
+      board: (request) => runBoard(ui, { ...request, ...(activeGroup() !== undefined ? { gear: true } : {}) }),
+      livePage: (name, html, width, height, routes) => ui.livePage(name, html, width, height, routes),
+    },
     pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, ...options, multi: options?.multi ?? true }),
     tags: {
       refresh: () => getTagCache().refreshNow(getBridge()),
@@ -237,6 +263,21 @@ export function activate(activation: ActivationContext) {
     let named = mod.name !== undefined;
     const tagged = () => logger(source);
     return Object.assign(Object.create(moduleApi) as ModuleApi, {
+      settings: {
+        declare: (group: Parameters<ModuleApi["settings"]["declare"]>[0]) => {
+          if (!named) return void tagged().warn("settings: declare after the module has a name (Module.name or a first commands.add); dropped");
+          settingsRegistry.declare(source, group); // problems are warnings, logged by the registry
+        },
+        get: async <T = unknown>(name: string): Promise<T> => {
+          try {
+            const key = typeof name === "string" && name.includes(".") ? name : `${source}.${name}`;
+            if (!key.startsWith(`${source}.`)) return undefined as T;
+            return (await settingsStore.get())[key] as T;
+          } catch {
+            return undefined as T;
+          }
+        },
+      },
       files: createModuleFiles({ base: dataFolder, module: () => source, warn: (text) => tagged().warn(text) }),
       log: (line: string) => tagged().info(line),
       logger: {
@@ -260,6 +301,16 @@ export function activate(activation: ActivationContext) {
   // The command list itself is a provider (priority 0); modules add theirs.
   moduleApi.registerProvider(createCommandProvider(registry));
   for (const mod of MODULES) mod.activate(moduleApiFor(mod));
+  // `<command> config` for every command whose module declared settings (plan 0019); `cmdabl config` is a real subcommand.
+  for (const group of settingsRegistry.groups()) {
+    if (group.id === "cmdabl") continue;
+    const attached = registry.attachConfig(group.id, {
+      name: "config",
+      summary: `open the settings of ${group.id}`,
+      run: () => settingsFlow.open({ group: group.id, only: true }),
+    });
+    if (!attached) logger("settings").warn(`group "${group.id}" has no command of that name; \`${group.id} config\` does not exist`);
+  }
   // A command that names a completer nobody registered would complete nothing: say so once, at startup.
   for (const problem of registry.unknownCompleters()) logger("host").warn(problem);
 
@@ -357,14 +408,30 @@ export function activate(activation: ActivationContext) {
       }
       line = mapped;
     }
-    const outcome = await runLine(line, {
-      ...runBase,
-      takeFill,
-      // The platform's own lists: Tab may put a single-select row into the prompt.
-      pick: ({ title, candidates, multi, nodes, preview, details, state }) =>
-        pick(title, candidates, multi, { nodes, preview, details, state, fill: true }),
-      pickTags: (request) => pickTagNames(ui, request),
-    });
+    // The board's gear (plan 0019): the page closed with {settings: true}; the settings open, then the same line runs again
+    // (also after Esc on the settings). The module only saw a closed board.
+    let outcome: Awaited<ReturnType<typeof runLine>>;
+    for (let round = 0; ; round++) {
+      pendingGear = undefined;
+      activeLine = line;
+      try {
+        outcome = await runLine(line, {
+          ...runBase,
+          takeFill,
+          // The platform's own lists: Tab may put a single-select row into the prompt.
+          pick: ({ title, candidates, multi, nodes, preview, details, state }) =>
+            pick(title, candidates, multi, { nodes, preview, details, state, fill: true }),
+          pickTags: (request) => pickTagNames(ui, request),
+        });
+      } finally {
+        activeLine = undefined;
+      }
+      const gear = pendingGear as { surface: "board" | "palette"; text?: string } | undefined;
+      pendingGear = undefined;
+      const group = gear?.surface === "board" ? firstWord(line) : undefined;
+      if (group === undefined || round >= 20 || !settingsFlow.has(group)) break;
+      await openSettings({ group, only: true });
+    }
     if (outcome.fill !== undefined) return outcome.fill;
     if (outcome.cancelled) return;
     present(outcome.result);
@@ -375,6 +442,18 @@ export function activate(activation: ActivationContext) {
       for (const listener of commandRunListeners) listener(invocation);
     }
     return undefined;
+  }
+
+  const firstWord = (line: string): string => line.trim().split(/\s+/)[0] ?? "";
+
+  /**
+   * The settings page for a gear. What it saved goes to the log, not to a message (the page we came from opens again at
+   * once); a failure to save is shown.
+   */
+  async function openSettings(options: { group?: string; only?: boolean }): Promise<void> {
+    const result = await settingsFlow.open(options);
+    if (result.code !== ExitCode.OK) present(result);
+    else if (result.message) logger("settings").info(result.message);
   }
 
   /** The single place results become user-visible (see src/core/present.ts). */
@@ -471,8 +550,20 @@ export function activate(activation: ActivationContext) {
       const items = itemLists.flat();
       paletteItems = items;
       // Tab on a pick list puts an object into the prompt: reopen with it (same queue, same guard).
+      let cursor = 0;
       for (;;) {
-        const result = await ui.prompt({ items, completion, settings: toPaletteSettings(await settingsStore.get()), ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
+        pendingGear = undefined;
+        const result = await ui.prompt({ items, completion, settings: toPaletteRequestSettings(await settingsStore.get()), ...(initial !== undefined ? { initial: { text: initial, cursor } } : {}) });
+        // The palette's gear (plan 0019): the settings open, then the palette again with what was typed.
+        const gear = pendingGear as { surface: "board" | "palette"; text?: string } | undefined;
+        pendingGear = undefined;
+        if (!result && gear?.surface === "palette") {
+          await openSettings({ group: "cmdabl" });
+          initial = gear.text ?? "";
+          cursor = initial.length;
+          continue;
+        }
+        cursor = 0;
         initial = result ? await dispatch(result) : undefined;
         if (initial === undefined) break;
       }

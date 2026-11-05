@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { createSettingsStore, parsePaletteAnswer, parsePaletteSettings, takePaletteAnswer, SETTINGS_DEFAULTS, SETTINGS_FILE, toPaletteSettings } from "./settings.js";
+import { createSettingsStore, parsePaletteAnswer, parsePaletteSettings, takePaletteAnswer, SETTINGS_DEFAULTS, SETTINGS_FILE, toPaletteRequestSettings, toPaletteSettings } from "./settings.js";
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "cmdabl-settings-"));
 
@@ -217,4 +217,121 @@ test("midi.statusBar defaults to false, round-trips, and a non-boolean is the de
   const warnings: string[] = [];
   assert.equal((await createSettingsStore({ base: dir, warn: (t) => warnings.push(t) }).get())["midi.statusBar"], false);
   assert.equal(warnings.length, 1);
+});
+
+// ── declared settings (plan 0019 §1) ────────────────────────────────────────────
+
+import { createSettingsRegistry, CORE_GROUPS, fits, problemWith, type SettingDef } from "./settings.js";
+
+const fold: SettingDef = { key: "tag.foldAfter", label: "Fold after", help: "Tags with more tracks start folded.", kind: "int", default: 20, min: 1, max: 500 };
+
+test("core declares exactly the four 1a keys minus tag's: palette.above, map.enabled, midi.statusBar", () => {
+  const registry = createSettingsRegistry();
+  assert.deepEqual(registry.keys(), ["palette.above", "map.enabled", "midi.statusBar"]);
+  assert.deepEqual(CORE_GROUPS.map((g) => g.id), ["cmdabl", "map", "midi"]);
+  for (const key of Object.keys(SETTINGS_DEFAULTS)) assert.equal(registry.def(key)!.default, (SETTINGS_DEFAULTS as Record<string, unknown>)[key]);
+});
+
+test("a module declares its group: keys need its prefix; bad items are dropped with a warning, the rest stays", () => {
+  const warnings: string[] = [];
+  const registry = createSettingsRegistry((t) => warnings.push(t));
+  const problems = registry.declare("tag", {
+    heading: "Tags",
+    items: [
+      fold,
+      { ...fold, key: "other.foldAfter" }, // outside the namespace
+      { ...fold, key: "tag.bad", default: 0 }, // default outside min…max
+      { ...fold, key: "tag.nan", default: 1.5 }, // not a whole number
+      { key: "tag.e", label: "E", help: "h", kind: "enum", default: "z", choices: [{ value: "a", label: "A" }] }, // default not a choice
+      { key: "tag.dup", label: "D", help: "h", kind: "bool", default: true },
+      { key: "tag.dup", label: "D", help: "h", kind: "bool", default: true }, // twice
+      { key: "tag.nolabel", label: "", help: "h", kind: "bool", default: true },
+      { key: "tag.kind", label: "K", help: "h", kind: "float", default: 1 } as never,
+      { key: "palette.above", label: "steal", help: "h", kind: "bool", default: true }, // outside, and declared by core
+    ],
+  });
+  assert.equal(problems.length, warnings.length);
+  assert.equal(problems.length, 8);
+  assert.deepEqual(registry.groups().find((g) => g.id === "tag")!.items.map((i) => i.key), ["tag.foldAfter", "tag.dup"]);
+  assert.match(warnings.join("\n"), /outside the namespace "tag\."/);
+  assert.match(warnings.join("\n"), /"tag.dup" is declared already/);
+  // a group of only bad items is not created; a bad id or heading drops the group
+  assert.equal(registry.declare("nothing", { heading: "N", items: [{ ...fold, key: "x.y" }] }).length, 1);
+  assert.equal(registry.groups().some((g) => g.id === "nothing"), false);
+  assert.equal(registry.declare("Bad Id", { heading: "N", items: [] }).length, 1);
+  assert.equal(registry.declare("ok", { heading: "", items: [] }).length, 1);
+  assert.equal(registry.declare("ok", null as never).length, 1);
+});
+
+test("a module cannot take over core's group id; groups are core first, then modules by name", () => {
+  const registry = createSettingsRegistry();
+  assert.equal(registry.declare("map", { heading: "Mine", items: [{ key: "map.other", label: "O", help: "h", kind: "bool", default: true }] }).length, 1);
+  registry.declare("tag", { heading: "Tags", items: [fold] });
+  registry.declare("note", { heading: "Notes", items: [{ key: "note.editLoop", label: "L", help: "h", kind: "bool", default: false }] });
+  assert.deepEqual(registry.groups().map((g) => g.id), ["cmdabl", "map", "midi", "note", "tag"]);
+});
+
+test("fits and problemWith follow the declaration", () => {
+  assert.equal(fits(fold, 20), true);
+  for (const bad of [0, 501, 2.5, "3", null, NaN]) assert.equal(fits(fold, bad), false, String(bad));
+  assert.equal(problemWith(fold, "tag"), null);
+  assert.match(problemWith({ ...fold, min: 10, max: 5 }, "tag")!, /min and max/);
+  assert.match(problemWith(null, "tag")!, /not an object/);
+  assert.match(problemWith({ ...fold, label: "x".repeat(301) }, "tag")!, /label/);
+});
+
+test("a declared int key: read from the file, wrong values give the default and one warning, set validates range, unknown keys survive", async () => {
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, SETTINGS_FILE), JSON.stringify({ "tag.foldAfter": 3, "future.key": [1] }));
+  const warnings: string[] = [];
+  const registry = createSettingsRegistry();
+  registry.declare("tag", { heading: "Tags", items: [fold] });
+  const store = createSettingsStore({ base: dir, registry, warn: (t) => warnings.push(t) });
+  assert.equal((await store.get())["tag.foldAfter"], 3);
+  assert.equal(await store.set({ "tag.foldAfter": 0 }), true); // out of range: ignored
+  assert.equal((await store.get())["tag.foldAfter"], 3);
+  await store.set({ "tag.foldAfter": 9 });
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, SETTINGS_FILE), "utf8")), { "future.key": [1], "palette.above": "off", "map.enabled": true, "midi.statusBar": false, "tag.foldAfter": 9 });
+  // a hand edit to a wrong value
+  fs.writeFileSync(path.join(dir, SETTINGS_FILE), JSON.stringify({ "tag.foldAfter": 999 }));
+  assert.equal((await store.get())["tag.foldAfter"], 20);
+  await store.get();
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0]!, /"tag.foldAfter" has a wrong value/);
+});
+
+test("a key declared after the file was read picks up its stored value (no restart, no reload)", async () => {
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, SETTINGS_FILE), JSON.stringify({ "tag.foldAfter": 7 }));
+  const registry = createSettingsRegistry();
+  const store = createSettingsStore({ base: dir, registry, warn: () => {} });
+  assert.equal((await store.get())["tag.foldAfter"], undefined); // nobody declared it yet
+  registry.declare("tag", { heading: "Tags", items: [fold] });
+  assert.equal((await store.get())["tag.foldAfter"], 7);
+});
+
+test("the palette request carries the gear only when something is shown above the prompt; the clean palette has none", () => {
+  const values = (above: "off" | "hints" | "options") => ({ "palette.above": above, "map.enabled": true, "midi.statusBar": false }) as never;
+  assert.deepEqual(toPaletteRequestSettings(values("off")), { above: "off", gear: false });
+  assert.deepEqual(toPaletteRequestSettings(values("hints")), { above: "hints", gear: true });
+  assert.deepEqual(toPaletteRequestSettings(values("options")), { above: "options", gear: true });
+});
+
+test("the palette's gear answer opens the settings with what was typed and runs nothing; the old switch is still read", () => {
+  const gears: Array<{ text: string }> = [];
+  const saved: Array<{ above: string }> = [];
+  const bad: string[] = [];
+  const take = (raw: string) => takePaletteAnswer(raw, (s) => void saved.push(s), (r) => void bad.push(r), (g) => void gears.push(g));
+  assert.equal(take(JSON.stringify({ settings: true, text: "tag --list" })), null);
+  assert.equal(take(JSON.stringify({ settings: true })), null);
+  assert.equal(take(JSON.stringify({ settings: true, text: 5, type: "command", id: "x" })), null); // no run next to the gear
+  assert.deepEqual(gears, [{ text: "tag --list" }, { text: "" }, { text: "" }]);
+  assert.deepEqual(saved, []);
+  assert.deepEqual(bad, []);
+  // a throwing handler never fails the palette
+  assert.equal(takePaletteAnswer(JSON.stringify({ settings: true }), undefined, () => {}, () => { throw new Error("x"); }), null);
+  assert.deepEqual(parsePaletteAnswer(JSON.stringify({ settings: true, text: "mu" })), { result: null, settings: null, gear: { text: "mu" } });
+  // the old footer switch (one more release)
+  assert.deepEqual(take(JSON.stringify({ type: "command", id: "m", settings: { above: "hints" } })), { type: "command", id: "m" });
+  assert.deepEqual(saved, [{ above: "hints" }]);
 });

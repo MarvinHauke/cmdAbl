@@ -38,6 +38,18 @@ export class CommandRegistry {
   }
 
   /**
+   * The platform gives a top-level command its `<command> config` subcommand (plan 0019). Refused (false) for an unknown
+   * command, for a node that is not a runnable leaf without arguments, or when the command has a subcommand `config` itself.
+   */
+  attachConfig(command: string, config: Command): boolean {
+    const at = this.tree.findIndex((n) => n.name === command);
+    if (at < 0 || !config.run || config.children?.length || config.args?.length) return false;
+    if (this.tree[at]!.children?.some((c) => c.name === "config" || c.aliases?.includes("config"))) return false;
+    this.tree[at] = { ...this.tree[at]!, config };
+    return true;
+  }
+
+  /**
    * Register a completer under a key (`api.commands.completer`). A key given twice keeps the first
    * and logs a warning; a non-function or empty key is ignored with a warning. Never throws.
    */

@@ -11,7 +11,7 @@ import type { MidiMessage as StoredMidiMessage } from "../ableton/bridgeOps.js";
 import type { Provider } from "../core/types.js";
 import type { BoardAnswer, BoardRequest, StateChange } from "../core/ui.js";
 import { MAX_FILE_BYTES, validFileName } from "../core/files.js";
-import type { ModuleApi, TagRow, TrackHandle } from "./types.js";
+import type { ModuleApi, SettingDef, TagRow, TrackHandle } from "./types.js";
 
 // A ModuleApi made of fakes, so a module's `activate` and its commands' `run`
 // can be tested without Live: an in-memory bridge, a scripted object tree,
@@ -38,6 +38,8 @@ export interface FakeApiOptions {
   files?: Record<string, string>;
   /** The messages the fake script has kept (`api.midi.last` returns those after `since`). */
   midiMessages?: StoredMidiMessage[];
+  /** Setting values the fake `api.settings.get` answers, by full key (a declared key without one answers its default). */
+  settings?: Record<string, unknown>;
 }
 
 export interface FakeApi {
@@ -90,6 +92,10 @@ export interface FakeApi {
   mapEnabled: boolean;
   /** Every `api.midi.listen` call, in order. */
   midiListens: Array<{ controls: "all" | "none" | readonly MidiControl[]; monitor: boolean }>;
+  /** The groups the module declared with `api.settings.declare`, in order. */
+  settingGroups: Array<{ heading: string; items: SettingDef[] }>;
+  /** The values the fake `api.settings.get` answers, by full key; change them to simulate the Settings page. */
+  settingValues: Record<string, unknown>;
   /** The completers the module registered, by key. */
   completers: Map<string, Completer>;
   /**
@@ -132,6 +138,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     midiStatusBar: false,
     mapEnabled: true,
     midiListens: [],
+    settingGroups: [],
+    settingValues: { ...(options.settings ?? {}) },
     completers: new Map(),
     unknownCompleters: () => unknownCompleterKeys(fake.commands, fake.completers.keys()),
   };
@@ -179,6 +187,14 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
         fake.fileStore.set(name, text);
         return true;
       },
+    },
+    settings: {
+      declare: (group) => void fake.settingGroups.push(group),
+      get: (async (name: string) => {
+        const key = name.includes(".") ? name : `${fake.commands[0]?.name ?? "module"}.${name}`;
+        const def = fake.settingGroups.flatMap((g) => g.items).find((d) => d.key === key);
+        return key in fake.settingValues ? fake.settingValues[key] : def?.default;
+      }) as ModuleApi["settings"]["get"],
     },
     onSetChange: (listener) => {
       fake.setListeners.push(listener);

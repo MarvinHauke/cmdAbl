@@ -215,3 +215,13 @@ test("parseBoardAnswer: confirmed is kept only as true and only together with a 
   assert.equal(parseEdit({ removed: ["nope"], confirmed: true })!.confirmed, undefined); // the removal was dropped
   assert.deepEqual(parseEdit({ changes: [], created: [], confirmed: true }), { changes: [], created: [] });
 });
+
+test("capBoard passes gear (true only) and foldAfter (whole number 1–500) on; anything else is dropped", () => {
+  const base = { title: "t", sections: [], apply: { label: "Apply" } };
+  assert.deepEqual(Object.keys(capBoard({ ...base }).request).sort(), ["apply", "sections", "title"]);
+  const on = capBoard({ ...base, gear: true, foldAfter: 3 }).request;
+  assert.equal(on.gear, true);
+  assert.equal(on.foldAfter, 3);
+  for (const bad of [0, 501, 2.5, "3", null, NaN]) assert.equal("foldAfter" in capBoard({ ...base, foldAfter: bad as never }).request, false, String(bad));
+  assert.equal("gear" in capBoard({ ...base, gear: "yes" as never }).request, false);
+});
