@@ -53,9 +53,8 @@
     /* ── footer ── */
     #foot { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-top: 1px solid var(--border); color: var(--dim); font-size: 11px; user-select: none; }
     #foot[hidden] { display: none; }
-    #gear { margin-left: auto; min-height: 24px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+    #gear { margin-left: auto; min-height: 24px; display: inline-flex; align-items: center; font-size: 12px; }
     #gear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-    #gear .ico { font-size: 14px; line-height: 1; }
 
     /* ── the area above the prompt (hints / options mode): a fixed height reserved from open on, so nothing moves.
           A dim heading at its top says what it is; one dim note in the middle while it has no rows. ── */
@@ -121,7 +120,7 @@
 
   <div id="dropdown"></div>
 
-  <div id="foot" hidden><button id="gear" type="button" tabindex="-1" title="Settings"><span class="ico" aria-hidden="true">⚙</span>Settings</button></div>
+  <div id="foot" hidden><button id="gear" type="button" tabindex="-1">Settings</button></div>
 
   <!-- Shared matcher, inlined as a `CmdMatch` global at build time. -->
   <script>/*MATCH_PLACEHOLDER*/</script>

@@ -112,9 +112,8 @@
     #apply { flex: none; min-width: 19ch; /* "Apply (99 changes)": the label's width doesn't change the hint's line breaks while keys are pressed */ border-color: var(--accent); color: var(--accent); }
     #apply:disabled { border-color: var(--dim); color: var(--dim); opacity: 0.5; cursor: default; }
     #close { flex: none; }
-    #gear { flex: none; min-height: 24px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+    #gear { flex: none; min-height: 24px; display: inline-flex; align-items: center; font-size: 12px; }
     #gear[hidden] { display: none; }
-    #gear .ico { font-size: 14px; line-height: 1; }
     #gear:focus-visible, #apply:focus-visible, #close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     /* The confirm bar (Apply with a whole tag marked for removal): replaces the footer's line and buttons. */
     #footer.confirming { background: hsla(31, 100%, 67%, 0.12); border-top-color: var(--accent); }
@@ -133,7 +132,7 @@
   </div>
   <div id="footer">
     <span id="hint"></span>
-    <button id="gear" type="button" hidden title="Settings"><span class="ico" aria-hidden="true">⚙</span>Settings</button>
+    <button id="gear" type="button" hidden>Settings</button>
     <button id="apply" disabled></button>
     <button id="close">Close</button>
     <div id="confirm" hidden><span id="confirmText"></span><button id="confirmNo" type="button">Cancel</button><button id="confirmYes" type="button"></button></div>

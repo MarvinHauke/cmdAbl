@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- settings surface (see src/core/ui.ts SettingsRequest, plan 0019 §2). In: SETTINGS_PLACEHOLDER = { title, focus?: groupId, help?: boolean, groups: [{ id, heading, items: [row] }] } with row = { key, label, help, kind: "bool", value, default } | { …, kind: "enum", value, default, choices: [{ value, label }] } | { …, kind: "int", value, default, min, max } | { key, label, help, kind: "link", target, summary }. Rows: a bool is a switch, an enum a segmented switch, an int a number field with − / +, a link a button row. A dim "reset" shows while a value differs from its default. `focus` scrolls to that group and puts the cursor on its first row. Keys: ↑/↓ rows, ←/→ change an enum/int, Space toggles a bool, Enter saves (on a link row it opens the target), Esc closes; with changes it asks "Discard N changes?" in the footer first. The footer shows the key line and, as plain text, the focused or hovered row's help and default (help === false: no help text). Out (close_and_send): JSON { changes: { [key]: value } } on Enter (only real differences against the request), { changes, open: target } when a link row opened its page, '' when closed. Text goes in with textContent only. -->
+<!-- settings surface (see src/core/ui.ts SettingsRequest, plan 0019 §2). In: SETTINGS_PLACEHOLDER = { title, focus?: groupId, help?: boolean, groups: [{ id, heading, items: [row] }] } with row = { key, label, help, kind: "bool", value, default } | { …, kind: "enum", value, default, choices: [{ value, label }] } | { …, kind: "int", value, default, min, max } | { key, label, help, kind: "link", target, summary }. Rows: a bool is a switch, an enum a segmented switch, an int a number field with − / +, a link a button row. A dim "reset" shows while a value differs from its default. `focus` scrolls to that group and puts the cursor on its first row. Keys: ↑/↓ rows, ←/→ change an enum/int, Space toggles a bool, Enter saves (on a link row it opens the target), Esc closes; the footer also has mouse buttons "Apply (N changes)" (disabled at 0, = Enter) and "Cancel" (= Esc); with changes it asks "Discard N changes?" in the footer first. The footer shows the key line and, as plain text, the focused or hovered row's help and default (help === false: no help text). Out (close_and_send): JSON { changes: { [key]: value } } on Enter (only real differences against the request), { changes, open: target } when a link row opened its page, '' when closed. Text goes in with textContent only. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -46,11 +46,11 @@
     .link-btn .sum { color: var(--dim); margin-left: 6px; }
 
     /* footer: help of the row, then the keys */
-    #foot { flex: none; border-top: 1px solid var(--border); padding: 6px 16px 8px; font-size: 11px; line-height: 15px; color: var(--dim); }
+    #foot { flex: none; box-sizing: border-box; height: 86px; /* fixed: help 45 + keys/buttons row 24 + padding, same in the confirm state */ border-top: 1px solid var(--border); padding: 6px 16px 8px; font-size: 11px; line-height: 15px; color: var(--dim); }
     #help { height: 45px; overflow: hidden; }   /* fixed: two lines of help (clamped) and one of default, so the footer never changes height */
     #help .txt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: 30px; }
     #help .def { display: block; height: 15px; }
-    #keys { margin-top: 2px; }
+    #keys { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #foot.confirming { background: hsla(31, 100%, 67%, 0.12); border-top-color: var(--accent); }
     #confirm { display: flex; align-items: center; gap: 8px; }
     #confirm[hidden] { display: none; }
@@ -58,14 +58,22 @@
     #keep { border-color: var(--accent); color: var(--accent); }
     #discard { border-color: hsl(0, 75%, 62%); color: hsl(0, 75%, 62%); }
     #confirm button { min-height: 24px; }
+    #normal { display: block; }
+    #foot.confirming #confirm { height: 100%; }
+    #bottom { display: flex; align-items: center; gap: 12px; margin-top: 2px; height: 24px; }
     #normal[hidden] { display: none; }
+    #btns { flex: none; display: flex; align-items: center; gap: 8px; }
+    #btns button { min-height: 24px; font-size: 12px; }
+    #apply { min-width: 19ch; border-color: var(--accent); color: var(--accent); }   /* "Apply (99 changes)": the label's width stays fixed */
+    #apply:disabled { border-color: var(--dim); color: var(--dim); opacity: 0.5; cursor: default; }
+    #apply:focus-visible, #cancel:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     #empty { padding: 16px; color: var(--dim); }
   </style>
 </head>
 <body>
   <div id="scroll" tabindex="-1"></div>
   <div id="foot">
-    <div id="normal"><div id="help"></div><div id="keys"></div></div>
+    <div id="normal"><div id="help"></div><div id="bottom"><div id="keys"></div><div id="btns"><button id="apply" type="button" tabindex="-1" disabled>Apply</button><button id="cancel" type="button" tabindex="-1">Cancel</button></div></div></div>
     <div id="confirm" hidden><span id="confirmText"></span><button id="keep" type="button">Keep editing</button><button id="discard" type="button">Discard</button></div>
   </div>
 
@@ -91,6 +99,7 @@
 
     // Rows in display order: { row, el, orig, value, set(), refresh() }
     const R = [];
+    const applyEl = document.getElementById('apply');
     let cur = 0, hover = -1, confirming = false;
 
     const same = (a, b) => a === b;
@@ -202,8 +211,11 @@
       updateFooter();
     }
 
-    const KEYS = '↑↓ row · ←→ change (⇧ ×10) · Space toggle · Enter save · Esc close';
+    const KEYS = '↑↓ row · ←→ change (⇧ ×10) · Space toggle · Enter apply · Esc cancel';
     function updateFooter() {
+      const n = changedRows().length;
+      applyEl.textContent = n ? 'Apply (' + n + ' change' + (n === 1 ? '' : 's') + ')' : 'Apply';
+      applyEl.disabled = n === 0;
       if (confirming) return;
       const r = R[hover >= 0 ? hover : cur];
       helpEl.textContent = '';
@@ -211,7 +223,7 @@
         helpEl.appendChild(mk('span', 'txt', r.row.help || ''));
         helpEl.appendChild(mk('span', 'def', isLink(r) ? '' : 'Default: ' + fmt(r.row, r.row.default)));
       } else if (r && !isLink(r)) { helpEl.appendChild(mk('span', 'txt')); helpEl.appendChild(mk('span', 'def', 'Default: ' + fmt(r.row, r.row.default))); }
-      keysEl.textContent = (R[cur] && isLink(R[cur]) ? '↑↓ row · Enter open · Esc close' : KEYS);
+      keysEl.textContent = (R[cur] && isLink(R[cur]) ? '↑↓ row · Enter open · Esc cancel' : KEYS);
     }
 
     function changesObj() {
@@ -266,6 +278,8 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       build();
+      applyEl.addEventListener('click', () => { document.activeElement?.blur(); if (!applyEl.disabled) save(); });
+      document.getElementById('cancel').addEventListener('click', requestClose);
       document.getElementById('keep').addEventListener('click', cancelConfirm);
       document.getElementById('discard').addEventListener('click', () => send(''));
       confirmEl.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelConfirm(); } });
