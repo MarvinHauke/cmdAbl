@@ -130,6 +130,8 @@ interface ModuleApi {
 - **Keys:** ↑/↓ move between rows (§5), ←/→ change an enum or int, Space toggles a bool, Enter
   saves, and Esc leaves without saving: with changes it asks first ("Discard 2 changes?"), like the
   board (user, 2026-11-05).
+- **Mouse:** the footer has "Apply (N changes)" (disabled at 0, same as Enter) and "Cancel" (same as
+  Esc), like the board (user, 2026-11-05). The footer keeps a fixed height.
 - **Link rows:** a row may be a button that leads to another page instead of a value
   (`{ key, label, help, kind: "link", target: "defaults" | "defaults:<command>", summary }`, e.g.
   "Default commands… (3 set)"). It closes the page with `{ changes, open: target }`; core saves the
@@ -155,7 +157,7 @@ interface ModuleApi {
   the settings; `tag "config"` keeps the old meaning. The help text and the 0.1.6 release notes say so.
 - **The gear reruns the whole line**, so it is only for commands that read and then show a page
   (`tag -l`; `tag -e` is a pick list and has no gear); noted on `BoardRequest.gear`.
-- **The gear button** in a page's footer (board, note, MIDI monitor): a page can't open a second dialog,
+- **The gear button** (a text button "Settings", no icon; user 2026-11-05) in a page's footer (board, note, MIDI monitor): a page can't open a second dialog,
   so the gear closes the page with `{ "settings": true }`, and core opens the settings page on that
   module's group. When the settings page closes, core runs the page's command line again, so the user
   is back where they were and sees the change. This holds for Enter and Esc (Esc discards the
