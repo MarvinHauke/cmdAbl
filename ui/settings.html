@@ -40,7 +40,7 @@
     /* number field */
     .num { display: inline-flex; align-items: center; gap: 4px; }
     .num button { min-width: 24px; min-height: 24px; padding: 0; font-size: 14px; line-height: 1; }
-    .num input { width: 13ch; min-height: 24px; text-align: center; background: var(--bg); color: var(--text); border: 1px solid var(--dim); border-radius: 2px; font: inherit; }
+    .num input { width: 7ch; min-height: 24px; text-align: center; background: var(--bg); color: var(--text); border: 1px solid var(--dim); border-radius: 2px; font: inherit; }
     .num input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
     .link-btn { min-height: 24px; font-size: 12px; }
     .link-btn .sum { color: var(--dim); margin-left: 6px; }
@@ -154,7 +154,7 @@
         const minus = mk('button', null, '−'); minus.type = 'button'; minus.tabIndex = -1; minus.setAttribute('aria-label', 'less');
         const plus = mk('button', null, '+'); plus.type = 'button'; plus.tabIndex = -1; plus.setAttribute('aria-label', 'more');
         const inp = mk('input'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.autocomplete = 'off'; inp.spellcheck = false; inp.setAttribute('aria-label', row.label);
-        inp.placeholder = 'default ' + row.default;   // an empty field shows this (dim), it is not a value
+        inp.placeholder = '–';   // an empty field shows a dim dash; the default is in the footer
         const clamp = n => Math.min(row.max, Math.max(row.min, Math.round(n)));
         r.input = inp;
         r.step = d => r.set(clamp(r.value + d));
