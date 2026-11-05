@@ -87,8 +87,10 @@ disk, `karabiner_cli`, the Remote Script's `hello`, and the version shipped with
   with `openUrl`. The rule is served by cmdAbl's local server: `GET /karabiner/cmdabl.json` on
   `127.0.0.1:27184`, read-only, the same file as `karabiner/cmdabl.json`. Karabiner then asks "Import" and
   "Enable": two clicks.
-- **To verify first (step 0):** that Karabiner accepts an `http://127.0.0.1` URL. If it doesn't, fall
-  back to today's way (link the file, then the row explains the Karabiner menu path) and record why.
+- **Verified (step 0, 2026-11-05):** Karabiner accepts an `http://127.0.0.1` URL. The link
+  `karabiner://karabiner/assets/complex_modifications/import?url=http%3A%2F%2F127.0.0.1%3A27199%2Fkarabiner%2Fcmdabl.json`
+  (a temporary server) made Karabiner fetch the file and show its Import dialog with the cmdAbl rule.
+  `cmdabl setup karabiner` (link the file) stays as the fallback.
 - ✓ is decided as today (the rule is linked or imported) plus, if possible, the rule being enabled
   (read `~/.config/karabiner/karabiner.json`, read-only). If reading that is unreliable, ✓ means
   "imported", and the row says "enable it in Karabiner if `:` doesn't work".
