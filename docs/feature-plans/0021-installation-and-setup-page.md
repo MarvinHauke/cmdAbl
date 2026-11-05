@@ -102,8 +102,12 @@ disk, `karabiner_cli`, the Remote Script's `hello`, and the version shipped with
   again just because the same yellow row is still there (Q9): core stores which rows were shown.
 - The page has a checkbox **"Don't open this page by itself"**. It is the setting `setup.openOnStart`
   (bool, default true), also shown on the settings page in a new **Setup** group.
-- **To verify first (step 0):** whether a dialog may open while the extension activates. If not, the
-  page opens on the first palette or right-click use after start.
+- **As built (93d4b1d):** the page opens on the **first palette or right-click use** after start (a
+  dialog during `activate()` was not assumed safe); the palette follows when the page closes. The facts
+  are gathered in the background at activation and reused if under 20 s old. Moving it to `activate()`
+  later is one call (`openIfNeeded()`).
+- The opening state (`seenVersion`, the shown row signatures) lives in
+  `<data folder>/modules/setup/state.json`, not in `settings.json`.
 - The checkbox needs one more piece of the contract: a `notify` request may carry
   `toggle?: { label, setting, on }`. The page answers `{ toggle: boolean }` with or without an action,
   and core saves it. It is additive; decided here as part of the approved status-row contract.

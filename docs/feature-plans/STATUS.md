@@ -235,6 +235,9 @@ Older checks that were never reported; most can now run through MCP.
   (`.ablx`) by writing into Live's Extensions folder from the Extension Host. It works today; a
   stricter sandbox announced by Ableton may block installing in a later Live. Documented as a
   limit. Its texts said "cmdAbl extensions" — being corrected to "Ableton Live extensions".
+- **What `cmdabl setup` reads and writes outside its data folder** (0021; a stricter sandbox may block any
+  of them): `~/.config/karabiner/karabiner.json` (read-only, to tell an enabled rule), the
+  `complex_modifications` link, `karabiner_cli`, and the Remote Script folder in the User Library (copy).
 - **Windows**: untested (see "Backlog").
 
 ## Decisions
