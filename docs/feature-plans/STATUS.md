@@ -29,7 +29,8 @@ All releases were tested in Live, including the installed `.ablx`.
     `cmdabl config`, `<module> config`, the "Settings" button, `tag.foldAfter`, the palette switch moved.
   - **Phase 1b built**, MCP Live test passed (2026-11-05), waiting for the user's hand check: default
     commands, the defaults page (live check, reopen on an invalid line), the palette row, `map -l` arrow,
-    history `typed`, `config` after every command except man/help.
+    history `typed`, `config` after every command except man/help, `\<cmd>` in the palette (completes
+    like the command; Enter takes the highlighted command row).
   - Deferred: "N settings saved" to Live's status bar (user: yes) with the next Remote Script update
     (a new additive bridge op `status` → `show_message`). `map -l` shows the arrow only for one-word
     bindings, not `;` chains (`api.commands.expand(line)` would be the way, undecided).
