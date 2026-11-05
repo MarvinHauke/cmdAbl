@@ -8,6 +8,7 @@ import { helpText, serializeTree, shortHelpText, validateTree } from "./commandT
 import { createSettingsFlow } from "./settingsSurface.js";
 import { createSettingsRegistry, createSettingsStore } from "./settings.js";
 import { ExitCode, ok } from "./types.js";
+import { complete } from "./complete.js";
 import { completionTree } from "./commandTree.js";
 
 // `<command> config` and `cmdabl config` (plan 0019 §2).
@@ -77,7 +78,7 @@ test("--help and man list the config subcommand; the serialized tree for the pal
   const serialized = serializeTree(registry.roots());
   assert.equal(JSON.stringify(serialized.filter((n) => n.name !== "own")).includes("config"), false);
   assert.equal("config" in serialized[0]!, false);
-  assert.equal(JSON.stringify(completionTree(registry.roots())).includes("open the settings"), false);
+  assert.equal(JSON.stringify(completionTree(registry.roots())).includes("function"), false);
   assert.deepEqual(parse("tag config", registry.roots()).kind, "run");
 });
 
@@ -105,4 +106,17 @@ test("`cmdabl config [<group>]` opens the page, completes the group ids, and an 
   const bare = new CommandRegistry();
   registerBuiltins(bare);
   assert.equal((await run(bare, "cmdabl config")).result.code, ExitCode.UNAVAILABLE);
+});
+
+test("the palette offers `config` as the first word after a command with settings (leaf and group), and nowhere else", () => {
+  const registry = build();
+  const data = { tree: completionTree(registry.roots()), completions: {}, paths: [], tags: [] };
+  const labels = (line: string) => complete(line, line.length, data).items.filter((i) => i.kind === "command").map((i) => i.label);
+  assert.deepEqual(labels("tag "), ["config"]); // leaf: beside its arguments
+  assert.deepEqual(labels("tag co"), ["config"]);
+  assert.deepEqual(labels("tag x "), []); // not the first word
+  assert.deepEqual(labels("plain "), []); // no settings
+  assert.deepEqual(labels("map "), ["learn", "add", "config"]); // group: one more subcommand
+  assert.deepEqual(labels("tag -"), []);
+  assert.equal(complete("tag ", 4, data).items.find((i) => i.label === "config")?.description, "open the settings of tag");
 });

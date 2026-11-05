@@ -481,6 +481,14 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
     return { items: [...tool, ...set], replace, ...(usage ? { usage } : {}) };
   };
 
+  // `<command> config` (plan 0019): a command with settings offers it as its first word, beside the arguments.
+  const configRow = (node: Node, path: string[], prefix: string): Array<Omit<CompletionItem, "zone">> => {
+    const cfg = (node as { config?: { name: string; summary: string } }).config;
+    const first = path.length === 1 && tokens.filter((t) => t.end <= here.from).length === 1;
+    if (!cfg || !first || prefix.startsWith("-") || nameScore(cfg.name, prefix) < 0) return [];
+    return [{ label: cfg.name, insert: cfg.name, description: cfg.summary, kind: "command" }];
+  };
+
   switch (w.at) {
     case "none":
       return reply([]);
@@ -490,7 +498,7 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
       return reply(optionRows(w.node, w.given, here.prefix));
     case "options": {
       const raw = w.node.args?.find((a) => a.raw);
-      return reply(w.ended || /\s/.test(here.prefix) ? [] : optionRows(w.node, w.given, here.prefix), raw ? `| <${raw.name}>` : undefined);
+      return reply(w.ended || /\s/.test(here.prefix) ? [] : [...configRow(w.node, w.path, here.prefix), ...optionRows(w.node, w.given, here.prefix)], raw ? `| <${raw.name}>` : undefined);
     }
     case "optionValue": {
       const opt = w.option;
@@ -501,7 +509,7 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
       const arg = w.arg;
       const hint = argHint(arg);
       // The tool zone: the options not used yet, beside the arguments (not after `--`, not inside a `rest` value).
-      const options = w.ended || (arg.rest && w.prior.length > 0) || /\s/.test(here.prefix) ? [] : optionRows(w.node, w.given, here.prefix);
+      const options = w.ended || (arg.rest && w.prior.length > 0) || /\s/.test(here.prefix) ? [] : [...configRow(w.node, w.path, here.prefix), ...optionRows(w.node, w.given, here.prefix)];
       const tag = !arg.rest && arg.kind === "path" && /^!?#/.test(here.prefix) && !/["']/.test(line[here.from] ?? "");
       if (tag) return reply([...options, ...tagRows(data, here.prefix)], hint);
       if (arg.kind === "path") {

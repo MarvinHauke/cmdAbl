@@ -558,10 +558,14 @@ export function shortHelpText(node: CommandNode<any, any>, path: string[], more?
   return [`usage: ${usage(node, path)}`, ...sections(node), ...(more ? ["", `more: ${more}`] : [])].join("\n");
 }
 
-/** The tree without handlers — plain JSON for the palette webview. */
+/**
+ * The tree without handlers — plain JSON for the palette webview. A command with a platform `config` subcommand carries it
+ * as `config: { name, summary }` (a group gets it as a child too, so the completion walks it like any subcommand).
+ */
 export type SerializedNode = Omit<CommandNode<never, never>, "run" | "children" | "pickState" | "config"> & {
   children?: SerializedNode[];
   runnable: boolean;
+  config?: { name: string; summary: string };
 };
 
 /**
@@ -600,16 +604,24 @@ export function helpForPath(roots: readonly CommandNode<any, any>[], path: strin
  * without handlers and without the long texts (description, examples) that only help pages read.
  */
 export function completionTree(roots: readonly CommandNode<any, any>[]): SerializedNode[] {
-  return roots.map((node) => ({
-    name: node.name,
-    summary: node.summary,
-    ...(node.aliases?.length ? { aliases: node.aliases } : {}),
-    ...(node.fallback ? { fallback: true } : {}),
-    ...(node.options?.length ? { options: node.options } : {}),
-    ...(node.args?.length ? { args: node.args } : {}),
-    runnable: Boolean(node.run),
-    ...(node.children?.length ? { children: completionTree(node.children) } : {}),
-  }));
+  return roots.map((node) => {
+    const children: SerializedNode[] = [
+      ...(node.children?.length ? completionTree(node.children) : []),
+      // A group takes `config` as one more subcommand; a leaf (below) offers it at its first position.
+      ...(node.config && node.children?.length ? [{ name: node.config.name, summary: node.config.summary, runnable: true }] : []),
+    ];
+    return {
+      name: node.name,
+      summary: node.summary,
+      ...(node.aliases?.length ? { aliases: node.aliases } : {}),
+      ...(node.fallback ? { fallback: true } : {}),
+      ...(node.options?.length ? { options: node.options } : {}),
+      ...(node.args?.length ? { args: node.args } : {}),
+      runnable: Boolean(node.run),
+      ...(node.config && !node.children?.length ? { config: { name: node.config.name, summary: node.config.summary } } : {}),
+      ...(children.length ? { children } : {}),
+    };
+  });
 }
 
 export function serializeTree(roots: CommandNode<any, any>[]): SerializedNode[] {

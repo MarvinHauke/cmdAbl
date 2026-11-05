@@ -6,6 +6,8 @@ interface Node {
   requires?: string[];
   destructive?: boolean;
   children?: readonly Node[];
+  /** The platform's `<command> config` subcommand (plan 0019). */
+  config?: Node;
 }
 
 // The pure part of `man <command>`: finding a node by words, rendering its page
@@ -29,7 +31,10 @@ export function findNode(roots: readonly Node[], words: string[]): Found | undef
   let node: Node | undefined;
   const path: string[] = [];
   for (const word of words) {
-    node = level.find((n) => same(n.name, word) || (n.aliases ?? []).some((a) => same(a, word)));
+    let next = level.find((n) => same(n.name, word) || (n.aliases ?? []).some((a) => same(a, word)));
+    // `<command> config`: the settings subcommand the platform adds to a top-level command (plan 0019).
+    if (!next && path.length === 1 && node?.config && same(node.config.name, word)) next = node.config;
+    node = next;
     if (!node) return undefined;
     path.push(node.name);
     level = node.children ?? [];
