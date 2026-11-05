@@ -13,7 +13,7 @@ export interface AttachConfigDeps {
 
 /**
  * `<command> config` for every top-level command except `man`/`help` (plan 0019 §2). `cmdabl config` is a real subcommand;
- * a command with its own `config` keeps it. Warns once for a declared group that has no command of its name
+ * a command with its own `config` keeps it. Warns once for a declared group that has no command (or `cmdabl` subcommand) of its name
  * and for a group whose command could not take the platform `config`.
  */
 export function attachConfigs(registry: CommandRegistry, deps: AttachConfigDeps): void {
@@ -26,7 +26,9 @@ export function attachConfigs(registry: CommandRegistry, deps: AttachConfigDeps)
       deps.warn(`group "${name}" could not get \`${name} config\` (the command has its own \`config\`)`);
     }
   }
+  // A group may belong to a `cmdabl` subcommand (`cmdabl setup`), which has its own `config`.
+  const owned = new Set(registry.roots().find((n) => n.name === "cmdabl")?.children?.map((c) => c.name) ?? []);
   for (const id of groups) {
-    if (!names.includes(id)) deps.warn(`group "${id}" has no command of that name; \`${id} config\` does not exist`);
+    if (!names.includes(id) && !owned.has(id)) deps.warn(`group "${id}" has no command of that name; \`${id} config\` does not exist`);
   }
 }

@@ -562,7 +562,10 @@ export function shortHelpText(node: CommandNode<any, any>, path: string[], more?
  * The tree without handlers — plain JSON for the palette webview. A command with a platform `config` subcommand carries it
  * as `config: { name, summary }` (a group gets it as a child too, so the completion walks it like any subcommand).
  */
-export type SerializedNode = Omit<CommandNode<never, never>, "run" | "children" | "pickState" | "config"> & {
+export type SerializedNode = Omit<CommandNode<never, never>, "run" | "children" | "pickState" | "config" | "args" | "options"> & {
+  /** Arguments and options as declared, plus `description` (their `summary`, plan 0019 §4) when they have one. */
+  args?: Array<ArgDef & { description?: string }>;
+  options?: Array<OptionDef & { description?: string }>;
   children?: SerializedNode[];
   runnable: boolean;
   config?: { name: string; summary: string };
@@ -606,6 +609,11 @@ export function helpForPath(roots: readonly CommandNode<any, any>[], path: strin
  * The tree as the palette's completion needs it: names, aliases, summaries, options and arguments,
  * without handlers and without the long texts (description, examples) that only help pages read.
  */
+/** The def with `description` = its `summary` (what the palette's help line shows for the argument or option). */
+function withDescription<T extends { summary?: string }>(def: T): T & { description?: string } {
+  return def.summary ? { ...def, description: def.summary } : def;
+}
+
 export function completionTree(roots: readonly CommandNode<any, any>[]): SerializedNode[] {
   return roots.map((node) => {
     const children: SerializedNode[] = [
@@ -618,8 +626,8 @@ export function completionTree(roots: readonly CommandNode<any, any>[]): Seriali
       summary: node.summary,
       ...(node.aliases?.length ? { aliases: node.aliases } : {}),
       ...(node.fallback ? { fallback: true } : {}),
-      ...(node.options?.length ? { options: node.options } : {}),
-      ...(node.args?.length ? { args: node.args } : {}),
+      ...(node.options?.length ? { options: node.options.map((o) => withDescription(o)) } : {}),
+      ...(node.args?.length ? { args: node.args.map((a) => withDescription(a)) } : {}),
       runnable: Boolean(node.run),
       ...(node.config && !node.children?.length ? { config: { name: node.config.name, summary: node.config.summary } } : {}),
       ...(children.length ? { children } : {}),

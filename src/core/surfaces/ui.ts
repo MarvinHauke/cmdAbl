@@ -60,6 +60,8 @@ export interface PromptRequest {
    * Absent: an empty prompt.
    */
   initial?: { text: string; cursor: number };
+  /** `ui.helpLine` (plan 0019 §4): whether the footer explains the command and argument at the caret (off: the keys only). Set by the platform. */
+  help?: boolean;
 }
 
 /** The pick list: choose one (or, if `multi`, several) of the given rows. */
@@ -410,6 +412,7 @@ export function createDefaultUi(
         INITIAL: request.initial ?? null,
         COMPLETION: request.completion ?? null,
         SETTINGS: request.settings ?? null,
+        HELP: request.help ?? null,
       });
       const raw = await show("palette", html, PALETTE_WIDTH, paletteHeight(request.settings?.above));
       return takePaletteAnswer(raw, onSettings, (bad) => logger("ui").error(`malformed palette result: ${bad.slice(0, 200)}`), (gear) => onGear?.({ surface: "palette", text: gear.text }));

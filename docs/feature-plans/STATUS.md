@@ -64,9 +64,6 @@ All releases were tested in Live, including the installed `.ablx`.
 
 ## Small items
 
-- Every start logs `[settings] warn: group "setup" has no command of that name; setup config does not
-  exist`: the Setup group belongs to `cmdabl setup`, not to a top-level command. The check should accept
-  groups owned by a `cmdabl` subcommand (or the group should say so).
 - `npm start` sometimes ends with "Failed to connect to Live within 10s" although the extension loaded
   fully (2026-11-05, 3 of 7 restarts); a second try connects. CLI timeout, not cmdAbl.
 - Settings page: an emptied int field counts as "1 change" on Apply, though it falls back to the last

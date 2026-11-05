@@ -27,6 +27,7 @@ const requests = (ui: Ui) =>
     ui.settings({ title: "s", groups: [] }),
     ui.defaults({ title: "d", rows: [] }, () => ({ ok: true })),
     ui.select({ title: "p", multi: false, items: [] }),
+    ui.prompt({ items: [] }),
   ]);
 
 test("ui.helpLine is declared on by default", async () => {
@@ -40,8 +41,7 @@ test("ui.helpLine is declared on by default", async () => {
 test("help: every surface's request carries the value (on)", async () => {
   const { ui, seen } = fakeUi();
   await requests(withHelpLine(ui, async () => true));
-  for (const k of ["board", "settings", "defaults", "select"]) assert.equal((seen[k] as { help?: boolean }).help, true, k);
-  assert.equal(seen.prompt, undefined);
+  for (const k of ["board", "settings", "defaults", "select", "prompt"]) assert.equal((seen[k] as { help?: boolean }).help, true, k);
 });
 
 test("help: off is false in every request, from the stored setting", async () => {
@@ -50,7 +50,7 @@ test("help: off is false in every request, from the stored setting", async () =>
   const store = createSettingsStore({ base: dir, warn: () => {} });
   const { ui, seen } = fakeUi();
   await requests(withHelpLine(ui, async () => (await store.get())["ui.helpLine"]));
-  for (const k of ["board", "settings", "defaults", "select"]) assert.equal((seen[k] as { help?: boolean }).help, false, k);
+  for (const k of ["board", "settings", "defaults", "select", "prompt"]) assert.equal((seen[k] as { help?: boolean }).help, false, k);
 });
 
 test("help: a module cannot set it itself, and a failing read means on", async () => {

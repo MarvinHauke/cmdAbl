@@ -35,3 +35,12 @@ test("a declared group with no command of its name is warned about; one whose co
   assert.match(warns.join("\n"), /group "ghost" has no command/);
   assert.match(warns.join("\n"), /group "own" could not get/);
 });
+
+test("a group owned by a cmdabl subcommand is valid", () => {
+  const registry = build();
+  registry.add({ name: "cmdabl", summary: "c", children: [{ name: "setup", summary: "s", run: () => ok("x") }] });
+  const warns: string[] = [];
+  attachConfigs(registry, { make, groups: () => ["setup", "ghost"], warn: (t) => warns.push(t) });
+  assert.equal(warns.length, 1);
+  assert.match(warns[0]!, /group "ghost"/);
+});

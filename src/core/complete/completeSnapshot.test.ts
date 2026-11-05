@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { buildCompletionData, MAX_CANDIDATES, MAX_PATHS, MAX_TAGS, normalizeCandidates, pathRows, tagRows, withBudget } from "./completeSnapshot.js";
 import { complete } from "./complete.js";
 import { CommandRegistry } from "../command/commandRegistry.js";
-import { completerKeys, unknownCompleterKeys, type CommandNode } from "../command/commandTree.js";
+import { completerKeys, completionTree, unknownCompleterKeys, type CommandNode } from "../command/commandTree.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import type { Completer } from "./complete.js";
 
@@ -227,4 +227,14 @@ test("per-completer timing is logged, and a synchronous completer over its budge
   assert.match(line, /tags \d+ ms \(\d+ ms synchronous\)/);
   assert.match(line, /words \d+ ms/);
   assert.match(line, /ids \d+ ms/);
+});
+
+test("the snapshot tree gives every argument and option with a summary a description", () => {
+  const roots: CommandNode<any, any>[] = [
+    { name: "x", summary: "s", args: [{ name: "a", kind: "text", summary: "an arg" }, { name: "b", kind: "text" }], options: [{ name: "o", summary: "an option" }], run: () => ({ code: 0, message: "" }) as never },
+  ];
+  const [x] = completionTree(roots);
+  assert.equal(x!.args![0]!.description, "an arg");
+  assert.equal("description" in x!.args![1]!, false);
+  assert.equal(x!.options![0]!.description, "an option");
 });
