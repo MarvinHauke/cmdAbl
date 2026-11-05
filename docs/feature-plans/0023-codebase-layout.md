@@ -18,7 +18,7 @@ decided with the user the same day (below); the move is done in three commits.
 ## Commits
 
 1. `src/core/` into the folders, the builtins split, the architecture test, the path mentions in the docs.
-2. `src/modules/shared/` (`modules/types.ts`, `portMapping.ts` and `index.ts` stay).
+2. `src/modules/shared/` (the architecture test treats it as the shared helpers, not a module folder; `modules/types.ts`, `portMapping.ts` and `index.ts` stay).
 3. `help` into `man`.
 
 **Parent:** [0004](0004-command-platform.md)

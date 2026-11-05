@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { FakeBridgeOptions } from "../ableton/bridgeFake.js";
-import type { ObjectNode } from "../ableton/objectTree.js";
+import type { FakeBridgeOptions } from "../../ableton/bridgeFake.js";
+import type { ObjectNode } from "../../ableton/objectTree.js";
 import { createFakeApi } from "./testPorts.js";
 import { readSwitchStates } from "./trackSetState.js";
 

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { activate } from "./index.js";
 
 test("man <command> completes the registered command names and the two manuals", async () => {

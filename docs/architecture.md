@@ -135,7 +135,7 @@ of `ModuleApi`. The main ports are:
 
 Every call and its shape is in [Writing a command](guides/command-authoring.md). The mapping of each port and
 script operation to the Live Object Model is in the [Live API mapping](reference/live-api.md). Tests give a module
-fake ports with `createFakeApi` (`src/modules/testPorts.ts`), so no test needs Live.
+fake ports with `createFakeApi` (`src/modules/shared/testPorts.ts`), so no test needs Live.
 
 **Logging.** Every log line goes through `src/core/log.ts` and reads `cmdAbl [<source>] <level>: …`, with the
 levels `debug`, `info`, `warn` and `error`. A module logs with `api.log(line)` (info, tagged with the module's

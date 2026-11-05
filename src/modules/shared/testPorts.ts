@@ -1,17 +1,17 @@
-import type { ObjectNode } from "../ableton/objectTree.js";
-import { createFakeBridge, type FakeBridge, type FakeBridgeOptions } from "../ableton/bridgeFake.js";
-import type { Command } from "../core/command/commandRegistry.js";
-import { helpForPath, unknownCompleterKeys, usageForPath } from "../core/command/commandTree.js";
-import type { Completer } from "../core/complete/complete.js";
-import type { LiveRoutes } from "../core/surfaces/livePage.js";
-import { formatControl, validateBinding } from "../core/midi/midi.js";
-import type { MidiBinding } from "../core/midi/midiEngine.js";
-import type { MidiControl } from "../core/midi/midi.js";
-import type { MidiMessage as StoredMidiMessage } from "../ableton/bridgeOps.js";
-import type { Provider } from "../core/types.js";
-import type { BoardAnswer, BoardRequest, StateChange } from "../core/surfaces/ui.js";
-import { MAX_FILE_BYTES, validFileName } from "../core/settings/files.js";
-import type { ModuleApi, SettingDef, TagRow, TrackHandle } from "./types.js";
+import type { ObjectNode } from "../../ableton/objectTree.js";
+import { createFakeBridge, type FakeBridge, type FakeBridgeOptions } from "../../ableton/bridgeFake.js";
+import type { Command } from "../../core/command/commandRegistry.js";
+import { helpForPath, unknownCompleterKeys, usageForPath } from "../../core/command/commandTree.js";
+import type { Completer } from "../../core/complete/complete.js";
+import type { LiveRoutes } from "../../core/surfaces/livePage.js";
+import { formatControl, validateBinding } from "../../core/midi/midi.js";
+import type { MidiBinding } from "../../core/midi/midiEngine.js";
+import type { MidiControl } from "../../core/midi/midi.js";
+import type { MidiMessage as StoredMidiMessage } from "../../ableton/bridgeOps.js";
+import type { Provider } from "../../core/types.js";
+import type { BoardAnswer, BoardRequest, StateChange } from "../../core/surfaces/ui.js";
+import { MAX_FILE_BYTES, validFileName } from "../../core/settings/files.js";
+import type { ModuleApi, SettingDef, TagRow, TrackHandle } from "../types.js";
 
 // A ModuleApi made of fakes, so a module's `activate` and its commands' `run`
 // can be tested without Live: an in-memory bridge, a scripted object tree,
@@ -84,7 +84,7 @@ export interface FakeApi {
   /** Listeners registered with `api.onSetChange`; call them to simulate a Set change. */
   setListeners: Array<(setId: string | null) => void>;
   /** Listeners of `api.midi.onEvent`; call them with a MidiEvent to simulate a pushed message. */
-  eventListeners: Array<(event: import("../ableton/bridgeOps.js").MidiEvent) => void>;
+  eventListeners: Array<(event: import("../../ableton/bridgeOps.js").MidiEvent) => void>;
   /** What the fake `api.midi.blocked()` answers (default none); call `blockedListeners` after changing it to simulate a map rebuild. */
   midiBlocked: string[] | null;
   blockedListeners: Array<(blocked: string[] | null) => void>;

@@ -3,7 +3,7 @@ import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
 import { OPERATORS, controlOf, formatControl, isBlocked, isOperator, parseControl, validateBinding, type MessageType, type OperatorName } from "../../core/midi/midi.js";
 import type { MidiControl } from "../../core/midi/midi.js";
 import type { MidiBinding } from "../../core/midi/midiEngine.js";
-import { captureMessages, isCaptured } from "../midiCapture.js";
+import { captureMessages, isCaptured } from "../shared/midiCapture.js";
 import { bindingRow, parseBindings, sameSlot, serializeBindings } from "./store.js";
 
 /** How long an add waits for the script's report of blocked controls. */

@@ -1,7 +1,7 @@
-import type { Bridge } from "../ableton/bridgeClient.js";
-import { trackFacts, type TrackFacts } from "../ableton/bridgeOps.js";
-import type { BridgeResult } from "../ableton/bridgeProtocol.js";
-import type { ObjectNode } from "../ableton/objectTree.js";
+import type { Bridge } from "../../ableton/bridgeClient.js";
+import { trackFacts, type TrackFacts } from "../../ableton/bridgeOps.js";
+import type { BridgeResult } from "../../ableton/bridgeProtocol.js";
+import type { ObjectNode } from "../../ableton/objectTree.js";
 import { ARM_DISABLED_HINT } from "./trackSetValue.js";
 
 /**

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { ExitCode } from "../../core/types.js";
 import { validateTree } from "../../core/command/commandTree.js";
 import { bindingRow } from "./store.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { registerMap } from "./command.js";
 import { parseBindings, serializeBindings } from "./store.js";
 

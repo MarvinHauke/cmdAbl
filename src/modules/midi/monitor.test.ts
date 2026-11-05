@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { validateTree } from "../../core/command/commandTree.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { registerMidi } from "./command.js";
 
 const TEMPLATE = "<script>const CAPTURE = /*CAPTURE_PLACEHOLDER*/null; const LIVE = /*LIVE_PLACEHOLDER*/null;</script>";

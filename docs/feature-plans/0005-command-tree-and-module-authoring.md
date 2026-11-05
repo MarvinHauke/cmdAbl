@@ -348,7 +348,7 @@ A command that works without the Remote Script but gets better with it does not 
 `requires`. It asks the bridge only when the cached state allows it (one `available()` when
 the state is unknown, nothing when it is "unavailable") and falls back to its SDK-only
 behaviour otherwise. `arm` is the first: it reads `track_facts` to refuse tracks Live cannot
-arm. The state check in `src/modules/armFacts.ts` becomes a bridge helper when a second
+arm. The state check in `src/modules/shared/armFacts.ts` becomes a bridge helper when a second
 command needs it.
 
 ## Import boundaries (2026-10-11, enforced by `src/architecture.test.ts`)

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { validateTree } from "../../core/command/commandTree.js";
 import { parse } from "../../core/command/parse.js";
 import { ExitCode } from "../../core/types.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { activate } from "./index.js";
 
 function setup() {

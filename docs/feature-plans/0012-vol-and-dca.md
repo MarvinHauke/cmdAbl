@@ -80,7 +80,7 @@ mute groups (`mute #drums`).
 - **Decided by measurement (2026-10-22):** `cmdabl curve` read Live's `str_for_value` for 1001 values
   (through the bridge op `param_display`). The table is monotonic; 0 dB ≈ 0.850, 1.0 = +6 dB, linear
   at 40 dB per unit from about 0.4 up; 0.001 = -69.6 dB.
-- `src/modules/mixTable.ts` holds the table; `src/modules/mixValue.ts` converts by interpolation and
+- `src/modules/shared/mixTable.ts` holds the table; `src/modules/shared/mixValue.ts` converts by interpolation and
   binary search.
 
 ### `dca`

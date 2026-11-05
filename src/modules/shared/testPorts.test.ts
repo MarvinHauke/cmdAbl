@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createFakeApi } from "./testPorts.js";
-import type { ObjectNode } from "../ableton/objectTree.js";
+import type { ObjectNode } from "../../ableton/objectTree.js";
 
 const node: ObjectNode = { handleId: "1", route: [0], kind: "track", scope: "regular", name: "Kick", path: "/Kick", children: [] };
 

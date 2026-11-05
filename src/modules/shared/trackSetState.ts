@@ -1,8 +1,8 @@
-import type { Bridge } from "../ableton/bridgeClient.js";
-import { chainSwitches } from "../ableton/bridgeOps.js";
-import type { ObjectNode } from "../ableton/objectTree.js";
+import type { Bridge } from "../../ableton/bridgeClient.js";
+import { chainSwitches } from "../../ableton/bridgeOps.js";
+import type { ObjectNode } from "../../ableton/objectTree.js";
 import { loadArmFacts } from "./armFacts.js";
-import type { ModuleApi } from "./types.js";
+import type { ModuleApi } from "../types.js";
 
 /**
  * Whether each candidate of a pick list is already muted / soloed / armed

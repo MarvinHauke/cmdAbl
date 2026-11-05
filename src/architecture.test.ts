@@ -15,7 +15,7 @@ import { builtinModules } from "node:module";
 //      src/httpTrigger, src/extension or a dialog page under ui/ — except its
 //      own pages, ui/modules/<name>/*.html (a module's dialog is part of the
 //      module; every other page under ui/ — the platform's surfaces — stays off limits).
-//      Helpers directly under src/modules/ are shared; they follow the same
+//      Helpers in src/modules/shared/ are shared; they follow the same
 //      rules except that src/modules/index.ts (the manifest) may import every
 //      module folder.
 //   2. src/core/…            does not import src/modules/, src/httpTrigger
@@ -110,9 +110,9 @@ export function resolveImport(file: string, specifier: string): string {
 export function brokenRule(file: string, target: string): string | null {
   const inModules = /^src\/modules\/(?:([^/]+)\/)?/.exec(file);
   if (inModules) {
-    const name = inModules[1]; // undefined for the shared helpers directly under src/modules/
+    const name = inModules[1] === "shared" ? undefined : inModules[1]; // undefined for the shared helpers in src/modules/shared/ (and index.ts)
     const other = /^src\/modules\/([^/]+)\//.exec(target);
-    if (other && other[1] !== name && file !== "src/modules/index.ts") {
+    if (other && other[1] !== "shared" && other[1] !== name && file !== "src/modules/index.ts") {
       return `1: ${name ? "a module" : "a shared helper"} does not import a module folder (${other[1]})`;
     }
     if (target === "src/httpTrigger" || target === "src/extension") return `1: modules do not import ${target}`;
@@ -263,9 +263,9 @@ test("architecture: the checker sees the imports and flags what it should", () =
   assert.match(brokenRule("src/modules/goto/index.ts", "src/extension") ?? "", /^1:/);
   assert.match(brokenRule("src/modules/goto/index.ts", "ui/pick.html") ?? "", /^1:/);
   assert.equal(brokenRule("src/modules/pakabl/index.ts", "ui/modules/pakabl/list.html"), null);
-  assert.equal(brokenRule("src/modules/mute/index.ts", "src/modules/trackSetCommand"), null);
-  assert.match(brokenRule("src/modules/trackSetCommand.ts", "src/extension") ?? "", /^1:/);
-  assert.match(brokenRule("src/modules/trackSetCommand.ts", "src/modules/goto/index") ?? "", /^1:/);
+  assert.equal(brokenRule("src/modules/mute/index.ts", "src/modules/shared/trackSetCommand"), null);
+  assert.match(brokenRule("src/modules/shared/trackSetCommand.ts", "src/extension") ?? "", /^1:/);
+  assert.match(brokenRule("src/modules/shared/trackSetCommand.ts", "src/modules/goto/index") ?? "", /^1:/);
   assert.equal(brokenRule("src/modules/index.ts", "src/modules/goto/index"), null);
   assert.match(brokenRule("src/modules/pick/index.ts", "ui/pick.html") ?? "", /^1:/); // a module named like a platform page
   assert.match(brokenRule("src/modules/pa/index.ts", "ui/modules/pakabl/list.html") ?? "", /^1:/); // a prefix of the folder name is not a match
@@ -281,7 +281,7 @@ test("architecture: the checker sees the imports and flags what it should", () =
   assert.equal(brokenRule("src/modules/pakabl/guards.ts", "node:path"), null);
   assert.equal(brokenRule("src/core/setup/openUrl.ts", "node:child_process"), null); // core and ableton are not under rule 6
   assert.match(brokenRule("src/modules/goto/index.ts", "src/ableton/bridge") ?? "", /^5:/);
-  assert.match(brokenRule("src/modules/trackSetCommand.ts", "src/ableton/trackLookup") ?? "", /^5:/);
+  assert.match(brokenRule("src/modules/shared/trackSetCommand.ts", "src/ableton/trackLookup") ?? "", /^5:/);
   assert.match(brokenRule("src/modules/tag/index.ts", "src/ableton/tagCache") ?? "", /^5:/);
   assert.match(brokenRule("src/modules/goto/snapshot.ts", "@ableton-extensions/sdk") ?? "", /^5:/);
   assert.equal(brokenRule("src/modules/goto/index.ts", "src/ableton/bridgeClient"), null); // the Bridge type is fine

@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { TrackFacts } from "../ableton/bridgeOps.js";
-import { createFakeBridge } from "../ableton/bridgeFake.js";
-import { TEXT_STALE } from "../ableton/bridgeProtocol.js";
+import type { TrackFacts } from "../../ableton/bridgeOps.js";
+import { createFakeBridge } from "../../ableton/bridgeFake.js";
+import { TEXT_STALE } from "../../ableton/bridgeProtocol.js";
 import {
   armBase,
   armFactsLines,

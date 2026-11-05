@@ -1,12 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolvePath } from "../ableton/resolvePath.js";
-import type { ObjectNode } from "../ableton/objectTree.js";
+import { resolvePath } from "../../ableton/resolvePath.js";
+import type { ObjectNode } from "../../ableton/objectTree.js";
 import { registerTrackSetCommand, type TrackSetDocs } from "./trackSetCommand.js";
 import { createFakeApi } from "./testPorts.js";
-import { ExitCode, type CommandResult } from "../core/types.js";
-import type { ModuleApi } from "./types.js";
-import type { FakeBridgeOptions } from "../ableton/bridgeFake.js";
+import { ExitCode, type CommandResult } from "../../core/types.js";
+import type { ModuleApi } from "../types.js";
+import type { FakeBridgeOptions } from "../../ableton/bridgeFake.js";
 
 const docs: TrackSetDocs = { description: "d", examples: [{ line: "x" }], targetSummary: "t" };
 
@@ -228,7 +228,7 @@ test("arm --set 1 on an already armed track is a success", async () => {
 });
 
 // ── the option as the platform parses it ────────────────────────────────────
-import { parse } from "../core/command/parse.js";
+import { parse } from "../../core/command/parse.js";
 
 test("--set accepts 0 and 1 in every spelling and rejects anything else with exit 2", () => {
   const { api, commands } = createFakeApi();

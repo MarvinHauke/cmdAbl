@@ -1,5 +1,5 @@
 import type { ModuleApi } from "../types.js";
-import { registerTrackSetCommand } from "../trackSetCommand.js";
+import { registerTrackSetCommand } from "../shared/trackSetCommand.js";
 
 /** `solo <target>…` toggles; `solo --set 1|0 <target>…` makes every target soloed or not. */
 export function activate(api: ModuleApi): void {

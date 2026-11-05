@@ -1,6 +1,6 @@
 import type { ModuleApi } from "../types.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
-import { captureMessages, isCaptured } from "../midiCapture.js";
+import { captureMessages, isCaptured } from "../shared/midiCapture.js";
 import { monitorLines } from "./format.js";
 
 /** `midi monitor` — what the controller sends, for finding out a control's name (plan 0018). */

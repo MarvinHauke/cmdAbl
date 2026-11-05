@@ -1,12 +1,12 @@
-import type { MidiMessage } from "../ableton/bridgeOps.js";
-import { fail, type CommandResult } from "../core/types.js";
-import type { ModuleApi } from "./types.js";
+import type { MidiMessage } from "../../ableton/bridgeOps.js";
+import { fail, type CommandResult } from "../../core/types.js";
+import type { ModuleApi } from "../types.js";
 
 // "Move a control, then press Enter" (plan 0018): shared by `map learn` and `midi monitor`. The page is ui/modules/midi/capture.html (a
 // live page); it answers "go" on Enter (in learn mode also when the first control moved) and "" on Esc. While it is open the script keeps
 // every message (a monitor window); after it closes the module asks `api.midi.last` for what came in.
 
-import { fillTemplate } from "../core/surfaces/inlineJson.js";
+import { fillTemplate } from "../../core/surfaces/inlineJson.js";
 
 export type CaptureMode = "learn" | "monitor";
 

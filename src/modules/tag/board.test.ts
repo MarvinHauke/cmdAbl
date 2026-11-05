@@ -4,7 +4,7 @@ import { ExitCode } from "../../core/types.js";
 import type { BoardAnswer, BoardRequest } from "../../core/surfaces/ui.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { fail as bridgeFail } from "../../ableton/bridgeProtocol.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { activate } from "./index.js";
 import { buildBoard, groupChanges, UNTAGGED_ID } from "./board.js";
 
