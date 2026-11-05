@@ -96,7 +96,7 @@ untagged                                       4 tracks
   next tag's input. **The suggestion row is a selection**: → from the end of the field enters it on
   the highlighted suggestion (shown filled); ←/→ walk it (→ on the last stays); ← on the first goes
   back to the field (caret at the end); a typed character or Backspace goes back and edits the text;
-  Esc leaves the row (a second Esc clears the field); Enter adds; Tab completes the text with the highlighted suggestion (shell-style), returns to the field
+  Esc leaves the row (a second Esc clears the field); Enter adds (inside the row the typed text and the list stay, the added track leaves the list and the highlight moves on, so several similar names go in a row; an empty list returns to the field; from the field the text clears as before); Tab completes the text with the highlighted suggestion (shell-style), returns to the field
   with the caret at the end and the suggestions update for the new text. →
   into the chips only applies while no suggestions show. **Enter applies whenever there is nothing to add**: in an empty input, an empty "new tag…" or on
   the chip cursor, if its field is empty (user, Live test 2026-10-20; `f8e4135`). **Esc** clears the input, then closes.
