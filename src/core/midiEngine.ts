@@ -32,6 +32,28 @@ export interface MidiBinding {
 export interface RunAnswer {
   code: number;
   message: string;
+  /** Surfaces the run tried to open, each dismissed (HeadlessOutcome.dialogs), e.g. `tags "mute: which tags?": #a, #b`. */
+  dialogs?: string[];
+}
+
+/** What a dismissed surface was, in words: `tags "…": …` → "a tag pick list"; unknown kinds say "a dialog". */
+export function dialogKind(entry: string): string {
+  const kind = /^[a-z]+/.exec(entry)?.[0];
+  switch (kind) {
+    case "pick":
+      return "a pick list";
+    case "tags":
+      return "a tag pick list";
+    case "board":
+      return "a board";
+    case "page":
+      return "a page";
+    case "settings":
+    case "defaults":
+      return "a settings page";
+    default:
+      return "a dialog";
+  }
 }
 
 export interface MidiEngineDeps {
@@ -82,6 +104,8 @@ export function createMidiEngine(deps: MidiEngineDeps): MidiEngine {
   }
   let rows: Row[] = [];
   let order: Promise<unknown> = Promise.resolve();
+  /** Bindings already warned about a dialog this session (once each; later firings only get the info line). */
+  const warnedDialog = new Set<string>();
 
   const nameOf = (b: MidiBinding): string => `${formatControl(b.control)} ${b.operator}`;
 
@@ -177,6 +201,14 @@ export function createMidiEngine(deps: MidiEngineDeps): MidiEngine {
         const answer = await deps.run(line);
         firing.code = answer.code;
         const note = answer.code === ExitCode.OK || !answer.message ? "" : `: ${answer.message.split("\n")[0]}`;
+        const asked = answer.dialogs?.[0];
+        const warnKey = `${nameOf(binding)} ${binding.line}`;
+        if (asked !== undefined && !warnedDialog.has(warnKey)) {
+          warnedDialog.add(warnKey);
+          log.warn(
+            `${nameOf(binding)}: "${binding.line}" asked for ${dialogKind(asked)}; MIDI can't show dialogs, so it was cancelled. Bind a concrete line instead, e.g. one that names its target.`,
+          );
+        }
         log.info(`${nameOf(binding)} -> ${line} -> exit ${answer.code} (${now() - started} ms)${note}`);
       } catch (e: unknown) {
         firing.code = ExitCode.FAILURE;

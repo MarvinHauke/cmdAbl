@@ -14,7 +14,7 @@ const bind = (control: string, operator: MidiBinding["operator"], line: string, 
   ...(threshold !== undefined ? { threshold } : {}),
 });
 
-function setup(options: { enabled?: () => boolean | Promise<boolean>; answer?: (line: string) => { code: number; message: string } | Promise<{ code: number; message: string }> } = {}) {
+function setup(options: { enabled?: () => boolean | Promise<boolean>; answer?: (line: string) => { code: number; message: string; dialogs?: string[] } | Promise<{ code: number; message: string; dialogs?: string[] }> } = {}) {
   const ran: string[] = [];
   const logs: string[] = [];
   const engine = createMidiEngine({
@@ -456,4 +456,23 @@ test("midi.statusBar: monitor asks the script for the status bar only when the s
   assert.equal(await runtime.port.statusBar(), false); // a failing read is off
   broken = false;
   assert.equal(await runtime.port.statusBar(), true);
+});
+
+test("a dialog that was cancelled is warned about once per binding, with its kind; every firing keeps the info line", async () => {
+  const { engine, logs } = setup({ answer: () => ({ code: 4, message: "ambiguous: mute: which tags?", dialogs: ['tags "mute: which tags?": #a, #b'] }) });
+  engine.setBindings([bind("CC48", "toggle", "mute")]);
+  await engine.handle(cc(127, 48));
+  await engine.handle(cc(0, 48));
+  await engine.handle(cc(127, 48));
+  const warns = logs.filter((l) => l.startsWith("warn"));
+  assert.equal(warns.length, 1);
+  assert.match(warns[0]!, /CC48 toggle: "mute" asked for a tag pick list; MIDI can't show dialogs, so it was cancelled\. Bind a concrete line/);
+  assert.equal(logs.filter((l) => l.startsWith("info")).length, 2);
+});
+
+test("an unknown dialog kind is called a dialog", async () => {
+  const { engine, logs } = setup({ answer: () => ({ code: 1, message: "cancelled", dialogs: ["palette"] }) });
+  engine.setBindings([bind("CC49", "press", "x")]);
+  await engine.handle(cc(127, 49));
+  assert.match(logs.find((l) => l.startsWith("warn"))!, /asked for a dialog;/);
 });
