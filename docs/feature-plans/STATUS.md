@@ -28,7 +28,8 @@ All releases were tested in Live, including the installed `.ablx`.
   settings, the settings page, `cmdabl config`, `<module> config`, gears, `tag.foldAfter`, the palette
   switch moved) is built and passed the MCP Live test (2026-11-05). Hand check passed (user, 2026-11-05);
   follow-ups done and Live-checked: Apply/Cancel buttons on the settings page, "Settings" as text
-  instead of the ⚙ icon. "N settings saved" goes to Live's status bar (user: yes), but deferred to the
+  instead of the ⚙ icon, typing in the int field (digits append, empty stays empty, the confirm bar
+  owns the keys). "N settings saved" goes to Live's status bar (user: yes), but deferred to the
   next Remote Script update: it needs a new additive bridge op (`status`, text → `show_message`);
   until then the message window stays. **Next: 1b**, default commands with their own live page; it starts with
   the parsed root for the gear/group lookup. Phase 1 was refined with the user on 2026-11-05.
@@ -44,6 +45,10 @@ All releases were tested in Live, including the installed `.ablx`.
 
 ## Small items
 
+- `npm start` sometimes ends with "Failed to connect to Live within 10s" although the extension loaded
+  fully (2026-11-05, 3 of 7 restarts); a second try connects. CLI timeout, not cmdAbl.
+- Settings page: an emptied int field counts as "1 change" on Apply, though it falls back to the last
+  valid value (cosmetic).
 - `find !#x` and `mute !#x` word "every track is tagged #x" differently.
 - A pad with one same-named device shows twice in `find` (collapse proposed, undecided).
 - Pick lists and `find -d` list devices inside chains (no filter yet).
