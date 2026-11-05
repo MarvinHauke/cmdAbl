@@ -11,9 +11,9 @@
     body { display: flex; flex-direction: column; }
     :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-    #scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 0; }
+    #scroll { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 8px 0; }
     #scroll:focus { outline: none; }
-    .row { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr) 40px minmax(0, 0.7fr); gap: 8px; align-items: center; min-height: 36px; padding: 4px 16px 4px 22px; }
+    .row { position: relative; box-sizing: border-box; width: 100%; min-width: 0; display: grid; grid-template-columns: 96px minmax(0, 1fr) 40px minmax(0, 0.7fr); gap: 8px; align-items: center; min-height: 36px; padding: 4px 16px 4px 22px; }
     .row.cur { background: var(--bg-row); }
     .row.cur::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
     .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -24,13 +24,14 @@
     .reset { visibility: hidden; min-width: 40px; min-height: 24px; padding: 0; border: 0; color: var(--dim); font-size: 11px; }   /* reserved space, so nothing jumps when it appears */
     .reset.show { visibility: visible; }
     .reset:hover { color: var(--text); }
-    .status { min-width: 0; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .status { min-width: 0; font-size: 11px; line-height: 13px; max-height: 26px; overflow: hidden; overflow-wrap: anywhere; }   /* an error may take two lines; the footer shows it in full */
     .status.ok { color: var(--accent); font-size: 13px; }
     .status.bad { color: hsl(0, 75%, 62%); }
 
     /* footer: the row's summary, then the keys (same frame as the settings page) */
     #foot { flex: none; height: 71px; border-top: 1px solid var(--border); padding: 6px 16px 8px; font-size: 11px; line-height: 15px; color: var(--dim); }
     #help { height: 30px; overflow: hidden; }
+    #help .err { display: block; height: 30px; overflow: hidden; color: hsl(0, 75%, 62%); }
     #help .txt { display: block; height: 15px; overflow: hidden; }
     #help .def { display: block; height: 15px; }
     #keys { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -102,6 +103,7 @@
       const setStatus = (kind, text) => {
         status.className = 'status' + (kind ? ' ' + kind : '');
         status.textContent = text || '';
+        if (typeof updateFooter === 'function' && R.includes(x)) updateFooter();
         status.title = kind === 'bad' ? text : '';
       };
       x.refresh = () => {
@@ -138,7 +140,7 @@
         else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); input.blur(); scrollEl.focus({ preventScroll: true }); }
         else e.stopPropagation();   // caret keys and typing stay with the field
       });
-      reset.addEventListener('click', () => { input.value = ''; x.refresh(); x.check(); moveTo(idx, true, false); input.focus(); updateFooter(); });
+      reset.addEventListener('click', () => { input.value = ''; x.refresh(); x.check(); moveTo(idx, true, false); input.focus({ preventScroll: true }); updateFooter(); });
 
       el.append(mk('span', 'name', r.command), input, reset, status);
       el.addEventListener('mouseenter', () => { hover = idx; updateFooter(); });
@@ -149,11 +151,20 @@
       return el;
     }
 
+    // Scroll vertically only: the row in view with a row or two of context; never sideways (focus() on a field may try).
+    function revealRow(el) {
+      const pad = el.offsetHeight * 1.5, top = el.offsetTop, bottom = top + el.offsetHeight;
+      if (top - pad < scrollEl.scrollTop) scrollEl.scrollTop = Math.max(0, top - pad);
+      else if (bottom + pad > scrollEl.scrollTop + scrollEl.clientHeight) scrollEl.scrollTop = bottom + pad - scrollEl.clientHeight;
+      scrollEl.scrollLeft = 0;
+    }
+    scrollEl.addEventListener('scroll', () => { if (scrollEl.scrollLeft) scrollEl.scrollLeft = 0; });
+
     function moveTo(i, scroll = true, takeFocus = true) {
       if (!R.length) return;
       cur = Math.max(0, Math.min(R.length - 1, i));
       R.forEach((x, k) => x.el.classList.toggle('cur', k === cur));
-      if (scroll) R[cur].el.scrollIntoView({ block: 'nearest' });
+      if (scroll) revealRow(R[cur].el);
       if (takeFocus && document.activeElement !== R[cur].input && document.activeElement?.tagName === 'INPUT') scrollEl.focus({ preventScroll: true });
       updateFooter();
     }
@@ -166,8 +177,12 @@
       const x = R[hover >= 0 ? hover : cur];
       helpEl.textContent = '';
       if (x) {
-        helpEl.appendChild(mk('span', 'txt', x.r.summary || ''));
-        helpEl.appendChild(mk('span', 'def', x.input.value.trim() ? '\\' + x.r.command + ' skips the default' : ''));
+        const err = x.status.classList.contains('bad') ? x.status.textContent : '';
+        if (err) helpEl.appendChild(mk('span', 'err', err));
+        else {
+          helpEl.appendChild(mk('span', 'txt', x.r.summary || ''));
+          helpEl.appendChild(mk('span', 'def', x.input.value.trim() ? '\\' + x.r.command + ' skips the default' : ''));
+        }
       }
       keysEl.textContent = document.activeElement?.tagName === 'INPUT' ? '↑↓ row · ← or Esc back to the rows · Enter apply' : '↑↓ row · → or type to edit · Enter apply · Esc close';
     }
@@ -218,9 +233,9 @@
       else if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
       else if (!x) return;
       else if (e.key === 'Enter') { e.preventDefault(); save(); }
-      else if (e.key === 'ArrowRight') { e.preventDefault(); x.input.focus(); x.input.setSelectionRange(x.input.value.length, x.input.value.length); updateFooter(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); x.input.focus({ preventScroll: true }); x.input.setSelectionRange(x.input.value.length, x.input.value.length); updateFooter(); }
       else if (e.key === 'Backspace' || (e.key.length === 1 && e.key !== ' ' )) {   // typing in the rows goes to the field (no select-all: the text is appended to)
-        x.input.focus(); x.input.setSelectionRange(x.input.value.length, x.input.value.length); updateFooter();
+        x.input.focus({ preventScroll: true }); x.input.setSelectionRange(x.input.value.length, x.input.value.length); updateFooter();
         // the key itself still reaches the field: focus moved before the default action
       }
     });
@@ -236,7 +251,7 @@
       let start = 0;
       if (DEFAULTS?.focus) { const i = R.findIndex(x => x.r.command === DEFAULTS.focus); if (i >= 0) start = i; }
       moveTo(start, true, false);
-      if (DEFAULTS?.focus && R[start]) R[start].input.focus(); else scrollEl.focus({ preventScroll: true });
+      if (DEFAULTS?.focus && R[start]) R[start].input.focus({ preventScroll: true }); else scrollEl.focus({ preventScroll: true });
       updateFooter();
     });
   </script>
