@@ -190,9 +190,13 @@
     // what is offered at that position (options, values, paths, tags). Before that — and
     // for a first word that is no command name, e.g. a track called "Opal Lead" — the
     // palette ranks commands, history and Live objects as before.
+    // A leading `\` on the first word is the "no default" escape (plan 0019 §7): completion reads `\mute` as `mute`.
+    const unesc = w => w.startsWith('\\') ? w.slice(1) : w;
+    // A command row taken over a first word that starts with `\` keeps the escape: `\mu` + Tab gives `\mute `.
+    const escKept = (item, text = input.value) => text.trimStart().startsWith('\\') && !item.id.includes(' ') ? '\\' : '';
     function modeAt(raw, caret) {
       const m = /^\s*(\S+)/.exec(raw);
-      if (!m || itemsById[m[1]]?.type !== 'command') return 'word0';
+      if (!m || itemsById[unesc(m[1])]?.type !== 'command') return 'word0';
       const end = m[0].length;
       return raw.length > end && /\s/.test(raw[end]) && caret > end ? 'args' : 'word0';
     }
@@ -250,10 +254,10 @@
       }
       const part = wordAtCaret(segRaw, segCaret);
       // The word before the caret is a complete command name: its arguments follow, no completion.
-      if (part && itemsById[part.head]?.type === 'command') return [];
-      const query = (part ? part.head : segRaw).trim();
+      if (part && itemsById[unesc(part.head)]?.type === 'command') return [];
+      const query = unesc((part ? part.head : segRaw).trim());
       // The first word is a command and text follows it: arguments, caret in the name — nothing to rank.
-      if (!part && /^\s*\S+\s/.test(segRaw) && itemsById[segRaw.trim().split(/\s/)[0]]?.type === 'command') return [];
+      if (!part && /^\s*\S+\s/.test(segRaw) && itemsById[unesc(segRaw.trim().split(/\s/)[0])]?.type === 'command') return [];
       // Around a path put in the prompt the user builds a new line: a stored full
       // invocation (history row) would run on an old target and drop that path.
       if (part && !newLine) newLine = (() => {
@@ -330,8 +334,8 @@
       const caretSeg = Math.min(input.selectionStart ?? v.length, end) - start;
       const lead = segText.length - segText.trimStart().length;
       const part = wordAtCaret(segText, caretSeg);
-      const word = item.type === 'command' ? item.id : (item.path ?? item.title);
       const from = start + lead;
+      const word = item.type === 'command' ? escKept(item, segText) + item.id : (item.path ?? item.title);
       let to, text = word;
       if (part) to = start + caretSeg;   // the caret ends the first word: its tail stays
       else { to = end; if (descend && item.type === 'command' && !item.id.includes(' ')) text += ' '; }
@@ -405,6 +409,7 @@
       // With text after the caret only the word before it is the candidate prefix.
       const word = part ? part.head : raw;
       if (part && !word) return true;
+      if (word.startsWith('\\')) return true; // `\cmd` goes to core as typed: the escape must reach it
       if (!word.includes(' ') && item.id.toLowerCase().startsWith(word.toLowerCase())) return false;
       return true;
     }
@@ -641,11 +646,11 @@
         const part = wordAtCaret();
         if (part) {
           // Complete only the word before the caret; its rest (e.g. a prefilled path) stays.
-          const word = item.type === 'command' ? item.id : (item.path ?? item.title);
+          const word = item.type === 'command' ? escKept(item) + item.id : (item.path ?? item.title);
           input.value = word + part.tail;
           input.setSelectionRange(word.length, word.length);
         } else {
-          input.value = item.type === 'command' ? item.id + ' ' : (item.path ?? item.title);
+          input.value = item.type === 'command' ? escKept(item) + item.id + ' ' : (item.path ?? item.title);
         }
         activeIdx = 0;
         chosen = true;

@@ -499,7 +499,8 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
     case "none":
       return reply([]);
     case "command":
-      return reply(commandRows(w.nodes, here.prefix), w.sub ? "<command>" : undefined);
+      // A lone `\` on the first word is the "no default" escape (plan 0019 §7) with nothing after it yet.
+      return reply(commandRows(w.nodes, w.path.length === 0 && here.prefix === "\\" ? "" : here.prefix), w.sub ? "<command>" : undefined);
     case "option":
       return reply(optionRows(w.node, w.given, here.prefix));
     case "options": {

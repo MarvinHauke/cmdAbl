@@ -478,3 +478,14 @@ test("silent tag row follows the resolver's rule exactly (tagTargetOf): the own-
   const old: CompletionData = { ...base, tags: [{ name: "x", count: 1 }] };
   assert.equal(at("ranked x", old).items.some((i) => i.label === "#x"), true);
 });
+
+test("a leading backslash (the no-default escape) completes like the bare word (0019 §7)", () => {
+  assert.deepEqual(at("\\mute").labels, at("mute").labels);
+  assert.equal(at("\\mu").labels[0], "mute");
+  assert.deepEqual(at("\\mu").replace, { from: 0, to: 3 });
+  // Arguments and options after `\cmd ` complete as after `cmd `.
+  assert.deepEqual(at("\\mute -").labels, at("mute -").labels);
+  assert.deepEqual(at("\\mute ").labels, at("mute ").labels);
+  // A lone backslash lists the commands.
+  assert.deepEqual(at("\\").labels, at("").labels);
+});
