@@ -20,6 +20,8 @@ export const SETTINGS_DEFAULTS = {
   "map.enabled": true,
   /** The MIDI monitor and learn also show incoming messages in Live's status bar (off by default). */
   "midi.statusBar": false,
+  /** The help line (plan 0019 §3): the footer shows what the hovered or focused control does. */
+  "ui.helpLine": true,
 };
 
 export type SettingKey = keyof typeof SETTINGS_DEFAULTS;
@@ -27,6 +29,7 @@ export interface SettingsValues {
   "palette.above": Above;
   "map.enabled": boolean;
   "midi.statusBar": boolean;
+  "ui.helpLine": boolean;
 }
 
 // ── declared settings (plan 0019 §1) ────────────────────────────────────────
@@ -65,6 +68,7 @@ export const CORE_GROUPS: readonly SettingGroup[] = [
           { value: "options", label: "Options" },
         ],
       },
+      { key: "ui.helpLine", label: "Help line", help: "Show what the hovered or focused control does in the footer.", kind: "bool", default: true },
     ],
   },
   {

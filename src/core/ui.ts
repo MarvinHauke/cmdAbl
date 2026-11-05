@@ -101,6 +101,8 @@ export interface SelectRequest {
    * Absent: no such row.
    */
   create?: { label: string };
+  /** `ui.helpLine` (plan 0019 §3): whether the page's help line follows the hover. Set by the platform. */
+  help?: boolean;
   items: {
     /** The row's text (for a pick: the unique path, unquoted). */
     label: string;
@@ -168,6 +170,8 @@ export interface BoardRequest {
    * number 1–500; anything else is dropped by core and the page uses its own default (20).
    */
   foldAfter?: number;
+  /** `ui.helpLine` (plan 0019 §3): whether the page's help line follows the hover. Set by the platform, not by the module. */
+  help?: boolean;
   sections: Array<{
     /** Stable key the answer refers to. */
     id: string;
@@ -243,7 +247,7 @@ export interface SettingsRequest {
   title: string;
   /** A group id: the page scrolls to it and puts the cursor on its first row. Absent: the top. */
   focus?: string;
-  /** `ui.helpLine` (phase 2): whether the page's help line follows the hover. Absent until then. */
+  /** `ui.helpLine` (plan 0019 §3): whether the page's help line follows the hover. Set by the platform. */
   help?: boolean;
   groups: Array<{ id: string; heading: string; items: SettingsRow[] }>;
 }
@@ -283,6 +287,8 @@ export interface DefaultsRequest {
   title: string;
   /** A command: the page scrolls to its row and puts the cursor in its field. Absent: the top. */
   focus?: string;
+  /** `ui.helpLine` (plan 0019 §3): whether the page's help line follows the hover. Set by the platform. */
+  help?: boolean;
   rows: DefaultsRow[];
 }
 

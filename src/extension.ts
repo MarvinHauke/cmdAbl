@@ -36,6 +36,7 @@ import { bareBehaviour } from "./core/defaultCommands.js";
 import { tokenFilePath } from "./ableton/bridgeToken.js";
 import * as path from "node:path";
 import { createUiGate, runHeadless } from "./core/headless.js";
+import { withHelpLine } from "./core/helpLine.js";
 import { createDevRoutes, runTokenFilePath, type DevRoutes, writeRunToken } from "./devRoutes.js";
 import { midiBlocked, midiLast, midiListen, onBlocked, onMidiEvent } from "./ableton/bridgeOps.js";
 import { createMidiEngine } from "./core/midiEngine.js";
@@ -79,9 +80,12 @@ export function activate(activation: ActivationContext) {
   let trigger: { listening(): boolean } | undefined;
   const livePages = createLivePages({ port: TRIGGER_PORT, available: () => trigger?.listening() === true });
   const gate = createUiGate(
-    createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.above": settings.above }), livePages, (gear) => {
-      pendingGear = gear;
-    }),
+    withHelpLine(
+      createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.above": settings.above }), livePages, (gear) => {
+        pendingGear = gear;
+      }),
+      async () => (await settingsStore.get())["ui.helpLine"],
+    ),
   );
   const ui: Ui = gate.ui;
   // Default commands (plan 0019 §7): default_commands.json next to settings.json; a bare command word runs the line chosen for it.

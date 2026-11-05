@@ -32,15 +32,24 @@ if (/<\/script/i.test(matchSource)) throw new Error('the matcher bundle contains
 // Shared CSS injected into every HTML template (same pattern as the matcher bundle above).
 const sharedCss = fs.readFileSync("ui/shared.css", "utf8");
 
+// The help line (plan 0019 §3): ui/help.js defines the global `help`, inlined where a page has
+// `/*HELP_JS_PLACEHOLDER*/` (inside a <script> block, like the matcher). Read when a page needs it.
+const helpSource = (): string => {
+  const source = fs.readFileSync("ui/help.js", "utf8");
+  if (/<\/script/i.test(source)) throw new Error('ui/help.js contains "</script": cannot be inlined into a page');
+  return source;
+};
+
 // esbuild inlines all ui/*.html files as strings (the `text` loader). Hook the
 // load so build-time placeholders are replaced before bundling:
-//   every .html     — shared CSS, and the matcher where /*MATCH_PLACEHOLDER*/ stands
+//   every .html     — shared CSS, the matcher where /*MATCH_PLACEHOLDER*/ stands, ui/help.js at /*HELP_JS_PLACEHOLDER*/
 const htmlInlinePlugin: esbuild.Plugin = {
   name: "html-inline",
   setup(build) {
     build.onLoad({ filter: /\.html$/ }, (args) => {
       let html = fs.readFileSync(args.path, "utf8");
       html = html.replace("/*MATCH_PLACEHOLDER*/", () => matchSource);
+      if (html.includes("/*HELP_JS_PLACEHOLDER*/")) html = html.replace("/*HELP_JS_PLACEHOLDER*/", () => helpSource());
       html = html.replace("/*SHARED_CSS_PLACEHOLDER*/", () => sharedCss);
       return { contents: html, loader: "text" };
     });
