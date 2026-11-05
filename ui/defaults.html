@@ -309,6 +309,14 @@
       moveTo(start, true, false);
       if (DEFAULTS?.focus && R[start]) R[start].input.focus({ preventScroll: true }); else scrollEl.focus({ preventScroll: true });
       updateFooter();
+      // The webview may have laid out at another size, or painted before the scroll took effect: once the dialog has settled,
+      // put the row in view again and nudge the scroll so the list is repainted where scrollTop says it is.
+      for (const ms of [0, 60, 200, 500]) setTimeout(() => {
+        if (!R[cur]) return;
+        revealRow(R[cur].el);
+        const t = scrollEl.scrollTop;
+        if (scrollEl.scrollHeight > scrollEl.clientHeight) { scrollEl.scrollTop = t + (t > 0 ? -1 : 1); void scrollEl.offsetHeight; scrollEl.scrollTop = t; }
+      }, ms);
     });
   </script>
 </body>
