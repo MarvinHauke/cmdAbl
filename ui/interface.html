@@ -266,12 +266,14 @@
       })();
       // In a chain a part is a command line: only command rows (and stored lines) are offered. A Live-object
       // row would put a bare path where a command belongs (outside a chain the host turns it into `goto`).
-      if (segView && !chainCmds) {
+      // A leading `\` on the first word restricts the rows to commands: no objects, tags or stored lines.
+      const esc = segRaw.trimStart().startsWith('\\');
+      if ((segView || esc) && !chainCmds) {
         const mk = rows => ({ rows, rank: CmdMatch.ranker(rows, ['title', 'subtitle', 'keywords', 'path']) });
         const cmds = ITEMS.filter(i => i.type === 'command');
         chainCmds = { all: mk(cmds), plain: mk(cmds.filter(i => !i.id.includes(' '))) };   // `plain`: without stored lines
       }
-      const src = segView ? (part ? chainCmds.plain : chainCmds.all) : part ? newLine : { rows: ITEMS, rank: itemRank };
+      const src = segView || esc ? (part || esc ? chainCmds.plain : chainCmds.all) : part ? newLine : { rows: ITEMS, rank: itemRank };
       const rows = src.rows, rank = src.rank;
 
       if (!query) return zoned(rows);
