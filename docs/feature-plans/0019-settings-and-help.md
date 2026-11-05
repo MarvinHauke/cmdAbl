@@ -211,7 +211,10 @@ interface ModuleApi {
 - **"Help above the prompt"** (`palette.above` Off · Help · Options) stays as it is. Its Help panel isn't
   changed in this phase.
 - **Where it comes from:** the completion snapshot. Each argument and option gets a `description`
-  (additive, `CmdComplete`); the command's help is already there. There's no new call while the page is open.
+  (additive, `CmdComplete`); the command's help is already there. The completion engine (which runs on the
+  snapshot in the page) works out what to show: `complete()` returns `help?: { command, summary, focus?:
+  { label, text } }` (additive in `CompletionResult`, decided 2026-11-05), so the logic is tested in core and
+  the page only draws it. There's no new call while the page is open.
 
 ### 5. One keyboard model for selection lists (`ui/listnav.js`)
 
