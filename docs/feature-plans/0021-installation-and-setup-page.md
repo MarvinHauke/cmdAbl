@@ -1,6 +1,6 @@
 # Installation and setup page
 
-**Status:** In Progress (2026-11-05). Planned with the user in two question rounds (Q1–Q12) on 2026-11-05;
+**Status:** In Progress (2026-11-05; phase 1 built, user hand check and docs open). Planned with the user in two question rounds (Q1–Q12) on 2026-11-05;
 part of 0.1.6, built before 0019 phase 3. Takes over [0019](0019-settings-and-help.md) §6.
 
 **Parent:** [0004](0004-command-platform.md)
