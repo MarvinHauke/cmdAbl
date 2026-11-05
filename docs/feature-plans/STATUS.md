@@ -79,6 +79,9 @@ Older checks that were never reported; most can now run through MCP.
 
 ## Backlog (not ordered)
 
+- **Track colors** (user, 2026-11-05): a `color` module to color tracks (e.g. `color #drums red`).
+  To plan when there's time between tests; needs a plan (next free number 0021).
+
 - Group-aware toggles (user, 2026-11-04): today `mute #synth` then `mute #drums` toggles each track on
   its own, so a track in both tags (e.g. Vermona) is unmuted again by the second command. That's logical,
   but not what a user expects. Idea: when a toggle hits several targets, toggle the group as one, like
