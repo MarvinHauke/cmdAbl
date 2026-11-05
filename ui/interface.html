@@ -596,7 +596,13 @@
       if (!h || !h.command) return null;
       const cur = items[activeIdx];
       let l2 = '';
-      if (dashed && cur && cur.type === 'option') l2 = cur.title + ': ' + (cur.subtitle ?? '');
+      if (dashed && cur && cur.type === 'option') {
+        // The row's detail reads "-s  <value>  summary": the alias and the value name belong to the subject ("--set (-s) <value>: summary").
+        let rest = cur.subtitle ?? '', subj = cur.title, m;
+        if ((m = /^(-\w)\s+/.exec(rest))) { subj += ' (' + m[1] + ')'; rest = rest.slice(m[0].length); }
+        if ((m = /^(<[^>]*>)\s+/.exec(rest))) { subj += ' ' + m[1]; rest = rest.slice(m[0].length); }
+        l2 = subj + ': ' + rest;
+      }
       else if (h.focus) l2 = h.focus.label + (h.focus.text ? ': ' + h.focus.text : '');
       return { lines: [h.command + ': ' + h.summary, l2 || KEYS] };   // nothing at the caret: the keys fill the reserved line
     }
