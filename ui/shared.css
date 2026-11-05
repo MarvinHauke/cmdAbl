@@ -49,7 +49,7 @@ button:hover { border-color: var(--text); color: #fff; }
    scrollbar-color/-width properties ignores those pseudo-elements as soon as they are set,
    so the standard ones are only used where ::-webkit-scrollbar does not exist. */
 ::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }  /* 8px: the host keeps this
-   much free in the message width (NOTIFY_WIDTH_MARGIN, src/core/notifySize.ts); change both. */
+   much free in the message width (NOTIFY_WIDTH_MARGIN, src/core/surfaces/notifySize.ts); change both. */
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-corner { background: transparent; }
 ::-webkit-scrollbar-thumb {
