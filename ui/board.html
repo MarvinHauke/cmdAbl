@@ -524,13 +524,16 @@
 
     function refresh(si) { renderChips(si); renderAdd(si); updatePend(si); if (!S[si].readonly) renderUntagged(); updateFooter(); }
 
-    // keep (Enter, from the field or inside the row): the typed text and the list stay, the added track leaves the list and the
+    // keep (Enter, from the field or inside the row, unless the added label equals the typed text): the typed text and the list stay, the added track leaves the list and the
     // highlight lands on the next suggestion (the previous one after the last); an empty list returns to the field.
     function addItem(si, ii, keep) {
       const s = S[si];
       setFold(si, false);   // the chip just added must be in view
       s.items[ii].cur = true;
       if (!s.items[ii].orig) { s.added = s.added.filter(x => x !== ii); s.added.push(ii); }
+      // An exact name (case-insensitive, with or without the leading /) means the user meant just that one: the field clears.
+      const norm = x => x.trim().toLowerCase().replace(/^\//, '');
+      if (keep && norm(s.q) === norm(s.items[ii].label)) keep = false;
       if (keep) {
         const left = suggestions(s).length;
         s.hi = Math.min(s.hi, Math.max(left - 1, 0));
