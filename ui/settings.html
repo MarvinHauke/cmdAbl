@@ -211,7 +211,7 @@
       updateFooter();
     }
 
-    const KEYS = '↑↓ row · ←→ change (⇧ ×10) · Space toggle · Enter apply · Esc cancel';
+    const KEYS = '↑↓ row · ←→ change · ⇧ ×10 · Space toggle';
     function updateFooter() {
       const n = changedRows().length;
       applyEl.textContent = n ? 'Apply (' + n + ' change' + (n === 1 ? '' : 's') + ')' : 'Apply';
@@ -223,7 +223,7 @@
         helpEl.appendChild(mk('span', 'txt', r.row.help || ''));
         helpEl.appendChild(mk('span', 'def', isLink(r) ? '' : 'Default: ' + fmt(r.row, r.row.default)));
       } else if (r && !isLink(r)) { helpEl.appendChild(mk('span', 'txt')); helpEl.appendChild(mk('span', 'def', 'Default: ' + fmt(r.row, r.row.default))); }
-      keysEl.textContent = (R[cur] && isLink(R[cur]) ? '↑↓ row · Enter open · Esc cancel' : KEYS);
+      keysEl.textContent = (R[cur] && isLink(R[cur]) ? '↑↓ row · Enter open' : KEYS);
     }
 
     function changesObj() {
