@@ -112,7 +112,7 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
  ├─ 0019  Settings and help pattern (declared settings, default commands, help line, list keys, setup page)
  ├─ 0020  Aliases (the alias module)
  ├─ 0021  Installation and setup page (status rows, Copy/Update, Karabiner import)
- └─ 0023  Codebase layout (draft: study of core areas and the folder structure)
+ └─ 0023  Codebase layout (implemented: core area folders, modules/shared/)
 0001  Path-addressed objects & commands   (consumer of 0004)
 0003  pakabl extension system             (consumer of 0005)
 ```

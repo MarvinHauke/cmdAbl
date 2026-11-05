@@ -47,14 +47,10 @@ All releases were tested in Live, including the installed `.ablx`.
     User hand check open: Get Karabiner / Add rule (does the page hide behind Karabiner or the browser?), Copy
     with an older script, `setup.autoScript`, a real first install. Docs (Getting started, README Install)
     before the release.
-  - **Then: codebase layout** (user, 2026-11-05: "a structured and organized codebase"), before phase 3.
-    1. Study by core: which core areas (MIDI, curve/volume, setup, …) could live in or next to a module
-       with today's `ModuleApi`, and what each would need. Result as plan 0023 "Codebase layout".
-    2. Decide with the user what needs a `ModuleApi` change.
-    3. Move, mechanically: `src/core/` into area folders (command, complete, ui, settings, midi, setup,
-       host; `types.ts` and `log.ts` stay), `src/modules/` shared files into `modules/shared/`, with the
-       architecture test and docs in the same commit.
-  - Then phase 3 (the palette help view): the layout is agreed with the user first, then
+  - **Codebase layout done** ([0023](0023-codebase-layout.md); `106d6f8`, `683c2a3`, `747de60`, `3b9686d`, `82aff66`;
+    MCP smoke test 2026-11-05): `src/core/` in area folders, builtins split per subcommand, `modules/shared/`,
+    `help` in the `man` module, `npm run docs:reference` works again. No `ModuleApi` change.
+  - **Next: phase 3** (the palette help view): the layout is agreed with the user first, then
     descriptions in the snapshot (core) and the view (ui).
 - 0.1.6 = 0019 phases 1–3 and 0021 (contracts 1–3 approved 2026-11-05; the status rows (4) approved with 0021). The
   palette help view's layout gets agreed with the user before it's built (phase 3). Aliases moved to
@@ -68,6 +64,9 @@ All releases were tested in Live, including the installed `.ablx`.
 
 ## Small items
 
+- Every start logs `[settings] warn: group "setup" has no command of that name; setup config does not
+  exist`: the Setup group belongs to `cmdabl setup`, not to a top-level command. The check should accept
+  groups owned by a `cmdabl` subcommand (or the group should say so).
 - `npm start` sometimes ends with "Failed to connect to Live within 10s" although the extension loaded
   fully (2026-11-05, 3 of 7 restarts); a second try connects. CLI timeout, not cmdAbl.
 - Settings page: an emptied int field counts as "1 change" on Apply, though it falls back to the last
