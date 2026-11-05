@@ -9,15 +9,15 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import * as path from "node:path";
-import { CommandRegistry } from "../src/core/commandRegistry.js";
-import { registerBuiltins } from "../src/core/builtins.js";
+import { CommandRegistry } from "../src/core/command/commandRegistry.js";
+import { registerBuiltins } from "../src/core/command/builtins.js";
 import {
   checkExamples,
   checkTopics,
   renderCommandReference,
   renderLiveApiReference,
   renderRemoteScriptReference,
-} from "../src/core/referenceDoc.js";
+} from "../src/core/command/referenceDoc.js";
 import { lomPath, lomReferenceUrl } from "../src/ableton/lomPath.js";
 import { PORT_MAPPING, lomUrl } from "../src/modules/portMapping.js";
 import { REMOTE_SCRIPT_OPS, REMOTE_SCRIPT_ROUTE_LOM } from "../src/ableton/remoteScriptOps.js";

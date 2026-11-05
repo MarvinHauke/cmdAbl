@@ -90,7 +90,7 @@ reads the import statements of every file under `src/` and fails when a rule is 
 
 | Layer | What it is | What it may not import |
 | ----- | ---------- | ---------------------- |
-| `src/core/` | The platform: tokenizer, parser, command tree, resolver, pick flow, the UI contract, the result presenter. Minimal on purpose. | `src/modules/`, `src/httpTrigger.ts`, `src/extension.ts` |
+| `src/core/` | The platform, minimal on purpose, in folders: `command/` (tokenizer, parser, command tree, resolver, run), `complete/`, `surfaces/` (the UI contract, pick flow, result presenter), `settings/`, `midi/`, `setup/`, `host/` (SDK adapters, headless runs). | `src/modules/`, `src/httpTrigger.ts`, `src/extension.ts` |
 | `src/modules/` | One folder per feature, listed in `src/modules/index.ts`. Each module declares commands and reaches Live through ports. | another module's folder, `src/extension.ts`, `src/httpTrigger.ts`, the platform's dialog pages, `src/ableton/bridge.ts`, `src/ableton/trackLookup.ts`, `src/ableton/tagCache.ts`, the SDK (`@ableton-extensions/*`), Node built-ins other than `path` and `url` |
 | `src/ableton/` | The Live Set as an object tree, path resolution, and the bridge client that talks to the Remote Script. | `src/modules/`, `src/extension.ts`, and `src/core/` except its shared types and the logger |
 | `remote-script/cmdAbl/` | The Remote Script, in Python. It runs inside Live and talks to the extension only over the UDP socket. | (Python; the rules above do not apply) |
@@ -105,7 +105,7 @@ The test states seven rules:
 2. `src/core/` does not import `src/modules/`, `src/httpTrigger.ts` or `src/extension.ts`.
 3. `src/ableton/` does not import `src/modules/` or `src/extension.ts`. Of `src/core/` it imports only the
    shared types (`src/core/types.ts`) and the logger (`src/core/log.ts`).
-4. Only `src/core/ui.ts` opens a dialog with `showModalDialog`. A module hands its page to the UI
+4. Only `src/core/surfaces/ui.ts` opens a dialog with `showModalDialog`. A module hands its page to the UI
    surfaces instead. The list of exceptions is empty.
 5. A module reaches Live through the ports on `ModuleApi`. It does not import `src/ableton/bridge.ts`,
    `src/ableton/trackLookup.ts`, `src/ableton/tagCache.ts` or the SDK (`@ableton-extensions/*`). So a
@@ -153,14 +153,14 @@ Take `mute 808 snare` as an example. Here is what happens, step by step.
 2. **Palette.** The extension collects the items every provider offers: the commands, the
    history, and the objects of the Live Set. It opens the palette dialog with them. The dialog
    returns one string when it closes: the line you typed, or the item you picked.
-3. **Parse.** `src/core/parse.ts` walks the command tree by the bare words. `mute` is found;
+3. **Parse.** `src/core/command/parse.ts` walks the command tree by the bare words. `mute` is found;
    `808` and `snare` are its arguments. A usage error ends here with exit code 2.
 4. **`requires` check.** A command may declare `requires: ["bridge"]`. The platform then asks the
    bridge whether the Remote Script is ready. If it is not, the command answers exit code 5 and the
    handler is not called. The check runs before any pick, so nobody is asked to choose for a command
    that cannot run. `mute` does not declare it, because it works without the Remote Script.
 5. **Target resolution.** For a command with a path argument, the platform first waits up to 1.5 seconds
-   for the Set's structure, such as the chain names of racks, to refresh. Then `src/core/resolveArgs.ts` reads the
+   for the Set's structure, such as the chain names of racks, to refresh. Then `src/core/command/resolveArgs.ts` reads the
    path words. The rule is forgiving but never silent:
    - A comma separates targets, and a word that starts with `/` is a whole path. `#fx` means every track
      tagged `fx`, and `!#fx` every regular track without that tag.
@@ -197,10 +197,10 @@ Every dialog is a modal dialog that the SDK opens with `showModalDialog`. Three 
   The page sends back exactly one string when it closes. A dialog cannot call the extension while
   it is open.
 - **One dialog at a time.** The SDK does not handle a second modal while one is open. So every
-  dialog goes through one queue in `src/core/dialogQueue.ts`. A dialog opens only after the one
+  dialog goes through one queue in `src/core/surfaces/dialogQueue.ts`. A dialog opens only after the one
   before it has closed. A dialog that fails to open counts as dismissed.
 - **Five surfaces.** The platform talks to five surfaces, defined only by their data
-  (`src/core/ui.ts`):
+  (`src/core/surfaces/ui.ts`):
   - `prompt`: the palette. It takes the items and returns what was typed or picked, or nothing.
   - `select`: the pick list. It takes a title, the rows, an optional preview of the command line, optional
     state buttons and an optional create row. It returns the indexes of the rows the user chose, or nothing when
@@ -251,7 +251,7 @@ an `id` gets exactly one reply. An unreadable datagram is logged and dropped.
 ## Limits that shape the design
 
 - **A dialog's size is fixed when it opens.** The SDK has no call to resize a dialog, so cmdAbl sizes each dialog
-  from its content before opening it (`src/core/notifySize.ts`, `src/core/pickSize.ts`).
+  from its content before opening it (`src/core/surfaces/notifySize.ts`, `src/core/surfaces/pickSize.ts`).
 - **Extensions cannot call each other.** `context.commands.executeCommand()` only reaches commands
   that the calling extension registered itself. cmdAbl cannot run another extension's command.
 - **Only built-in Live devices can be inserted.** `insertDevice()` takes Live's own devices. A

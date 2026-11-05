@@ -1,55 +1,55 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
-import { CommandRegistry } from "./core/commandRegistry.js";
+import { CommandRegistry } from "./core/command/commandRegistry.js";
 import { appLog, logger } from "./core/log.js";
-import { runBoard } from "./core/board.js";
-import { helpForPath, usageForPath } from "./core/commandTree.js";
-import { createCommandProvider } from "./core/commandProvider.js";
-import { buildCompletionData } from "./core/completeSnapshot.js";
-import type { CompletionData } from "./core/complete.js";
+import { runBoard } from "./core/surfaces/board.js";
+import { helpForPath, usageForPath } from "./core/command/commandTree.js";
+import { createCommandProvider } from "./core/command/commandProvider.js";
+import { buildCompletionData } from "./core/complete/completeSnapshot.js";
+import type { CompletionData } from "./core/complete/complete.js";
 import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail, ok } from "./core/types.js";
 import type { Module, ModuleApi } from "./modules/types.js";
 import { startTriggerServer } from "./httpTrigger.js";
-import { isAhkInstalled, isAhkSetupDone, isKarabinerInstalled, isKarabinerSetupDone, karabinerSourcePath, readKarabinerConfig, runRemoteScriptSetup, setKarabinerPaletteOpen, isSetupDone, REMOTE_SCRIPT_DOCS_URL } from "./core/setup.js";
-import { createSetupFlow } from "./core/setupFlow.js";
-import { gatherFacts } from "./core/setupFacts.js";
-import { openUrl } from "./core/openUrl.js";
+import { isAhkInstalled, isAhkSetupDone, isKarabinerInstalled, isKarabinerSetupDone, karabinerSourcePath, readKarabinerConfig, runRemoteScriptSetup, setKarabinerPaletteOpen, isSetupDone, REMOTE_SCRIPT_DOCS_URL } from "./core/setup/setup.js";
+import { createSetupFlow } from "./core/setup/setupFlow.js";
+import { gatherFacts } from "./core/setup/setupFacts.js";
+import { openUrl } from "./core/setup/openUrl.js";
 import * as fs from "node:fs";
-import { registerBuiltins } from "./core/builtins.js";
-import { reportBridge } from "./core/bridgeStatus.js";
+import { registerBuiltins } from "./core/command/builtins.js";
+import { reportBridge } from "./core/host/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { getTagCache } from "./ableton/tagCache.js";
 import { paramDisplay, setId } from "./ableton/bridgeOps.js";
 import { findRacks, getChainNameCache } from "./ableton/chainNames.js";
-import { presentResult } from "./core/present.js";
-import { runLine } from "./core/run.js";
-import { objectRowLine } from "./core/objectRow.js";
-import { confirm } from "./core/confirm.js";
-import { pickNodes, pickTagNames } from "./core/pick.js";
-import { quoteIfNeeded } from "./core/tokenize.js";
+import { presentResult } from "./core/surfaces/present.js";
+import { runLine } from "./core/command/run.js";
+import { objectRowLine } from "./core/command/objectRow.js";
+import { confirm } from "./core/surfaces/confirm.js";
+import { pickNodes, pickTagNames } from "./core/surfaces/pick.js";
+import { quoteIfNeeded } from "./core/command/tokenize.js";
 import { uniquePath } from "./ableton/resolvePath.js";
-import { createDialogQueue } from "./core/dialogQueue.js";
-import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/ui.js";
-import { createModuleFiles } from "./core/files.js";
-import { createSettingsRegistry, createSettingsStore, toPaletteRequestSettings } from "./core/settings.js";
-import { createSettingsFlow } from "./core/settingsSurface.js";
-import { createDefaultsStore } from "./core/defaultCommands.js";
-import { attachConfigs } from "./core/configAttach.js";
-import { createDefaultsFlow } from "./core/defaultsSurface.js";
-import { rootCommandOf } from "./core/parse.js";
-import { bareBehaviour } from "./core/defaultCommands.js";
+import { createDialogQueue } from "./core/surfaces/dialogQueue.js";
+import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/surfaces/ui.js";
+import { createModuleFiles } from "./core/settings/files.js";
+import { createSettingsRegistry, createSettingsStore, toPaletteRequestSettings } from "./core/settings/settings.js";
+import { createSettingsFlow } from "./core/surfaces/settingsSurface.js";
+import { createDefaultsStore } from "./core/command/defaultCommands.js";
+import { attachConfigs } from "./core/command/configAttach.js";
+import { createDefaultsFlow } from "./core/surfaces/defaultsSurface.js";
+import { rootCommandOf } from "./core/command/parse.js";
+import { bareBehaviour } from "./core/command/defaultCommands.js";
 import { tokenFilePath } from "./ableton/bridgeToken.js";
 import * as path from "node:path";
-import { createUiGate, runHeadless } from "./core/headless.js";
-import { withHelpLine } from "./core/helpLine.js";
+import { createUiGate, runHeadless } from "./core/host/headless.js";
+import { withHelpLine } from "./core/surfaces/helpLine.js";
 import { createDevRoutes, runTokenFilePath, type DevRoutes, writeRunToken } from "./devRoutes.js";
 import { midiBlocked, midiLast, midiListen, onBlocked, onMidiEvent } from "./ableton/bridgeOps.js";
-import { createMidiEngine } from "./core/midiEngine.js";
-import { createSetWatch } from "./core/setWatch.js";
-import { createLivePages } from "./core/livePage.js";
-import { createMidiPort } from "./core/midiPort.js";
+import { createMidiEngine } from "./core/midi/midiEngine.js";
+import { createSetWatch } from "./core/host/setWatch.js";
+import { createLivePages } from "./core/surfaces/livePage.js";
+import { createMidiPort } from "./core/midi/midiPort.js";
 import { createMidiListenRoute, logMidiEvent } from "./ableton/midiEvents.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
-import { readVolume, writeVolume, type VolumeTrack } from "./core/volume.js";
+import { readVolume, writeVolume, type VolumeTrack } from "./core/host/volume.js";
 import { trackFor } from "./ableton/trackLookup.js";
 import { MODULES } from "./modules/index.js";
 
@@ -72,7 +72,7 @@ export function activate(activation: ActivationContext) {
   const dataFolder = context.environment.storageDirectory ?? path.dirname(tokenFilePath());
   const registry = new CommandRegistry();
   // Every dialog goes through this — the platform never opens an HTML page itself.
-  // One queue: a dialog never opens while another is open (see core/dialogQueue.ts).
+  // One queue: a dialog never opens while another is open (see core/surfaces/dialogQueue.ts).
   const dialogs = createDialogQueue();
   // The gate passes everything through to the real dialogs, except during a headless run (plan 0016).
   // cmdAbl's own settings (settings.json in the data folder); the palette page returns changes with its result.
@@ -188,7 +188,7 @@ export function activate(activation: ActivationContext) {
     ui.notify({ text: message, code: ExitCode.OK });
   }
 
-  // ── core: the only commands baked in (see src/core/builtins.ts) ───────────
+  // ── core: the only commands baked in (see src/core/command/builtins.ts) ───────────
   // `cmdabl curve` measures the first regular track (plan 0012): no fader moves, nothing is written.
   const firstTrack = () => liveNodes().find((n) => n.kind === "track" && n.scope === "regular");
   // The setup page (plan 0021): rows from facts, buttons run `cmdabl setup copy` or open a link, then the page comes again.
@@ -539,7 +539,7 @@ export function activate(activation: ActivationContext) {
     else if (result.message) logger("settings").info(result.message);
   }
 
-  /** The single place results become user-visible (see src/core/present.ts). */
+  /** The single place results become user-visible (see src/core/surfaces/present.ts). */
   function present(outcome: CommandResult): void {
     presentResult(outcome, (text, link, sections) =>
       ui.notify({ text, code: outcome.code, ...(link ? { link } : {}), ...(sections ? { sections } : {}) }),

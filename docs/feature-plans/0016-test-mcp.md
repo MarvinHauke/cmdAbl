@@ -14,7 +14,7 @@ the user to type the commands; the user wants the agents to run test lists thems
 - Agents can read the logs and measure the bridge (`GET /bridge`), and they can open the palette
   (`/open`) through the local trigger server (`src/httpTrigger.ts`, port 27184, local only, browser
   pages refused). They cannot type into the palette, click a dialog or see the screen.
-- `runLine(input, deps)` (`src/core/run.ts`) already runs one line. Its UI comes in through
+- `runLine(input, deps)` (`src/core/command/run.ts`) already runs one line. Its UI comes in through
   `deps` (`pick`, `pickTags`, `takeFill`) and the module `Ui` (`prompt`, `select`, `notify`,
   `board`, `page`).
 - **Done means:** a builder runs its Live test list against the user's open test Set through MCP
@@ -42,7 +42,7 @@ agent ──MCP (stdio)──> tools/mcp/cmdabl-mcp ──HTTP 127.0.0.1:27184�
   - `dialogs` names any surface the command tried to open.
 - Each run is one undo step, as in the palette. A headless run is not added to the history.
 - **Reuse:** the headless deps are the same piece a future non-interactive caller needs; keep them
-  in core (`src/core/headless.ts`), not in the route.
+  in core (`src/core/host/headless.ts`), not in the route.
 
 ### 2. The route (core, `src/httpTrigger.ts`, `src/extension.ts`)
 

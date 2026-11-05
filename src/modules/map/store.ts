@@ -1,5 +1,5 @@
-import { formatControl, isOperator, parseControl } from "../../core/midi.js";
-import type { MidiBinding } from "../../core/midiEngine.js";
+import { formatControl, isOperator, parseControl } from "../../core/midi/midi.js";
+import type { MidiBinding } from "../../core/midi/midiEngine.js";
 
 // The bindings of one Set as a JSON file (`modules/map/<setid>.json`, plan 0018). Pure.
 

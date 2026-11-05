@@ -34,7 +34,7 @@ import { builtinModules } from "node:module";
 //      platform or the Live layer; a module that still must is a listed
 //      exception below. This is not a sandbox: globals need no import
 //      (`fetch`, `process.env`).
-//   4. Only src/core/ui.ts opens dialogs (`showModalDialog`); a module hands
+//   4. Only src/core/surfaces/ui.ts opens dialogs (`showModalDialog`); a module hands
 //      its page to the UI surfaces instead.
 
 // The repository root: two levels up from this file's folder is wrong for a
@@ -192,12 +192,12 @@ function filesCallingShowModalDialog(): string[] {
   return sourceFiles("src").filter(
     (file) =>
       !file.endsWith(".test.ts") &&
-      file !== "src/core/ui.ts" &&
+      file !== "src/core/surfaces/ui.ts" &&
       /\.showModalDialog\b/.test(fs.readFileSync(path.join(ROOT, file), "utf8")),
   );
 }
 
-test("architecture: only core/ui.ts opens dialogs (apart from the listed exceptions)", () => {
+test("architecture: only core/surfaces/ui.ts opens dialogs (apart from the listed exceptions)", () => {
   const callers = filesCallingShowModalDialog();
   const listed = new Set(DIALOG_EXCEPTIONS.map((e) => e.file));
   assert.deepEqual(callers.filter((f) => !listed.has(f)), [], "opens a dialog itself; use the UI surfaces");
@@ -279,33 +279,33 @@ test("architecture: the checker sees the imports and flags what it should", () =
   assert.equal(brokenRule("src/modules/goto/run.test.ts", "node:test"), null);
   assert.equal(brokenRule("src/modules/goto/run.test.ts", "node:assert/strict"), null);
   assert.equal(brokenRule("src/modules/pakabl/guards.ts", "node:path"), null);
-  assert.equal(brokenRule("src/core/openUrl.ts", "node:child_process"), null); // core and ableton are not under rule 6
+  assert.equal(brokenRule("src/core/setup/openUrl.ts", "node:child_process"), null); // core and ableton are not under rule 6
   assert.match(brokenRule("src/modules/goto/index.ts", "src/ableton/bridge") ?? "", /^5:/);
   assert.match(brokenRule("src/modules/trackSetCommand.ts", "src/ableton/trackLookup") ?? "", /^5:/);
   assert.match(brokenRule("src/modules/tag/index.ts", "src/ableton/tagCache") ?? "", /^5:/);
   assert.match(brokenRule("src/modules/goto/snapshot.ts", "@ableton-extensions/sdk") ?? "", /^5:/);
   assert.equal(brokenRule("src/modules/goto/index.ts", "src/ableton/bridgeClient"), null); // the Bridge type is fine
   assert.equal(brokenRule("src/extension.ts", "src/ableton/bridge"), null);
-  assert.match(brokenRule("src/core/run.ts", "src/modules/find/matches") ?? "", /^2:/);
-  assert.match(brokenRule("src/core/run.ts", "src/extension") ?? "", /^2:/);
+  assert.match(brokenRule("src/core/command/run.ts", "src/modules/find/matches") ?? "", /^2:/);
+  assert.match(brokenRule("src/core/command/run.ts", "src/extension") ?? "", /^2:/);
   assert.match(brokenRule("src/ableton/select.ts", "src/extension") ?? "", /^3:/);
-  assert.match(brokenRule("src/core/run.ts", "src/httpTrigger") ?? "", /^2:/);
-  assert.match(brokenRule("src/ableton/select.ts", "src/core/ui") ?? "", /^3:/);
+  assert.match(brokenRule("src/core/command/run.ts", "src/httpTrigger") ?? "", /^2:/);
+  assert.match(brokenRule("src/ableton/select.ts", "src/core/surfaces/ui") ?? "", /^3:/);
   assert.match(brokenRule("src/ableton/select.ts", "src/modules/types") ?? "", /^3:/);
   assert.equal(brokenRule("src/ableton/select.ts", "src/core/types"), null);
   assert.equal(brokenRule("src/ableton/tagCache.ts", "src/core/log"), null); // the logger is allowed
-  assert.match(brokenRule("src/ableton/tagCache.ts", "src/core/run") ?? "", /^3:/);
-  assert.match(brokenRule("src/ableton/select.ts", "src/core/run") ?? "", /^3:/); // ableton knows core only through its shared types
-  assert.match(brokenRule("src/ableton/select.ts", "src/core/setup") ?? "", /^3:/);
+  assert.match(brokenRule("src/ableton/tagCache.ts", "src/core/command/run") ?? "", /^3:/);
+  assert.match(brokenRule("src/ableton/select.ts", "src/core/command/run") ?? "", /^3:/); // ableton knows core only through its shared types
+  assert.match(brokenRule("src/ableton/select.ts", "src/core/setup/setup") ?? "", /^3:/);
 });
 
-// The palette page bundles src/core/match.ts and src/core/complete.ts (build.ts, globals CmdMatch and
+// The palette page bundles src/core/complete/match.ts and src/core/complete/complete.ts (build.ts, globals CmdMatch and
 // CmdComplete): a page has no Node, so nothing they import may need it.
 test("architecture: the code bundled into the palette page imports no Node built-in", async () => {
   const esbuild = await import("esbuild");
   const result = await esbuild.build({
     stdin: {
-      contents: `import * as m from "./src/core/match.ts"; import * as c from "./src/core/complete.ts"; (globalThis as any).keep = [m, c];`,
+      contents: `import * as m from "./src/core/complete/match.ts"; import * as c from "./src/core/complete/complete.ts"; (globalThis as any).keep = [m, c];`,
       resolveDir: ROOT,
       loader: "ts",
     },

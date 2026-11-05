@@ -13,7 +13,7 @@ import {
   verifyArmWrites,
 } from "./armFacts.js";
 import { armDecision, armRefusal, factsRefusal, isGroupNode, nextTrackValue, notChanged, type TrackSetValue } from "./trackSetValue.js";
-import type { CommandExample } from "../core/commandTree.js";
+import type { CommandExample } from "../core/command/commandTree.js";
 import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../core/types.js";
 
 // Shared by mute, solo and arm. Two modes, chosen by the `--set` option:

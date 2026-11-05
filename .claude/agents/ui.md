@@ -11,7 +11,7 @@ comes up:
 - **cmdabl-architect** gives you tasks and gets your short overviews. Ask it before changing what a
   page receives or returns.
 - **cmdabl-reviewer** reviews every change before you commit.
-- **cmdabl-core** owns the `Ui` contract (`src/core/ui.ts`) and how pages are opened; a page needing
+- **cmdabl-core** owns the `Ui` contract (`src/core/surfaces/ui.ts`) and how pages are opened; a page needing
   new data or a different size is a request to it.
 
 ## Your area

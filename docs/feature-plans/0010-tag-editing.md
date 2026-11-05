@@ -34,7 +34,7 @@ changes, the extension applies them after the dialog closes.
    in the overview has an `add…` input that suggests tracks (first built as a checkbox list,
    replaced after the first look in Live). No second dialog.
 3. **A generic core surface `board`, not a module page.**
-   - The contract goes in `src/core/ui.ts`, the page is `ui/board.html` and uses `shared.css`.
+   - The contract goes in `src/core/surfaces/ui.ts`, the page is `ui/board.html` and uses `shared.css`.
    - It can be themed and replaced like the other surfaces (0007 §2).
    - Later users: aliases, the history list, tags on chains and pads.
 4. **After Apply the board stays closed, quietly** (user, after the Live test, 2026-10-20 —
@@ -191,7 +191,7 @@ board as the keyboard path (decision 5).
 ## The UI pattern in `ui/`
 
 - **Core surfaces** are generic, can be themed and replaced, and their contract is in
-  `src/core/ui.ts` and 0007 §1. The page is `ui/<surface>.html`.
+  `src/core/surfaces/ui.ts` and 0007 §1. The page is `ui/<surface>.html`.
   - `prompt` is `interface.html`, `select` is `pick.html`, `notify` is `feedback.html`.
   - `board` will be `board.html`.
 - **Module pages** are pages only one module needs, opened with `api.dialog`. They move to

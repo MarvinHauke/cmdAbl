@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
-import { childEnv } from "../../core/childEnv.js";
-import { openUrl as coreOpenUrl } from "../../core/openUrl.js";
+import { childEnv } from "../../core/setup/childEnv.js";
+import { openUrl as coreOpenUrl } from "../../core/setup/openUrl.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
 
 // ── Live's Extensions folder ─────────────────────────────────────────────────

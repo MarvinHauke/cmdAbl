@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validateTree } from "../../core/commandTree.js";
-import { parse } from "../../core/parse.js";
+import { validateTree } from "../../core/command/commandTree.js";
+import { parse } from "../../core/command/parse.js";
 import { ExitCode } from "../../core/types.js";
 import { createFakeApi } from "../testPorts.js";
 import { activate } from "./index.js";

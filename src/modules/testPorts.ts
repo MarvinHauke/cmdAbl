@@ -1,16 +1,16 @@
 import type { ObjectNode } from "../ableton/objectTree.js";
 import { createFakeBridge, type FakeBridge, type FakeBridgeOptions } from "../ableton/bridgeFake.js";
-import type { Command } from "../core/commandRegistry.js";
-import { helpForPath, unknownCompleterKeys, usageForPath } from "../core/commandTree.js";
-import type { Completer } from "../core/complete.js";
-import type { LiveRoutes } from "../core/livePage.js";
-import { formatControl, validateBinding } from "../core/midi.js";
-import type { MidiBinding } from "../core/midiEngine.js";
-import type { MidiControl } from "../core/midi.js";
+import type { Command } from "../core/command/commandRegistry.js";
+import { helpForPath, unknownCompleterKeys, usageForPath } from "../core/command/commandTree.js";
+import type { Completer } from "../core/complete/complete.js";
+import type { LiveRoutes } from "../core/surfaces/livePage.js";
+import { formatControl, validateBinding } from "../core/midi/midi.js";
+import type { MidiBinding } from "../core/midi/midiEngine.js";
+import type { MidiControl } from "../core/midi/midi.js";
 import type { MidiMessage as StoredMidiMessage } from "../ableton/bridgeOps.js";
 import type { Provider } from "../core/types.js";
-import type { BoardAnswer, BoardRequest, StateChange } from "../core/ui.js";
-import { MAX_FILE_BYTES, validFileName } from "../core/files.js";
+import type { BoardAnswer, BoardRequest, StateChange } from "../core/surfaces/ui.js";
+import { MAX_FILE_BYTES, validFileName } from "../core/settings/files.js";
 import type { ModuleApi, SettingDef, TagRow, TrackHandle } from "./types.js";
 
 // A ModuleApi made of fakes, so a module's `activate` and its commands' `run`

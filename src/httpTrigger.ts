@@ -23,7 +23,7 @@ export function startTriggerServer(
   /** Routes that exist only in development builds (src/devRoutes.ts): answers true when it handled the request. */
   extra?: (req: http.IncomingMessage, res: http.ServerResponse) => boolean,
   /**
-   * The live pages' routes (src/core/livePage.ts). Also served on `[::1]:<port>` and ONLY these: the dialog's URL says
+   * The live pages' routes (src/core/surfaces/livePage.ts). Also served on `[::1]:<port>` and ONLY these: the dialog's URL says
    * `localhost`, which macOS resolves to ::1 first, so cmdAbl must hold that address too — else any local process could
    * bind `[::1]:<port>` and receive the page's token. If someone else holds it, `listening()` is false (live pages fall
    * back to a data page).

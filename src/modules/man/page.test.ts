@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { helpText, type CommandNode } from "../../core/commandTree.js";
+import { helpText, type CommandNode } from "../../core/command/commandTree.js";
 import { allPaths, anchorOf, closeMatches, findNode, manPage, webUrl } from "./page.js";
 
 const tree: CommandNode[] = [

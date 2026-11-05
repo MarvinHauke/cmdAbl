@@ -305,14 +305,14 @@ WarpMode           Beats=0 | Tones=1 | Texture=2 | Repitch=3 | Complex=4 | Compl
   only "not found" means "missing", so by the permission list the check ends in "unknown" in the installed host, and the bridge
   reports "not running") and `src/ableton/bridgeToken.ts` (the token file; an unreadable or malformed file means
   exit 5, "cannot read the bridge access token (CODE)", where CODE is the error code or "wrong shape").
-  `src/core/samePath.ts` calls `realpathSync` on two paths (any error means "not the same"; it never throws).
+  `src/core/setup/samePath.ts` calls `realpathSync` on two paths (any error means "not the same"; it never throws).
   When the installed sandbox denies that read, it compares the two paths in a child process with `test A -ef B`
   (2 s timeout), which relies on child processes being allowed. Under a stricter sandbox that fallback could fail
   too: `cmdabl setup` would then copy the Remote Script instead of detecting the link. Some file work is done by shelling out through `node:child_process`, so it uses
   no file API: `src/modules/pakabl/platform.ts` reads and writes Live's Extensions folder with `curl`, `unzip`,
-  `rm -rf` and `cat` (the index cache, installed manifests, installs and removals), and `src/core/setup.ts` writes
+  `rm -rf` and `cat` (the index cache, installed manifests, installs and removals), and `src/core/setup/setup.ts` writes
   outside the bundle with `ln -sf` (the Karabiner rule) and `cp -R` (the Remote Script into the User Library).
-  `src/core/openUrl.ts` runs macOS `open`; a failed open is exit 1, or exit 5 where no opener exists. The Remote
+  `src/core/setup/openUrl.ts` runs macOS `open`; a failed open is exit 1, or exit 5 where no opener exists. The Remote
   Script (Python, inside Live) is the one place that writes a file with a file API: it creates the bridge token at
   each start, and if that fails, writing operations are refused.
 - **`insertDevice()` (Track and Chain)** — built-in Live devices only; third-party plug-ins

@@ -1,4 +1,4 @@
-import type { BoardAnswer, BoardRequest } from "../../core/ui.js";
+import type { BoardAnswer, BoardRequest } from "../../core/surfaces/ui.js";
 import { normalizeTagNames } from "./plan.js";
 
 // `tag --list` on the `board` surface (plan 0010). Pure: the tracks and their tags in, the request out;

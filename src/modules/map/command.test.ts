@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ExitCode } from "../../core/types.js";
-import { validateTree } from "../../core/commandTree.js";
+import { validateTree } from "../../core/command/commandTree.js";
 import { bindingRow } from "./store.js";
 import { createFakeApi } from "../testPorts.js";
 import { registerMap } from "./command.js";
@@ -199,7 +199,7 @@ test("a map error shows the add form, not the group's usage", async () => {
 });
 
 test("every form in the usage text parses against the declared tree", async () => {
-  const { parse } = await import("../../core/parse.js");
+  const { parse } = await import("../../core/command/parse.js");
   const { fake } = await setup();
   for (const line of ["map CC37 press | mute #a", "map CC37 | mute #a", "map learn press | mute #a", "map -l", "map --rm 2", "map --on", "map --off"]) {
     const outcome = parse(line, fake.commands as never);

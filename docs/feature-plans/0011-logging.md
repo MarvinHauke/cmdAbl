@@ -17,9 +17,9 @@ How cmdAbl logs today:
 
 - **Extension**
   - About 20 direct `console.log` and `console.error` calls, each with a hand-written `cmdAbl:`
-    prefix, in `httpTrigger.ts`, `extension.ts`, `core/ui.ts` and `core/commandRegistry.ts`.
+    prefix, in `httpTrigger.ts`, `extension.ts`, `core/surfaces/ui.ts` and `core/command/commandRegistry.ts`.
   - Some code gets an injected sink:
-    - `runLine` (`src/core/run.ts`) logs `run start` and `run: <line> -> <code> (ms)`;
+    - `runLine` (`src/core/command/run.ts`) logs `run start` and `run: <line> -> <code> (ms)`;
     - `dialogQueue.ts` logs when a dialog opens and closes;
     - `parseBoardAnswer`, `tagCache.ts`, `chainNames.ts` and `bridgeToken.ts` log their own
       problems.

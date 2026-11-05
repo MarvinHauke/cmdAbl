@@ -4,7 +4,7 @@ import * as path from "node:path";
 import type * as http from "node:http";
 import { fromBrowserPage } from "./httpTrigger.js";
 import { tokenFilePath } from "./ableton/bridgeToken.js";
-import type { HeadlessOutcome } from "./core/headless.js";
+import type { HeadlessOutcome } from "./core/host/headless.js";
 
 // The development-only routes of the trigger server (plan 0016): `POST /run` runs one line
 // headless and answers the outcome, `GET /log` the last lines of the log. They exist only in

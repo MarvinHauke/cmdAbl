@@ -40,7 +40,7 @@ You run in two ways. As an in-process subagent, you return your report. As the p
 - Handlers return a `CommandResult` with the right exit code (0 ok, 1 failure, 2 usage, 3 not
   found, 4 ambiguous, 5 unavailable); nothing throws at a user action; no direct dialogs for errors.
 - Nothing picks "the first match" silently; identity is LOM position, not a name.
-- Every dialog goes through the `Ui` contract (`src/core/ui.ts`); payloads are plain JSON.
+- Every dialog goes through the `Ui` contract (`src/core/surfaces/ui.ts`); payloads are plain JSON.
 - A command can be added, replaced or removed without touching the palette, the dispatcher or the
   bridge.
 

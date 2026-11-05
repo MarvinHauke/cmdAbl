@@ -15,8 +15,8 @@ Installing today takes six steps, three of them in other apps (README "Install",
 1. install Karabiner-Elements (optional; without it only the right-click menu opens the palette);
 2. drag the `.ablx` into Live → Settings → Extensions;
 3. open the palette from the right-click menu and type `cmdabl setup`. That links the Karabiner rule
-   and copies the Remote Script (`src/core/setup.ts`), and answers in plain text with paths and URLs
-   (`src/core/builtins.ts`, `src/core/setupAdvice.ts`);
+   and copies the Remote Script (`src/core/setup/setup.ts`), and answers in plain text with paths and URLs
+   (`src/core/setup/command.ts`, `src/core/setup/setupAdvice.ts`);
 4. in Karabiner: Complex Modifications → Add predefined rule → cmdAbl → Enable;
 5. restart Live;
 6. choose **cmdAbl** as Control Surface in Settings → Tempo & MIDI.
@@ -63,7 +63,7 @@ control surface. Nobody types `cmdabl setup` to install.
 - After a command action, core reopens the setup page so the user sees the new state (for `cmdabl
   setup` only: the flow is setup's, not a general notify loop).
 
-### 2. The rows (`src/core/setup.ts`, `setupAdvice.ts`, `builtins.ts`)
+### 2. The rows (`src/core/setup/setup.ts`, `setupAdvice.ts`, `builtins.ts`)
 
 `cmdabl setup` gathers the facts and builds one section per area. The facts it uses: the files on
 disk, `karabiner_cli`, the Remote Script's `hello`, and the version shipped with the extension.

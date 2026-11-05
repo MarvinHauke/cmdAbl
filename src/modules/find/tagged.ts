@@ -1,6 +1,6 @@
 import type { ObjectNode } from "../../ableton/objectTree.js";
-import { matches } from "../../core/match.js";
-import { parseTagTarget } from "../../core/tags.js";
+import { matches } from "../../core/complete/match.js";
+import { parseTagTarget } from "../../core/command/tags.js";
 import type { PaletteItemType } from "../../core/types.js";
 import { findNodes } from "./select.js";
 

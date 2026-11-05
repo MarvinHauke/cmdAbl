@@ -1,6 +1,6 @@
 import type { ModuleApi } from "../types.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
-import { openUrl } from "../../core/openUrl.js";
+import { openUrl } from "../../core/setup/openUrl.js";
 import { findTopic, topicNames } from "./topics.js";
 import { closeMatches, findNode, manPage, webUrl } from "./page.js";
 

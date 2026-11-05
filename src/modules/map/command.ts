@@ -1,8 +1,8 @@
 import type { ModuleApi } from "../types.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
-import { OPERATORS, controlOf, formatControl, isBlocked, isOperator, parseControl, validateBinding, type MessageType, type OperatorName } from "../../core/midi.js";
-import type { MidiControl } from "../../core/midi.js";
-import type { MidiBinding } from "../../core/midiEngine.js";
+import { OPERATORS, controlOf, formatControl, isBlocked, isOperator, parseControl, validateBinding, type MessageType, type OperatorName } from "../../core/midi/midi.js";
+import type { MidiControl } from "../../core/midi/midi.js";
+import type { MidiBinding } from "../../core/midi/midiEngine.js";
 import { captureMessages, isCaptured } from "../midiCapture.js";
 import { bindingRow, parseBindings, sameSlot, serializeBindings } from "./store.js";
 

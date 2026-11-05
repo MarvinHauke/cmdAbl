@@ -1,6 +1,6 @@
 import type { ModuleApi } from "../types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
-import { quoteIfNeeded } from "../../core/tokenize.js";
+import { quoteIfNeeded } from "../../core/command/tokenize.js";
 import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../../core/types.js";
 import { MAX_DB, MIN_FINITE_DB, valueToDb } from "../mixValue.js";
 import { applyRelative, type RelativeRule } from "../relative.js";

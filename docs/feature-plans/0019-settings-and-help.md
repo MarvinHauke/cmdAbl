@@ -24,7 +24,7 @@ hint panel, the `settings.json` store)
 
 ## Context
 
-- **Settings today:** `src/core/settings.ts` keeps `settings.json` in the extension's data folder with
+- **Settings today:** `src/core/settings/settings.ts` keeps `settings.json` in the extension's data folder with
   three typed keys: `palette.above`, `map.enabled` and `midi.statusBar`. It writes atomically, keeps
   keys it doesn't know and never throws. The only UI is the palette's footer switch
   (Off · Hints · Options), which comes back with the palette's answer. `midi.statusBar` can only be
@@ -35,7 +35,7 @@ hint panel, the `settings.json` store)
   lists options but explains nothing.
 - **Keys today:** the board has file-tree keys (0010). The pick list and the palette rows have their own
   ↑/↓ handling, and none of them shares code.
-- **Setup today:** `cmdabl setup` (`src/core/setup.ts`, `setupAdvice.ts`) answers with text, raw paths
+- **Setup today:** `cmdabl setup` (`src/core/setup/setup.ts`, `setupAdvice.ts`) answers with text, raw paths
   and URLs.
 
 **Done:** one settings page reachable from everywhere, each module's settings declared once and shown
@@ -73,7 +73,7 @@ on it, one help line pattern used by every page, one keyboard model for selectio
 
 ## Architecture
 
-### 1. Declared settings (`src/core/settings.ts`, additive ModuleApi part)
+### 1. Declared settings (`src/core/settings/settings.ts`, additive ModuleApi part)
 
 ```ts
 type SettingDef =
@@ -266,7 +266,7 @@ like an alias for the bare word, for every top-level command (mute, solo, arm, v
   - Nothing is copied: every view reads and writes the same file. Hand edits (e.g. in nvim) stay a
     first-class way.
 
-**The store** (`src/core/defaultCommands.ts`) uses the same mechanics as `settings.json`:
+**The store** (`src/core/command/defaultCommands.ts`) uses the same mechanics as `settings.json`:
 - it re-reads the file when the file's stamp changed, so a hand edit applies the next time the palette
   opens, without a restart;
 - it writes through a temporary file and a rename, keeps entries for commands it doesn't know (a module
@@ -310,7 +310,7 @@ see it:
 - **Not in scope:** subcommands (`midi monitor`) get no defaults.
 
 **As built in core (1b):**
-- `src/core/defaultCommands.ts` (store, `checkDefaultLine`, `expandDefaults`) and `defaultsSurface.ts` (request, answer, flow).
+- `src/core/command/defaultCommands.ts` (store, `checkDefaultLine`, `expandDefaults`) and `defaultsSurface.ts` (request, answer, flow).
   `runLine` expands before it splits at `;` (`RunDeps.defaults`); the outcome carries `typed` next to `line`, and
   `ModuleApi.onCommandRun(listener(invocation, typed?))` passes it on (additive; history may show it).
 - **Defaults page contract** (`Ui.defaults(request, check)`, a live page named `defaults`): request
@@ -320,7 +320,7 @@ see it:
   page compares against `saved ?? line`. The route is `GET /live/defaults/check?command=<c>&line=<l>`
   and answers `{ ok: true }` or `{ ok: false, error }`; live routes now receive the query string (`LiveQuery`, additive).
   The request is filled into the page by core (`DEFAULTS_PLACEHOLDER`); `*` in it is escaped, so no text can spell the `LIVE` placeholder.
-  `src/core/defaultsRequest.fixture.json` is a sample request.
+  `src/core/surfaces/defaultsRequest.fixture.json` is a sample request.
 - **The completion snapshot** has `defaults?: Record<command, line>` (usable ones of known commands, ≤ 200): the palette shows
   `mute → mute #drums` while the line is exactly that word.
 - **Link rows:** `cmdabl` group → "Default commands" (`target: "defaults"`, summary "N set"); a group named like a top-level command →

@@ -1,4 +1,4 @@
-import { inlineJson } from "../../core/inlineJson.js";
+import { inlineJson } from "../../core/surfaces/inlineJson.js";
 
 const ENTRIES_PLACEHOLDER = "/*ENTRIES_PLACEHOLDER*/null";
 

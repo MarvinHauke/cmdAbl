@@ -228,7 +228,7 @@ test("arm --set 1 on an already armed track is a success", async () => {
 });
 
 // ── the option as the platform parses it ────────────────────────────────────
-import { parse } from "../core/parse.js";
+import { parse } from "../core/command/parse.js";
 
 test("--set accepts 0 and 1 in every spelling and rejects anything else with exit 2", () => {
   const { api, commands } = createFakeApi();

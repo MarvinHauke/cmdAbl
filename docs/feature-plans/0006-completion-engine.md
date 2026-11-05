@@ -278,7 +278,7 @@ self-explanation. The user also wants recent commands first.
 
 **Layout without jumping (user, 2026-10-22):**
 - The prompt keeps one position for the whole time the palette is open (ui `05ff390`).
-- In "hints" and "options" mode the palette opens **taller** (core, `src/core/ui.ts`), so the area above
+- In "hints" and "options" mode the palette opens **taller** (core, `src/core/surfaces/ui.ts`), so the area above
   the prompt is bigger and at least 5 target rows stay visible below it.
 - That area has **no frame, background or divider while it is empty**, so it looks absent until there is
   content. The prompt still doesn't move.

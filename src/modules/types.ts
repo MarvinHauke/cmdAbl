@@ -5,23 +5,23 @@
 // A module declares commands as tree nodes (`commands.add`, docs/feature-plans/0005);
 // there is no other registration path.
 
-import type { Command } from "../core/commandRegistry.js";
+import type { Command } from "../core/command/commandRegistry.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { Provider } from "../core/types.js";
-import type { Completer } from "../core/complete.js";
-import type { LiveRoutes } from "../core/livePage.js";
-export type { LiveRoutes } from "../core/livePage.js";
-import type { ReadResult } from "../core/files.js";
-export type { ReadResult } from "../core/files.js";
-export type { Candidate, Completer, CompleterContext } from "../core/complete.js";
-import type { MidiPort } from "../core/midiPort.js";
-export type { BindingsSet, ListenOptions, MidiPort } from "../core/midiPort.js";
-export type { MidiBinding } from "../core/midiEngine.js";
-export type { MidiControl, MidiMessage, OperatorName } from "../core/midi.js";
-import type { BoardAnswer, BoardRequest, PickPreview, StateChange } from "../core/ui.js";
-import type { SettingDef } from "../core/settings.js";
-export type { SettingDef } from "../core/settings.js";
+import type { Completer } from "../core/complete/complete.js";
+import type { LiveRoutes } from "../core/surfaces/livePage.js";
+export type { LiveRoutes } from "../core/surfaces/livePage.js";
+import type { ReadResult } from "../core/settings/files.js";
+export type { ReadResult } from "../core/settings/files.js";
+export type { Candidate, Completer, CompleterContext } from "../core/complete/complete.js";
+import type { MidiPort } from "../core/midi/midiPort.js";
+export type { BindingsSet, ListenOptions, MidiPort } from "../core/midi/midiPort.js";
+export type { MidiBinding } from "../core/midi/midiEngine.js";
+export type { MidiControl, MidiMessage, OperatorName } from "../core/midi/midi.js";
+import type { BoardAnswer, BoardRequest, PickPreview, StateChange } from "../core/surfaces/ui.js";
+import type { SettingDef } from "../core/settings/settings.js";
+export type { SettingDef } from "../core/settings/settings.js";
 import type { BridgeResult } from "../ableton/bridgeProtocol.js";
 import type { TagsWritten } from "../ableton/bridgeOps.js";
 

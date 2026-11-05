@@ -6,7 +6,7 @@ import type { ModuleApi } from "./types.js";
 // live page); it answers "go" on Enter (in learn mode also when the first control moved) and "" on Esc. While it is open the script keeps
 // every message (a monitor window); after it closes the module asks `api.midi.last` for what came in.
 
-import { fillTemplate } from "../core/inlineJson.js";
+import { fillTemplate } from "../core/surfaces/inlineJson.js";
 
 export type CaptureMode = "learn" | "monitor";
 

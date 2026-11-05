@@ -123,7 +123,7 @@ test("find is a search: a word naming only a parent lists the parent and everyth
 
 test("find: -L is a whole number 0..12 (the platform rejects the rest with exit 2)", async () => {
   const { fake } = setup();
-  const { parse } = await import("../../core/parse.js");
+  const { parse } = await import("../../core/command/parse.js");
   for (const line of ["find kick -L 0", "find -L 12 kick", "find --level=3 kick", "find -t", "find -L 1"]) {
     assert.equal(parse(line, fake.commands).kind, "run", line);
   }

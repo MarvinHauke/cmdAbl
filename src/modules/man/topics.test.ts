@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isHttpsUrl } from "../../core/openUrl.js";
+import { isHttpsUrl } from "../../core/setup/openUrl.js";
 import { LIVE_MANUAL_VERSION, SEARCH_ENGINE, TOPICS, abletonSearchUrl, encodeQuery, findTopic, topicNames } from "./topics.js";
 
 test("both manuals are https and known by name", () => {

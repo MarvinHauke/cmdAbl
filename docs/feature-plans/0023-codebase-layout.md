@@ -1,7 +1,25 @@
 # Codebase layout
 
-**Status:** Draft (2026-11-05) — study by cmdabl-core, step 1 of the layout work (user, 2026-11-05: "a structured and
-organized codebase"). Nothing is moved yet. Step 2 is the decision with the user, step 3 the mechanical move.
+**Status:** In Progress (2026-11-05) — study by cmdabl-core (user, 2026-11-05: "a structured and organized codebase"),
+decided with the user the same day (below); the move is done in three commits.
+
+## Decisions (user, 2026-11-05)
+
+- **Q1:** `cmdabl curve` and `cmdabl bridge` stay in the core as calibration and configuration tools; no new modules
+  for them. `help` moves into the `man` module and keeps its name `help`.
+- **Q2:** the host adapters go to `src/core/host/`.
+- **Q3:** `builtins.ts` is split into one file per `cmdabl …` subcommand, in its area's folder (`setup/command.ts`,
+  `settings/command.ts`, `host/logCommand.ts`, `host/curveCommand.ts`, `host/bridgeCommand.ts`); `command/builtins.ts`
+  only assembles them (and `help` until it moves).
+- Differences from the table below: `curve.ts` and `bridgeStatus.ts` live in `host/`, the two request fixtures
+  (`*Request.fixture.json`) in `surfaces/` next to their tests, and `core.test.ts`, `chain.test.ts`, `fill.test.ts`,
+  `pipe.test.ts` in `command/`.
+
+## Commits
+
+1. `src/core/` into the folders, the builtins split, the architecture test, the path mentions in the docs.
+2. `src/modules/shared/` (`modules/types.ts`, `portMapping.ts` and `index.ts` stay).
+3. `help` into `man`.
 
 **Parent:** [0004](0004-command-platform.md)
 **Depends on:** [0021](0021-installation-and-setup-page.md) (the setup files exist now)
@@ -45,7 +63,7 @@ The import graph (read from the `import` lines; `core/types.ts`, `log.ts` and `t
 | **Volume / set-watch adapters** (`volume.ts`, `setWatch.ts`) | **No — they are not features.** They adapt the SDK to `TracksPort` / `SetPort`. | They belong to the host layer, next to `extension.ts` (they hold the only SDK knowledge outside it). |
 | **Setup page** (`setup*`, `openUrl`, `childEnv`, `samePath`) | **Not today, and probably not at all.** It must work on a fresh install before any module is trusted; it gives the page its first-use opening. | `ui.notifyAnswer` (a page with a waited answer), `headless()`, `run(line)`, `openUrl`, a first-use/palette-open hook, a route registration for `/karabiner/cmdabl.json`, and a shell (rule 6: an exception list entry like pakabl's). That is five additions for one consumer. **Recommendation: keep in the core as its own folder.** Reconsider if a second module needs a waited notify page. |
 | **Settings, defaults, config** | **No.** They are the store and the pages every module's settings depend on. | — |
-| **Tags target** (`core/tags.ts`) | **No.** `#fx` targets are parsed and fanned out by the resolver (`resolveArgs`); the `tag` module is the feature on top. | — |
+| **Tags target** (`core/command/tags.ts`) | **No.** `#fx` targets are parsed and fanned out by the resolver (`resolveArgs`); the `tag` module is the feature on top. | — |
 | **Completion engine** | **No.** It is the palette's snapshot (also bundled into the page). | — |
 | **`help`** (builtin) | **Yes** in principle (the `man` module already exists beside it): it only needs `commands.roots()`. | Nothing; it lists by topic with `commandListText`. Moving it into `man` is a small, separate cleanup. |
 

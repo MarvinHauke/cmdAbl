@@ -1,5 +1,5 @@
 import type { ObjectNode } from "../../ableton/objectTree.js";
-import { matches, matchesNode } from "../../core/match.js";
+import { matches, matchesNode } from "../../core/complete/match.js";
 import type { PaletteItemType } from "../../core/types.js";
 
 // Which objects `find` lists. Pure: the pattern, the level and the kinds in,

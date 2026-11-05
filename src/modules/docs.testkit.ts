@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { CommandRegistry, type Command } from "../core/commandRegistry.js";
-import { parse } from "../core/parse.js";
+import { CommandRegistry, type Command } from "../core/command/commandRegistry.js";
+import { parse } from "../core/command/parse.js";
 import type { ModuleApi } from "./types.js";
 
 // Shared by the docs test of every module (a module's test imports only its

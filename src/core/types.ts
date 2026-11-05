@@ -48,7 +48,7 @@ export interface PaletteResult {
   /**
    * Commands: the raw typed line, parsed by the host (quotes intact). A Live
    * object row carries only `type` and `id`; the platform turns it into
-   * `goto <unique path>` (core/objectRow.ts).
+   * `goto <unique path>` (core/command/objectRow.ts).
    */
   line?: string;
   /**

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validateTree } from "../../core/commandTree.js";
+import { validateTree } from "../../core/command/commandTree.js";
 import { assertDocumented } from "../docs.testkit.js";
 import { pakablCommand, type PakablHandlers } from "./command.js";
 

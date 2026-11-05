@@ -5,8 +5,10 @@ Live's Extension Host) with a small companion Remote Script (Python) for what th
 
 ## Where things are
 
-- `src/core/` — the platform: tokenizer, parser, command tree, resolver, pick flow, UI contract,
-  result presenter. Minimal on purpose: only what must always be present.
+- `src/core/` — the platform, minimal on purpose: only what must always be present. In folders:
+  `command/` (tokenizer, parser, command tree, registry, resolver, run), `complete/`, `surfaces/` (the UI contract, dialog queue,
+  settings and defaults pages, result presenter), `settings/`, `midi/`, `setup/` (the setup page and its steps) and `host/` (SDK
+  adapters, headless runs, `cmdabl log|curve|bridge`); `types.ts` and `log.ts` stay at the top (plan 0023).
 - `src/modules/` — everything else. One module per feature, listed in `src/modules/index.ts`.
 - `src/ableton/` — the Live Set as an object tree, path resolution, the bridge client.
 - `remote-script/cmdAbl/` — the Remote Script (selection and other LOM-only operations).
