@@ -50,8 +50,12 @@ All releases were tested in Live, including the installed `.ablx`.
   - **Codebase layout done** ([0023](0023-codebase-layout.md); `106d6f8`, `683c2a3`, `747de60`, `3b9686d`, `82aff66`;
     MCP smoke test 2026-11-05): `src/core/` in area folders, builtins split per subcommand, `modules/shared/`,
     `help` in the `man` module, `npm run docs:reference` works again. No `ModuleApi` change.
-  - **Next: phase 3** (the palette help view): the layout is agreed with the user first, then
-    descriptions in the snapshot (core) and the view (ui).
+  - **Phase 3 done** (MCP Live test 2026-11-05; `9f686f7`, `7ea19e8`, `f2566ed`, `662290d`): the palette's
+    footer help line (0019 §4): command and summary, the argument or option at the caret, keys when idle;
+    `CompletionResult.help`; descriptions in the snapshot; the palette 37 px taller. User hand check open:
+    the look, `ui.helpLine` off in the palette.
+  - **Next:** the user's hand checks (help line, setup page, phase 3), docs for 0.1.6 (cmdabl-docs), then the
+    release.
 - 0.1.6 = 0019 phases 1–3 and 0021 (contracts 1–3 approved 2026-11-05; the status rows (4) approved with 0021). The
   palette help view's layout gets agreed with the user before it's built (phase 3). Aliases moved to
   the [0020](0020-aliases.md) draft. Ideas from `docs/userfindings.md`
@@ -64,6 +68,9 @@ All releases were tested in Live, including the installed `.ablx`.
 
 ## Small items
 
+- The first palette open right after a start can miss the tag rows (`tag -e `, `#`): the snapshot is built
+  before the tag cache refresh has finished (2026-11-05). A second open has them. Core: wait for the
+  running refresh (with a short cap) or refresh the rows when it lands.
 - `npm start` sometimes ends with "Failed to connect to Live within 10s" although the extension loaded
   fully (2026-11-05, 3 of 7 restarts); a second try connects. CLI timeout, not cmdAbl.
 - Settings page: an emptied int field counts as "1 change" on Apply, though it falls back to the last
