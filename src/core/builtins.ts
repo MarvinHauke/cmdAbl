@@ -1,10 +1,8 @@
 import type { CommandRegistry } from "./commandRegistry.js";
-import { SCRIPT_VERSION, type BridgeResult, type HelloInfo } from "../ableton/bridgeProtocol.js";
-import { inspectInstalledScript, type InstalledScript } from "../ableton/installedScript.js";
-import { REMOTE_SCRIPT_DOCS_URL, runSetup } from "./setup.js";
-import { ok, fail, ExitCode } from "./types.js";
+import { runAhkSetup, runKarabinerSetup, runRemoteScriptSetup } from "./setup.js";
+import type { SetupFlow } from "./setupFlow.js";
+import { ok, fail, ExitCode, type CommandResult } from "./types.js";
 import { reportBridge, type BridgeProbe } from "./bridgeStatus.js";
-import { adviseRemoteScript } from "./setupAdvice.js";
 import { measureCurve, type CurveDeps } from "./curve.js";
 import { commandListText } from "./topics.js";
 import { appLog, clockText, dayText, type Log } from "./log.js";
@@ -20,10 +18,13 @@ import type { DefaultsFlow } from "./defaultsSurface.js";
 export interface BuiltinsDeps {
   /** The Remote Script bridge, for `cmdabl bridge` and the version check of `cmdabl setup`. */
   bridge?: () => BridgeProbe;
-  /** Test hooks: what `cmdabl setup` does and looks at. */
-  setup?: () => string;
-  installed?: () => InstalledScript;
-  shippedVersion?: string;
+  /** `cmdabl setup` (plan 0021): the page and its flow; absent: it answers exit 5. */
+  setup?: Pick<SetupFlow, "show">;
+  /** Test hooks: the steps `cmdabl setup copy` and `cmdabl setup karabiner` run. */
+  steps?: {
+    copyScript?: () => { ok: boolean; text: string };
+    keyboard?: () => { ok: boolean; text: string };
+  };
   /** The log `cmdabl log` shows (default: the extension's). */
   log?: Pick<Log, "entries" | "setDebug" | "debugOn">;
   /** The ports of `cmdabl curve` (absent: it answers exit 5). */
@@ -32,6 +33,11 @@ export interface BuiltinsDeps {
   settings?: Pick<SettingsFlow, "open" | "groups">;
   /** The defaults page, for `cmdabl config defaults [<command>]` (plan 0019 §7); absent: it answers exit 5. */
   defaults?: Pick<DefaultsFlow, "open">;
+}
+
+/** A setup step's outcome as a result: failure carries the step's own text, success `done` (or the step's text). */
+function stepResult(done: string | undefined, step: { ok: boolean; text: string }): CommandResult {
+  return step.ok ? ok(done === undefined || step.text.includes("nothing to copy") ? step.text : done) : fail(ExitCode.FAILURE, step.text);
 }
 
 export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps = {}): void {
@@ -62,28 +68,24 @@ export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps =
     children: [
       {
         name: "setup",
-        summary: "install trigger and Remote Script, then say what to do next",
+        summary: "show what is set up and what still needs you",
         description:
-          "Installs the keyboard trigger (Karabiner on macOS, AutoHotkey on Windows) and copies the Remote Script " +
-          "into Live's User Library, then compares the shipped, installed and running script versions and says " +
-          "what to do: restart Live, enable the control surface, or nothing.",
-        examples: [{ line: "cmdabl setup", note: "run once after installing, and again after updating cmdAbl" }],
-        run: async () => {
-          const installedText = (deps.setup ?? runSetup)();
-          let running: BridgeResult<HelloInfo> | null = null;
-          if (deps.bridge) {
-            try {
-              running = await deps.bridge().ping(); // fresh: what Live has loaded right now
-            } catch {
-              running = null; // the bridge promises not to throw; setup never fails over this
-            }
-          }
-          const advice = adviseRemoteScript({
-            shipped: deps.shippedVersion ?? SCRIPT_VERSION,
-            installed: (deps.installed ?? (() => inspectInstalledScript()))(),
-            running,
-          });
-          return ok(`${installedText}\n\n${advice}\n${REMOTE_SCRIPT_DOCS_URL}`);
+          "Opens the setup page: one row per step (keyboard trigger, Remote Script, restarting Live, the control surface, the data folder) " +
+          "with ✓ / ! / ✗ and a button where a step needs you. It opens by itself on the first start and after an update that needs a step " +
+          "(switch off with \"Don't open this page by itself\" or `cmdabl config setup`). `cmdabl setup copy` copies or updates the Remote Script, " +
+          "`cmdabl setup karabiner` links the Karabiner rule (macOS) or installs the AutoHotkey script (Windows) the old way. " +
+          "Without a screen (an agent's run) the rows come back as text lines.",
+        examples: [
+          { line: "cmdabl setup", note: "show the setup page" },
+          { line: "cmdabl setup copy", note: "copy or update the Remote Script, then restart Live once" },
+          { line: "cmdabl setup karabiner", note: "link the Karabiner rule without the import link" },
+        ],
+        args: [{ name: "step", kind: "enum", required: false, choices: ["copy", "karabiner"], summary: "copy: copy or update the Remote Script; karabiner: link the Karabiner rule (AutoHotkey script on Windows)" }],
+        run: async (invocation) => {
+          const step = invocation.args[0]?.[0];
+          if (step === "copy") return stepResult("Remote Script copied. Restart Live once to load it.", (deps.steps?.copyScript ?? runRemoteScriptSetup)());
+          if (step === "karabiner") return stepResult(undefined, (deps.steps?.keyboard ?? (process.platform === "win32" ? runAhkSetup : runKarabinerSetup))());
+          return deps.setup ? deps.setup.show() : fail(ExitCode.UNAVAILABLE, "setup: the setup page is not available in this build");
         },
       },
       {

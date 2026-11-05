@@ -20,5 +20,6 @@ export function withHelpLine(ui: Ui, helpLine: () => Promise<boolean>): Ui {
     settings: async (request) => ui.settings({ ...request, help: await help() }),
     defaults: async (request, check) => ui.defaults({ ...request, help: await help() }, check),
     select: async (request) => ui.select({ ...request, help: await help() }),
+    notifyAnswer: async (request) => ui.notifyAnswer({ ...request, help: await help() }),
   };
 }

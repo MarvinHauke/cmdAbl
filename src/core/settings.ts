@@ -22,6 +22,10 @@ export const SETTINGS_DEFAULTS = {
   "midi.statusBar": false,
   /** The help line (plan 0019 §3): the footer shows what the hovered or focused control does. */
   "ui.helpLine": true,
+  /** The setup page opens by itself on first start and after an update that needs a step (plan 0021 §4). */
+  "setup.openOnStart": true,
+  /** Copy a newer Remote Script at start without asking (plan 0021 §5). */
+  "setup.autoScript": false,
 };
 
 export type SettingKey = keyof typeof SETTINGS_DEFAULTS;
@@ -30,6 +34,8 @@ export interface SettingsValues {
   "map.enabled": boolean;
   "midi.statusBar": boolean;
   "ui.helpLine": boolean;
+  "setup.openOnStart": boolean;
+  "setup.autoScript": boolean;
 }
 
 // ── declared settings (plan 0019 §1) ────────────────────────────────────────
@@ -69,6 +75,14 @@ export const CORE_GROUPS: readonly SettingGroup[] = [
         ],
       },
       { key: "ui.helpLine", label: "Help line", help: "Show what the hovered or focused control does in the footer.", kind: "bool", default: true },
+    ],
+  },
+  {
+    id: "setup",
+    heading: "Setup",
+    items: [
+      { key: "setup.openOnStart", label: "Open the setup page by itself", help: "Open the setup page on the first start and after an update that needs a step from you (a new Remote Script to copy or load). cmdabl setup always opens it.", kind: "bool", default: true },
+      { key: "setup.autoScript", label: "Update the Remote Script by itself", help: "Copy a newer Remote Script to Live's User Library at start without asking. Live still needs one restart to load it.", kind: "bool", default: false },
     ],
   },
   {

@@ -19,6 +19,7 @@ import notifyTemplate from "../../ui/feedback.html";
 import boardTemplate from "../../ui/board.html";
 import settingsTemplate from "../../ui/settings.html";
 import defaultsTemplate from "../../ui/defaults.html";
+import { parseNotifyAnswer } from "./pickResult.js";
 import { isGearAnswer, parseSettingsAnswer, settingsSize } from "./settingsSurface.js";
 import { defaultsSize, parseDefaultsAnswer } from "./defaultsSurface.js";
 import { inlineJson } from "./inlineJson.js";
@@ -147,6 +148,25 @@ export interface NotifyRequest {
    * capped by the presenter. The dialog is sized from the same content (`sectionsText`).
    */
   sections?: ResultSection[];
+  /**
+   * A checkbox in the footer (plan 0021 §4) for a boolean setting. `on` is its initial checked state, `setting` the key the
+   * flow saves it to (the page never sends the key). The page answers `{ toggle: boolean }` — with or without an action — and
+   * only when the value changed or an action/link button closed it.
+   */
+  toggle?: { label: string; setting: string; on: boolean };
+  /** `ui.helpLine` (plan 0019 §3): whether the page's help line follows the hover. Set by the platform. */
+  help?: boolean;
+}
+
+/**
+ * What the message page answered (`Ui.notifyAnswer`), checked against the request that was sent:
+ * `action` is `[sectionIndex, itemIndex]` of a row whose button was clicked (the item has an `action` in the request, else the
+ * answer is dropped); `toggle` the checkbox's value (only when the request had one); `open` the link button.
+ */
+export interface NotifyAnswer {
+  action?: [number, number];
+  toggle?: boolean;
+  open?: true;
 }
 
 /**
@@ -323,6 +343,11 @@ export interface Ui {
    */
   select(request: SelectRequest): Promise<number[] | { fill: number } | SelectCreated | null>;
   notify(request: NotifyRequest): void;
+  /**
+   * The message page, waited for: resolves with the checked answer when it closes (null when dismissed with nothing to report).
+   * Same page and sizing as `notify`; the link button's URL is NOT opened here, the caller sees `open` and decides.
+   */
+  notifyAnswer(request: NotifyRequest): Promise<NotifyAnswer | null>;
   /** The board editor: resolves with the validated answer, or null if closed or unreadable. */
   board(request: BoardRequest): Promise<BoardAnswer | null>;
   /** A module's own page: resolves with the string it returns on close, or null if dismissed (an empty string counts as dismissed). */
@@ -361,6 +386,22 @@ export function createDefaultUi(
     // A failure is already logged by the queue; here it only counts as dismissed.
     queue.run(name, () => context.ui.showModalDialog(dataUrl(html), width, height)).catch(() => null);
 
+  const notifyHtml = (request: NotifyRequest) =>
+    fillTemplate(notifyTemplate, {
+      MESSAGE: request.text,
+      LINK: request.link ?? null,
+      SECTIONS: request.sections ?? null,
+      TOGGLE: request.toggle ?? null,
+      HELP: request.help ?? null,
+    });
+  const sizeOf = (request: NotifyRequest): [number, number] => {
+    const { width, height } = notifySize(request.sections ? sectionsText(request.sections) : request.text, {
+      buttons: request.sections?.some((s) => s.items.some((i) => typeof i !== "string" && i.action)) === true,
+      toggle: request.toggle !== undefined,
+    });
+    return [width, height];
+  };
+
   const ui: Ui = {
     async prompt(request) {
       const html = fillTemplate(promptTemplate, {
@@ -387,10 +428,13 @@ export function createDefaultUi(
       return answer;
     },
 
+    async notifyAnswer(request) {
+      const raw = await show("message", notifyHtml(request), ...sizeOf(request));
+      return parseNotifyAnswer(raw, request);
+    },
+
     notify(request) {
-      const html = fillTemplate(notifyTemplate, { MESSAGE: request.text, LINK: request.link ?? null, SECTIONS: request.sections ?? null });
-      const { width, height } = notifySize(request.sections ? sectionsText(request.sections) : request.text);
-      void show("message", html, width, height).then((raw) => {
+      void show("message", notifyHtml(request), ...sizeOf(request)).then((raw) => {
         if (!request.link || !wantsOpen(raw)) return;
         void openUrl(request.link.url)
           .then((result) => {

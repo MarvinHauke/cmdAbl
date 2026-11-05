@@ -35,8 +35,8 @@ test("the request has core's groups first, then the modules' by name, with curre
   await flow.open();
   const r = requests[0]!;
   assert.equal(r.title, "cmdAbl Settings");
-  assert.deepEqual(r.groups.map((g) => g.id), ["cmdabl", "map", "midi", "tag"]);
-  const tag = r.groups[3]!.items[0]!;
+  assert.deepEqual(r.groups.map((g) => g.id), ["cmdabl", "setup", "map", "midi", "tag"]);
+  const tag = r.groups[4]!.items[0]!;
   assert.deepEqual(tag, { key: "tag.foldAfter", label: "Fold after", help: foldAfter.help, kind: "int", value: 3, default: 20, min: 1, max: 500 });
   const above = r.groups[0]!.items[0]!;
   assert.equal(above.kind === "enum" && above.value, "hints");
@@ -51,10 +51,10 @@ test("`only` limits the page to one group and names it; a group focuses; an unkn
   assert.equal(requests[0]!.focus, "tag");
   await flow.open({ group: "map" });
   assert.equal(requests[1]!.focus, "map");
-  assert.equal(requests[1]!.groups.length, 4);
+  assert.equal(requests[1]!.groups.length, 5);
   const missing = await flow.open({ group: "nope" });
   assert.equal(missing.code, ExitCode.NOT_FOUND);
-  assert.match(missing.message!, /groups: cmdabl, map, midi, tag/);
+  assert.match(missing.message!, /groups: cmdabl, setup, map, midi, tag/);
   assert.equal(requests.length, 2);
 });
 

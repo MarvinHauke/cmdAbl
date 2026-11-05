@@ -194,6 +194,7 @@ test("pickNodes: label is the unique path, value is the quoted unique path", asy
     select: async (r: SelectRequest) => (requests.push(r), [0]),
     prompt: async () => null,
     notify: () => {},
+    notifyAnswer: async () => null,
     settings: async () => null, defaults: async () => null, board: async () => null,
     page: async () => null, livePage: async () => null,
   };

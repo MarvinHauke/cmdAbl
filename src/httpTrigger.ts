@@ -29,6 +29,11 @@ export function startTriggerServer(
    * back to a data page).
    */
   liveOnly?: (req: http.IncomingMessage, res: http.ServerResponse) => boolean,
+  /**
+   * GET /karabiner/cmdabl.json (plan 0021 §3): the Karabiner rule file, so the setup page's "Add rule" can hand Karabiner an
+   * import link. Read-only, served on 127.0.0.1 only. Returns the file's text, or null when it cannot be read (404).
+   */
+  karabinerRule: () => string | null = () => null,
 ): { listening(): boolean; close(): void } {
   let v4 = false;
   // pending until the answer is in; none = this machine has no IPv6 (then nobody can hold ::1 either)
@@ -38,6 +43,19 @@ export function startTriggerServer(
     if (req.url === "/open") {
       onTrigger();
       res.writeHead(200).end("ok");
+    } else if (req.url === "/karabiner/cmdabl.json") {
+      if (req.method !== "GET") {
+        res.writeHead(405, { Allow: "GET" }).end();
+        return;
+      }
+      let text: string | null = null;
+      try {
+        text = karabinerRule();
+      } catch (e: unknown) {
+        trigger.error(`karabiner rule failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      if (text === null) res.writeHead(404).end();
+      else res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Content-Length": Buffer.byteLength(text) }).end(text);
     } else if (req.url === "/state") {
       res.writeHead(200).end(getIsOpen() ? "open" : "closed");
     } else if (req.url === "/bridge") {

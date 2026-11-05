@@ -30,6 +30,7 @@ test("pickNodes: fill is offered only on single-select lists and comes back as t
     select: async (r: SelectRequest) => (requests.push(r), { fill: 1 }),
     prompt: async () => null,
     notify: () => {},
+    notifyAnswer: async () => null,
     settings: async () => null, defaults: async () => null, board: async () => null,
     page: async () => null, livePage: async () => null,
   } satisfies Ui;
@@ -134,6 +135,7 @@ test("pickNodes: state values become row symbols; none known → no state field 
     select: async (r: SelectRequest) => (requests.push(r), [0]),
     prompt: async () => null,
     notify: () => {},
+    notifyAnswer: async () => null,
     settings: async () => null, defaults: async () => null, board: async () => null,
     page: async () => null, livePage: async () => null,
   } satisfies Ui;

@@ -69,5 +69,5 @@ await esbuild.build({
   plugins: [htmlInlinePlugin],
   // The development-only routes (plan 0016: POST /run, GET /log) exist only without --production;
   // the code behind the constant is removed from a production bundle.
-  define: { CMDABL_DEV_ROUTES: String(!production) },
+  define: { CMDABL_DEV_ROUTES: String(!production), CMDABL_VERSION: JSON.stringify(String(manifest.version)) },
 });

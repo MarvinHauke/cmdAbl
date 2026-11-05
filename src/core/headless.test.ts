@@ -22,6 +22,7 @@ function realUi() {
     prompt: async () => (calls.push("prompt"), null),
     select: async () => (calls.push("select"), [1]),
     notify: (r) => void calls.push(`notify:${r.text}`),
+    notifyAnswer: async () => null,
     board: async () => (calls.push("board"), null),
     page: async () => (calls.push("page"), "x"), livePage: async () => null,
   };

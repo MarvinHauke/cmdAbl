@@ -95,12 +95,12 @@ test("`cmdabl config [<group>]` opens the page, completes the group ids, and an 
   registerBuiltins(registry, { settings: flow });
   assert.deepEqual((await run(registry, "cmdabl config")).result, { code: 0 });
   assert.deepEqual((await run(registry, "cmdabl config tag")).result, { code: 0 });
-  assert.deepEqual(requests, ["cmdAbl Settings||4", "cmdAbl Settings|tag|4"]);
+  assert.deepEqual(requests, ["cmdAbl Settings||5", "cmdAbl Settings|tag|5"]);
   const missing = await run(registry, "cmdabl config nope");
   assert.equal(missing.result.code, ExitCode.NOT_FOUND);
   // the completer behind <group>: core's group ids first, then the modules', then `defaults` (the default commands page)
   const rows = await registry.completers().get("settings-groups")!({ tokens: [], text: "" } as never);
-  assert.deepEqual((rows as Array<{ label: string }>).map((r) => r.label), ["cmdabl", "map", "midi", "tag", "defaults"]);
+  assert.deepEqual((rows as Array<{ label: string }>).map((r) => r.label), ["cmdabl", "setup", "map", "midi", "tag", "defaults"]);
   assert.deepEqual(registry.unknownCompleters(), []);
   // without a settings port the command answers exit 5
   const bare = new CommandRegistry();

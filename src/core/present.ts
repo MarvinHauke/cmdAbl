@@ -1,5 +1,5 @@
 import { isHttpsUrl } from "./openUrl.js";
-import { ExitCode, type CommandResult, type ResultLink, type ResultSection } from "./types.js";
+import { ExitCode, type CommandResult, type ItemAction, type ResultLink, type ResultSection, type StatusItem } from "./types.js";
 
 /**
  * The one place a CommandResult becomes user-visible feedback.
@@ -83,8 +83,31 @@ const clip = (text: unknown): string => {
   return value.length > MAX_TEXT ? `${value.slice(0, MAX_TEXT - 1)}…` : value;
 };
 
+const STATUSES = ["ok", "warn", "fail"];
+const MAX_ACTION = 1000;
+
+/** A status row as the page gets it: text and label clipped, a bad status or an unusable action dropped. Null: not a row. */
+function capItem(item: unknown): string | StatusItem | null {
+  if (typeof item === "string") return clip(item);
+  if (typeof item !== "object" || item === null) return null;
+  const r = item as Record<string, unknown>;
+  if (typeof r.text !== "string") return null;
+  const out: StatusItem = { text: clip(r.text) };
+  if (typeof r.status === "string" && STATUSES.includes(r.status)) out.status = r.status as StatusItem["status"];
+  const a = r.action as Record<string, unknown> | null | undefined;
+  if (typeof a === "object" && a !== null && typeof a.label === "string" && a.label.trim() !== "") {
+    const target = typeof a.command === "string" ? { command: a.command } : typeof a.url === "string" ? { url: a.url } : null;
+    const value = target ? Object.values(target)[0]! : "";
+    if (target && value !== "" && value.length <= MAX_ACTION) {
+      const help = typeof a.help === "string" && a.help.trim() !== "" ? { help: clip(a.help) } : {};
+      out.action = { label: clip(a.label).trim(), ...help, ...target } as ItemAction;
+    }
+  }
+  return out;
+}
+
 /**
- * Sections as the page gets them: plain strings only, empty headings dropped, at most
+ * Sections as the page gets them: strings and status rows only, empty headings dropped, at most
  * MAX_SECTIONS sections of MAX_ITEMS items of MAX_TEXT characters; a cut list ends with "…".
  */
 export function capSections(sections: ResultSection[] | undefined): ResultSection[] {
@@ -93,8 +116,8 @@ export function capSections(sections: ResultSection[] | undefined): ResultSectio
   for (const section of sections.slice(0, MAX_SECTIONS)) {
     const heading = clip(section?.heading).trim();
     if (!heading) continue;
-    const items = (Array.isArray(section.items) ? section.items : []).filter((i) => typeof i === "string");
-    const shown = items.slice(0, MAX_ITEMS).map(clip);
+    const items = (Array.isArray(section.items) ? section.items : []).map(capItem).filter((i): i is string | StatusItem => i !== null);
+    const shown = items.slice(0, MAX_ITEMS);
     if (items.length > MAX_ITEMS) shown.push("…");
     const meta = clip(section.meta).trim();
     out.push({ heading, ...(meta ? { meta } : {}), items: shown });

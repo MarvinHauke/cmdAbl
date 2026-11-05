@@ -6,10 +6,14 @@ import { helpForPath, usageForPath } from "./core/commandTree.js";
 import { createCommandProvider } from "./core/commandProvider.js";
 import { buildCompletionData } from "./core/completeSnapshot.js";
 import type { CompletionData } from "./core/complete.js";
-import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail } from "./core/types.js";
+import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail, ok } from "./core/types.js";
 import type { Module, ModuleApi } from "./modules/types.js";
 import { startTriggerServer } from "./httpTrigger.js";
-import { isSetupDone, setKarabinerPaletteOpen } from "./core/setup.js";
+import { isAhkInstalled, isAhkSetupDone, isKarabinerInstalled, isKarabinerSetupDone, karabinerSourcePath, readKarabinerConfig, runRemoteScriptSetup, setKarabinerPaletteOpen, isSetupDone, REMOTE_SCRIPT_DOCS_URL } from "./core/setup.js";
+import { createSetupFlow } from "./core/setupFlow.js";
+import { gatherFacts } from "./core/setupFacts.js";
+import { openUrl } from "./core/openUrl.js";
+import * as fs from "node:fs";
 import { registerBuiltins } from "./core/builtins.js";
 import { reportBridge } from "./core/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
@@ -53,6 +57,8 @@ const TRIGGER_PORT = 27184;
 
 /** Set by build.ts: true in development builds, false in `--production` (the code behind it is removed). */
 declare const CMDABL_DEV_ROUTES: boolean;
+/** The extension's version (manifest.json), defined at build time. */
+declare const CMDABL_VERSION: string;
 
 export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");
@@ -185,7 +191,39 @@ export function activate(activation: ActivationContext) {
   // ── core: the only commands baked in (see src/core/builtins.ts) ───────────
   // `cmdabl curve` measures the first regular track (plan 0012): no fader moves, nothing is written.
   const firstTrack = () => liveNodes().find((n) => n.kind === "track" && n.scope === "regular");
+  // The setup page (plan 0021): rows from facts, buttons run `cmdabl setup copy` or open a link, then the page comes again.
+  const hostStart = Date.now();
+  const setupFlow = createSetupFlow({
+    notifyAnswer: (request) => ui.notifyAnswer(request),
+    headless: () => gate.active(),
+    facts: (copyFailed) =>
+      gatherFacts({
+        port: TRIGGER_PORT,
+        controlSurfaceUrl: REMOTE_SCRIPT_DOCS_URL,
+        triggerInstalled: process.platform === "win32" ? isAhkInstalled : isKarabinerInstalled,
+        triggerRuleThere: process.platform === "win32" ? isAhkSetupDone : isKarabinerSetupDone,
+        karabinerConfig: readKarabinerConfig,
+        ping: () => getBridge().ping(),
+        hostStart,
+        dataFolder,
+        copyFailed,
+      }),
+    // The page's own commands only (the flow looks them up in the page it sent): run through the normal path, without a screen.
+    runCommand: async (line) =>
+      (await runLine(line, { ...runBase, takeFill: () => undefined, pick: async () => null, pickTags: async () => null })).result,
+    openUrl,
+    settings: settingsStore,
+    files: createModuleFiles({ base: dataFolder, module: () => "setup", warn: (text) => logger("setup").warn(text) }),
+    version: CMDABL_VERSION,
+    warn: (text) => logger("setup").warn(text),
+    note: (text) => logger("setup").info(text),
+    copyScript: () => {
+      const step = runRemoteScriptSetup();
+      return step.ok ? ok(step.text) : fail(ExitCode.FAILURE, step.text);
+    },
+  });
   registerBuiltins(registry, {
+    setup: setupFlow,
     settings: settingsFlow,
     defaults: defaultsFlow,
     bridge: () => getBridge(),
@@ -397,7 +435,13 @@ export function activate(activation: ActivationContext) {
     if (was) return `dialog queue reset (was: ${was.name})${note}`;
     if (gateReleased) return "run gate released";
     return isOpen ? "no dialog open; a command is still running" : "no dialog was open";
-  }, async () => (await reportBridge(getBridge())).line, (req, res) => midiRoute?.(req, res) === true || devRoutes?.(req, res) === true, (req, res) => livePages.handle(req, res));
+  }, async () => (await reportBridge(getBridge())).line, (req, res) => midiRoute?.(req, res) === true || devRoutes?.(req, res) === true, (req, res) => livePages.handle(req, res), () => {
+    try {
+      return fs.readFileSync(karabinerSourcePath(), "utf8");
+    } catch {
+      return null;
+    }
+  });
 
   // The Karabiner rule only fires while `cmdabl_open` is 0. If a previous host
   // was stopped with the palette open, the flag would stay at 1 and ":" would
@@ -408,6 +452,9 @@ export function activate(activation: ActivationContext) {
   if (!isSetupDone()) {
     logger("host").info("keyboard trigger not configured. Open the palette and run: cmdabl setup");
   }
+  // setup.autoScript: copy a newer Remote Script now, without a dialog (the page then says "restart Live once").
+  setupFlow.warmUp();
+  void setupFlow.autoCopy();
 
   // What a run needs besides its two pick surfaces: the palette and the headless run share it.
   const runBase = {
@@ -565,6 +612,7 @@ export function activate(activation: ActivationContext) {
     }
   }
 
+  let setupChecked = false;
   async function openPalette(initial?: string): Promise<void> {
     const shown = dialogs.describe();
     if (gate.active()) {
@@ -579,6 +627,12 @@ export function activate(activation: ActivationContext) {
     isOpen = true;
     setKarabinerPaletteOpen(true);
     try {
+      // The setup page opens by itself once per start, on the first use (plan 0021 §4): a dialog during activate() is not
+      // known to be safe, and a use is when the user is here. The palette follows when it closes.
+      if (!setupChecked) {
+        setupChecked = true;
+        await setupFlow.openIfNeeded();
+      }
       // Snapshot every provider's items, then let the webview search them.
       // Stable sort by priority (lower first); ties keep registration order.
       const ordered = [...providers].sort((a, b) => a.priority - b.priority);

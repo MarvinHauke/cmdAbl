@@ -1,24 +1,36 @@
+import * as os from "node:os";
 import * as path from "node:path";
 import { spawnSync, spawn } from "node:child_process";
 import { childEnv } from "./childEnv.js";
 import { isSameDirectory } from "./samePath.js";
 
+/** What a setup step did: ok = it worked (or there was nothing to do), text = one line for the user. */
+export interface StepResult {
+  ok: boolean;
+  text: string;
+}
+
+const stepOf = (result: { status: number | null; stdout?: string | null; stderr?: string | null }): StepResult => ({
+  ok: result.status === 0,
+  text: ((result.stdout ?? "") + (result.stderr ?? "")).trim() || (result.status === 0 ? "Setup complete." : "Setup failed."),
+});
+
 // ── macOS / Karabiner-Elements ───────────────────────────────────────────────
 
 const KARABINER_APP = "/Applications/Karabiner-Elements.app";
 const KARABINER_MODS_DIR = path.join(
-  process.env["HOME"] ?? "~",
+  os.homedir(),
   ".config/karabiner/assets/complex_modifications",
 );
 const KARABINER_SYMLINK_NAME = "cmdabl.json";
 
 // Paths below are relative to the BUNDLE (dist/extension.js, where __dirname is dist/), not to this file:
 // the repository folders karabiner/, windows/ and remote-script/ sit next to dist/.
-function karabinerSourcePath(): string {
+export function karabinerSourcePath(): string {
   return path.resolve(__dirname, "../karabiner/cmdabl.json");
 }
 
-function isKarabinerSetupDone(): boolean {
+export function isKarabinerSetupDone(): boolean {
   try {
     const target = path.join(KARABINER_MODS_DIR, KARABINER_SYMLINK_NAME);
     const result = spawnSync("bash", ["-c", 'test -e "$CMDABL_TARGET"'], {
@@ -31,7 +43,7 @@ function isKarabinerSetupDone(): boolean {
   }
 }
 
-function runKarabinerSetup(): string {
+export function runKarabinerSetup(): StepResult {
   const source = karabinerSourcePath();
   const target = path.join(KARABINER_MODS_DIR, KARABINER_SYMLINK_NAME);
 
@@ -65,7 +77,27 @@ echo "Next: Karabiner-Elements → Complex Modifications → Add predefined rule
     }),
   });
 
-  return ((result.stdout ?? "") + (result.stderr ?? "")).trim() || "Setup complete.";
+  return stepOf(result);
+}
+
+/** Is Karabiner-Elements installed. Through bash like the other probes: the installed host may not stat outside its folders. */
+export function isKarabinerInstalled(): boolean {
+  try {
+    return spawnSync("bash", ["-c", 'test -d "$CMDABL_APP"'], { stdio: "ignore", env: childEnv({ CMDABL_APP: KARABINER_APP }) }).status === 0;
+  } catch {
+    return false;
+  }
+}
+
+/** Karabiner's own `karabiner.json` as text (read-only), or null when absent or unreadable. */
+export function readKarabinerConfig(): string | null {
+  try {
+    const file = path.join(os.homedir(), ".config/karabiner/karabiner.json");
+    const r = spawnSync("bash", ["-c", 'cat "$CMDABL_FILE"'], { encoding: "utf8", env: childEnv({ CMDABL_FILE: file }) });
+    return r.status === 0 ? (r.stdout ?? "") : null;
+  } catch {
+    return null;
+  }
 }
 
 // ── Windows / AutoHotkey ─────────────────────────────────────────────────────
@@ -80,7 +112,7 @@ function ahkSourcePath(): string {
   return path.resolve(__dirname, "../windows/cmdabl.ahk");
 }
 
-function isAhkSetupDone(): boolean {
+export function isAhkSetupDone(): boolean {
   try {
     const target = path.join(WIN_STARTUP_DIR, WIN_SCRIPT_NAME);
     const result = spawnSync(
@@ -94,7 +126,18 @@ function isAhkSetupDone(): boolean {
   }
 }
 
-function runAhkSetup(): string {
+/** Is AutoHotkey v2 installed (Windows). */
+export function isAhkInstalled(): boolean {
+  try {
+    const script =
+      "if (@('C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey.exe','C:\\Program Files\\AutoHotkey\\AutoHotkey.exe','C:\\Program Files (x86)\\AutoHotkey\\AutoHotkey.exe') | Where-Object { Test-Path $_ }) { 'True' } else { 'False' }";
+    return spawnSync("powershell", ["-NonInteractive", "-Command", script], { encoding: "utf8", env: childEnv() }).stdout?.trim() === "True";
+  } catch {
+    return false;
+  }
+}
+
+export function runAhkSetup(): StepResult {
   const source = ahkSourcePath();
   const target = path.join(WIN_STARTUP_DIR, WIN_SCRIPT_NAME);
 
@@ -131,7 +174,7 @@ Write-Output 'Next: open cmdabl.ahk manually to activate now, or restart to auto
     }),
   });
 
-  return ((result.stdout ?? "") + (result.stderr ?? "")).trim() || "Setup complete.";
+  return stepOf(result);
 }
 
 // ── Remote Script bridge ─────────────────────────────────────────────────────
@@ -145,7 +188,7 @@ function remoteScriptSourcePath(): string {
 }
 
 const MAC_REMOTE_SCRIPTS_DIR = path.join(
-  process.env["HOME"] ?? "~",
+  os.homedir(),
   "Music/Ableton/User Library/Remote Scripts",
 );
 
@@ -154,10 +197,8 @@ function linkedRemoteScriptMessage(source: string): string {
   return `OK: Remote Script is linked to ${source} (nothing to copy)`;
 }
 
-function runMacRemoteScriptSetup(): string {
-  const source = remoteScriptSourcePath();
-  const target = path.join(MAC_REMOTE_SCRIPTS_DIR, "cmdAbl");
-  if (isSameDirectory(source, target)) return linkedRemoteScriptMessage(source);
+export function runMacRemoteScriptSetup(source = remoteScriptSourcePath(), target = path.join(MAC_REMOTE_SCRIPTS_DIR, "cmdAbl")): StepResult {
+  if (isSameDirectory(source, target)) return { ok: true, text: linkedRemoteScriptMessage(source) };
 
   const script = `
 if [ ! -d "$CMDABL_RS_SOURCE" ]; then
@@ -177,7 +218,7 @@ echo "OK: Remote Script installed to $CMDABL_RS_TARGET"
     }),
   });
 
-  return ((result.stdout ?? "") + (result.stderr ?? "")).trim() || "Setup complete.";
+  return stepOf(result);
 }
 
 const WIN_REMOTE_SCRIPTS_DIR = path.join(
@@ -185,10 +226,10 @@ const WIN_REMOTE_SCRIPTS_DIR = path.join(
   "Documents\\Ableton\\User Library\\Remote Scripts",
 );
 
-function runWinRemoteScriptSetup(): string {
+function runWinRemoteScriptSetup(): StepResult {
   const source = remoteScriptSourcePath();
   const target = path.join(WIN_REMOTE_SCRIPTS_DIR, "cmdAbl");
-  if (isSameDirectory(source, target)) return linkedRemoteScriptMessage(source);
+  if (isSameDirectory(source, target)) return { ok: true, text: linkedRemoteScriptMessage(source) };
 
   const script = `
 if (-not (Test-Path $env:CMDABL_RS_SOURCE)) {
@@ -208,13 +249,14 @@ Write-Output "OK: Remote Script installed to $env:CMDABL_RS_TARGET"
     }),
   });
 
-  return ((result.stdout ?? "") + (result.stderr ?? "")).trim() || "Setup complete.";
+  return stepOf(result);
 }
 
-function runRemoteScriptSetup(): string {
+/** Copy (or update) the Remote Script into Live's User Library. Never throws. */
+export function runRemoteScriptSetup(): StepResult {
   if (process.platform === "darwin") return runMacRemoteScriptSetup();
   if (process.platform === "win32") return runWinRemoteScriptSetup();
-  return "Unsupported platform.";
+  return { ok: false, text: "Unsupported platform." };
 }
 
 // ── Karabiner variable ───────────────────────────────────────────────────────
@@ -250,18 +292,3 @@ export function isSetupDone(): boolean {
 export const DOCS_BASE_URL = "https://marvinhauke.github.io/cmdAbl/";
 export const KEYBOARD_DOCS_URL = `${DOCS_BASE_URL}getting-started/#2-run-cmdabl-setup`;
 export const REMOTE_SCRIPT_DOCS_URL = `${DOCS_BASE_URL}getting-started/#3-turn-on-the-remote-script-in-live`;
-
-export function runSetup(): string {
-  if (process.platform !== "darwin" && process.platform !== "win32") {
-    return "Unsupported platform — only macOS and Windows are supported.";
-  }
-  const keyboard = process.platform === "darwin" ? runKarabinerSetup() : runAhkSetup();
-  return [
-    "— Keyboard trigger —",
-    keyboard,
-    KEYBOARD_DOCS_URL,
-    "",
-    "— Remote Script bridge —",
-    runRemoteScriptSetup(),
-  ].join("\n");
-}

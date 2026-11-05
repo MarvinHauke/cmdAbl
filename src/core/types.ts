@@ -121,12 +121,32 @@ export interface CommandResult {
   log?: string[];
 }
 
+/** A status mark before a row's text (plan 0021 §1): ✓ ok, ! warn, ✗ fail. */
+export type ItemStatus = "ok" | "warn" | "fail";
+
+/**
+ * A button at the end of a row. Clicking it closes the page with `{ action: [section, item] }`; the flow that
+ * showed the page looks the action up in the result it sent and runs the `command` line or opens the `url`.
+ * The page never sends a command or a URL. `help` is the line the help line shows for the button.
+ */
+export type ItemAction = { label: string; help?: string; command: string } | { label: string; help?: string; url: string };
+
+/** A row with a status mark and/or a button instead of a plain string. */
+export interface StatusItem {
+  text: string;
+  status?: ItemStatus;
+  action?: ItemAction;
+}
+
 export interface ResultSection {
   heading: string;
   /** Short text next to the heading, e.g. a count. */
   meta?: string;
-  items: string[];
+  items: Array<string | StatusItem>;
 }
+
+/** The text of a section item, whether it is a string or a status row. */
+export const itemText = (item: string | StatusItem): string => (typeof item === "string" ? item : item.text);
 
 export interface ResultLink {
   label: string;

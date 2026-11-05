@@ -16,6 +16,7 @@ function fakeUi() {
     select: async (r: unknown) => ((seen.select = r), null),
     prompt: async (r: unknown) => ((seen.prompt = r), null),
     notify: () => {},
+    notifyAnswer: async () => null,
   } as unknown as Ui;
   return { ui, seen };
 }

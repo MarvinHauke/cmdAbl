@@ -12,6 +12,14 @@ export function isHttpsUrl(url: string): boolean {
 }
 
 /**
+ * The one non-https link cmdAbl opens: Karabiner's rule import (plan 0021 §3), `karabiner://…/import?url=<percent-encoded address>`.
+ * The address is encoded to letters, digits and `%._~-`, so nothing else can ride along.
+ */
+export function isKarabinerImportUrl(url: string): boolean {
+  return /^karabiner:\/\/karabiner\/assets\/complex_modifications\/import\?url=[A-Za-z0-9%._~-]+$/.test(url);
+}
+
+/**
  * Open a URL in the default browser. Only `https:` URLs are accepted. Only
  * macOS has a launcher we can rely on (`open`); elsewhere the URL is handed to
  * the user (exit 5). A launch that fails is a result, never an unhandled
@@ -27,7 +35,7 @@ export function openUrl(
   const platform = deps.platform ?? process.platform;
   const spawn = deps.spawn ?? nodeSpawn;
 
-  if (!isHttpsUrl(url)) {
+  if (!isHttpsUrl(url) && !isKarabinerImportUrl(url)) {
     return Promise.resolve(fail(ExitCode.FAILURE, `refusing to open "${url}": not a plain https:// URL`));
   }
   if (platform !== "darwin") {

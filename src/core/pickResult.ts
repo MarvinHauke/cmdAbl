@@ -1,4 +1,4 @@
-import type { SelectCreated } from "./ui.js";
+import type { NotifyAnswer, SelectCreated } from "./ui.js";
 
 // Kept apart from the modules that import HTML templates so it can be unit-tested.
 
@@ -53,4 +53,35 @@ export function wantsOpen(raw: string | null | undefined): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * The message page's raw answer, checked against the request it came from: `action` only when it points at a row of the
+ * request that has an action (the page never says what an action does), `toggle` only when the request had a checkbox,
+ * `open` only when it had a link. Anything else, or unreadable, is null.
+ */
+export function parseNotifyAnswer(
+  raw: string | null | undefined,
+  request: { link?: unknown; toggle?: unknown; sections?: Array<{ items: Array<string | { action?: unknown }> }> },
+): NotifyAnswer | null {
+  if (!raw) return null;
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  const out: NotifyAnswer = {};
+  if (Array.isArray(v.action) && v.action.length === 2) {
+    const [s, i] = v.action as unknown[];
+    if (Number.isInteger(s) && Number.isInteger(i)) {
+      const item = request.sections?.[s as number]?.items[i as number];
+      if (item !== undefined && typeof item !== "string" && item.action) out.action = [s as number, i as number];
+    }
+  }
+  if (typeof v.toggle === "boolean" && request.toggle !== undefined) out.toggle = v.toggle;
+  if (v.open === true && request.link !== undefined) out.open = true;
+  return out.action || out.toggle !== undefined || out.open ? out : null;
 }

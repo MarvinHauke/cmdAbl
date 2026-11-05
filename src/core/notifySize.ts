@@ -1,3 +1,5 @@
+import { itemText, type StatusItem } from "./types.js";
+
 // Size of the message dialog, from its text. The numbers are those of
 // ui/feedback.html in Live's webview (measured in Live 12.4.15b6 on
 // 2026-10-11; headless Chrome had said 7.83 px per character, which made
@@ -28,7 +30,12 @@ export function notifyCharsPerLine(width: number): number {
   return Math.max(1, Math.floor((width - NOTIFY_HORIZONTAL_CHROME - NOTIFY_WIDTH_MARGIN) / NOTIFY_CHAR_WIDTH));
 }
 
-export function notifySize(text: string): { width: number; height: number } {
+/** Extra footer height when the page draws row buttons (24 px rows), a help line (36) and a checkbox row (28). */
+export const NOTIFY_BUTTON_ROW_EXTRA = 6;
+export const NOTIFY_HELP_LINE_HEIGHT = 36;
+export const NOTIFY_TOGGLE_HEIGHT = 28;
+
+export function notifySize(text: string, extras: { buttons?: boolean; toggle?: boolean } = {}): { width: number; height: number } {
   const lines = text.split("\n");
   const longest = lines.reduce((max, l) => Math.max(max, l.length), 0); // no spread: a huge text must not throw
   const wanted = Math.ceil(longest * NOTIFY_CHAR_WIDTH) + NOTIFY_HORIZONTAL_CHROME + NOTIFY_WIDTH_MARGIN;
@@ -42,13 +49,22 @@ export function notifySize(text: string): { width: number; height: number } {
   // Where a line wraps the estimate can be off by one: leave a line of slack.
   // Unwrapped text stays tight.
   if (lines.some((l) => l.length > perLine)) rows += 1;
-  const height = Math.min(Math.max(NOTIFY_FIXED_HEIGHT + NOTIFY_LINE_HEIGHT * rows, NOTIFY_MIN_HEIGHT), NOTIFY_MAX_HEIGHT);
+  // Rows with a button are 24 px high instead of 18; a help line and a checkbox row sit in the footer.
+  const extra =
+    (extras.buttons ? NOTIFY_BUTTON_ROW_EXTRA * rows + NOTIFY_HELP_LINE_HEIGHT : 0) + (extras.toggle ? NOTIFY_TOGGLE_HEIGHT + (extras.buttons ? 0 : NOTIFY_HELP_LINE_HEIGHT) : 0);
+  const height = Math.min(Math.max(NOTIFY_FIXED_HEIGHT + NOTIFY_LINE_HEIGHT * rows + extra, NOTIFY_MIN_HEIGHT), extras.buttons || extras.toggle ? 620 : NOTIFY_MAX_HEIGHT);
   return { width, height };
 }
 
 /** The lines a sections view takes (heading with meta, indented items, a blank line between), for sizing the dialog. */
-export function sectionsText(sections: Array<{ heading: string; meta?: string; items: string[] }>): string {
+export function sectionsText(sections: Array<{ heading: string; meta?: string; items: Array<string | StatusItem> }>): string {
   return sections
-    .map((s) => [s.meta ? `${s.heading}  ${s.meta}` : s.heading, ...s.items.map((i) => `  ${i}`)].join("\n"))
+    .map((s) => [s.meta ? `${s.heading}  ${s.meta}` : s.heading, ...s.items.map((i) => `  ${itemLine(i)}`)].join("\n"))
     .join("\n\n");
+}
+
+/** A row's line for sizing: a status mark and a button take room before and after the text. */
+function itemLine(item: string | StatusItem): string {
+  if (typeof item === "string") return item;
+  return `${item.status ? "✓ " : ""}${itemText(item)}${item.action ? `  [${item.action.label}]` : ""}`;
 }

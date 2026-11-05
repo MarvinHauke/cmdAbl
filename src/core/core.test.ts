@@ -324,20 +324,22 @@ test("cmdabl bridge: reports the bridge's answer", async () => {
   assert.equal((await (await builtins()).run("cmdabl bridge")).result.code, ExitCode.UNAVAILABLE);
 });
 
-test("cmdabl setup: the installer's text, then what to do about the Remote Script", async () => {
+test("cmdabl setup: no flow is exit 5; a step word runs the step; an unknown word is a usage error", async () => {
+  assert.equal((await (await builtins()).run("cmdabl setup")).result.code, ExitCode.UNAVAILABLE);
+  const shown: string[] = [];
   const { run } = await builtins({
-    setup: () => "OK: installed",
-    installed: () => ({ status: "current", version: "0.1.0" }),
-    shippedVersion: "0.1.0",
-    bridge: () => ({ ping: async () => ({ ok: true, value: { script: "0.0.9", v: 1, ops: [] } }) }),
+    setup: { show: async () => (shown.push("page"), ok()) },
+    steps: { copyScript: () => ({ ok: true, text: "OK: Remote Script installed to /x" }), keyboard: () => ({ ok: false, text: "ERROR: Karabiner-Elements not found" }) },
   });
-  const out = await run("cmdabl setup");
-  assert.equal(out.result.code, ExitCode.OK);
-  assert.equal(
-    out.result.message,
-    "OK: installed\n\nRemote Script 0.1.0 is installed, but Live still runs 0.0.9. Restart Live to load Remote Script 0.1.0.\n" +
-      "https://marvinhauke.github.io/cmdAbl/getting-started/#3-turn-on-the-remote-script-in-live",
-  );
+  assert.equal((await run("cmdabl setup")).result.code, ExitCode.OK);
+  assert.deepEqual(shown, ["page"]);
+  const copy = (await run("cmdabl setup copy")).result;
+  assert.equal(copy.code, ExitCode.OK);
+  assert.match(copy.message ?? "", /copied.*Restart Live once/);
+  const kb = (await run("cmdabl setup karabiner")).result;
+  assert.equal(kb.code, ExitCode.FAILURE);
+  assert.match(kb.message ?? "", /Karabiner-Elements not found/);
+  assert.equal((await run("cmdabl setup nope")).result.code, ExitCode.USAGE);
 });
 
 test("setup docs links hang off one base URL", async () => {
@@ -566,7 +568,7 @@ test("presentResult: sections pass through capped; junk is dropped", async () =>
   assert.equal(seen[1], undefined);
   const big = capSections([{ heading: "h", items: Array.from({ length: MAX_ITEMS + 5 }, () => "y".repeat(MAX_TEXT + 10)) }]);
   assert.equal(big[0]!.items.length, MAX_ITEMS + 1);
-  assert.equal(big[0]!.items[0]!.length, MAX_TEXT);
+  assert.equal((big[0]!.items[0] as string).length, MAX_TEXT);
   assert.equal(big[0]!.items.at(-1), "…");
   assert.deepEqual(capSections(undefined), []);
   assert.deepEqual(capSections([{ heading: "h", items: [1 as never, "a"] }]), [{ heading: "h", items: ["a"] }]);
