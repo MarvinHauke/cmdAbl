@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. SETTINGS_PLACEHOLDER = null | { above: "off"|"hints"|"options", gear: boolean } (the page no longer changes settings; the gear, drawn only when gear is true, answers { settings: true, text } and nothing else, and has no key: the keyboard way is the config command). One list below the prompt (recent lines, targets; options after typing `-`; subcommands at a group position). above="hints": a read-only which-key panel above the prompt shows the command's options and subcommands; above="options": a selectable tool zone above it (↑ enters, best row next to the prompt). -->
+<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. SETTINGS_PLACEHOLDER = null | { above: "off"|"hints"|"options", gear: boolean } (the page no longer changes settings; the gear, drawn only when gear is true, answers { settings: true, text } and nothing else, and has no key: the keyboard way is the config command). While the line is exactly one bare word that has an entry in COMPLETION.defaults (plan 0019 §7), one dim row "word → line" sits above the list: Enter sends the typed word (core expands it), Tab or a click writes the expanded line into the prompt. One list below the prompt (recent lines, targets; options after typing `-`; subcommands at a group position). above="hints": a read-only which-key panel above the prompt shows the command's options and subcommands; above="options": a selectable tool zone above it (↑ enters, best row next to the prompt). -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -98,6 +98,9 @@
     }
 
     .row.active { background: var(--bg-row); }
+    .row.exp { cursor: pointer; }
+    .row.exp .label { color: var(--dim); font-weight: 400; }
+    .row.exp .desc { opacity: .75; }
     .row.active .label { color: var(--accent); }
 
     /* One line per row: the title keeps its width up to the row, the grey text gives way first. */
@@ -469,6 +472,20 @@
       zone.querySelector('.znote').textContent = !empty ? '' : mode === 'args' ? 'No options here' : wordZeroNote;
     }
 
+    // ── default command (plan 0019 §7) ─────────────────────────────────────
+    // While the whole line is one bare word that has a default, core expands it on Enter; the page only shows it.
+    function expansion() {
+      const word = input.value.trim();
+      const map = COMPLETION?.defaults;
+      if (!map || !word || /\s/.test(word) || segView || chosen || mode !== 'word0' || input.value !== word || !Object.prototype.hasOwnProperty.call(map, word)) return null;
+      return { word, line: map[word] };
+    }
+    function useExpansion(exp) {
+      input.value = exp.line;
+      input.setSelectionRange(exp.line.length, exp.line.length);
+      activeIdx = 0; chosen = false; render(); input.focus();
+    }
+
     // ── render ─────────────────────────────────────────────────────────────
     function render() {
       items     = computeItems(input.value);
@@ -499,6 +516,16 @@
         return row;
       };
 
+      // A bare word with a default command: one dim row above the list shows what Enter runs (Tab writes it into the prompt).
+      const exp = expansion();
+      if (exp) {
+        const row = document.createElement('div'); row.className = 'row exp';
+        const label = document.createElement('span'); label.className = 'label'; label.textContent = exp.word + ' → ' + exp.line;
+        const desc = document.createElement('span'); desc.className = 'desc'; desc.textContent = 'default command · Enter runs it · Tab edits it · \\' + exp.word + ' skips it';
+        row.append(label, desc);
+        row.addEventListener('mousedown', e => { e.preventDefault(); useExpansion(exp); });
+        dropdown.appendChild(row);
+      }
       for (const i of displayOrder()) (items[i].pane === 'tool' ? tools : dropdown).appendChild(draw(items[i], i));
       // The area above the prompt is reserved at a fixed height for the whole session in hints/options
       // mode (empty at word 0), so the prompt and the list never move while typing.
@@ -584,6 +611,8 @@
         if (result) send(result);
       } else if (e.key === 'Tab') {
         e.preventDefault();
+        const exp = expansion();
+        if (exp) { useExpansion(exp); return; }
         const item = items[activeIdx];
         if (!item) return;
         if (mode === 'args') {
