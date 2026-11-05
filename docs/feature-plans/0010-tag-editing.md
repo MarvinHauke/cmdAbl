@@ -228,6 +228,7 @@ After the user's hand test (2026-11-04):
 - a track left without tags shows as a dashed card under untagged and can be reassigned in the same
   Apply; a tag losing its last track shows "tag goes away";
 - keys like a file tree: ↑/↓ move through the rows, ←/→ on a heading fold and unfold (⌥↑↓ dropped).
+- typing a printable character on a tag heading unfolds it and goes into that tag's add field (it becomes the target); on the untagged heading or its chips it goes into the target tag's field (New tag when that is the target).
 - fixed (user bug, 2026-11-04): with every track tagged the request has no untagged section; the page
   keeps a hidden stand-in that appears, open, with the first card and hides again when the last card
   is undone or reassigned.
