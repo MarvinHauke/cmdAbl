@@ -62,3 +62,25 @@ button:hover { border-color: var(--text); color: #fff; }
 /* a refused input: remove the class, force a reflow, add it again to replay */
 .shake { animation: shake 0.25s; }
 @keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+/* Help line (ui/help.js, plan 0019 §3): dim text, the subject of a help text in normal weight, key names as small key caps. */
+.helpline .subj { color: var(--text); font-weight: 400; }
+.helpline.warn { color: var(--accent); }
+.helpline.bad { color: hsl(0, 75%, 62%); }
+kbd {
+  display: inline-block;
+  min-width: 15px;
+  padding: 0 4px;
+  margin-right: 1px;
+  border: 1px solid var(--dim);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: var(--bg-row);
+  color: var(--text);
+  font: inherit;
+  font-size: 10px;
+  line-height: 13px;
+  text-align: center;
+  vertical-align: 1px;
+}
+.kp { white-space: nowrap; }
