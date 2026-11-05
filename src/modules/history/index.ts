@@ -14,10 +14,10 @@ import { historyCommand, type HistoryHandlers } from "./command.js";
 export function activate(api: ModuleApi): void {
   const store = new HistoryStore();
 
-  api.onCommandRun((invocation) => {
+  api.onCommandRun((invocation, typed) => {
     // Managing the history is not history.
     if (invocation === "history" || invocation.startsWith("history ")) return;
-    store.record(invocation);
+    store.record(invocation, typed);
   });
 
   const plural = (n: number) => (n === 1 ? "entry" : "entries");
@@ -58,7 +58,7 @@ export function activate(api: ModuleApi): void {
   api.registerProvider(
     {
       getItems: () =>
-        store.list().map((invocation) => ({
+        store.listTyped().map(({ text: invocation, typed }) => ({
           // `id` is the full invocation string ("mute /a, /b"), not a bare
           // command name — the webview splits any multi-word command id into
           // {name, flags} the same way it parses raw typed input, so this
@@ -66,7 +66,8 @@ export function activate(api: ModuleApi): void {
           id: invocation,
           type: "command" as const,
           title: invocation,
-          subtitle: "(history)",
+          // A default command ran: show what was typed, dimly, next to the line that ran ("mute #drums  ← mute").
+          subtitle: typed === undefined ? "(history)" : `← ${typed} (history)`,
         })),
     },
     -10,

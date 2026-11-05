@@ -3,6 +3,8 @@ export const MAX_REMOVED = 20;
 
 interface Entry {
   text: string;
+  /** What the user typed when a default command replaced a bare word ("mute" for text "mute #drums"); absent otherwise. */
+  typed?: string;
   /** Order of recording: a higher number is newer. A re-run gets a new one. */
   seq: number;
 }
@@ -25,6 +27,11 @@ export class HistoryStore {
     return this.entries.map((e) => e.text);
   }
 
+  /** Like `list`, with what was typed where it differs from what ran. */
+  listTyped(): Array<{ text: string; typed?: string }> {
+    return this.entries.map((e) => (e.typed === undefined ? { text: e.text } : { text: e.text, typed: e.typed }));
+  }
+
   get size(): number {
     return this.entries.length;
   }
@@ -33,9 +40,12 @@ export class HistoryStore {
     return this.removed.length;
   }
 
-  record(text: string): void {
+  /** `typed` is kept only when it differs from `text`; a re-run replaces the entry, so the newest `typed` wins. */
+  record(text: string, typed?: string): void {
     this.entries = this.entries.filter((e) => e.text !== text);
-    this.entries.unshift({ text, seq: ++this.seq });
+    const entry: Entry = { text, seq: ++this.seq };
+    if (typed !== undefined && typed !== text) entry.typed = typed;
+    this.entries.unshift(entry);
     this.entries.length = Math.min(this.entries.length, MAX_ENTRIES);
   }
 
