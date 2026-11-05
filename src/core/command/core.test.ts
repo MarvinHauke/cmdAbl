@@ -301,14 +301,6 @@ test("cmdabl: a group on the tree — usage generated, unknown subcommand is a u
   assert.equal((await run("cmdabl --bridge")).result.code, ExitCode.USAGE);
 });
 
-test("help stays a command and lists cmdabl", async () => {
-  const { run } = await builtins();
-  const out = await run("help");
-  assert.equal(out.result.code, ExitCode.OK);
-  assert.match(out.result.message ?? "", /cmdabl\s+configure cmdAbl/);
-  assert.match(out.result.message ?? "", /^Look things up\n  help .*\n\ncmdAbl itself\n  cmdabl /); // grouped by topic, the topic as a heading
-});
-
 test("cmdabl bridge: reports the bridge's answer", async () => {
   const { SCRIPT_VERSION } = await import("../../ableton/bridgeProtocol.js");
   const good = await (await builtins({

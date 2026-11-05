@@ -11,5 +11,5 @@ test("man <command> completes the registered command names and the two manuals",
   assert.deepEqual(fake.unknownCompleters(), []);
   assert.equal(fake.commands.find((c) => c.name === "man")!.args?.[0]?.complete, "man-topics");
   const rows = (await fake.completers.get("man-topics")!({})) as Array<{ label: string }>;
-  assert.deepEqual(rows.map((r) => r.label), ["tag", "vol", "man", "ableton", "cmdabl"]);
+  assert.deepEqual(rows.map((r) => r.label), ["tag", "vol", "help", "man", "ableton", "cmdabl"]);
 });

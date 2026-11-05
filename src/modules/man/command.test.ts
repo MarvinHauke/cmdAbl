@@ -64,3 +64,16 @@ test("a quoted name stays one word", async () => {
   assert.equal(r.code, ExitCode.NOT_FOUND);
   assert.match(r.message ?? "", /Did you mean: history clear/);
 });
+
+test("help lists the commands by topic, itself first under Look things up, with man after it", async () => {
+  const { fake } = setup();
+  const help = fake.commands.find((c) => c.name === "help")!;
+  assert.deepEqual(validateTree([help]), []);
+  const outcome = parse("help", fake.commands);
+  assert.equal(outcome.kind, "run");
+  if (outcome.kind !== "run") return;
+  const out = (await help.run!(outcome.invocation, undefined as never)) as { code: number; message?: string };
+  assert.equal(out.code, ExitCode.OK);
+  assert.match(out.message ?? "", /^Look things up\n  help .*\n  man /); // grouped by topic, the topic as a heading
+  assert.match(out.message ?? "", /history\s+the command history/);
+});

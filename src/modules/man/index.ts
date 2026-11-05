@@ -1,6 +1,7 @@
 import type { ModuleApi } from "../types.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
 import { openUrl } from "../../core/setup/openUrl.js";
+import { commandListText } from "../../core/command/topics.js";
 import { findTopic, topicNames } from "./topics.js";
 import { closeMatches, findNode, manPage, webUrl } from "./page.js";
 
@@ -16,6 +17,16 @@ export function activate(api: ModuleApi): void {
     ...api.commands.roots().map((c) => ({ label: c.name, description: c.summary })),
     ...topicNames().map((t) => ({ label: t, description: t === "ableton" ? "open the Live manual" : "open the cmdAbl documentation" })),
   ]);
+
+  // `help` (moved here from the builtins, plan 0023): registered before `man`, so it lists first under "Look things up".
+  api.commands.add({
+    name: "help",
+    topic: "Look things up",
+    summary: "list the available commands",
+    description: "Prints every command with its one-line summary. Typing a command followed by --help shows its short usage; man <command> shows the full page.",
+    examples: [{ line: "help", note: "list the commands" }],
+    run: () => ok(commandListText(api.commands.roots().map((c) => ({ name: c.name, description: c.summary, ...(c.topic ? { topic: c.topic } : {}) })))), // by topic (src/core/command/topics.ts)
+  });
 
   api.commands.add({
     name: "man",
