@@ -4,7 +4,7 @@
 **Depends on:** [0005](0005-command-tree-and-module-authoring.md) (the tree and candidate snapshots).
 
 **Status:** Steps 1–2 released in 0.1.4 (2026-10-23, PR #21): argument completion, completers, the palette
-switch Off · Hints · Options. Open: step 3 (paths level by level), step 4 (ghost text), the server
+switch Off · Hints · Options. 0.1.5 added the silent-tag row (`mute drums` shows `#drums`). Open: step 3 (paths level by level), step 4 (ghost text), the server
 variant (spike). Drafted 2026-10-08 — replaces the palette's flat fuzzy search with hierarchical,
 shell-style completion driven by the command tree.
 
@@ -296,7 +296,7 @@ server variant is therefore feasible; the design and security rules above apply,
 
 ## User findings (2026-11-04)
 
-- **0.1.5 (core):** when a bare word silently resolves to a tag (`mute drums` → `mute #drums`), the
+- **Released in 0.1.5 (core `4e8520a`):** when a bare word silently resolves to a tag (`mute drums` → `mute #drums`), the
   suggestions show the expanded form. Built once in the engine, so every module with target
   arguments gets it.
 - **0.1.6, with the settings page:** the Off/Hints/Options switch moves to the settings; the hint panel

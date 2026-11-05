@@ -5,7 +5,7 @@ known issues. Maintained by the architect. The order of the next features and ho
 each other is in the [plan index](README.md#next-in-dependency-order); design decisions live in the
 numbered plans. Finished work is in the git history, not here.
 
-_Last updated: 2026-10-23 (cleanup after 0.1.4)._
+_Last updated: 2026-11-05 (cleanup after 0.1.5)._
 
 ## Released
 
@@ -16,36 +16,20 @@ _Last updated: 2026-10-23 (cleanup after 0.1.4)._
 | 0.1.2 | 2026-10-21 | Tag board, `tag -e`, `tag -r`, `cmdabl log`, nested racks; script 0.1.6 | #14 |
 | 0.1.3 | 2026-10-22 | `vol`, `note`, agent test access (dev builds); script 0.1.8 | #17 |
 | 0.1.4 | 2026-10-23 | Argument completion, palette switch Off · Hints · Options, `settings.json` | #21 |
+| 0.1.5 | 2026-11-05 | MIDI mapping (`map`, `midi monitor`), `;` chains, tag board editing, live pages; script 0.1.14 | #27 |
 
 All releases were tested in Live, including the installed `.ablx`.
 
 ## Now
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
-  `gitleaks`, no force push).
-- Tag board rename/remove (0010): built and Live-tested 2026-11-04 on `feat/tag-board-edit` (rename
-  in place, × with the confirm bar in the board, pinned new-tag row, untagged folded, add field names its
-  tag). Click-to-assign (`3570512`) Live-tested by the user 2026-11-04.
-- **0.1.5 user findings: built and tested 2026-11-04** (ui `c41d063`…`80dcb30`, core `4e8520a`): board
-  focus in New tag, add field in the heading, only × removes, orphaned tracks as cards, "tag goes
-  away", fold above 20 tracks, file-tree keys; suggestions show silent tag expansions;
-  `midi.statusBar` (default off); monitor time column off. Docs done (`656bdb0`, `8540a8c`,
-  `9727c84`, `5fe1a8c`). **Open before the release:** re-record `tags.gif`, `tag-board.png` and
-  `bridge.png` (script 0.1.14) through MCP, in a Set with several tags and untagged tracks (the user
-  opens it); then cmdabl-docs swaps them in. Then the installed `.ablx`, release 0.1.5.
-  Board bug (all tracks tagged, no untagged section) fixed in `ui/board.html` with a hidden stand-in
-  section; to be Live-tested.
-- In work on `feat/map` (not pushed): `;` chains (0017, Live-tested); the simple MIDI mapping (0018:
-  `map`, `map learn`, `midi monitor`, operators, Remote Script 0.1.14), live pages (localhost,
-  load and route tokens, long polling), the Cmd+M conflict warning. Live-tested with the UC4
-  (2026-11-04): bindings, hold, learn, the status bar, the Cmd+M warning in `map` and `map -l`.
-  The user's UC4 test (2026-11-04) passed: learn closes by itself, "Taken in Live" in the monitor,
-  bindings after save and reopen. Open: the learn text for taken controls (offer: "Controls taken in
-  Live (Cmd+M) can't be learned: …"); using.md docs; the installed `.ablx`; release 0.1.5.
-  Docs note: save the Set after the first `map`, or the bindings won't load after a restart.
-- How testing works since 0.1.3: the architect runs Live test lists through the `cmdabl_*` MCP tools
-  (plan 0016) once the user has started `npm start` with a test Set; the user gets a short list of
-  the core features to try by hand (`CLAUDE.md`, "Agent team").
+  `gitleaks`, no force push). Nothing is in work.
+- **Next (user, 2026-11-04/05): 0.1.6, the settings and help pattern** (backlog below; plan 0019 to
+  write first, with the user's approval for the new UI surface). Ideas from `docs/userfindings.md`
+  (local, not in git) that are still open are listed there under "Moved".
+- How testing works: the architect runs Live test lists through the `cmdabl_*` MCP tools (plan 0016)
+  once the user has said Live is free, and may start and restart `npm start` itself; the user gets a
+  short list of the core features to try by hand (`CLAUDE.md`, "Agent team").
 - Docs: every change brings its docs; before each release, cmdabl-docs reads the touched pages as a
   whole and the reviewer checks the facts (`docs/guides/release-cmdabl.md`).
 
@@ -71,6 +55,10 @@ Older checks that were never reported; most can now run through MCP.
 - The dialog-hang diagnostics: after the next real hang, before restarting, `POST /reset`, then `:`,
   and the log from the last `run start:` line.
 - Optional: a board section taller than the view; 64 tracks with `vol`.
+- The board with every track tagged: removing a track's only tag shows the untagged section with its
+  card (`431164d`; checked in a browser, not yet in Live).
+- `map learn` on a control taken in Live: an offered text "Controls taken in Live (Cmd+M) can't be
+  learned: …" (undecided).
 
 ## Backlog (not ordered)
 

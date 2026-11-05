@@ -4,9 +4,9 @@
 **Depends on:** [0008](0008-tags-and-aliases.md) (tags on tracks, `tag -l`),
 [0007](0007-ui-surfaces.md) (a new surface `board`).
 
-**Status:** Released in 0.1.2 (2026-10-21, `v0.1.2`). Built in (pre-rebase hashes): board `96e838a`/`d468176`, `tag --edit` `9bba54c`, `tag -l` on
-board `11815ba`; Live test pending) — 0.1.2 (user, 2026-10-20: 0.1.1 is released first; 0.1.2 = this plan;
-the store and aliases move to 0.1.3). Branch `feat/tag-board`.
+**Status:** Released in 0.1.2 (board, `tag -e`, `tag -r`); board editing released in 0.1.5 (2026-11-05,
+PR #27): rename and remove whole tags, click to assign, the file-tree keys. Open: the 0.1.6 settings
+and help pattern (gear button, `tag config`, footer help on hover).
 
 ## Context
 
@@ -164,78 +164,29 @@ with the new-tag row (bare `#` = the tag list, as elsewhere). Usage: `tag --edit
 `OptionDef.valueDefault`). `tag -e #` is single-select: Enter picks the tag (`73f0079`, `702fcca`). It ships with the
 board as the keyboard path (decision 5).
 
-## Rename and remove whole tags in the board (user, 2026-11-04; Live-tested 2026-11-04)
+## Board editing (released in 0.1.5; user decisions 2026-11-04/05)
 
-Today the board removes a track from a tag (× on a chip) and creates tags, but it can't rename a tag or
-remove a whole tag; that needs `tag -r` or `tag --set 0`.
-
-- **Each tag section's heading gets two actions** (look refined after the Live test, 2026-11-04: the
-  heading reads `#name` with an accent `#`; a click on the name renames it; a bigger × at the row's end;
-  the rename note `(was #old)` sits on the heading line; the add field is a real input with a focus
-  highlight):
-  - **rename:** the heading becomes an inline input. Enter takes the name, checked against the same
-    pattern as a new tag; Esc cancels the edit.
-  - **× remove:** the section is marked (struck through), and the footer says "#fx will be removed from
-    N tracks". A second click unmarks it.
-- **Board layout for long Sets** (Live test, 2026-11-04):
-  - the "+ # New tag…" row is pinned at the top;
-  - a created tag appears directly below it with its add field focused;
-  - "untagged" is the last section, collapsed by default ("▸ untagged · N tracks"), with no add field.
-- **Click to assign** (user, 2026-11-04, for 0.1.5):
-  - **The active target** is the tag whose add field was last focused, or the "New tag" field. It's
-    highlighted, and the footer says "Click tracks to add them to #drums".
-  - **Clicking a chip under "untagged"** adds that track to the active tag as a pending chip (dashed
-    ring). A second click undoes it.
-  - **Without an active tag,** a click moves focus to "+ # New tag…" and collects the track in a line
-    below it ("goes into the new tag: …"). Name + Enter creates the tag with those tracks; the order
-    (collect first, name first) doesn't matter. Esc clears the collection.
-  - **Clicks on chips in other tag sections** don't assign (no accidental double tagging).
-  - **Contract:** unchanged. A created section's items can be turned on in the same answer.
-- **Apply sends everything at once:**
-  - renames use the `tag -r` logic (an existing name merges);
-  - removing a whole tag is confirmed **inside the board** (user, 2026-11-04): Apply with a marked tag
-    shows a confirm bar in the footer ("Remove #fx from N tracks?", Cancel by default, "Remove and
-    apply"). Cancel returns to editing; there is no second window afterwards;
-  - removing one track (× on a chip) stays without a question;
-  - the log gets the change and undo lines as usual.
-- **Board contract (additive):**
-  - section `renamable?: boolean`, `removable?: boolean`;
-  - answer `renamed?: [{ section, to }]`, `removed?: [section]`.
-  - answer `confirmed?: true` (kept only with a non-empty `removed`; reviewer, 2026-11-04). A module
-    applies `removed` only when it is confirmed; otherwise it asks once itself (an old or other page).
-
-  Old callers are unaffected. A rename plus a removal of the same section: the removal wins.
-- **Work:**
-  - core: the contract and the parser of the answer (`parseBoardAnswer`), with tests;
-  - ui: `ui/board.html` (the actions, the inline input, the strike-through, the footer text,
-    keyboard access);
-  - modules: the `tag` board sets the flags, applies renames and removals, and confirms removals.
-
-## User findings for 0.1.5 (user, 2026-11-04)
-
-Click-to-assign was Live-tested by the user (ui `3570512`). Four changes, ui only (`ui/board.html`):
-- focus starts in "New tag" when the board opens;
-- each tag's add field sits in its header row, after the name and before "N tracks ×"; the chip rows
-  hold only tracks (this also ends the wrap jump when a pending chip fills a row);
-- a clicked untagged chip leaves "untagged" and shows as a pending chip in the target; its × there
-  undoes it;
-- every tag section can fold; sections with more than 20 tracks start folded (a named constant, a
-  setting once the settings page exists).
-
-After the user's hand test (2026-11-04):
-- only × (or Backspace on a selected chip) removes; a click on the name only selects;
-- the New tag row looks like a tag row (field, chips below); its help is in the footer;
-- a track left without tags shows as a dashed card under untagged and can be reassigned in the same
-  Apply; a tag losing its last track shows "tag goes away";
-- keys like a file tree: ↑/↓ move through the rows, ←/→ on a heading fold and unfold (⌥↑↓ dropped).
-- typing a printable character on a tag heading unfolds it and goes into that tag's add field (it becomes the target); on the untagged heading or its chips it goes into the target tag's field (New tag when that is the target).
-- fixed (user bug, 2026-11-04): with every track tagged the request has no untagged section; the page
-  keeps a hidden stand-in that appears, open, with the first card and hides again when the last card
-  is undone or reassigned.
-
-For 0.1.6 (with the settings page and the help pattern, see STATUS): a gear button and `tag config`
-for the board's settings, and a footer help line that follows the mouse (like Live's Info View, can
-be switched off).
+- **Board contract (additive):** section `renamable?`/`removable?`; answer `renamed?: [{section, to}]`,
+  `removed?: [section]`, `confirmed?: true`. A module applies `removed` only when confirmed, otherwise
+  it asks once itself; a rename plus a removal of the same section: the removal wins. Renames use the
+  `tag -r` logic (an existing name merges).
+- **Removing a whole tag** is confirmed inside the board (a confirm bar, Cancel by default); removing
+  one track is not asked. Only × or Backspace on a selected chip removes; a click on the name selects.
+- **Layout:** "+ # New tag…" pinned on top and focused at open, with collected tracks below it like a
+  tag row; each tag's add field in its heading; "untagged" last, folded, read-only. Sections with more
+  than 20 tracks start folded (`FOLD_AFTER`, a setting with the 0.1.6 settings page).
+- **Click to assign:** the target is the tag whose field or chips have focus (not a heading passed with
+  ↓), or New tag. A click or Enter on an untagged track adds it as a pending chip; the cursor stays in
+  the list. A track left without tags returns as a card under "untagged" (the section appears even
+  when every track was tagged); a tag losing its last track shows "tag goes away".
+- **Keys like a file tree:** ↑↓ between headings; → unfolds, then into the field, then the chips; ←
+  back out; Enter on a heading goes into its field; Space folds; typing on a heading or a chip goes
+  into that tag's field (untagged: the target's field). In a field with suggestions: → enters the
+  suggestion row, ←/→ walk it, ← on the first returns, typing edits; **Tab completes** the text;
+  **Enter adds** and keeps the text and list, unless the added name equals the typed text (then the
+  field clears and the next Enter applies). Esc clears.
+- **No browser tooltips** (user, 2026-11-05): `aria-label` instead; the footer help line that follows
+  the mouse comes in 0.1.6.
 
 ## The UI pattern in `ui/`
 
