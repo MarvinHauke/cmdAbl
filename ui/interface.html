@@ -380,6 +380,9 @@
       // A command row taken while text follows the caret (a path put in the
       // prompt) keeps that text: `mu` + Enter on `mute` runs `mute "<path>"`.
       const part = wordAtCaret();
+      if (item.type === 'command' && !item.id.includes(' ') && input.value.trimStart().startsWith('\\') && !part) {
+        return { type: 'command', id: item.id, line: '\\' + item.id };   // the escape reaches core: no default
+      }
       if (item.type === 'command' && !item.id.includes(' ') && part) {
         return { type: 'command', id: item.id, line: item.id + part.tail };
       }
@@ -402,14 +405,17 @@
     // empty input (first row / history). Object rows are not affected: typing
     // part of a name and Enter selects that object.
     function typedLineWins(item) {
+      const raw0 = input.value.trim();
+      // `\…` means a command: Enter takes a command row the word is a prefix of (sent with the escape, see resultFor);
+      // anything else (a device row, no match) goes to core as typed.
+      if (raw0.startsWith('\\') && !chosen) return !(item.type === 'command' && !item.id.includes(' ') && raw0.length > 1 && !/\s/.test(raw0) && item.id.toLowerCase().startsWith(raw0.slice(1).toLowerCase()));
       if (chosen || item.type !== 'command') return false;
-      const raw = input.value.trim();
+      const raw = raw0;
       if (!raw) return false;
       const part = wordAtCaret();
       // With text after the caret only the word before it is the candidate prefix.
       const word = part ? part.head : raw;
       if (part && !word) return true;
-      if (word.startsWith('\\')) return true; // `\cmd` goes to core as typed: the escape must reach it
       if (!word.includes(' ') && item.id.toLowerCase().startsWith(word.toLowerCase())) return false;
       return true;
     }
