@@ -52,7 +52,7 @@ All releases were tested in Live, including the installed `.ablx`.
     `help` in the `man` module, `npm run docs:reference` works again. No `ModuleApi` change.
   - **Phase 3 done** (MCP Live test 2026-11-05; `9f686f7`, `7ea19e8`, `f2566ed`, `662290d`): the palette's
     footer help line (0019 §4): command and summary, the argument or option at the caret, keys when idle;
-    `CompletionResult.help`; descriptions in the snapshot; the palette 37 px taller. User hand check open:
+    `CompletionResult.help`; option alias fix `a16e3c1`; descriptions in the snapshot; the palette 37 px taller. User hand check open:
     the look, `ui.helpLine` off in the palette.
   - **Next:** the user's hand checks (help line, setup page, phase 3), docs for 0.1.6 (cmdabl-docs), then the
     release.
@@ -68,6 +68,9 @@ All releases were tested in Live, including the installed `.ablx`.
 
 ## Small items
 
+- The palette footer parses an option row's detail text (`-s  <value>  summary`, built in
+  `complete.ts` optionRows) to show "--set (-s) <value>: …" (`a16e3c1`). Core: give option rows `short` and
+  `value` fields, or at least a comment there, so a layout change can't break the footer silently.
 - The first palette open right after a start can miss the tag rows (`tag -e `, `#`): the snapshot is built
   before the tag cache refresh has finished (2026-11-05). A second open has them. Core: wait for the
   running refresh (with a short cap) or refresh the rows when it lands.
