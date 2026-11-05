@@ -153,8 +153,11 @@ interface ModuleApi {
 - `<module> config`: added by the platform to every module with a command, since each config page has at
   least its default-command row (§7). It's a subcommand
   in the tree that the module doesn't write itself, documented in `man` like `--help`.
-  **It takes the word `config`:** `tag config` used to address a track named "config" and now opens
-  the settings; `tag "config"` keeps the old meaning. The help text and the 0.1.6 release notes say so.
+  **It takes the word `config` after every top-level command** except `man` and `help` (user,
+  2026-11-05: `man config` and `help config` keep looking the word up; `man cmdabl config` documents
+  the settings). So `tag config`, `find config`, `goto config` and `note config` open settings, and
+  the quoted form (`tag "config"`, `find "config"`) keeps the old meaning. The help text and the 0.1.6
+  release notes say so.
 - **The gear reruns the whole line**, so it is only for commands that read and then show a page
   (`tag -l`; `tag -e` is a pick list and has no gear); noted on `BoardRequest.gear`.
 - **The gear button** (a text button "Settings", no icon; user 2026-11-05) in a page's footer (board, note, MIDI monitor): a page can't open a second dialog,
