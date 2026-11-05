@@ -94,7 +94,10 @@ Older checks that were never reported; most can now run through MCP.
   listing has a hierarchy (plan 0006 step 3); order set by the user.
 
 - **MIDI bindings that open a page** (user, 2026-11-05; again with default commands: `map CC48 | mute`
-  with the default `mute #` fires `mute #`, whose tag pick list counts as cancelled, exit 4; after 0.1.6): `map CC48 | note` does nothing today, because
+  with the default `mute #` fires `mute #`, whose tag pick list counts as cancelled, exit 4; after 0.1.6).
+  0.1.6 only adds a note when binding such a line. A warning at firing and a "needs a dialog" mark in
+  `map -l` need a firing hook for modules (`onFiring` with `needsDialog`, a ModuleApi change) and come
+  with this item: `map CC48 | note` does nothing today, because
   bound lines run headless and a dialog counts as cancelled (0018 engine rules). Wanted: a control
   that opens a page such as `note` or `tag -l`, like the palette would. Needs a decision in 0018: an
   opt-in per binding (e.g. an `open` operator or a per-command "may open a dialog" flag), at most one
