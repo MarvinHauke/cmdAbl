@@ -193,7 +193,7 @@ Steps 1–2 of the rollout: completion at every position, not only for command n
 
 - **Tab** takes the highlighted row and descends one level (adds a space after a word).
 - **Enter runs the typed line** unless the user moved the selection (the existing `chosen` flag in
-  `ui/interface.html`). It never takes the top row on its own: "never pick the first match silently".
+  `ui/interface.html`). It never takes the top row on its own ("never pick the first match silently"), with one exception: a highlighted tool-zone command row (`config`, a subcommand) that the non-empty word at the caret is a prefix of (`goto con` + Enter runs `goto config`; `play ` + Enter and `goto on` run as typed). It does not apply when the command's first argument is free text (kind `text` without completer or choices): `find con` + Enter searches for "con"; Tab still completes to `config` (leaf commands only; `vol` counts as free text too, its dB argument is kind `text`).
 
 ### Work
 

@@ -320,6 +320,17 @@
       return true;
     }
 
+    // The first argument of the line's command is free text (kind text, no completer, no choices):
+    // what is typed there is the user's own text, never a name to complete. The `config` row is the
+    // first word after the command, so only that argument matters.
+    function freeTextArg() {
+      const v = segView ? input.value.slice(segView.start, segView.end) : input.value;
+      const word = v.trim().replace(/^\\/, '').split(/\s/)[0];
+      const node = COMPLETION?.tree.find(n => n.name === word || (n.aliases || []).includes(word));
+      const arg = node && !node.children?.length && node.args?.[0];
+      return !!arg && arg.kind === 'text' && !arg.complete && !arg.choices;
+    }
+
     // ── structured payload for a chosen item ────────────────────────────────
     function resultFor(item) {
       // A "canned full invocation" (command-type, multi-word id — e.g. a
@@ -542,8 +553,16 @@
         e.preventDefault();
         const item = items[activeIdx];
         if (mode === 'args') {
-          // The typed line runs; a row only when the user moved the selection to it.
-          if (item && chosen) applyRow(item, false);
+          // The typed line runs; a row only when the user moved the selection to it. Exception: a
+          // highlighted tool-zone command row (`config`, a subcommand) whose name the word at the caret
+          // is a non-empty prefix of (`goto con` → `config`): it names what the line means. An empty
+          // word (`play ` + Enter) or a substring match (`goto on`) never takes it, and neither does
+          // a free-text first argument (`find con` searches for "con"; Tab still completes to `config`).
+          const typed = view ? input.value.slice(view.replace.from, input.selectionStart ?? input.value.length) : '';
+          const prefixOfRow = item && item.type === 'command' && item.zone === 'tool' && typed !== ''
+            && String(item.insert ?? item.title).toLowerCase().startsWith(typed.toLowerCase())
+            && !freeTextArg();
+          if (item && (chosen || prefixOfRow)) applyRow(item, false);
           const result = rawResult();
           if (result) send(result);
           return;
