@@ -88,6 +88,13 @@ Older checks that were never reported; most can now run through MCP.
   mute silences a path (track, chain, pad), bypass skips a device's processing. Deferred until the `mute`
   listing has a hierarchy (plan 0006 step 3); order set by the user.
 
+- **Simpler installation and a clear `cmdabl setup` result** (user, 2026-11-05): fewer steps from
+  download to a working palette (Karabiner trigger, Remote Script, control surface, Live restart). The
+  setup dialog becomes a status page: one row per step with a green ✓ (ok), a yellow ! (warning, e.g.
+  "rule already linked" or "restart Live once") or a red ✗ (failed), a short sentence, and the fix or
+  docs link as a button instead of raw paths and URLs. Fits the 0.1.6 settings/help pattern; needs a
+  plan.
+
 - **0.1.6: settings and help pattern** (user findings, 2026-11-04; needs a plan, 0019):
   - a settings page per window (gear button, `<module> config`: `tag config`, MIDI, note) plus a
     `cmdabl settings` page (user, 2026-10-22) over `settings.json`; it takes the palette's
