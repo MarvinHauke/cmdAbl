@@ -55,7 +55,7 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
 ### Next, in dependency order
 
 ```
-0019 settings and help pattern (to write) ──┬─> settings pages (tag, MIDI, note), footer help on hover
+0019 settings and help pattern (draft) ─────┬─> settings pages (tag, MIDI, note), footer help on hover
                                             ├─> one keyboard model for all selection lists
                                             └─> simpler installation, setup as a status page
 0017 phase 1 script files (run) ──> 0017 phase 2 clip/scene triggers (uses 0018's UDP push)
@@ -65,8 +65,8 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
 0006 step 3 paths level by level ──> device on/off (`bypass`)
 ```
 
-1. **Settings and help pattern** (0019, to write; user, 2026-11-04/05), for 0.1.6: a settings page per
-   window plus `cmdabl settings`; a footer help line that follows mouse and focus; one keyboard model
+1. **Settings and help pattern** ([0019](0019-settings-and-help.md), draft; user, 2026-11-04/05), for 0.1.6: a settings page per
+   window plus `cmdabl config`; a footer help line that follows mouse and focus; one keyboard model
    for every list; note timestamps ([0013](0013-set-note.md)); `cmdabl setup` as a status page. A new
    UI surface, so the contract part needs the user's approval.
 2. **Script files** ([0017](0017-scripts-and-triggers.md) phase 1): `.cmdabl` files run with `run`;
@@ -106,7 +106,7 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
  ├─ 0016  Test access for agents
  ├─ 0017  Scripts and triggers (.cmdabl files, run from clips and scenes)
  ├─ 0018  MIDI mapping (map, midi; operators; later value mode and the matrix)
- └─ 0019  Settings and help pattern (to write)
+ └─ 0019  Settings and help pattern (declared settings, help line, list keys, setup page)
 0001  Path-addressed objects & commands   (consumer of 0004)
 0003  pakabl extension system             (consumer of 0005)
 ```

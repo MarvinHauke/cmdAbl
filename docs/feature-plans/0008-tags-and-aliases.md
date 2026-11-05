@@ -62,6 +62,9 @@ mutes all of them. Aliases come along: a saved command line, e.g.
 - Expanded as the first word before parsing; arguments typed after the alias are appended
   (`fxoff` → `mute --set 1 #fx`; `m bass` with `alias m mute` → `mute bass`). No recursion.
 - An alias cannot shadow a built-in command. History stores the expanded line.
+- Default commands (0019 §7, 2026-11-05) are the first piece of this step: a bare command word
+  expands to its line from `default_commands.json`. Aliases expand at the same place, with the same
+  `\<word>` escape.
 - Aliases appear in the palette like commands (subtitle: the line they stand for).
 
 ### The store
