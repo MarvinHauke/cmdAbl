@@ -1,0 +1,12 @@
+{
+  "title": "Default commands",
+  "focus": "mute",
+  "rows": [
+    { "command": "mute", "line": "mute #drums", "summary": "mute or unmute tracks", "bareBehaviour": "needs <target>" },
+    { "command": "solo", "line": "", "summary": "solo or unsolo tracks", "bareBehaviour": "needs <target>" },
+    { "command": "note", "line": "note -e", "summary": "keep a note in the Set", "bareBehaviour": "runs on its own" },
+    { "command": "find", "line": "find -d", "summary": "search the Set", "bareBehaviour": "needs <query>" },
+    { "command": "tag", "line": "tag bass", "summary": "tag tracks", "bareBehaviour": "shows its subcommands", "error": "unknown option \"bass\" for \"tag\"" },
+    { "command": "cmdabl", "line": "", "summary": "configure cmdAbl", "bareBehaviour": "shows its subcommands" }
+  ]
+}

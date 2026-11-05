@@ -28,6 +28,10 @@ import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./
 import { createModuleFiles } from "./core/files.js";
 import { createSettingsRegistry, createSettingsStore, toPaletteRequestSettings } from "./core/settings.js";
 import { createSettingsFlow } from "./core/settingsSurface.js";
+import { createDefaultsStore } from "./core/defaultCommands.js";
+import { createDefaultsFlow } from "./core/defaultsSurface.js";
+import { rootCommandOf } from "./core/parse.js";
+import { bareBehaviour } from "./core/defaultCommands.js";
 import { tokenFilePath } from "./ableton/bridgeToken.js";
 import * as path from "node:path";
 import { createUiGate, runHeadless } from "./core/headless.js";
@@ -79,11 +83,40 @@ export function activate(activation: ActivationContext) {
     }),
   );
   const ui: Ui = gate.ui;
-  const settingsFlow = createSettingsFlow({ registry: settingsRegistry, store: settingsStore, ui, log: (line) => logger("settings").warn(line) });
+  // Default commands (plan 0019 §7): default_commands.json next to settings.json; a bare command word runs the line chosen for it.
+  const defaultsStore = createDefaultsStore({ base: dataFolder, roots: () => registry.roots(), warn: (text) => logger("defaults").warn(text) });
+  const defaultsFlow = createDefaultsFlow({ store: defaultsStore, ui, roots: () => registry.roots() });
+  const settingsFlow = createSettingsFlow({
+    registry: settingsRegistry,
+    store: settingsStore,
+    ui,
+    log: (line) => logger("settings").warn(line),
+    // A link row closed the settings page: the defaults page opens after the changes were saved.
+    onOpen: (target) => defaultsFlow.openTarget(target),
+    // The default-command rows the platform adds: one in cmdAbl's group (how many are set), one in a module's group (its command).
+    links: async (group) => {
+      const { count, lines } = await defaultsFlow.summary();
+      if (group === "cmdabl") {
+        return [{ key: "link:defaults", label: "Default commands", help: "A bare command word runs a line you choose: mute can run mute #drums. Opens its own page; \\mute still runs the plain command.", kind: "link", target: "defaults", summary: `${count} set` }];
+      }
+      const node = registry.roots().find((n) => n.name === group);
+      if (!node) return [];
+      return [
+        {
+          key: `link:defaults:${group}`,
+          label: "Default command",
+          help: `The line a bare ${group} runs (bare, it ${bareBehaviour(node)}; a default replaces that, and \\${group} brings it back).`,
+          kind: "link",
+          target: `defaults:${group}`,
+          summary: lines[group] ?? "not set",
+        },
+      ];
+    },
+  });
   const providers: { provider: Provider; priority: number }[] = [];
   // The items of the palette that is open (or was opened last): a picked object row is found here.
   let paletteItems: PaletteItem[] = [];
-  const commandRunListeners: Array<(invocation: string) => void> = [];
+  const commandRunListeners: Array<(invocation: string, typed?: string) => void> = [];
   const pickListeners: Array<(candidates: ObjectNode[], chosen: ObjectNode[] | null) => void> = [];
 
   const liveNodes = () => flattenObjectTree(buildObjectTree(context));
@@ -135,9 +168,9 @@ export function activate(activation: ActivationContext) {
   let activeLine: string | undefined;
   /** The settings group of the running command: its first word, when that module declared settings. Not for `;` chains. */
   function activeGroup(): string | undefined {
-    if (activeLine === undefined || activeLine.includes(";")) return undefined;
-    const root = activeLine.trim().split(/\s+/)[0] ?? "";
-    return settingsFlow.has(root) ? root : undefined;
+    if (activeLine === undefined) return undefined;
+    const root = rootCommandOf(activeLine, registry.roots());
+    return root !== undefined && settingsFlow.has(root) ? root : undefined;
   }
 
   function showFeedback(message: string): void {
@@ -149,6 +182,7 @@ export function activate(activation: ActivationContext) {
   const firstTrack = () => liveNodes().find((n) => n.kind === "track" && n.scope === "regular");
   registerBuiltins(registry, {
     settings: settingsFlow,
+    defaults: defaultsFlow,
     bridge: () => getBridge(),
     curve: {
       hasTrack: () => firstTrack() !== undefined,
@@ -375,6 +409,7 @@ export function activate(activation: ActivationContext) {
   // What a run needs besides its two pick surfaces: the palette and the headless run share it.
   const runBase = {
     registry,
+    defaults: () => defaultsStore.get(),
     liveNodes,
     bridge: () => getBridge(),
     refreshTags: async () => {
@@ -428,7 +463,7 @@ export function activate(activation: ActivationContext) {
       }
       const gear = pendingGear as { surface: "board" | "palette"; text?: string } | undefined;
       pendingGear = undefined;
-      const group = gear?.surface === "board" ? firstWord(line) : undefined;
+      const group = gear?.surface === "board" ? rootCommandOf(line, registry.roots()) : undefined;
       if (group === undefined || round >= 20 || !settingsFlow.has(group)) break;
       await openSettings({ group, only: true });
     }
@@ -439,12 +474,10 @@ export function activate(activation: ActivationContext) {
     // resolved form ("mute /Bass"), so a re-run is never ambiguous.
     const invocation = outcome.line ?? line;
     if (remember && outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
-      for (const listener of commandRunListeners) listener(invocation);
+      for (const listener of commandRunListeners) listener(invocation, outcome.typed);
     }
     return undefined;
   }
-
-  const firstWord = (line: string): string => line.trim().split(/\s+/)[0] ?? "";
 
   /**
    * The settings page for a gear. What it saved goes to the log, not to a message (the page we came from opens again at
@@ -492,6 +525,7 @@ export function activate(activation: ActivationContext) {
     try {
       const data = await buildCompletionData({
         roots: registry.roots(),
+        defaults: () => defaultsStore.get(),
         completers: registry.completers(),
         nodes: liveNodes,
         // Stale-while-revalidate, like the tree build: building the tree (liveNodes) already schedules a

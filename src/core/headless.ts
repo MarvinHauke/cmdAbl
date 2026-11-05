@@ -59,6 +59,7 @@ export function createUiGate(real: Ui): UiGate {
       if (capture) capture.notices.push(request.text);
       else real.notify(request);
     },
+    defaults: (request, check) => (capture ? Promise.resolve(shut(`defaults "${request.title}"`)) : real.defaults(request, check)),
     settings: (request) => (capture ? Promise.resolve(shut(`settings "${request.title}"`)) : real.settings(request)),
     board: (request) => (capture ? Promise.resolve(shut(`board "${request.title}"`)) : real.board(request)),
     page: (name, html, width, height) => (capture ? Promise.resolve(shut(`page "${name}"`)) : real.page(name, html, width, height)),

@@ -10,6 +10,7 @@ import { applyPick, lookupTarget, normalizeTargets, resolveTargets, tagTargetOf,
 import { NUMBERISH, quoteIfNeeded, splitChain, tokenize } from "./tokenize.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { PickPreview, StateChange } from "./ui.js";
+import { expandDefaults } from "./defaultCommands.js";
 import { isTagWord, nodesForTag, nodesWithTag, parseTagTarget, type TagCount } from "./tags.js";
 
 // The one path every typed line takes: parse → resolve (asking the user to
@@ -69,6 +70,12 @@ export interface RunDeps {
    * that is not `cancelled`. Absent: a cancelled pick STOPS the chain (the parts before it stay done).
    */
   settle?: (outcome: RunOutcome) => RunOutcome;
+  /**
+   * The default commands (plan 0019 §7), `command → line`, read at every run (a hand edit counts at once; a MIDI binding
+   * expands at each firing). A bare top-level command word in the line is replaced by its line before parsing.
+   * A throw or rejection means "no defaults". Absent: none.
+   */
+  defaults?: () => Promise<Readonly<Record<string, string>>>;
 }
 
 export interface RunOutcome {
@@ -79,6 +86,8 @@ export interface RunOutcome {
   cancelled?: boolean;
   /** Tab on a pick list: nothing ran; reopen the palette with this text in the prompt. */
   fill?: string;
+  /** Set when a default command replaced a bare word (plan 0019 §7): the line as it was typed, next to `line`, which is what ran. */
+  typed?: string;
 }
 
 /** How long a command waits for the Set's structure to refresh. */
@@ -214,7 +223,23 @@ function previewFor(
  * order, a failing one does not stop the rest (like `;` in a shell), and a pick the user cancels does.
  * One command: exactly `runPart`.
  */
-export async function runLine(input: string, deps: RunDeps): Promise<RunOutcome> {
+export async function runLine(typed: string, deps: RunDeps): Promise<RunOutcome> {
+  // Default commands first (plan 0019 §7): a bare command word becomes its line, each `;` part on its own.
+  let defaults: Readonly<Record<string, string>> = {};
+  try {
+    defaults = (await deps.defaults?.()) ?? {};
+  } catch {
+    defaults = {}; // a broken store never stops a command
+  }
+  const expanded = expandDefaults(typed, defaults);
+  const input = expanded.line;
+  const log = deps.log ?? ((line: string) => appLog.record(line));
+  for (const e of expanded.expansions) log(`cmdAbl [run] info: ${e.typed} ⇒ ${e.ran} (default)`);
+  const outcome = await runExpanded(input, deps);
+  return expanded.expansions.length > 0 ? { ...outcome, typed: typed.trim() } : outcome;
+}
+
+async function runExpanded(input: string, deps: RunDeps): Promise<RunOutcome> {
   const parts = splitChain(input);
   if (parts.length <= 1) return runPart(parts[0]?.text ?? "", deps); // a trailing `;` or only `;`: the one part, or the empty line
   return runChain(input.trim(), parts.map((p) => p.text), deps);

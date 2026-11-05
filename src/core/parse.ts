@@ -1,6 +1,6 @@
 import { ExitCode, fail, type CommandResult } from "./types.js";
 import { checkNumber, effectiveOptions, numberRule, type CommandNode, type Invocation, usage, valueNames } from "./commandTree.js";
-import { NUMBERISH, splitPipe, tokenize, type Token } from "./tokenize.js";
+import { NUMBERISH, chainSegments, splitPipe, tokenize, type Token } from "./tokenize.js";
 
 // Turns a typed line into a matched leaf plus a (not yet resolved) invocation.
 // Modules never parse: this is the only place raw input is interpreted.
@@ -240,4 +240,19 @@ export function parse<P = unknown>(fullInput: string, roots: CommandNode<P, any>
   }
 
   return { kind: "run", node, invocation: { path, options, ...(Object.keys(multi).length ? { values: multi } : {}), args }, quoted };
+}
+
+/**
+ * The top-level command a typed line addresses, by what the parser makes of it (so `\mute`, an alias or a
+ * quoted word give the same answer as running it), or undefined for an empty line, a chain, an unknown command
+ * or a line that does not parse. Used for what belongs to a command (its settings group, plan 0019), never to run it.
+ */
+export function rootCommandOf<P = unknown>(line: string, roots: CommandNode<P, any>[]): string | undefined {
+  if (chainSegments(line).filter((s) => line.slice(s.start, s.end).trim() !== "").length > 1) return undefined;
+  const parsed = parse<P>(line, roots);
+  if (parsed.kind === "run") return parsed.invocation.path[0];
+  if (parsed.kind === "help") return parsed.path[0];
+  // A usage error still names the command the line was about (`tag --bogus`): the first word that is a command.
+  const first = tokenize(line).tokens[0]?.value;
+  return first !== undefined && findChild(roots, first) ? findChild(roots, first)!.name : undefined;
 }

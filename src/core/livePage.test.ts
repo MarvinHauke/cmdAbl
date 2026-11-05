@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as http from "node:http";
 import type { AddressInfo } from "node:net";
-import { createLivePages, MAX_LIVE_ANSWER, type LivePages, type LiveRoutes } from "./livePage.js";
+import { createLivePages, MAX_LIVE_ANSWER, parseQuery, type LivePages, type LiveRoutes } from "./livePage.js";
 import { appLog } from "./log.js";
 
 const HTML = '<html><script>const LIVE = /*LIVE_PLACEHOLDER*/null;</script></html>';
@@ -59,6 +59,27 @@ test("a token is minted per dialog (128 bits), loads the page ONCE, with {base, 
     assert.equal((await get(`/live/learn?t=${"0".repeat(32)}`)).status, 404); // a wrong token
     assert.equal((await get("/live/learn")).status, 404); // no token
     assert.equal((await get(pathOf(b.url))).status, 200);
+  });
+});
+
+test("parseQuery: decoded text values, bad escapes dropped, capped, no prototype", () => {
+  assert.deepEqual({ ...parseQuery("command=mute&line=mute%20%23drums+x") }, { command: "mute", line: "mute #drums x" });
+  assert.deepEqual({ ...parseQuery("a=%E0%A4%A&b=1") }, { b: "1" }); // a bad escape drops that parameter
+  assert.deepEqual({ ...parseQuery("") }, {});
+  assert.deepEqual({ ...parseQuery("flag&x=") }, { flag: "", x: "" });
+  assert.equal(Object.keys(parseQuery(Array.from({ length: 20 }, (_, i) => `k${i}=1`).join("&"))).length, 8);
+  assert.deepEqual({ ...parseQuery("x".repeat(5000)) }, {});
+  assert.equal(Object.getPrototypeOf(parseQuery("a=1")), null);
+  assert.equal(parseQuery("__proto__=x").toString, undefined);
+});
+
+test("a route reads the query string (the defaults page's /check)", async () => {
+  await withServer({}, async ({ pages, get }) => {
+    const s = pages.open("defaults", HTML, { check: (q) => ({ command: q.command, line: q.line, missing: q.nothing ?? null }) })!;
+    const auth = { Authorization: `Bearer ${await routeToken(get, s.url)}` };
+    const r = await get("/live/defaults/check?command=mute&line=mute%20%23a%3Bsolo", auth);
+    assert.deepEqual(JSON.parse(r.text), { command: "mute", line: "mute #a;solo", missing: null });
+    assert.equal((await get("/live/defaults/check?line=x")).status, 401); // the token still guards it
   });
 });
 
@@ -184,7 +205,7 @@ test("a headless run dismisses a live page like any dialog and names it", async 
     prompt: async () => null,
     select: async () => null,
     notify: () => {},
-    settings: async () => null, board: async () => null,
+    settings: async () => null, defaults: async () => null, board: async () => null,
     page: async () => null,
     livePage: async (name) => (opened.push(name), "real"),
   });

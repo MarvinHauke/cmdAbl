@@ -29,6 +29,33 @@ export interface LiveCancel {
   onCancel(callback: () => void): void;
 }
 
+/** The request's query string as plain text values (`/check?command=mute&line=mute%20%23a`); a route may read it (phase 1b of plan 0019). */
+export type LiveQuery = Readonly<Record<string, string>>;
+
+/** Most bytes of query string a route is given and most parameters it sees. */
+const MAX_QUERY = 4096;
+const MAX_PARAMS = 8;
+
+/** The query as a record without a prototype; what does not decode, is too long or is over the cap is dropped. Never throws. */
+export function parseQuery(query: string): LiveQuery {
+  const out: Record<string, string> = Object.create(null);
+  if (query.length > MAX_QUERY) return out;
+  let count = 0;
+  for (const pair of query.split("&")) {
+    if (pair === "" || count >= MAX_PARAMS) continue;
+    const eq = pair.indexOf("=");
+    try {
+      const key = decodeURIComponent((eq < 0 ? pair : pair.slice(0, eq)).replace(/\+/g, " "));
+      if (key === "" || key.length > 40 || key in out) continue;
+      out[key] = eq < 0 ? "" : decodeURIComponent(pair.slice(eq + 1).replace(/\+/g, " "));
+      count++;
+    } catch {
+      // a bad escape: this parameter is dropped
+    }
+  }
+  return out;
+}
+
 /**
  * One route: a plain read function (answered at once, under the 100 ms budget), or a WAITING route (long polling):
  * the server holds the request until `wait` resolves, or `WAIT_MS` (1000 ms) pass, whichever comes first.
@@ -37,7 +64,7 @@ export interface LiveCancel {
  * resolve as soon as the source has something NEWER than that, with the data. On the timeout the page gets `{ "timeout": true }`; if its next request
  * replaced this one, `{ "replaced": true }`; if the dialog closed, `{ "error": "closed" }`.
  */
-export type LiveRoute = (() => unknown | Promise<unknown>) | { wait: (since: number | null, cancel: LiveCancel) => unknown | Promise<unknown> };
+export type LiveRoute = ((query: LiveQuery) => unknown | Promise<unknown>) | { wait: (since: number | null, cancel: LiveCancel) => unknown | Promise<unknown> };
 
 /** The read-only data sources of one live page: `{ monitor: () => rows }` is served at `/live/<page>/monitor`. */
 export type LiveRoutes = Record<string, LiveRoute>;
@@ -149,7 +176,7 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
       })());
     }
     if (typeof entry !== "function") return send(res, 404, "not found");
-    const answer = await withBudget<unknown>(() => entry(), budgetMs, { error: "no answer" }, (why) => log.debug(`route ${session.name}/${route}: ${why}`));
+    const answer = await withBudget<unknown>(() => entry(parseQuery(query)), budgetMs, { error: "no answer" }, (why) => log.debug(`route ${session.name}/${route}: ${why}`));
     sendData(res, answer);
   }
 

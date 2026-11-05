@@ -177,3 +177,25 @@ test("a link row's open target is opened after the changes were saved (phase 1b)
   assert.equal((await flow.open()).message, "1 setting saved");
   assert.deepEqual(order, ["saved", "open defaults"]);
 });
+
+test("link rows core adds reach the page (after the declared rows) and what the opened page saved is told too", async () => {
+  const t = setup();
+  const seen: SettingsRequest[] = [];
+  const flow = createSettingsFlow({
+    registry: t.registry,
+    store: t.store,
+    links: async (group) => (group === "cmdabl" ? [{ key: "link:defaults", label: "Default commands", help: "h", kind: "link", target: "defaults", summary: "2 set" }] : group === "tag" ? [{ key: "link:defaults:tag", label: "Default command", help: "h", kind: "link", target: "defaults:tag", summary: "not set" }] : []),
+    onOpen: async () => ({ code: ExitCode.OK, message: "1 default command saved", log: ["default tag = tag -l"] }),
+    ui: { settings: async (request) => (seen.push(request), { changes: { "tag.foldAfter": 4 }, open: "defaults:tag" } satisfies SettingsAnswer) },
+  });
+  const out = await flow.open();
+  const rows = (id: string) => seen[0]!.groups.find((g) => g.id === id)!.items;
+  assert.equal(rows("cmdabl").at(-1)!.kind, "link");
+  assert.equal((rows("tag").at(-1) as { target: string }).target, "defaults:tag");
+  assert.equal(out.message, "1 setting saved, 1 default command saved");
+  assert.deepEqual(out.log?.at(-1), "default tag = tag -l");
+  // a throwing link source only means no link rows
+  const broken = createSettingsFlow({ registry: t.registry, store: t.store, links: async () => Promise.reject(new Error("x")), ui: { settings: async (request) => (seen.push(request), null) } });
+  assert.equal((await broken.open()).code, ExitCode.OK);
+  assert.ok(seen[1]!.groups.every((g) => g.items.every((r) => r.kind !== "link")));
+});

@@ -17,6 +17,7 @@ const all = flattenObjectTree(roots);
 function realUi() {
   const calls: string[] = [];
   const ui: Ui = {
+    defaults: async () => (calls.push("defaults"), null),
     settings: async () => (calls.push("settings"), null),
     prompt: async () => (calls.push("prompt"), null),
     select: async () => (calls.push("select"), [1]),

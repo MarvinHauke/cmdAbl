@@ -174,6 +174,8 @@ export interface SettingsFlowDeps {
   ui: Pick<Ui, "settings">;
   /** A link row closed the page (phase 1b): core opens the target after the changes were saved. */
   onOpen?: (target: string) => Promise<CommandResult | void>;
+  /** Link rows core adds to a group's page (phase 1b: the default-commands rows), after its declared rows. Never throws; a throw means none. */
+  links?: (group: string) => Promise<SettingsRow[]>;
   log?: (line: string) => void;
 }
 
@@ -208,6 +210,15 @@ export function createSettingsFlow(deps: SettingsFlowDeps): SettingsFlow {
           ...(options.group !== undefined ? { focus: options.group } : {}),
           ...(options.only && options.group !== undefined ? { only: options.group } : {}),
         });
+        if (deps.links) {
+          for (const g of built.groups) {
+            try {
+              g.items.push(...(await deps.links(g.id)));
+            } catch {
+              // a broken link source only means no link rows
+            }
+          }
+        }
         const { request, cut } = capSettings(built);
         if (cut) warn("settings: the page was cut (more than 20 groups, 50 rows or texts over 300 characters)");
         const answer = await deps.ui.settings(request);
@@ -221,6 +232,10 @@ export function createSettingsFlow(deps: SettingsFlowDeps): SettingsFlow {
         if (answer.open !== undefined && deps.onOpen) {
           const opened = await deps.onOpen(answer.open);
           if (opened && opened.code !== ExitCode.OK) return opened;
+          // What the opened page saved is told too ("1 setting saved, 2 default commands saved").
+          if (opened?.message) {
+            result = { ...result, message: [result.message, opened.message].filter(Boolean).join(", "), log: [...(result.log ?? []), ...(opened.log ?? [])] };
+          }
         }
         return result;
       } catch (e: unknown) {

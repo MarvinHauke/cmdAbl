@@ -3,6 +3,7 @@ import { uniquePath } from "../ableton/resolvePath.js";
 import { completerKeys, completionTree, type CommandNode } from "./commandTree.js";
 import type { Candidate, Completer, CompletionData, PathRow, TagRow } from "./complete.js";
 import { tagCounts, tagsOf } from "./tags.js";
+import { MAX_DEFAULTS, MAX_LINE } from "./defaultCommands.js";
 
 // The completion snapshot (plan 0006): taken once when the palette opens, put into the page's JSON,
 // and used there by `complete()` while the user types. Host side, so it may call modules' completers
@@ -27,6 +28,8 @@ export interface SnapshotDeps {
   refresh?: () => Promise<unknown>;
   completerBudgetMs?: number;
   refreshBudgetMs?: number;
+  /** The usable default commands (plan 0019 §7), `command → line`; a throw or rejection means none. */
+  defaults?: () => Promise<Readonly<Record<string, string>>>;
   /** Debug lines (never a token or secret). */
   debug?: (line: string) => void;
   /** Warnings: a completer whose synchronous part is over its budget (sync work cannot be cut off). */
@@ -165,10 +168,23 @@ export async function buildCompletionData(deps: SnapshotDeps): Promise<Completio
   debug(`completion timing: cache refresh ${t1 - t0} ms, completers ${t2 - t1} ms more, reading the Set ${t3 - t2} ms, rows ${Date.now() - t3} ms`);
   if (timings.length) debug(`completion completers: ${timings.map((t) => `${t.key} ${t.ms} ms${t.syncMs > 0 ? ` (${t.syncMs} ms synchronous)` : ""}`).join(", ")}`);
   if (nodes.length > MAX_PATHS) debug(`completion: paths capped (${MAX_PATHS} of ${nodes.length}); devices are dropped first`);
+  let defaults: Record<string, string> = {};
+  try {
+    const all = (await deps.defaults?.()) ?? {};
+    const names = new Set(deps.roots.map((n) => n.name));
+    for (const [command, line] of Object.entries(all)) {
+      if (Object.keys(defaults).length >= MAX_DEFAULTS) break;
+      if (names.has(command) && typeof line === "string" && line !== "") defaults[command] = line.length > MAX_LINE ? line.slice(0, MAX_LINE) : line;
+    }
+  } catch (e: unknown) {
+    debug(`completion: no default commands: ${e instanceof Error ? e.message : String(e)}`);
+    defaults = {};
+  }
   return {
     tree,
     completions,
     paths,
     tags,
+    ...(Object.keys(defaults).length > 0 ? { defaults } : {}),
   };
 }

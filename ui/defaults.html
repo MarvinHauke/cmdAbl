@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<!-- defaults surface (see src/core/ui.ts DefaultsRequest, plan 0019 §7), a LIVE page (plan 0018). PLACEHOLDER written by cmdabl-core so the build runs: cmdabl-ui replaces it. In: DEFAULTS_PLACEHOLDER = { title, focus?: command, rows: [{ command, line, summary, bareBehaviour, error? }] } (one row per top-level command; `error` = why `line` is not usable) and LIVE_PLACEHOLDER = null | { base, token }: with it, GET `${base}/check?command=<c>&line=<l>` (Authorization: Bearer token) answers { ok: true } | { ok: false, error } | { error } (read-only; without LIVE the page works and core checks after closing). Out (close_and_send): JSON { changes: { [command]: line } } on Enter (only rows whose line changed; '' removes the default), '' on Esc. Text goes in with textContent / value only. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark" />
+  <title>Default commands</title>
+  <style>
+    /*SHARED_CSS_PLACEHOLDER*/
+    body { padding: 12px; }
+    .row { display: grid; grid-template-columns: 110px 1fr 24px; gap: 8px; align-items: center; margin: 4px 0; }
+    .row input { width: 100%; box-sizing: border-box; }
+    .err { grid-column: 2 / 4; color: #e66; font-size: 11px; }
+    .sum { grid-column: 2 / 4; opacity: .6; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div id="rows"></div>
+  <script>
+    const DEFAULTS = /*DEFAULTS_PLACEHOLDER*/null;
+    const LIVE = /*LIVE_PLACEHOLDER*/null;
+    function send(value) {
+      const m = { method: 'close_and_send', params: [value] };
+      if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
+      else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
+      else window.__sent = value;
+    }
+    const inputs = [];
+    for (const r of (DEFAULTS?.rows ?? [])) {
+      const row = document.createElement('div'); row.className = 'row';
+      const name = document.createElement('div'); name.textContent = r.command;
+      const input = document.createElement('input'); input.value = r.line; input.placeholder = r.bareBehaviour;
+      const mark = document.createElement('div');
+      const err = document.createElement('div'); err.className = 'err'; err.textContent = r.error || '';
+      const sum = document.createElement('div'); sum.className = 'sum'; sum.textContent = r.summary;
+      let timer = 0;
+      input.addEventListener('input', () => {
+        err.textContent = ''; mark.textContent = '';
+        clearTimeout(timer);
+        if (!LIVE?.base || input.value.trim() === '') return;
+        timer = setTimeout(async () => {
+          try {
+            const res = await fetch(LIVE.base + '/check?command=' + encodeURIComponent(r.command) + '&line=' + encodeURIComponent(input.value), { headers: { Authorization: 'Bearer ' + LIVE.token }, cache: 'no-store' });
+            const a = await res.json();
+            if (a.ok === true) mark.textContent = '✓'; else if (a.ok === false) err.textContent = String(a.error || '');
+          } catch (e) { /* the check after closing is the fallback */ }
+        }, 200);
+      });
+      row.append(name, input, mark, sum, err);
+      document.getElementById('rows').append(row);
+      inputs.push({ r, input });
+      if (DEFAULTS.focus === r.command) setTimeout(() => input.focus(), 0);
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); send(''); }
+      else if (e.key === 'Enter') {
+        e.preventDefault();
+        const changes = {};
+        for (const { r, input } of inputs) if (input.value.trim() !== r.line.trim()) changes[r.command] = input.value.trim();
+        send(Object.keys(changes).length ? JSON.stringify({ changes }) : '');
+      }
+    });
+  </script>
+</body>
+</html>

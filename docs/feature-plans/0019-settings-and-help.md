@@ -288,14 +288,14 @@ see it:
 |---|---|
 | `mute` | `mute #drums` |
 | `mute bass` | `mute bass` (anything after the word: no default) |
-| `\mute` | `mute` without the default |
+| `\mute` or `"mute"` | `mute` without the default |
 | `mute; solo` | each `;` part expands on its own |
 
 - **The palette shows the expansion** while the line is the bare word: one dim row `mute → mute #drums`,
   like the silent tag row (0006). Always compact: the line that will run, not the path to it. Enter
   runs it; Tab writes the expansion into the prompt to edit it.
 - **The log line shows what was typed and what ran** (user, 2026-11-05; needed to catch mistakes):
-  `run: mute ⇒ mute #drums (default)`. History stores what ran, with the typed form next to it.
+  `mute ⇒ mute #drums (default)` (under `[run]`). History stores what ran, with the typed form next to it.
 - **MIDI bindings expand at each firing** (`map CC48 | mute`), so editing a default changes what the
   control does; `map -l` shows the expansion.
 - **Aliases** (0020, later): a default belongs to the root command only. Whether an alias that expands
@@ -303,6 +303,24 @@ see it:
 - **Commands that already do something bare** (`note`, `tag`, `history`): the default replaces that
   behaviour, and `\note` brings it back. The config row says so.
 - **Not in scope:** subcommands (`midi monitor`) get no defaults.
+
+**As built in core (1b):**
+- `src/core/defaultCommands.ts` (store, `checkDefaultLine`, `expandDefaults`) and `defaultsSurface.ts` (request, answer, flow).
+  `runLine` expands before it splits at `;` (`RunDeps.defaults`); the outcome carries `typed` next to `line`, and
+  `ModuleApi.onCommandRun(listener(invocation, typed?))` passes it on (additive; history may show it).
+- **Defaults page contract** (`Ui.defaults(request, check)`, a live page named `defaults`): request
+  `{ title, focus?: command, rows: [{ command, line, summary, bareBehaviour, error? }] }`, answer
+  `{ changes: { [command]: line } }` (`''` removes) or `''`. `error` is why `line` is not usable (a hand edit, or the last save);
+  after a failed save the row carries the typed text. The route is `GET /live/defaults/check?command=<c>&line=<l>`
+  and answers `{ ok: true }` or `{ ok: false, error }`; live routes now receive the query string (`LiveQuery`, additive).
+  The request is filled into the page by core (`DEFAULTS_PLACEHOLDER`); `*` in it is escaped, so no text can spell the `LIVE` placeholder.
+  `src/core/defaultsRequest.fixture.json` is a sample request.
+- **The completion snapshot** has `defaults?: Record<command, line>` (usable ones of known commands, ≤ 200): the palette shows
+  `mute → mute #drums` while the line is exactly that word.
+- **Link rows:** `cmdabl` group → "Default commands" (`target: "defaults"`, summary "N set"); a group named like a top-level command →
+  "Default command" (`target: "defaults:<command>"`, summary = its line or "not set"). The opened page's "saved" line is added to the settings line.
+- `cmdabl config defaults [<command>]` (the second word only after `defaults`); `defaults` completes among the groups.
+- The gear and the group lookup use `rootCommandOf` (the parsed root), so `\tag -l` and aliases find their group.
 
 ## Open questions
 

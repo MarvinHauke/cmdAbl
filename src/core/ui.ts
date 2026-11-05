@@ -18,7 +18,10 @@ import { wantsOpen } from "./pickResult.js";
 import notifyTemplate from "../../ui/feedback.html";
 import boardTemplate from "../../ui/board.html";
 import settingsTemplate from "../../ui/settings.html";
+import defaultsTemplate from "../../ui/defaults.html";
 import { isGearAnswer, parseSettingsAnswer, settingsSize } from "./settingsSurface.js";
+import { defaultsSize, parseDefaultsAnswer } from "./defaultsSurface.js";
+import { inlineJson } from "./inlineJson.js";
 
 // The UI contract. The platform never touches an HTML file directly — it talks
 // to three "surfaces", each defined only by the data it receives and the value
@@ -254,7 +257,47 @@ export interface SettingsAnswer {
   open?: string;
 }
 
+// ── the defaults surface (plan 0019 §7, a live page) ────────────────────────
+
+/** One row of the defaults page: a top-level command and the line a bare `command` runs. */
+export interface DefaultsRow {
+  command: string;
+  /** The default line; "" = none. After a failed save: the text the user typed (with `error`). */
+  line: string;
+  /** The command's one-line summary. */
+  summary: string;
+  /** What the bare word does without a default ("runs on its own", "needs <target>", "shows its subcommands"); a default replaces it. */
+  bareBehaviour: string;
+  /** Why `line` is not usable (a hand edit that does not parse, or the last save): the page shows it next to the field. */
+  error?: string;
+}
+
+/** One row per top-level command (capped at 200 rows, texts at 300 characters). */
+export interface DefaultsRequest {
+  title: string;
+  /** A command: the page scrolls to its row and puts the cursor in its field. Absent: the top. */
+  focus?: string;
+  rows: DefaultsRow[];
+}
+
+/**
+ * What the page answers on Enter (Esc answers ''): the rows whose line changed, `command → line` ('' = remove the default).
+ * Core checks every line again after the page closed; a line that does not parse reopens the page on its row.
+ */
+export interface DefaultsAnswer {
+  changes: Record<string, string>;
+}
+
+/**
+ * The live check (`GET /live/defaults/check?command=<c>&line=<l>`, read-only, token-bound): `{ ok: true }` or `{ ok: false, error }`.
+ * Parses against the command tree; targets are not resolved. Served only while the page is open and only when the local
+ * server is up: the page must work without it (the check after closing is the fallback).
+ */
+export type DefaultsCheck = (command: string, line: string) => { ok: true } | { ok: false; error: string };
+
 export interface Ui {
+  /** The defaults page (a live page, `ui/defaults.html`): resolves with the validated answer, or null when closed (Esc) or unreadable. */
+  defaults(request: DefaultsRequest, check: DefaultsCheck): Promise<DefaultsAnswer | null>;
   /** The settings page: resolves with the validated answer, or null when closed (Esc) or unreadable. */
   settings(request: SettingsRequest): Promise<SettingsAnswer | null>;
   /** Resolves with what the user entered or picked, or null if they dismissed it. */
@@ -359,6 +402,20 @@ export function createDefaultUi(
       const html = fillTemplate(settingsTemplate, { SETTINGS: request });
       const { width, height } = settingsSize(request);
       return parseSettingsAnswer(await show("settings", html, width, height), request);
+    },
+
+    async defaults(request, check) {
+      // The request goes into the page here (the live server fills only LIVE afterwards): `*` is escaped so no text can
+      // spell a placeholder for that second pass.
+      const html = defaultsTemplate.replace("/*DEFAULTS_PLACEHOLDER*/null", () => inlineJson(request).replace(/\*/g, "\\u002a"));
+      const { width, height } = defaultsSize(request);
+      const routes: LiveRoutes = {
+        check: (query) => {
+          const line = typeof query.line === "string" ? query.line : "";
+          return check(typeof query.command === "string" ? query.command : "", line.slice(0, 1000));
+        },
+      };
+      return parseDefaultsAnswer(await ui.livePage("defaults", html, width, height, routes), request);
     },
 
     async page(name, html, width, height) {

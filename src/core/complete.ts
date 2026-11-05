@@ -67,6 +67,12 @@ export interface CompletionData {
   paths: PathRow[];
   /** The Set's tags, sorted by name, capped. */
   tags: TagRow[];
+  /**
+   * The default commands (plan 0019 §7), `bare command word → the line it runs`, only usable ones. While the palette's line is
+   * exactly such a word, it shows the row "mute → mute #drums": Enter runs it, Tab writes the line into the prompt.
+   * Absent or empty: none.
+   */
+  defaults?: Record<string, string>;
 }
 
 export type RowKind = "command" | "option" | "value" | "path" | "tag";

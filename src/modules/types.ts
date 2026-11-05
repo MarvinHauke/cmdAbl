@@ -285,8 +285,11 @@ export interface ModuleApi {
    * Failed runs are not reported, and neither are bare invocations with no
    * arguments. The only window a module gets into *every* command run
    * regardless of who registered it.
+   *
+   * `typed` (additive, plan 0019 §7) is the line as the user typed it, given only when a default command
+   * replaced a bare word: `invocation` is what ran ("mute #drums"), `typed` is "mute".
    */
-  onCommandRun(listener: (invocation: string) => void): void;
+  onCommandRun(listener: (invocation: string, typed?: string) => void): void;
   /** Show a small modal with a message and a "Close" button. */
   showFeedback(message: string): void;
 }
