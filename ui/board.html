@@ -335,7 +335,7 @@
       for (const id of collected) {
         const chip = el('span', 'chip add' + (id === ccNew ? ' cur' : ''));
         chip.append(el('span', 'l', label(id)), el('span', 'x', '×'));
-        chip.title = 'to be added to the new tag (× undoes)';
+        chip.setAttribute('aria-label', 'to be added to the new tag (× undoes)');
         chip.addEventListener('mousedown', e => { e.preventDefault(); if (e.target.closest('.x')) uncollect(id); });
         collectedEl.append(chip);
       }
@@ -355,13 +355,13 @@
       updateFooter();
     }
     // Add (or undo) a track for the active target. The page doesn't scroll: the ring on the clicked chip is the result.
-    function assignTrack(id) {
+    function assignTrack(id, keepFocus) {
       quiet = true;
       try {
         if (target < 0 || !S[target]) {
           if (!createInput) return;
           if (!collected.includes(id)) collected.push(id);
-          createInput.focus({ preventScroll: true });
+          if (!keepFocus) createInput.focus({ preventScroll: true });
           renderCollected(); renderUntagged(); updateFooter();
           return;
         }
@@ -460,7 +460,7 @@
         if (!s.readonly) {
           // Only the × removes (or undoes); a click on the name selects the chip (the chip cursor), the keys then act on it.
           chip.append(el('span', 'x', '×'));
-          chip.title = i.orig && !i.cur ? 'marked for removal (× undoes)' : !i.orig && i.cur ? 'to be added (× undoes)' : '× removes it';
+          chip.setAttribute('aria-label', i.label + ': ' + (i.orig && !i.cur ? 'marked for removal (× undoes)' : !i.orig && i.cur ? 'to be added (× undoes)' : '× removes it'));
           chip.addEventListener('mousedown', e => {
             e.preventDefault();
             if (e.target.closest('.x')) { toggleItem(si, ii); return; }
@@ -469,7 +469,7 @@
           });
         } else {   // an untagged track (or a card for one that loses its last tag): a click adds it to the active target
           chip.className = 'chip pick' + (i.u ? '' : ' card') + (ii === s.cc ? ' cur' : '');
-          chip.title = (i.u ? 'click to add to ' : 'will be untagged after Apply — click to add to ') + targetName();
+          chip.setAttribute('aria-label', i.label + ': ' + (i.u ? 'click to add to ' : 'will be untagged after Apply — click to add to ') + targetName());
           chip.addEventListener('mousedown', e => { e.preventDefault(); assignTrack(i.id); });
         }
         s.chipsEl.append(chip);
@@ -562,7 +562,7 @@
       s.nmEl = el('span', 'nm' + (s.renamable ? ' edit' : ''));
       s.nameEl.append(s.hashEl, s.nmEl);
       if (s.renamable) {
-        s.nmEl.title = 'Click to rename (F2)';
+        s.nmEl.setAttribute('aria-label', 'Click to rename (F2)');
         s.nmEl.addEventListener('mousedown', e => e.preventDefault());
         s.nmEl.addEventListener('click', () => startRename(si));
       }
@@ -575,7 +575,7 @@
         head.tabIndex = 0;
         head.setAttribute('role', 'button');
         head.addEventListener('click', () => toggleFold(si));
-        head.title = 'Fold / unfold · ↓ picks tracks, Enter adds the one under the cursor to the active tag';
+        head.setAttribute('aria-label', 'Fold / unfold · ↓ picks tracks, Enter adds the one under the cursor to the active tag');
         head.addEventListener('keydown', e => {
           if (e.target !== head) return;
           if (s.cc != null) { keyOnUntagged(e, si); return; }
@@ -593,7 +593,7 @@
         // a tag folds too: open by default, folded from FOLD_AFTER tracks; the add field and the count stay in the heading
         s.folded = s.items.filter(i => i.orig).length > FOLD_AFTER;
         s.caretEl = el('button', 'fold', s.folded ? '▸' : '▾');
-        s.caretEl.type = 'button'; s.caretEl.tabIndex = -1; s.caretEl.title = 'Fold / unfold the tracks (← → on the heading)';
+        s.caretEl.type = 'button'; s.caretEl.tabIndex = -1; s.caretEl.setAttribute('aria-label', 'Fold / unfold the tracks (← → on the heading)');
         s.caretEl.addEventListener('mousedown', e => e.preventDefault());
         s.caretEl.addEventListener('click', () => toggleFold(si));
         head.append(s.caretEl, s.nameEl, s.markEl);
@@ -601,7 +601,7 @@
       }
       if (s.removable) {
         s.rmBtn = el('button', 'act' + (s.meta ? '' : ' push'), '×');
-        s.rmBtn.type = 'button'; s.rmBtn.title = 'Remove the whole tag (⇧⌫)';
+        s.rmBtn.type = 'button'; s.rmBtn.setAttribute('aria-label', 'Remove the whole tag (⇧⌫)');
         s.rmBtn.addEventListener('mousedown', e => e.preventDefault());
         s.rmBtn.addEventListener('click', () => toggleRemoveAll(si));
         head.append(s.rmBtn);
@@ -741,7 +741,7 @@
       if (!s.pendEl) return;
       const add = s.items.filter(i => i.cur && !i.orig).length, rm = s.items.filter(i => i.orig && !i.cur).length;
       s.pendEl.textContent = s.folded ? [add ? '+' + add : '', rm ? '×' + rm : ''].filter(Boolean).join(' ') : '';
-      s.pendEl.title = 'pending in the folded tracks';
+      s.pendEl.setAttribute('aria-label', 'pending in the folded tracks');
       // The last track taken out: the tag no longer exists after Apply.
       const dying = !s.removeAll && !s.created && s.items.some(i => i.orig) && !s.items.some(i => i.cur);
       s.el.classList.toggle('dying', dying);
@@ -913,7 +913,7 @@
         stop();
         if (e.repeat) return;
         const next = idx[at + 1] ?? idx[at - 1] ?? null;   // the assigned chip leaves the list: the cursor goes on to the next one
-        assignTrack(s.items[s.cc].id);
+        assignTrack(s.items[s.cc].id, true);   // keyboard: the cursor stays in this list
         if (!chipIdx(s).includes(s.cc)) { s.cc = next; renderChips(si); revealCursor(si); }
         // The tag that got the track: when its top is cut off by the scroll edge, scroll back up to show the whole section,
         // as far as the cursor stays in view.
