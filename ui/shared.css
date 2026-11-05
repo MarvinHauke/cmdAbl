@@ -84,3 +84,4 @@ kbd {
   vertical-align: 1px;
 }
 .kp { white-space: nowrap; }
+.helpline.keys { -webkit-line-clamp: none !important; }   /* !important: the page rules set the clamp by id */

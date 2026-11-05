@@ -29,18 +29,18 @@
     .status.bad { color: hsl(0, 75%, 62%); }
 
     /* footer: the row's summary, then the keys (same frame as the settings page) */
-    #foot { flex: none; box-sizing: border-box; height: 62px; border-top: 1px solid var(--border); padding: 6px 16px 8px; font-size: 11px; line-height: 15px; color: var(--dim); }
-    #normal { display: flex; align-items: center; gap: 12px; height: 46px; }
-    #help { flex: 1; min-width: 0; height: 45px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* three lines at most: the "Default: X" end must not be cut */
+    #foot { flex: none; box-sizing: border-box; height: 86px; border-top: 1px solid var(--border); padding: 6px 16px 8px; font-size: 11px; line-height: 15px; color: var(--dim); }
+    #normal { display: block; }
+    #help { height: 45px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* three lines at most: the "Default: X" end must not be cut */
     #foot.confirming { background: hsla(31, 100%, 67%, 0.12); border-top-color: var(--accent); }
     #confirm { display: flex; align-items: center; gap: 8px; }
     #confirm[hidden], #normal[hidden] { display: none; }
-    #foot.confirming #confirm { height: 46px; }
+    #foot.confirming #confirm { height: 100%; }
     #confirmText { flex: 1; color: var(--accent); font-weight: 700; }
     #keep { border-color: var(--accent); color: var(--accent); }
     #discard { border-color: hsl(0, 75%, 62%); color: hsl(0, 75%, 62%); }
     #confirm button { min-height: 24px; }
-    #btns { flex: none; display: flex; align-items: center; gap: 8px; }
+    #btns { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 2px; height: 24px; }
     #btns button { min-height: 24px; font-size: 12px; }
     #apply { min-width: 19ch; border-color: var(--accent); color: var(--accent); }
     #apply:disabled { border-color: var(--dim); color: var(--dim); opacity: 0.5; cursor: default; }

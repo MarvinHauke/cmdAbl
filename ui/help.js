@@ -39,9 +39,10 @@ const help = (() => {
 
   function idleInto(parent, v) {
     if (Array.isArray(v)) {
+      line.classList.add('keys');   // key caps: no line clamp (its ellipsis can land inside a cap)
       v.forEach((it, i) => {
         if (i) parent.append(' ');
-        if (typeof it === 'string') { parent.append(it + (i < v.length - 1 ? ' ·' : '')); return; }   // a plain-text item among the key caps
+        if (typeof it === 'string') { parent.append((i ? '· ' : '') + it + (i < v.length - 1 ? ' ·' : '')); return; }   // a plain-text item among the key caps, set off by dots
         const pair = document.createElement('span'); pair.className = 'kp';   // a key cap and its label never wrap apart
         const k = document.createElement('kbd'); k.textContent = it[0];
         pair.append(k, ' ' + it[1]);
@@ -53,7 +54,7 @@ const help = (() => {
   function update() {
     if (!line) return;
     line.textContent = '';
-    line.classList.remove('warn', 'bad');
+    line.classList.remove('warn', 'bad', 'keys');
     // One block child holds all of it: the line is a -webkit-box (for the line clamp), whose direct children become
     // boxes of their own and would shrink the subject and the key caps apart from the text.
     const box = document.createElement('div');
