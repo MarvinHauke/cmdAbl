@@ -103,6 +103,22 @@ export interface CompletionResult {
   replace: { from: number; to: number };
   /** One hint for this position, e.g. `<old>` or `<track|device>`; shown when nothing is typed or nothing matches. */
   usage?: string;
+  /**
+   * What the palette's help footer shows (plan 0019 §4): the command at the caret and the argument or option the caret is on.
+   * Absent for an empty line, an unknown command and a command word still being typed at the top level (the page then shows its keys).
+   */
+  help?: HelpInfo;
+}
+
+/** The help for the position: `command` is the path as typed words (`tag`, `pakabl install`), `summary` its one line. */
+export interface HelpInfo {
+  command: string;
+  summary: string;
+  /**
+   * The argument or option at the caret: its label (`<tag|#>`, `--edit <tag|#>`, `--mute`) and its description. While a dash is
+   * typed it is the best-matching option row; the page's highlighted row wins over it when the user moves the highlight.
+   */
+  focus?: { label: string; text: string };
 }
 
 // ── locate ──────────────────────────────────────────────────────────────────────────────────────
@@ -336,6 +352,23 @@ function choiceRows(choices: readonly string[] | undefined, text: string): Array
   return pick(choices ?? [], (c) => nameScore(c, text)).map((c) => ({ label: c, insert: quoteIfNeeded(c), kind: "value" as const }));
 }
 
+/** The one-line description of an argument or option in the snapshot (`description`, else its `summary`). */
+function describe(def: { summary?: string }): string | undefined {
+  return (def as { description?: string }).description ?? def.summary;
+}
+
+/** The node at `path` (command words, then subcommands), or undefined. */
+function nodeAtPath(roots: readonly Node[], path: string[]): Node | undefined {
+  let level: readonly Node[] = roots;
+  let node: Node | undefined;
+  for (const word of path) {
+    node = level.find((n) => n.name === word);
+    if (!node) return undefined;
+    level = node.children ?? [];
+  }
+  return node;
+}
+
 /** The hint for an argument: `<name>`, `<a|b>` for choices, `<name>…` when variadic, `[<name>]` when optional. */
 function argHint(arg: ArgDef): string {
   const shown = arg.kind === "enum" && arg.choices?.length ? arg.choices.join("|") : arg.name;
@@ -480,11 +513,22 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
   const w = here.where;
   const replace = { from: here.from, to: here.token.to };
   // Rows come tool zone first, then Set zone, each in its own ranking; the 100-row cap applies per zone.
-  const reply = (items: Array<Omit<CompletionItem, "zone">>, usage?: string): CompletionResult => {
+  const reply = (items: Array<Omit<CompletionItem, "zone">>, usage?: string, help?: HelpInfo): CompletionResult => {
     const zoned = items.map((item) => ({ ...item, zone: zoneOf(item.kind) }));
     const tool = zoned.filter((i) => i.zone === "tool").slice(0, MAX_ROWS);
     const set = zoned.filter((i) => i.zone === "set").slice(0, MAX_ROWS);
-    return { items: [...tool, ...set], replace, ...(usage ? { usage } : {}) };
+    return { items: [...tool, ...set], replace, ...(usage ? { usage } : {}), ...(help ? { help } : {}) };
+  };
+  const helpFor = (path: string[], focus?: { label: string; text: string | undefined }): HelpInfo | undefined => {
+    const node = nodeAtPath(data.tree, path);
+    if (!node || path.length === 0) return undefined;
+    // `<leaf> config ...`: the platform's settings subcommand is not a child in the snapshot; the line runs the settings.
+    const cfg = (node as { config?: { name: string; summary: string } }).config;
+    const second = tokens[1];
+    if (cfg && path.length === 1 && !node.children?.length && second && second.end <= here.from && second.value === cfg.name) {
+      return { command: `${path[0]} ${cfg.name}`, summary: cfg.summary };
+    }
+    return { command: path.join(" "), summary: node.summary, ...(focus && focus.text ? { focus: { label: focus.label, text: focus.text } } : {}) };
   };
 
   // `<command> config` (plan 0019): a command with settings offers it as its first word, beside the arguments.
@@ -500,33 +544,37 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
       return reply([]);
     case "command":
       // A lone `\` on the first word is the "no default" escape (plan 0019 §7) with nothing after it yet.
-      return reply(commandRows(w.nodes, w.path.length === 0 && here.prefix === "\\" ? "" : here.prefix), w.sub ? "<command>" : undefined);
-    case "option":
-      return reply(optionRows(w.node, w.given, here.prefix));
+      return reply(commandRows(w.nodes, w.path.length === 0 && here.prefix === "\\" ? "" : here.prefix), w.sub ? "<command>" : undefined, helpFor(w.path));
+    case "option": {
+      // While typing a dash the first row is the highlighted option.
+      const rows = optionRows(w.node, w.given, here.prefix);
+      return reply(rows, undefined, helpFor(w.path, rows[0] ? { label: rows[0].label, text: rows[0].description } : undefined));
+    }
     case "options": {
       const raw = w.node.args?.find((a) => a.raw);
-      return reply(w.ended || /\s/.test(here.prefix) ? [] : [...configRow(w.node, w.path, here.prefix), ...optionRows(w.node, w.given, here.prefix)], raw ? `| <${raw.name}>` : undefined);
+      return reply(w.ended || /\s/.test(here.prefix) ? [] : [...configRow(w.node, w.path, here.prefix), ...optionRows(w.node, w.given, here.prefix)], raw ? `| <${raw.name}>` : undefined, helpFor(w.path));
     }
     case "optionValue": {
       const opt = w.option;
       const label = opt.values !== undefined ? valueNames(opt)[w.index] ?? "value" : valueLabel(opt);
-      return reply(valueRows(data, opt, here.prefix), `<${label}>`);
+      return reply(valueRows(data, opt, here.prefix), `<${label}>`, helpFor(w.path, { label: `--${opt.name} <${label}>`, text: describe(opt) }));
     }
     case "arg": {
       const arg = w.arg;
       const hint = argHint(arg);
+      const help = helpFor(w.path, { label: hint, text: describe(arg) });
       // The tool zone: the options not used yet, beside the arguments (not after `--`, not inside a `rest` value).
       const options = w.ended || (arg.rest && w.prior.length > 0) || /\s/.test(here.prefix) ? [] : [...configRow(w.node, w.path, here.prefix), ...optionRows(w.node, w.given, here.prefix)];
       const tag = !arg.rest && arg.kind === "path" && /^!?#/.test(here.prefix) && !/["']/.test(line[here.from] ?? "");
-      if (tag) return reply([...options, ...tagRows(data, here.prefix)], hint);
+      if (tag) return reply([...options, ...tagRows(data, here.prefix)], hint, help);
       if (arg.kind === "path") {
         // First: what a bare tag word will silently turn into.
         const rows = [...silentTagRow(data, arg, here.prefix), ...pathRows(data, arg, here.prefix)];
         if (arg.complete) rows.push(...candidateRows(data.completions[arg.complete], here.prefix));
-        return reply([...options, ...rows], hint);
+        return reply([...options, ...rows], hint, help);
       }
-      if (arg.kind === "number") return reply(options, hint);
-      return reply([...options, ...valueRows(data, arg, here.prefix)], hint);
+      if (arg.kind === "number") return reply(options, hint, help);
+      return reply([...options, ...valueRows(data, arg, here.prefix)], hint, help);
     }
   }
 }

@@ -489,3 +489,65 @@ test("a leading backslash (the no-default escape) completes like the bare word (
   // A lone backslash lists the commands.
   assert.deepEqual(at("\\").labels, at("").labels);
 });
+
+// ── help for the palette footer (plan 0019 §4) ──
+const helpTree: CommandNode<any, any>[] = [
+  {
+    name: "tag",
+    summary: "tag tracks",
+    options: [
+      { name: "edit", short: "e", takesValue: true, valueDefault: "#", valueLabels: ["tag|#"], summary: "edit a tag's tracks on the board" },
+      { name: "all", summary: "include everything" },
+    ],
+    args: [{ name: "tag", kind: "text", summary: "a tag name, or # to pick one" }, { name: "targets", kind: "path", required: false, variadic: true }],
+    run,
+  },
+  {
+    name: "vol",
+    summary: "set a volume",
+    options: [{ name: "to", takesValue: true, number: {}, summary: "target level" }],
+    args: [{ name: "value", kind: "number", summary: "the level" }],
+    run,
+  },
+  { name: "pakabl", summary: "extensions", children: [{ name: "install", summary: "install one", args: [{ name: "id", kind: "text", summary: "the extension id" }], run }] },
+];
+const helpData: CompletionData = { tree: completionTree(helpTree), completions: {}, paths: [], tags: [] };
+const helpAt = (line: string) => complete(line, line.length, helpData).help;
+
+test("help: the command and its first argument", () => {
+  assert.deepEqual(helpAt("tag "), { command: "tag", summary: "tag tracks", focus: { label: "<tag>", text: "a tag name, or # to pick one" } });
+});
+
+test("help: a subcommand's argument names the full path", () => {
+  assert.deepEqual(helpAt("pakabl install "), { command: "pakabl install", summary: "install one", focus: { label: "<id>", text: "the extension id" } });
+});
+
+test("help: an option waiting for its value", () => {
+  assert.deepEqual(helpAt("vol --to "), { command: "vol", summary: "set a volume", focus: { label: "--to <n>", text: "target level" } });
+});
+
+test("help: while typing a dash the first option row is the focus", () => {
+  assert.deepEqual(helpAt("tag -"), { command: "tag", summary: "tag tracks", focus: { label: "--edit", text: "-e  <tag|#>  edit a tag's tracks on the board" } });
+});
+
+test("help: an empty line, an unknown command and the command word itself give none", () => {
+  assert.equal(helpAt(""), undefined);
+  assert.equal(helpAt("nope "), undefined);
+  assert.equal(helpAt("ta"), undefined);
+});
+
+test("help: inside a chain and after a pipe it follows the part at the caret", () => {
+  assert.equal(helpAt("vol 1; tag ")?.command, "tag");
+  assert.equal(helpAt("map x | vol ")?.command, "vol");
+});
+
+test("help: a group alone names the group without a focus", () => {
+  assert.deepEqual(helpAt("pakabl "), { command: "pakabl", summary: "extensions" });
+});
+
+test("help: a leaf's `config` subcommand names the settings, not the command's arguments", () => {
+  const tree: CommandNode<any, any>[] = [{ name: "mute", summary: "mute tracks", args: [{ name: "target", kind: "path", summary: "what to mute" }], run, config: { name: "config", summary: "open the settings of mute", run } as never }];
+  const d: CompletionData = { tree: completionTree(tree), completions: {}, paths: [], tags: [] };
+  assert.deepEqual(complete("mute config ", 12, d).help, { command: "mute config", summary: "open the settings of mute" });
+  assert.equal(complete("mute ", 5, d).help?.focus?.label, "<target>");
+});
