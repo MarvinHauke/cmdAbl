@@ -56,6 +56,8 @@ const stub: ModuleApi = {
   onPick: () => {},
   registerProvider: () => {},
   onCommandRun: () => {},
+  onSetChange: () => {},
+  midi: { blocked: () => null, onBlocked: () => () => {} } as unknown as ModuleApi["midi"],
   showFeedback: () => {},
 };
 for (const mod of MODULES) mod.activate(stub);

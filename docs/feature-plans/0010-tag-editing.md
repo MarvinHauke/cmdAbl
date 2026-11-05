@@ -92,9 +92,13 @@ untagged                                       4 tracks
   at the start) moves a chip cursor onto the chips; ←/→ step through them, Backspace/Delete/Space
   toggle the mark of the chip under the cursor, → past the last chip or typing returns to the input
   (user, Live test).
-- **←/→ and ↑/↓** move through the suggestions while they show (←/→ added after the Live test;
-  Cmd/Alt+←/→ still move the caret), otherwise to the previous or next tag's
-  input. **Enter applies whenever there is nothing to add**: in an empty input, an empty "new tag…" or on
+- **↑/↓** move the highlight through the suggestions while they show, otherwise to the previous or
+  next tag's input. **The suggestion row is a selection**: → from the end of the field enters it on
+  the highlighted suggestion (shown filled); ←/→ walk it (→ on the last stays); ← on the first goes
+  back to the field (caret at the end); a typed character or Backspace goes back and edits the text;
+  Esc leaves the row (a second Esc clears the field); Enter adds (in the field and in the row the typed text and the list stay, the added track leaves the list and the highlight moves on, so several similar names go in a row; an empty list returns to the field with the text kept; Esc clears); Tab completes the text with the highlighted suggestion (shell-style), returns to the field
+  with the caret at the end and the suggestions update for the new text. →
+  into the chips only applies while no suggestions show. **Enter applies whenever there is nothing to add** (user decision 2026-11-05, against the Live test of 2026-10-20: after adding from the field the typed text stays, so "type, Enter adds, Enter applies" is now "type, Enter adds, Esc clears, Enter applies"; decided: when the added label equals what was typed (case-insensitive, with or without the leading /) the field clears, so the next Enter applies as before): in an empty input, an empty "new tag…" or on
   the chip cursor, if its field is empty (user, Live test 2026-10-20; `f8e4135`). **Esc** clears the input, then closes.
 - **`new tag…` input** at the bottom: Enter checks the name and adds an empty section with the
   focus in its `add…` input. A tag with no track added is not kept. A name that already exists (ignoring case
@@ -159,6 +163,79 @@ is the target path and is resolved before the handler. `tag -e #` first opens th
 with the new-tag row (bare `#` = the tag list, as elsewhere). Usage: `tag --edit [<tag|#>]`; a bare `tag -e` means `tag -e #` (user, Live test 2026-10-21; core adds
 `OptionDef.valueDefault`). `tag -e #` is single-select: Enter picks the tag (`73f0079`, `702fcca`). It ships with the
 board as the keyboard path (decision 5).
+
+## Rename and remove whole tags in the board (user, 2026-11-04; Live-tested 2026-11-04)
+
+Today the board removes a track from a tag (× on a chip) and creates tags, but it can't rename a tag or
+remove a whole tag; that needs `tag -r` or `tag --set 0`.
+
+- **Each tag section's heading gets two actions** (look refined after the Live test, 2026-11-04: the
+  heading reads `#name` with an accent `#`; a click on the name renames it; a bigger × at the row's end;
+  the rename note `(was #old)` sits on the heading line; the add field is a real input with a focus
+  highlight):
+  - **rename:** the heading becomes an inline input. Enter takes the name, checked against the same
+    pattern as a new tag; Esc cancels the edit.
+  - **× remove:** the section is marked (struck through), and the footer says "#fx will be removed from
+    N tracks". A second click unmarks it.
+- **Board layout for long Sets** (Live test, 2026-11-04):
+  - the "+ # New tag…" row is pinned at the top;
+  - a created tag appears directly below it with its add field focused;
+  - "untagged" is the last section, collapsed by default ("▸ untagged · N tracks"), with no add field.
+- **Click to assign** (user, 2026-11-04, for 0.1.5):
+  - **The active target** is the tag whose add field was last focused, or the "New tag" field. It's
+    highlighted, and the footer says "Click tracks to add them to #drums".
+  - **Clicking a chip under "untagged"** adds that track to the active tag as a pending chip (dashed
+    ring). A second click undoes it.
+  - **Without an active tag,** a click moves focus to "+ # New tag…" and collects the track in a line
+    below it ("goes into the new tag: …"). Name + Enter creates the tag with those tracks; the order
+    (collect first, name first) doesn't matter. Esc clears the collection.
+  - **Clicks on chips in other tag sections** don't assign (no accidental double tagging).
+  - **Contract:** unchanged. A created section's items can be turned on in the same answer.
+- **Apply sends everything at once:**
+  - renames use the `tag -r` logic (an existing name merges);
+  - removing a whole tag is confirmed **inside the board** (user, 2026-11-04): Apply with a marked tag
+    shows a confirm bar in the footer ("Remove #fx from N tracks?", Cancel by default, "Remove and
+    apply"). Cancel returns to editing; there is no second window afterwards;
+  - removing one track (× on a chip) stays without a question;
+  - the log gets the change and undo lines as usual.
+- **Board contract (additive):**
+  - section `renamable?: boolean`, `removable?: boolean`;
+  - answer `renamed?: [{ section, to }]`, `removed?: [section]`.
+  - answer `confirmed?: true` (kept only with a non-empty `removed`; reviewer, 2026-11-04). A module
+    applies `removed` only when it is confirmed; otherwise it asks once itself (an old or other page).
+
+  Old callers are unaffected. A rename plus a removal of the same section: the removal wins.
+- **Work:**
+  - core: the contract and the parser of the answer (`parseBoardAnswer`), with tests;
+  - ui: `ui/board.html` (the actions, the inline input, the strike-through, the footer text,
+    keyboard access);
+  - modules: the `tag` board sets the flags, applies renames and removals, and confirms removals.
+
+## User findings for 0.1.5 (user, 2026-11-04)
+
+Click-to-assign was Live-tested by the user (ui `3570512`). Four changes, ui only (`ui/board.html`):
+- focus starts in "New tag" when the board opens;
+- each tag's add field sits in its header row, after the name and before "N tracks ×"; the chip rows
+  hold only tracks (this also ends the wrap jump when a pending chip fills a row);
+- a clicked untagged chip leaves "untagged" and shows as a pending chip in the target; its × there
+  undoes it;
+- every tag section can fold; sections with more than 20 tracks start folded (a named constant, a
+  setting once the settings page exists).
+
+After the user's hand test (2026-11-04):
+- only × (or Backspace on a selected chip) removes; a click on the name only selects;
+- the New tag row looks like a tag row (field, chips below); its help is in the footer;
+- a track left without tags shows as a dashed card under untagged and can be reassigned in the same
+  Apply; a tag losing its last track shows "tag goes away";
+- keys like a file tree: ↑/↓ move through the rows, ←/→ on a heading fold and unfold (⌥↑↓ dropped).
+- typing a printable character on a tag heading unfolds it and goes into that tag's add field (it becomes the target); on the untagged heading or its chips it goes into the target tag's field (New tag when that is the target).
+- fixed (user bug, 2026-11-04): with every track tagged the request has no untagged section; the page
+  keeps a hidden stand-in that appears, open, with the first card and hides again when the last card
+  is undone or reassigned.
+
+For 0.1.6 (with the settings page and the help pattern, see STATUS): a gear button and `tag config`
+for the board's settings, and a footer help line that follows the mouse (like Live's Info View, can
+be switched off).
 
 ## The UI pattern in `ui/`
 

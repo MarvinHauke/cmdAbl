@@ -2,7 +2,7 @@ import type { ObjectNode } from "../ableton/objectTree.js";
 import { uniquePath } from "../ableton/resolvePath.js";
 import { completerKeys, completionTree, type CommandNode } from "./commandTree.js";
 import type { Candidate, Completer, CompletionData, PathRow, TagRow } from "./complete.js";
-import { tagCounts } from "./tags.js";
+import { tagCounts, tagsOf } from "./tags.js";
 
 // The completion snapshot (plan 0006): taken once when the palette opens, put into the page's JSON,
 // and used there by `complete()` while the user types. Host side, so it may call modules' completers
@@ -100,7 +100,9 @@ export function pathRows(nodes: readonly ObjectNode[], cap = MAX_PATHS): PathRow
 
 /** The Set's tags, sorted by name, at most `MAX_TAGS` (the most used stay when it is over the cap). */
 export function tagRows(nodes: readonly ObjectNode[], cap = MAX_TAGS): TagRow[] {
-  const counts = tagCounts(nodes as ObjectNode[]);
+  const kindsOf = new Map<string, Set<ObjectNode["kind"]>>();
+  for (const node of nodes) for (const tag of tagsOf(node)) (kindsOf.get(tag) ?? kindsOf.set(tag, new Set()).get(tag)!).add(node.kind);
+  const counts: TagRow[] = tagCounts(nodes as ObjectNode[]).map((t) => ({ ...t, kinds: [...(kindsOf.get(t.name) ?? [])] }));
   if (counts.length <= cap) return counts;
   return counts.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)).slice(0, cap).sort((a, b) => a.name.localeCompare(b.name));
 }

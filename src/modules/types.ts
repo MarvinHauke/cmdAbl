@@ -10,7 +10,15 @@ import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { Provider } from "../core/types.js";
 import type { Completer } from "../core/complete.js";
+import type { LiveRoutes } from "../core/livePage.js";
+export type { LiveRoutes } from "../core/livePage.js";
+import type { ReadResult } from "../core/files.js";
+export type { ReadResult } from "../core/files.js";
 export type { Candidate, Completer, CompleterContext } from "../core/complete.js";
+import type { MidiPort } from "../core/midiPort.js";
+export type { BindingsSet, ListenOptions, MidiPort } from "../core/midiPort.js";
+export type { MidiBinding } from "../core/midiEngine.js";
+export type { MidiControl, MidiMessage, OperatorName } from "../core/midi.js";
 import type { BoardAnswer, BoardRequest, PickPreview, StateChange } from "../core/ui.js";
 import type { BridgeResult } from "../ableton/bridgeProtocol.js";
 import type { TagsWritten } from "../ableton/bridgeOps.js";
@@ -94,6 +102,12 @@ export interface FilesPort {
    */
   read(name: string): Promise<string | null>;
   /**
+   * Like `read`, but tells "no such file" from "the read failed": `{ status: "ok", text }`, `{ status: "missing" }`
+   * (the file does not exist: safe to start empty), or `{ status: "failed", reason }` (a refused name, a folder with
+   * that name, no permission, …: do NOT write over it). `reason` is a short code, never content. Never throws.
+   */
+  readResult(name: string): Promise<ReadResult>;
+  /**
    * Write the file (UTF-8, at most 1 MB), creating the folder on the first write; the file appears
    * whole or not at all. True when written, false for a refused name, too much text or a failing
    * disk (a warning is logged). Never throws.
@@ -117,6 +131,15 @@ export interface ModuleApi {
   set: SetPort;
   /** The module's own files (plan 0013). */
   files: FilesPort;
+  /**
+   * Be told when the Live Set is (re)available or has changed: `listener` gets the Set's id (plan 0013; null = the
+   * Set has none yet) once the Remote Script answers for the first time (also after it came up later than the
+   * extension), at once when it is already known, and again whenever the id differs (a new Set was opened).
+   * A different Set without an id is not told apart from the previous one without an id. A throwing listener is skipped.
+   */
+  onSetChange(listener: (setId: string | null) => void): void;
+  /** MIDI mapping (plan 0018): the bindings the engine runs, what the script forwards, the messages it kept. */
+  midi: MidiPort;
   /** One info line in the log, tagged with the module's name (`cmdAbl [name] info: …`); no prefix of your own. */
   log(line: string): void;
   /**
@@ -178,9 +201,30 @@ export interface ModuleApi {
    * (unknown ids, readonly sections, no-ops and names not matching `create.pattern` are already
    * dropped), or null when closed. `cut` says the request was capped (40 sections × 200 items ×
    * 300 characters) or had entries dropped, so the module can say "list cut". Nothing is applied
-   * by the page: write the changes, then show a new board if wanted. Section and item ids must be at most 300 characters (longer ones are dropped, `cut` is true); `create.pattern` is used as given.
+   * by the page: write the changes, then show a new board if wanted. A section flagged `renamable` / `removable` gets a rename / remove
+   * action on its heading; the answer then also carries `renamed: [{ section, to }]` (a new name that matches `create.pattern`; an
+   * existing name means merge: the module decides) and `removed: [section]` (the whole section; wins over a rename of it). Both are
+   * absent when empty. Removing a whole section is destructive: confirm with `api.confirm` after the board closes, before writing. Section and item ids must be at most 300 characters (longer ones are dropped, `cut` is true); `create.pattern` is used as given.
    */
-  ui: { board(request: BoardRequest): Promise<{ answer: BoardAnswer | null; cut: boolean }> };
+  ui: {
+    board(request: BoardRequest): Promise<{ answer: BoardAnswer | null; cut: boolean }>;
+    /**
+     * A page of the module's own that may READ from the module while it is open (the read-only exception to the dialog
+     * rule, plan 0018 "Live pages"): like `dialog`, but `routes` are served to the page under a one-time token, e.g.
+     * `{ messages: () => rows }` at `GET <LIVE.base>/messages` with `Authorization: Bearer <LIVE.token>`. The page has
+     * `const LIVE = /*LIVE_PLACEHOLDER*\/null;` and gets `{ base, token }` there; it polls (about every 100 ms) and never
+     * writes. A route function must be read-only and quick (about 100 ms, else the page gets `{ error }`), and returns
+     * plain JSON data (at most 256 KB); a throw gives `{ error }`. The routes and the token end with the dialog.
+     * A route may also WAIT (long polling): `{ wait: (since, cancel) => Promise<data> }`. The server holds the request
+     * (`GET <base>/<route>?since=<n>`, the page's last seen number; `since` is null when the page sent none, its first request: answer at once) until `wait` resolves with data
+     * newer than `since`, or 1000 ms pass (then `{ timeout: true }`); a newer request replaces a held one
+     * (`{ replaced: true }`), and the dialog closing answers `{ error: "closed" }`. `cancel.onCancel(cb)` runs once when the
+     * wait ends for any reason (answered, timeout, replaced, client gone, closed): drop your listeners there.
+     * Without the server (port taken) the page opens as a data page with `LIVE = null`: it must work without polling.
+     * Resolves with the string the page returns on close, or null if dismissed, like `dialog`.
+     */
+    livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes): Promise<string | null>;
+  };
   /**
    * Ask a yes/no question: a single-select list titled `message` with two
    * rows, "Cancel" first and `confirmLabel` second, through the platform's dialog queue.

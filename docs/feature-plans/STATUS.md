@@ -5,7 +5,7 @@ known issues. Maintained by the architect. The order of the next features and ho
 each other is in the [plan index](README.md#next-in-dependency-order); design decisions live in the
 numbered plans. Finished work is in the git history, not here.
 
-_Last updated: 2026-10-22 (cleanup after 0.1.3)._
+_Last updated: 2026-10-23 (cleanup after 0.1.4)._
 
 ## Released
 
@@ -15,18 +15,34 @@ _Last updated: 2026-10-22 (cleanup after 0.1.3)._
 | 0.1.1 | 2026-10-21 | Tags on tracks (`#tag`, `!#tag`, `--pick`), `man <command>`; script 0.1.5 | #13 |
 | 0.1.2 | 2026-10-21 | Tag board, `tag -e`, `tag -r`, `cmdabl log`, nested racks; script 0.1.6 | #14 |
 | 0.1.3 | 2026-10-22 | `vol`, `note`, agent test access (dev builds); script 0.1.8 | #17 |
+| 0.1.4 | 2026-10-23 | Argument completion, palette switch Off · Hints · Options, `settings.json` | #21 |
 
 All releases were tested in Live, including the installed `.ablx`.
 
 ## Now
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
-  `gitleaks`, no force push). The private mirror's `main` follows it.
-- Built, Live-tested through MCP (2026-10-22): argument completion (plan 0006 steps 1–2, 0.1.4,
-  branch `feat/completion`). Snapshot at palette open: 3 ms warm, about 220 ms on the first open of a
-  session (cold tag cache). Plus the palette switch "Above the prompt: Off · Hints · Options"
-  (`palette.above` in `settings.json`, the first piece of the store), Live-tested. Docs and images
-  done. Next: release 0.1.4, then plan 0017 (scripts and triggers) first.
+  `gitleaks`, no force push).
+- Tag board rename/remove (0010): built and Live-tested 2026-11-04 on `feat/tag-board-edit` (rename
+  in place, × with the confirm bar in the board, pinned new-tag row, untagged folded, add field names its
+  tag). Click-to-assign (`3570512`) Live-tested by the user 2026-11-04.
+- **0.1.5 user findings: built and tested 2026-11-04** (ui `c41d063`…`80dcb30`, core `4e8520a`): board
+  focus in New tag, add field in the heading, only × removes, orphaned tracks as cards, "tag goes
+  away", fold above 20 tracks, file-tree keys; suggestions show silent tag expansions;
+  `midi.statusBar` (default off); monitor time column off. Docs done (`656bdb0`, `8540a8c`,
+  `9727c84`, `5fe1a8c`). **Open before the release:** re-record `tags.gif`, `tag-board.png` and
+  `bridge.png` (script 0.1.14) through MCP, in a Set with several tags and untagged tracks (the user
+  opens it); then cmdabl-docs swaps them in. Then the installed `.ablx`, release 0.1.5.
+  Board bug (all tracks tagged, no untagged section) fixed in `ui/board.html` with a hidden stand-in
+  section; to be Live-tested.
+- In work on `feat/map` (not pushed): `;` chains (0017, Live-tested); the simple MIDI mapping (0018:
+  `map`, `map learn`, `midi monitor`, operators, Remote Script 0.1.14), live pages (localhost,
+  load and route tokens, long polling), the Cmd+M conflict warning. Live-tested with the UC4
+  (2026-11-04): bindings, hold, learn, the status bar, the Cmd+M warning in `map` and `map -l`.
+  The user's UC4 test (2026-11-04) passed: learn closes by itself, "Taken in Live" in the monitor,
+  bindings after save and reopen. Open: the learn text for taken controls (offer: "Controls taken in
+  Live (Cmd+M) can't be learned: …"); using.md docs; the installed `.ablx`; release 0.1.5.
+  Docs note: save the Set after the first `map`, or the bindings won't load after a restart.
 - How testing works since 0.1.3: the architect runs Live test lists through the `cmdabl_*` MCP tools
   (plan 0016) once the user has started `npm start` with a test Set; the user gets a short list of
   the core features to try by hand (`CLAUDE.md`, "Agent team").
@@ -58,6 +74,13 @@ Older checks that were never reported; most can now run through MCP.
 
 ## Backlog (not ordered)
 
+- Group-aware toggles (user, 2026-11-04): today `mute #synth` then `mute #drums` toggles each track on
+  its own, so a track in both tags (e.g. Vermona) is unmuted again by the second command. That's logical,
+  but not what a user expects. Idea: when a toggle hits several targets, toggle the group as one, like
+  Live's multi-select buttons. If any target is off, turn all on; if all are on, turn all off. `--set`
+  stays as it is. Check against `--pick`, chains and pads, and whether it belongs to the link layer
+  (0015) as a rule for on/off states.
+
 - Device on/off (user, 2026-10-22): its own module `bypass` with the short alias `bp` (command aliases
   exist in the tree). It switches a device's "Device On" (SDK `parameters[0]`, no Remote Script). Rules as
   `mute`: toggle, `--set 1` bypassed, `--set 0` active, several targets, pick list with state, one undo
@@ -65,8 +88,33 @@ Older checks that were never reported; most can now run through MCP.
   mute silences a path (track, chain, pad), bypass skips a device's processing. Deferred until the `mute`
   listing has a hierarchy (plan 0006 step 3); order set by the user.
 
-- A `cmdabl settings` page (user, 2026-10-22): one place for cmdAbl's settings (`settings.json`); the
-  palette's "above the prompt" switch likely moves there. Builds on the store from 0.1.4 (plan 0008).
+- **MIDI bindings that open a page** (user, 2026-11-05): `map CC48 | note` does nothing today, because
+  bound lines run headless and a dialog counts as cancelled (0018 engine rules). Wanted: a control
+  that opens a page such as `note` or `tag -l`, like the palette would. Needs a decision in 0018: an
+  opt-in per binding (e.g. an `open` operator or a per-command "may open a dialog" flag), at most one
+  dialog at a time, never during a running dialog.
+
+- **Simpler installation and a clear `cmdabl setup` result** (user, 2026-11-05): fewer steps from
+  download to a working palette (Karabiner trigger, Remote Script, control surface, Live restart). The
+  setup dialog becomes a status page: one row per step with a green ✓ (ok), a yellow ! (warning, e.g.
+  "rule already linked" or "restart Live once") or a red ✗ (failed), a short sentence, and the fix or
+  docs link as a button instead of raw paths and URLs. Fits the 0.1.6 settings/help pattern; needs a
+  plan.
+
+- **0.1.6: settings and help pattern** (user findings, 2026-11-04; needs a plan, 0019):
+  - a settings page per window (gear button, `<module> config`: `tag config`, MIDI, note) plus a
+    `cmdabl settings` page (user, 2026-10-22) over `settings.json`; it takes the palette's
+    Off/Hints/Options switch, the board's fold threshold and `midi.statusBar`;
+  - one help pattern: a quiet help line that follows the mouse and focus (like Live's Info View, can
+    be switched off), used by the board footer and the palette's hint panel (0006). No browser
+    tooltips: the footer text changes on hover instead (user, 2026-11-05; tooltips removed in 0.1.5);
+  - note: timestamped entries with view and edit modes (0013).
+  - one keyboard model for every selection list (user, 2026-11-05): the palette rows, the pick list,
+    the board's suggestions and chips. → from the end of a field enters the list, ←/→ (and ↑/↓ by
+    row) move in it, ← on the leftmost item returns to the field, typing returns to the field and
+    types; file-tree rules (↑↓ between sections, → into, ← out) where a page has sections. The board
+    (0010) is the first page built this way.
+  A new UI surface, so the contract part needs the user's approval.
 
 - Ideas from ClyphX (2026-10-20): plan 0009 — `;` action lists with aliases (0.1.3); `.`,
   index, range and `all` targets, `vol`/`pan`/`send` (0.1.x); snapshots (0.2.x); triggers from

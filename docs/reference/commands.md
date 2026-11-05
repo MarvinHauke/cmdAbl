@@ -10,6 +10,7 @@ shows as help. Type a command in the palette; `<command> --help` prints the same
 
 - Find and select: `goto`, `find`, `next`, `prev`
 - Mix: `mute`, `solo`, `arm`, `vol`
+- Control: `map`, `midi`
 - Tags: `tag`
 - Look things up: `help`, `man`, `lom`, `note`
 - Recent commands: `history`
@@ -383,13 +384,137 @@ vol --set -inf /Lead
 
 silence the fader
 
+## Control
+
+### `map`
+
+run command lines from MIDI controls
+
+Binds a MIDI control to a command line, so a button or knob on your controller runs it. map CC37 toggle | solo #lead --set {} binds controller 37 to a line; the line is everything after the bar, chains with ; included. The operator says when the line runs and what {} becomes: press (the default) runs it when the control goes down, release when it comes up, hold on both with 1 and 0, toggle on every press with 1, 0, 1, and so on. Press and release give no value, so they cannot use {}. A control is CC37, N36 (a note) or PB (pitch bend); add /ch2 to listen to one channel only. Bindings belong to the Live Set and are stored with it. A line runs without dialogs: an address that is ambiguous does not run and is logged. Giving the same control and operator again replaces the line. Needs the cmdAbl Remote Script.
+
+**Usage:** `map <command>`
+
+**Subcommands:** `learn`, `add`
+
+#### `map learn`
+
+bind the control you move next
+
+Opens a small page that says Move a control, then press Enter. When you press Enter, the control that was moved last is bound to the line after the bar, with the operator you name (press if none). A control that sends on several channels is bound to the channel it used.
+
+**Usage:** `map learn [<press|release|hold|toggle>] | <line>`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<operator>` | one of `press`, `release`, `hold`, `toggle` | no | When the line runs: press (default), release, hold or toggle |
+| `<line>` | text | yes | The command line to run, after the bar (the text after `\|`, kept as typed) |
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+map learn toggle | mute #fx --set {}
+```
+
+move a control, then press Enter
+
+#### `map add`
+
+bind a control, list the bindings, remove one, or switch mapping on or off
+
+map &lt;control> [operator] | &lt;line> binds the control to the line. map -l lists the bindings of this Set as numbered rows, map --rm 2 removes the second one, map --off stops all MIDI mapping and map --on starts it again (the setting is kept).
+
+**Usage:** `map add [--list] [--rm <n>] [--on] [--off] [<control>] [<press|release|hold|toggle>] [| <line>]`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<control>` | text | no | The control: CC37, N36, PB, with /ch2 to limit the channel |
+| `<operator>` | one of `press`, `release`, `hold`, `toggle` | no | When the line runs: press (default), release, hold or toggle |
+| `<line>` | text | no | The command line to run, after the bar; {} is the operator's value (the text after `\|`, kept as typed) |
+
+| Option | Description |
+| --- | --- |
+| `-l, --list` | list the bindings of this Set as numbered rows |
+| `--rm <n>` | remove binding number n (see map -l) |
+| `--on` | switch MIDI mapping on |
+| `--off` | switch MIDI mapping off |
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+map CC37 | mute #drums --set 0
+```
+
+controller 37 mutes the tracks tagged drums
+
+```
+map N36 hold | mute #drums --set {}
+```
+
+mute while the note is held
+
+```
+map CC37/ch2 toggle | solo #lead --set {}
+```
+
+a latching solo on channel 2
+
+```
+map -l
+```
+
+list the bindings
+
+```
+map --rm 2
+```
+
+remove binding 2
+
+```
+map --off
+```
+
+stop MIDI mapping
+
+### `midi`
+
+look at incoming MIDI
+
+Tools for the MIDI input that map uses. midi monitor shows the last messages the controller sent.
+
+**Usage:** `midi <command>`
+
+**Subcommands:** `monitor`
+
+#### `midi monitor`
+
+watch the MIDI messages the controller sends
+
+Opens a small page that lists what the controller sends, live, newest first, with type, channel, number and value. Move some controls to see their names, then press Enter or Esc to close it. While the page is open, bound controls do not run their lines. Needs the cmdAbl Remote Script and cmdAbl set as a MIDI input in Live's settings.
+
+**Usage:** `midi monitor`
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+midi monitor
+```
+
+watch the controls you move
+
 ## Tags
 
 ### `tag`
 
 tag tracks, or list the tags of the Set
 
-Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx reaches every track tagged fx. With --edit and a tag (tag --edit fx) every regular and return track is listed with a button that is lit where it carries the tag: mark tracks with Tab and press Enter to switch the tag on or off on each of them; tag --edit without a tag (or tag --edit #) first asks which tag, and a name that is not in that list creates it. With --rename and two names (tag --rename fx effects) the tag changes its name on every regular and return track that carries it, and writes nothing else; if the new name exists already the two tags merge, a track with both keeps one, and the result says so because renaming back cannot split them again. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Apply writes the changes and shows nothing; Close changes nothing. With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, so the script has to run, and they are saved with the Set. Cmd+Z does not undo them. A successful write shows nothing: the changes and the undo commands go to the log, and cmdabl log --undo lists the undo commands. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).
+Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx reaches every track tagged fx. With --edit and a tag (tag --edit fx) every regular and return track is listed with a button that is lit where it carries the tag: mark tracks with Tab and press Enter to switch the tag on or off on each of them; tag --edit without a tag (or tag --edit #) first asks which tag, and a name that is not in that list creates it. With --rename and two names (tag --rename fx effects) the tag changes its name on every regular and return track that carries it, and writes nothing else; if the new name exists already the two tags merge, a track with both keeps one, and the result says so because renaming back cannot split them again. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Each tag heading has a pencil to rename the tag (a name that exists already merges) and a cross to remove the whole tag; removing whole tags asks once before Apply goes through. Apply writes the changes (renames, then removals, then the chip changes) and shows nothing; Close changes nothing. With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, so the script has to run, and they are saved with the Set. Cmd+Z does not undo them. A successful write shows nothing: the changes and the undo commands go to the log, and cmdabl log --undo lists the undo commands. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).
 
 **Usage:** `tag [--edit [<tag|#>]] [--rename <old> <new>] [--list] [--set <0|1>] [--pick] [<target>] [<name>…]`
 

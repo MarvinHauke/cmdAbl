@@ -49,7 +49,7 @@ function argTable(args: ArgDef[]): string[] {
   for (const arg of args) {
     const name = `\`<${arg.name}>${arg.variadic ? "…" : ""}\``;
     const required = arg.required === false ? "no" : "yes";
-    const description = [arg.summary ?? "", arg.rest ? "(takes the rest of the line)" : ""].filter(Boolean).join(" ");
+    const description = [arg.summary ?? "", arg.rest ? "(takes the rest of the line)" : arg.raw ? "(the text after `|`, kept as typed)" : ""].filter(Boolean).join(" ");
     lines.push(`| ${name} | ${cell(argKind(arg))} | ${required} | ${cell(description)} |`);
   }
   return lines;

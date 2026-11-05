@@ -32,6 +32,18 @@ class _ControlSurface(object):
     def disconnect(self):
         pass
 
+    def build_midi_map(self, midi_map_handle):
+        self.base_map_calls = getattr(self, "base_map_calls", 0) + 1
+
+    def receive_midi(self, midi_bytes):
+        self.base_midi = getattr(self, "base_midi", []) + [midi_bytes]
+
+    def show_message(self, text):
+        self.shown = getattr(self, "shown", []) + [text]
+
+    def request_rebuild_midi_map(self):
+        self.rebuilds = getattr(self, "rebuilds", 0) + 1
+
 
 def _install_stub():
     if "_Framework" in sys.modules:

@@ -1,6 +1,6 @@
 import { ExitCode, fail, type CommandResult } from "./types.js";
 import { checkNumber, effectiveOptions, numberRule, type CommandNode, type Invocation, usage, valueNames } from "./commandTree.js";
-import { NUMBERISH, tokenize, type Token } from "./tokenize.js";
+import { NUMBERISH, splitPipe, tokenize, type Token } from "./tokenize.js";
 
 // Turns a typed line into a matched leaf plus a (not yet resolved) invocation.
 // Modules never parse: this is the only place raw input is interpreted.
@@ -28,6 +28,11 @@ export function findChild<P>(nodes: readonly CommandNode<P, any>[], word: string
   return nodes.find((n) => n.name === word || n.aliases?.includes(word));
 }
 
+/** The child of a group that takes the words which are no subcommand (`CommandNode.fallback`), if there is one. */
+export function fallbackOf<P>(node: CommandNode<P, any>): CommandNode<P, any> | undefined {
+  return node.children?.find((c) => c.fallback === true && !(c.children?.length));
+}
+
 /**
  * An option starts with an unquoted dash; quotes later in the token (`--to="a b"`) are fine. A
  * number (`-6`, `-inf`) is a value, not an option, unless it is exactly a declared short option of
@@ -39,7 +44,10 @@ export function startsOption(input: string, token: Token, shorts: readonly strin
   return true;
 }
 
-export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]): ParseOutcome<P> {
+export function parse<P = unknown>(fullInput: string, roots: CommandNode<P, any>[]): ParseOutcome<P> {
+  // Everything after a top-level `|` is one raw argument (plan 0018); the words before it are parsed as usual.
+  const pipe = splitPipe(fullInput);
+  const input = pipe ? pipe.head : fullInput;
   const tokenized = tokenize(input);
   if (!tokenized.ok) return error(ExitCode.USAGE, tokenized.error);
   const tokens = tokenized.tokens;
@@ -64,12 +72,21 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
 
   if (!node) return error(ExitCode.NOT_FOUND, `unknown command: "${tokens[0]!.value}"`);
 
-  const isGroup = (node.children?.length ?? 0) > 0;
+  let isGroup = (node.children?.length ?? 0) > 0;
   const rest = tokens.slice(i);
   const endOfOptions = rest.findIndex((t) => startsOption(input, t) && t.value === "--");
   const optionTokens = endOfOptions < 0 ? rest : rest.slice(0, endOfOptions);
   const wantsHelp = optionTokens.some((t) => startsOption(input, t) && (t.value === "--help" || t.value === "-h"));
   if (wantsHelp) return { kind: "help", node, path };
+
+  // A group with a fallback child (`map CC37 | …` beside `map learn | …`): words that are no subcommand belong to the fallback.
+  if (isGroup && (rest.length > 0 || pipe)) {
+    const fallback = fallbackOf(node);
+    if (fallback) {
+      node = fallback;
+      isGroup = false;
+    }
+  }
 
   if (isGroup) {
     if (rest.length === 0) return { kind: "help", node, path };
@@ -78,6 +95,10 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
       `unknown subcommand "${rest[0]!.value}" for "${path.join(" ")}"\n` +
         `valid: ${node.children!.map((c) => c.name).join(", ")}\nusage: ${usage(node, path)}`,
     );
+  }
+
+  if (pipe && !(node.args ?? []).some((a) => a.raw)) {
+    return error(ExitCode.USAGE, `"|" is only for commands that take a command line (quote it to use it as text)\nusage: ${usage(node, path)}`);
   }
 
   // 2. Options and positionals of the leaf.
@@ -168,7 +189,11 @@ export function parse<P = unknown>(input: string, roots: CommandNode<P, any>[]):
   const quoted: boolean[][] = [];
   let p = 0;
   for (const def of argDefs) {
-    if (def.variadic) {
+    if (def.raw) {
+      // The text after `|`: no positional word goes here.
+      args.push(pipe?.raw ? [pipe.raw] : []);
+      quoted.push(pipe?.raw ? [false] : []);
+    } else if (def.variadic) {
       args.push(positionals.slice(p));
       quoted.push(positionalQuoted.slice(p));
       p = positionals.length;

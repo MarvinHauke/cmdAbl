@@ -664,6 +664,47 @@ addition if the chain's switch turns out not to match the visible button.
   running, too old, token missing, bad reply) is null, nothing throws.
 - Live-tested 2026-10-22: the id survives save, reload, Save As and Collect All and Save (Save As keeps the same id in the copy).
 
+**MIDI in and the event push** (script 0.1.10, status bar 0.1.11; the plan is `0018`, the spike decided the channel)
+- `midi.py` forwards only the controls `midi_listen` names (default none) on the script's input port
+  (`Live.MidiMap.forward_midi_cc` / `_note` / `_pitchbend` in `build_midi_map`) and keeps a ring buffer of
+  the last 50 messages (`seq`, type, channel 1-16, number, value, receive time in ms), always on. A note-on
+  with velocity 0 is a note-off. Sysex, clock and the like stay with the framework (the script does not call
+  `super().receive_midi` for parsed messages: it registers no framework controls).
+- `midi_listen` `{controls: "all"|"none"|[{type: cc|note|pb, channel?: 1-16, number?: 0-127}], monitor?: bool, seconds?: 1-120}`
+  → `{count, monitor}`; a writing op (it changes what Live does with the port). It asks Live to rebuild the MIDI
+  map and registers the caller's address as the target of pushed events. `monitor` forwards **everything**
+  for `seconds` (default 30) so the ring sees every message (learn, `midi monitor`) while only the listed
+  controls are pushed. Trade-off: Live gives forwarded messages to the script only, so while monitoring,
+  track input and Cmd+M on that port pause; the window ends by itself (`update_display` rebuilds the map).
+  While the window is open the script writes each message to Live's status bar with `show_message`
+  (`cmdAbl · CC48 ch1 = 127`, `cmdAbl · N36 ch10 on 100`; at most ~20 a second, the latest value wins; trailing
+  values go out on the next `update_display`) and `cmdAbl · monitor off` once when the window ends;
+  `status: false` switches it off.
+- **Blocked controls** (script 0.1.12): `Live.MidiMap.forward_midi_*` should answer with a bool; `False` means Live keeps the
+  control (the user mapped it with Cmd+M, or another script has it). `build_map` collects the refused *listened* controls
+  (`"CC51/ch1"`, `"N60/ch2"`, `"PB/ch1"`, the mapping syntax; at most 64; while a monitor window is open every refused control counts, listened ones first, so the monitor can show what Live keeps for itself); a call that raises counts as refused; if no call
+  answers with a bool the set is `null` (unknown). The `midi_listen` reply carries `blocked` (the result of the previous
+  build: Live rebuilds the map later), and every build whose set differs from the last one pushed sends
+  `{"v":1,"event":"midi_blocked","blocked":[…]|null}` and logs `blocked by Live: …`.
+  Extension: `onBlocked(cb)`, `midiBlocked()` and `midiListen(...).value.blocked`.
+  `midi_last` `{since?}` → `{last, messages: [[seq, type, channel, number, value, t]…]}`.
+- `events.py` pushes a wanted message as one UDP datagram from inside `receive_midi` to the registered address
+  (spike: median 0.2-0.5 ms, max 2 ms; an HTTP POST and a send held to `update_display` were dropped):
+  `{"v":1,"event":"midi","seq","type":"cc"|"note_on"|"note_off"|"pb","channel","number","value","t"}`.
+  No `id`: the client tells events from replies by that.
+  While a monitor window is open (script 0.1.13) **every** message is pushed, with `"monitor":true`, so a live
+  monitor needs no `midi_last` polling (the push is under 2 ms; polling waited for the ~10 Hz `update_display`).
+  Listened controls are pushed once, also marked; the receiver must not run bindings for marked events.
+  Outside a window only listened controls are pushed, unmarked.
+- Every reply carries `boot`, a random id of this run of the script. A client that sees it change knows the
+  script restarted (and forgot `midi_listen` and the push address).
+- Extension: the transport accepts datagrams (replies and events) only from 127.0.0.1:27185 (`isFromScript`).
+  `midiLink.ts` keeps the `onMidiEvent` listeners and the last listened controls outside any bridge client;
+  `attachMidi(bridge)` (called by `getBridge()` for every client) feeds the listeners and, on `onScriptStart`
+  (first reply or a changed `boot`), sends the last `midi_listen` again. API in `bridgeOps.ts`:
+  `onMidiEvent(cb)`, `midiListen(bridge, controls, {monitor?, seconds?})`, `midiLast(bridge, since)`, all failing soft.
+  Development builds add `POST /midi-listen?controls=…[&monitor=1]` and a debug line with the latency per event (`midiEvents.ts`).
+
 **Access token** (mandatory before the first operation that changes something — built with the
 first one, `chain_set`)
 - *Threat model.* Any local process can send UDP to 127.0.0.1:27185. The same user can already

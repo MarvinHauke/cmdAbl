@@ -37,8 +37,22 @@ site theme (`docs/stylesheets/`), and the UI guide when one is written.
   be remapped; the default keys stay as documented in the README.
 - Track and device names are user data: insert with `textContent`, never `innerHTML`.
 - Pages are self-contained (inlined into a `data:` URL at build time): no external requests.
-- You cannot see the dialog inside Live. Check a page by opening it in a browser with sample data
-  filled into its placeholder, and write a Live test list for the rest (size, focus on open, keys).
+- Check a page in a browser with sample data first. When the architect says a test Set is open and
+  Live is free, also check it in Live: open it with `cmdabl_show`, look at it with `cmdabl_capture`.
+  Write a Live test list for what you can't check (feel, mouse).
+- **UX checklist** (user, 2026-11-04). Every page change passes it before you commit:
+  1. Click targets are at least 24 px, and icons at least the text size.
+  2. Every input looks like an input (solid border, placeholder) and shows focus (an accent ring).
+  3. Nothing jumps while typing: reserved areas keep their size, and lists update in place.
+  4. Every empty or reserved area says why it's there.
+  5. One symbol, one meaning: `#` is a tag, `×` removes, `+` adds. Never two symbols for one thing.
+  6. A status note sits next to the thing it describes, not on its own line.
+  7. Text is at least 11 px, readable in light and dark.
+  8. A destructive action is confirmed in the same page, not in a second window.
+  9. After an action, its result is in view and focused (scroll there, focus the next input).
+
+  Keep the list short. When a review finds a new kind of problem, propose an item to the architect
+  instead of adding it yourself.
 - Never push. Don't edit `src/` — send the owner a message.
 
 ## Workflow per task

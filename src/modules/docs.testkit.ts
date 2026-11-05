@@ -17,6 +17,8 @@ export function declaredBy(activate: (api: ModuleApi) => void): Command[] {
     registerProvider: () => {},
     onPick: () => {},
     onCommandRun: () => {},
+    onSetChange: () => {},
+    midi: { blocked: () => null, onBlocked: () => () => {} },
   } as unknown as ModuleApi;
   activate(api);
   return registry.roots();
@@ -47,7 +49,8 @@ export function assertDocumented(roots: Command[], expected: string[]): void {
         "run",
         `${example.line}: ${outcome.kind === "error" ? outcome.result.message : outcome.kind}`,
       );
-      if (outcome.kind === "run") assert.deepEqual(outcome.invocation.path, path, example.line);
+      // A fallback subcommand (`map CC37 | …`) runs with its group's path.
+      if (outcome.kind === "run") assert.deepEqual(outcome.invocation.path, node.fallback ? path.slice(0, -1) : path, example.line);
     }
   }
 }

@@ -1,6 +1,7 @@
 import { effectiveOptions, valueLabel, valueNames, type ArgDef, type CommandNode, type OptionDef } from "./commandTree.js";
-import { findChild, startsOption } from "./parse.js";
-import { quoteIfNeeded, tokenize, type Token } from "./tokenize.js";
+import { fallbackOf, findChild, startsOption } from "./parse.js";
+import { chainSegments, pipeAt, quoteIfNeeded, tokenize, type Token } from "./tokenize.js";
+import { matchesNode } from "./match.js"; // the resolver's own-name rule (already in the palette bundle with the matcher)
 
 // Argument completion (plan 0006, "0.1.4: argument completion"): what the palette offers at the
 // cursor, as one pure function over a snapshot. `locate` finds the position (a command word, an
@@ -10,6 +11,9 @@ import { quoteIfNeeded, tokenize, type Token } from "./tokenize.js";
 // `CmdComplete` global): no host or Node APIs, no URL, no TextEncoder, no structuredClone.
 // It never validates and never throws: the parser decides what is wrong when Enter runs the
 // line, completion only helps typing. `parse()` is not used because it stops at the first problem.
+
+/** The page splits the line into its `;` parts with this (`CmdComplete.chainSegments`), the same rule the host uses. */
+export { chainSegments };
 
 /** Most rows offered at one position. */
 export const MAX_ROWS = 100;
@@ -49,6 +53,8 @@ export interface PathRow {
 export interface TagRow {
   name: string;
   count: number;
+  /** The kinds of the objects that carry the tag (tracks, in practice); absent in older data: any kind is assumed. */
+  kinds?: Array<"track" | "device" | "chain">;
 }
 
 /** What the palette page receives at open (plain JSON) and `complete` works on. */
@@ -167,14 +173,17 @@ export function locate(input: string, tokens: readonly Token[], cursor: number, 
   const isGroup = (node?.children?.length ?? 0) > 0;
   const prefix = hit ? typed(input, token.start, at) : "";
 
-  if (k === before.length && (node === undefined || isGroup)) {
+  // A group with a fallback child takes the words that are no subcommand (`map CC37 | …`): they are its positions.
+  const fallback = node && isGroup ? fallbackOf(node) : undefined;
+  if (k === before.length && (node === undefined || isGroup) && !(fallback && hit && startsOption(input, hit))) {
     // Every word before the cursor is a command word and the node below is a group (or the top level).
     if (hit && startsOption(input, hit)) {
       return node ? { where: { at: "option", node, path, given: new Set() }, token: range, prefix, from: token.start } : none(prefix);
     }
     return { where: { at: "command", nodes, path, sub: node !== undefined }, token: range, prefix, from: token.start };
   }
-  if (!node || isGroup) return none(prefix); // an unknown word where a command or subcommand belongs
+  if (node && isGroup && fallback) node = fallback; // the words from `k` on belong to the fallback leaf
+  else if (!node || isGroup) return none(prefix); // an unknown word where a command or subcommand belongs
 
   // 2. Options and positionals of the leaf, as parse() reads them but without checking anything.
   const defs = effectiveOptions(node);
@@ -240,7 +249,7 @@ export function locate(input: string, tokens: readonly Token[], cursor: number, 
   }
 
   // 3. A positional argument.
-  const defsOfArgs = node.args ?? [];
+  const defsOfArgs = (node.args ?? []).filter((a) => !a.raw); // the text after `|` is no positional word
   let p = 0;
   let target: ArgDef | undefined;
   let first = 0; // index (in `positionals`) of the first word of the target argument
@@ -372,6 +381,36 @@ function pathRows(data: CompletionData, arg: ArgDef, text: string): Array<Omit<C
   }));
 }
 
+/**
+ * A bare word that the resolver reads as a tag (plan 0008): exactly a tag name, and it names no object. `mute drums` then
+ * runs as `mute #drums`; this row shows that, so the expansion is never silent. Same rule as `tagTargetOf` (resolveArgs.ts):
+ * a word that also names an object stays an ordinary target. Not for `rest` arguments (a tag does not fan out there).
+ */
+function silentTagRow(data: CompletionData, arg: ArgDef, text: string): Array<Omit<CompletionItem, "zone">> {
+  const word = text.trim();
+  if (arg.rest || arg.kind !== "path" || !/^[A-Za-z0-9_-]+$/.test(word)) return [];
+  const tag = data.tags.find((t) => t.name.toLowerCase() === word.toLowerCase());
+  if (!tag) return [];
+  // The resolver's rule (tagTargetOf, resolveArgs.ts): the tag must sit on an object of the argument's kinds, and the word
+  // must name no object of those kinds: neither structurally (a top-level object of that name) nor by the own-name rule.
+  if (arg.kinds && tag.kinds && !tag.kinds.some((k) => arg.kinds!.includes(k))) return [];
+  const lower = word.toLowerCase();
+  const named = data.paths.some(
+    (p) =>
+      (!arg.kinds || arg.kinds.includes(p.kind)) &&
+      (p.path.toLowerCase() === `/${lower}` || matchesNode({ path: p.path, name: p.name }, word)),
+  );
+  if (named) return [];
+  return [
+    {
+      label: `#${tag.name}`,
+      insert: `#${tag.name}`,
+      description: `${word} runs as #${tag.name} (${tag.count} track${tag.count === 1 ? "" : "s"})`,
+      kind: "tag",
+    },
+  ];
+}
+
 function tagRows(data: CompletionData, text: string): Array<Omit<CompletionItem, "zone">> {
   const negate = text.startsWith("!");
   const name = text.replace(/^!?#/, "");
@@ -416,6 +455,20 @@ export function complete(line: string, cursor: number, data: CompletionData): Co
 }
 
 function completeInner(line: string, cursor: number, data: CompletionData): CompletionResult {
+  // A `;` chain (plan 0017): complete the part the caret is in, as if it were the whole line.
+  const segments = chainSegments(line);
+  if (segments.length > 1) {
+    const at = Math.max(0, Math.min(cursor, line.length));
+    const seg = segments.find((s) => s.start <= at && at <= s.end) ?? segments[segments.length - 1]!;
+    const inner = completeInner(line.slice(seg.start, seg.end), at - seg.start, data);
+    return { ...inner, replace: { from: inner.replace.from + seg.start, to: inner.replace.to + seg.start } };
+  }
+  // After a top-level `|` the rest is a command line of its own (a binding): complete it from the command word.
+  const bar = pipeAt(line);
+  if (bar >= 0 && cursor > bar) {
+    const inner = completeInner(line.slice(bar + 1), cursor - (bar + 1), data);
+    return { ...inner, replace: { from: inner.replace.from + bar + 1, to: inner.replace.to + bar + 1 } };
+  }
   const tokens = tokenize(line).tokens;
   const here = locate(line, tokens, cursor, data.tree);
   const w = here.where;
@@ -435,8 +488,10 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
       return reply(commandRows(w.nodes, here.prefix), w.sub ? "<command>" : undefined);
     case "option":
       return reply(optionRows(w.node, w.given, here.prefix));
-    case "options":
-      return reply(w.ended || /\s/.test(here.prefix) ? [] : optionRows(w.node, w.given, here.prefix));
+    case "options": {
+      const raw = w.node.args?.find((a) => a.raw);
+      return reply(w.ended || /\s/.test(here.prefix) ? [] : optionRows(w.node, w.given, here.prefix), raw ? `| <${raw.name}>` : undefined);
+    }
     case "optionValue": {
       const opt = w.option;
       const label = opt.values !== undefined ? valueNames(opt)[w.index] ?? "value" : valueLabel(opt);
@@ -450,7 +505,8 @@ function completeInner(line: string, cursor: number, data: CompletionData): Comp
       const tag = !arg.rest && arg.kind === "path" && /^!?#/.test(here.prefix) && !/["']/.test(line[here.from] ?? "");
       if (tag) return reply([...options, ...tagRows(data, here.prefix)], hint);
       if (arg.kind === "path") {
-        const rows = pathRows(data, arg, here.prefix);
+        // First: what a bare tag word will silently turn into.
+        const rows = [...silentTagRow(data, arg, here.prefix), ...pathRows(data, arg, here.prefix)];
         if (arg.complete) rows.push(...candidateRows(data.completions[arg.complete], here.prefix));
         return reply([...options, ...rows], hint);
       }

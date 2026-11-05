@@ -26,8 +26,12 @@ export function validFileName(name: unknown): name is string {
   );
 }
 
+/** What `readResult` answers: the text, no such file, or a read that failed (a refused name, a folder with that name, no permission, …). */
+export type ReadResult = { status: "ok"; text: string } | { status: "missing" } | { status: "failed"; reason: string };
+
 export interface ModuleFiles {
   read(name: string): Promise<string | null>;
+  readResult(name: string): Promise<ReadResult>;
   write(name: string, text: string): Promise<boolean>;
 }
 
@@ -53,20 +57,29 @@ export function createModuleFiles(deps: FilesDeps): ModuleFiles {
     return path.join(deps.base, "modules", module);
   }
 
+  /** Read `name`: ok, missing (ENOENT), or failed with a short reason (never the file's content). */
+  async function readResult(name: string): Promise<ReadResult> {
+    if (!validFileName(name)) {
+      deps.warn(`files: refused read of "${String(name).slice(0, 40)}" (not a plain file name)`);
+      return { status: "failed", reason: "not a plain file name" };
+    }
+    const dir = folder();
+    if (dir === null) return { status: "failed", reason: "the module has no plain name" };
+    try {
+      return { status: "ok", text: await fs.readFile(path.join(dir, name), "utf8") };
+    } catch (e: unknown) {
+      const code = (e as NodeJS.ErrnoException)?.code;
+      if (code === "ENOENT") return { status: "missing" };
+      deps.warn(`files: cannot read ${name} (${code ?? "error"})`);
+      return { status: "failed", reason: code ?? "error" };
+    }
+  }
+
   return {
+    readResult,
     async read(name) {
-      if (!validFileName(name)) {
-        deps.warn(`files: refused read of "${String(name).slice(0, 40)}" (not a plain file name)`);
-        return null;
-      }
-      const dir = folder();
-      if (dir === null) return null;
-      try {
-        return await fs.readFile(path.join(dir, name), "utf8");
-      } catch (e: unknown) {
-        if ((e as NodeJS.ErrnoException)?.code !== "ENOENT") deps.warn(`files: cannot read ${name} (${(e as NodeJS.ErrnoException)?.code ?? "error"})`);
-        return null;
-      }
+      const result = await readResult(name); // one path for the name check, the folder and the warnings
+      return result.status === "ok" ? result.text : null;
     },
 
     async write(name, text) {

@@ -53,3 +53,37 @@ test("fake api: tags and pickTags", async () => {
   assert.deepEqual(fake.tagLists, [{ title: "tag /Bass", rows: [{ name: "fx", on: true }] }]);
   assert.equal(await createFakeApi().api.pickTags("t", []), null);
 });
+
+test("fake api.files.readResult: ok, missing, failed (unreadable or a bad name)", async () => {
+  const fake = createFakeApi({ files: { "a.json": "{}" } });
+  assert.deepEqual(await fake.api.files.readResult("a.json"), { status: "ok", text: "{}" });
+  assert.deepEqual(await fake.api.files.readResult("b.json"), { status: "missing" });
+  fake.unreadableFiles.add("a.json");
+  assert.deepEqual(await fake.api.files.readResult("a.json"), { status: "failed", reason: "EACCES" });
+  assert.equal(await fake.api.files.read("a.json"), null); // read answers null for a failing file too
+  assert.equal((await fake.api.files.readResult("../x")).status, "failed");
+});
+
+test("fake api.midi.blocked / onBlocked: a rebuild is simulated by changing midiBlocked and calling the listeners", () => {
+  const fake = createFakeApi();
+  assert.deepEqual(fake.api.midi.blocked(), []);
+  const heard: Array<string[] | null> = [];
+  const off = fake.api.midi.onBlocked((b) => heard.push(b));
+  fake.midiBlocked = ["CC51/ch1"];
+  for (const l of fake.blockedListeners) l(fake.api.midi.blocked());
+  assert.deepEqual(heard, [["CC51/ch1"]]);
+  fake.midiBlocked = null;
+  assert.equal(fake.api.midi.blocked(), null);
+  off();
+  assert.equal(fake.blockedListeners.length, 0);
+});
+
+test("fake api.midi.onEvent: listeners are kept in fake.eventListeners and can be removed", () => {
+  const fake = createFakeApi();
+  const heard: number[] = [];
+  const off = fake.api.midi.onEvent((e) => heard.push(e.number));
+  for (const l of fake.eventListeners) l({ seq: 1, type: "cc", channel: 1, number: 7, value: 1, time: 0, monitor: true });
+  assert.deepEqual(heard, [7]);
+  off();
+  assert.equal(fake.eventListeners.length, 0);
+});

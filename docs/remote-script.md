@@ -48,9 +48,9 @@ screenshots.
 After you update cmdAbl, run `cmdabl setup` again, then **restart Live**. Live keeps the script it loaded when it
 started, so a new copy in the User Library does nothing until Live restarts.
 
-The script of this release is version 0.1.8. `cmdabl setup` compares that version with the one that is running and
-says whether a restart is needed. For example: "Remote Script 0.1.8 is shipped, but Live still runs 0.1.5. Restart
-Live to load Remote Script 0.1.8."
+The script of this release is version 0.1.14. `cmdabl setup` compares that version with the one that is running and
+says whether a restart is needed. For example: "Remote Script 0.1.14 is shipped, but Live still runs 0.1.5. Restart
+Live to load Remote Script 0.1.14."
 
 ## Check it
 
@@ -58,12 +58,12 @@ Run `cmdabl bridge` in the palette. It sends one request to the Remote Script an
 version, the response time and the operations it supports. A healthy reply means the script is running and
 answering.
 
-![The cmdabl bridge result: Remote Script 0.1.8 is running, with its protocol version, response time and operations](assets/images/bridge.png)
+![The cmdabl bridge result: Remote Script 0.1.14 is running, with its protocol version, response time and operations](assets/images/bridge.png)
 
 *`cmdabl bridge` on a current install.*
 
 If the running script is not the version this cmdAbl ships, the reply names both, for example
-`Remote Script 0.1.5 (this extension ships 0.1.8) is running`. Update the script as above.
+`Remote Script 0.1.5 (this extension ships 0.1.14) is running`. Update the script as above.
 
 ## Messages
 

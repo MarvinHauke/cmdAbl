@@ -27,6 +27,14 @@ export interface ArgDef {
    * Only allowed on the last argument; not combinable with `variadic`.
    */
   rest?: boolean;
+  /**
+   * Takes everything after the first top-level `|` as ONE raw text value (plan 0018): `map CC37 toggle |
+   * mute #drums --set {}`. The text is not split at `;` and not tokenized; it is kept as typed (trimmed).
+   * It is no positional argument: it does not take words before the `|`, and the arguments before it
+   * keep their order. Only on the last argument, kind `text`; not with `rest`, `variadic` or `choices`.
+   * Without a `|` the value is empty (a required raw argument then answers "missing argument").
+   */
+  raw?: boolean;
   /** `path` arguments: which kinds of objects may match. Default: all. */
   kinds?: NodeKind[];
   /**
@@ -168,6 +176,12 @@ export interface CommandNode<P = unknown, V = string> {
   description?: string;
   /** Worked examples (runnable nodes). Every runnable command should have one. */
   examples?: CommandExample[];
+  /**
+   * A child of a group that takes the words which are no subcommand of that group: `map CC37 | …` runs the
+   * fallback child `add`, while `map learn | …` runs the subcommand `learn`. The words stay as typed (the fallback
+   * child's path is the group's). At most one per group, a runnable leaf; it can also be typed by name.
+   */
+  fallback?: boolean;
   /** Group node: has children and is not runnable on its own. */
   children?: CommandNode<P, V>[];
   options?: OptionDef[];
@@ -242,6 +256,10 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
     }
 
     const isGroup = (node.children?.length ?? 0) > 0;
+    const fallbacks = (node.children ?? []).filter((c) => c.fallback === true);
+    if (fallbacks.length > 1) problems.push(`${at}: only one subcommand may be the fallback`);
+    for (const fb of fallbacks) if (fb.children?.length) problems.push(`${at} ${fb.name}: the fallback must be a runnable command, not a group`);
+    if (node.fallback === true && parents.length === 0) problems.push(`${at}: a fallback needs a group above it`);
     if (isGroup && node.run) problems.push(`${at}: a node has either children or run, not both`);
     if (!isGroup && !node.run) problems.push(`${at}: a leaf needs run (or children to be a group)`);
     if (isGroup && node.args?.length) problems.push(`${at}: a group cannot declare arguments`);
@@ -315,7 +333,12 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
       if (argNames.has(arg.name)) problems.push(`${at}: duplicate argument "${arg.name}"`);
       argNames.add(arg.name);
       const required = arg.required !== false;
-      if (required && sawOptional) problems.push(`${at}: required argument "${arg.name}" follows an optional one`);
+      if (arg.raw) {
+        if (index !== args.length - 1) problems.push(`${at}: only the last argument may take the text after "|" ("${arg.name}")`);
+        if (arg.kind !== "text") problems.push(`${at}: the argument "${arg.name}" after "|" must be of kind text`);
+        if (arg.rest || arg.variadic || arg.choices) problems.push(`${at}: the argument "${arg.name}" after "|" cannot be rest, variadic or have choices`);
+      }
+      if (required && sawOptional && !arg.raw) problems.push(`${at}: required argument "${arg.name}" follows an optional one`);
       if (!required) sawOptional = true;
       if (arg.variadic && index !== args.length - 1) {
         problems.push(`${at}: only the last argument may be variadic ("${arg.name}")`);
@@ -469,6 +492,10 @@ export function usage(node: CommandNode<any, any>, path: string[]): string {
     );
   }
   for (const arg of node.args ?? []) {
+    if (arg.raw) {
+      parts.push(arg.required === false ? `[| <${arg.name}>]` : `| <${arg.name}>`);
+      continue;
+    }
     const shown = arg.kind === "enum" && arg.choices?.length ? arg.choices.join("|") : arg.name;
     const label = arg.variadic ? `<${shown}>…` : `<${shown}>`;
     parts.push(arg.required === false ? `[${label}]` : label);
@@ -570,6 +597,7 @@ export function completionTree(roots: readonly CommandNode<any, any>[]): Seriali
     name: node.name,
     summary: node.summary,
     ...(node.aliases?.length ? { aliases: node.aliases } : {}),
+    ...(node.fallback ? { fallback: true } : {}),
     ...(node.options?.length ? { options: node.options } : {}),
     ...(node.args?.length ? { args: node.args } : {}),
     runnable: Boolean(node.run),

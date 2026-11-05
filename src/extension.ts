@@ -31,6 +31,12 @@ import { tokenFilePath } from "./ableton/bridgeToken.js";
 import * as path from "node:path";
 import { createUiGate, runHeadless } from "./core/headless.js";
 import { createDevRoutes, runTokenFilePath, type DevRoutes, writeRunToken } from "./devRoutes.js";
+import { midiBlocked, midiLast, midiListen, onBlocked, onMidiEvent } from "./ableton/bridgeOps.js";
+import { createMidiEngine } from "./core/midiEngine.js";
+import { createSetWatch } from "./core/setWatch.js";
+import { createLivePages } from "./core/livePage.js";
+import { createMidiPort } from "./core/midiPort.js";
+import { createMidiListenRoute, logMidiEvent } from "./ableton/midiEvents.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
 import { readVolume, writeVolume, type VolumeTrack } from "./core/volume.js";
 import { trackFor } from "./ableton/trackLookup.js";
@@ -58,8 +64,12 @@ export function activate(activation: ActivationContext) {
   // The gate passes everything through to the real dialogs, except during a headless run (plan 0016).
   // cmdAbl's own settings (settings.json in the data folder); the palette page returns changes with its result.
   const settingsStore = createSettingsStore({ base: dataFolder, warn: (text) => logger("settings").warn(text) });
+  // Live pages (plan 0018): a module's dialog may read from it through token-guarded routes of the trigger server.
+  // Registered in release builds too; unavailable (data-page fallback) when the port is taken.
+  let trigger: { listening(): boolean } | undefined;
+  const livePages = createLivePages({ port: TRIGGER_PORT, available: () => trigger?.listening() === true });
   const gate = createUiGate(
-    createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.above": settings.above })),
+    createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.above": settings.above }), livePages),
   );
   const ui: Ui = gate.ui;
   const providers: { provider: Provider; priority: number }[] = [];
@@ -133,6 +143,41 @@ export function activate(activation: ActivationContext) {
   });
 
   // ── default modules ──────────────────────────────────────────────────────
+  // MIDI mapping (plan 0018): pushed events go to the engine, which runs the bound lines headless (no dialogs,
+  // not in the history). `map.enabled` is read from settings.json, remembered for a second so a fader stream costs no disk.
+  let enabledAt = Number.NEGATIVE_INFINITY;
+  let enabledValue = true;
+  const mapEnabled = async (): Promise<boolean> => {
+    const t = Date.now();
+    if (t - enabledAt < 1000) return enabledValue;
+    enabledValue = (await settingsStore.get())["map.enabled"];
+    enabledAt = t;
+    return enabledValue;
+  };
+  const midiRuntime = createMidiPort({
+    engine: createMidiEngine({ run: (line) => runHeadless(line, runBase, gate), enabled: mapEnabled }),
+    listen: (controls, options) => midiListen(getBridge(), controls, options),
+    last: (since) => midiLast(getBridge(), since),
+    blocked: midiBlocked,
+    onBlocked,
+    statusBar: async () => (await settingsStore.get())["midi.statusBar"],
+    enabled: mapEnabled,
+    setEnabled: async (on) => {
+      enabledValue = on; // in effect at once, saved or not
+      enabledAt = Date.now();
+      return settingsStore.set({ "map.enabled": on });
+    },
+  });
+  onMidiEvent((event) => void midiRuntime.intake(event));
+  // The Set's id, polled once a module listens (api.onSetChange): the script may come up after the extension, and a new Set has another id.
+  const setWatch = createSetWatch({
+    read: async () => {
+      const reply = await getBridge().request("set_id", {}, { token: true });
+      if (!reply.ok) return { ok: false };
+      const id = reply.value.id;
+      return { ok: true, id: typeof id === "string" && id !== "" ? id : null };
+    },
+  });
   const moduleApi: ModuleApi = {
     get bridge() {
       return getBridge();
@@ -154,6 +199,8 @@ export function activate(activation: ActivationContext) {
     },
     // The Set's id lives in the Set, written and read by the Remote Script (operation set_id).
     set: { id: (create) => setId(getBridge(), create === true) },
+    midi: midiRuntime.port,
+    onSetChange: (listener) => setWatch.onChange(listener),
     // Replaced per module below (a module sees its own folder only). Before a module's first command names it,
     // this folder is modules/module/; modules call files from a run, after activation.
     files: createModuleFiles({ base: dataFolder, module: () => "module", warn: (text) => logger("module").warn(text) }),
@@ -169,7 +216,7 @@ export function activate(activation: ActivationContext) {
     },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
-    ui: { board: (request) => runBoard(ui, request) },
+    ui: { board: (request) => runBoard(ui, request), livePage: (name, html, width, height, routes) => ui.livePage(name, html, width, height, routes) },
     pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, ...options, multi: options?.multi ?? true }),
     tags: {
       refresh: () => getTagCache().refreshNow(getBridge()),
@@ -223,6 +270,7 @@ export function activate(activation: ActivationContext) {
   // GET /bridge a diagnostic for measuring round trips.
   // Development builds only (plan 0016): POST /run and GET /log for the agents' test access.
   let devRoutes: DevRoutes | undefined;
+  let midiRoute: ReturnType<typeof createMidiListenRoute> | undefined;
   if (CMDABL_DEV_ROUTES) {
     const file = runTokenFilePath();
     const token = writeRunToken(file);
@@ -236,11 +284,21 @@ export function activate(activation: ActivationContext) {
         show: (line) => void showLine(line),
       });
       logger("host").info(`development routes on: POST /run, GET /log (Bearer token in ${file})`);
+      // MIDI (plan 0018): a debug line per pushed event; /midi-listen changes what the script forwards.
+      const midiLog = logger("midi");
+      onMidiEvent((event) => logMidiEvent(midiLog, event));
+      midiRoute = createMidiListenRoute({
+        token,
+        listen: async (controls, monitor) => {
+          const r = await midiListen(getBridge(), controls, { monitor });
+          return r.ok ? `forwarding ${r.value.count} controls${r.value.monitor ? " (monitor)" : ""}` : `midi_listen failed: ${r.text}`;
+        },
+      });
     } else {
       logger("host").warn(`development routes off: cannot write ${file}`);
     }
   }
-  startTriggerServer(TRIGGER_PORT, () => {
+  trigger = startTriggerServer(TRIGGER_PORT, () => {
     context.commands.executeCommand("cmdabl.open");
   }, () => isOpen || dialogs.describe() !== null, () => {
     const was = dialogs.reset();
@@ -251,7 +309,7 @@ export function activate(activation: ActivationContext) {
     if (was) return `dialog queue reset (was: ${was.name})${note}`;
     if (gateReleased) return "run gate released";
     return isOpen ? "no dialog open; a command is still running" : "no dialog was open";
-  }, async () => (await reportBridge(getBridge())).line, devRoutes);
+  }, async () => (await reportBridge(getBridge())).line, (req, res) => midiRoute?.(req, res) === true || devRoutes?.(req, res) === true, (req, res) => livePages.handle(req, res));
 
   // The Karabiner rule only fires while `cmdabl_open` is 0. If a previous host
   // was stopped with the palette open, the flag would stay at 1 and ":" would

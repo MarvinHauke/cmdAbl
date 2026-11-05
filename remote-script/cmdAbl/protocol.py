@@ -13,7 +13,7 @@ logs them); nothing raises out of `handle_request`.
 import hmac
 import json
 
-VERSION = "0.1.8"  # the script's own version; keep in step with SCRIPT_VERSION in src/ableton/bridgeProtocol.ts
+VERSION = "0.1.14"  # the script's own version; keep in step with SCRIPT_VERSION in src/ableton/bridgeProtocol.ts
 PROTOCOL = 1
 MAX_REPLY_BYTES = 4096
 
@@ -56,7 +56,7 @@ def _token_ok(given, token):
         return False
 
 
-def handle_request(data, ops, writes, token=None):
+def handle_request(data, ops, writes, token=None, boot=None):
     """Turn one datagram into a reply datagram, or None when it must be dropped.
 
     `ops` maps op name -> callable(args: dict) -> dict (may raise OpError).
@@ -65,8 +65,13 @@ def handle_request(data, ops, writes, token=None):
     `args.token` equal to `token` (None = no token exists, every writing op is
     refused with `forbidden`). The check runs before any handler; the token is
     removed from the args the handler sees and never appears in a reply.
+    `boot` (a string) is added to every reply.
     Returns (reply_bytes_or_None, problem_text_or_None).
     """
+    def enc(reply):
+        # `boot` names this run of the script: a client that sees it change knows the script restarted.
+        return _encode(dict(reply, boot=boot) if boot else reply)
+
     try:
         msg = json.loads(data.decode("utf-8"))
     except Exception:
@@ -78,28 +83,28 @@ def handle_request(data, ops, writes, token=None):
         return None, "request without id"
     op = msg.get("op")
     if not isinstance(op, str):
-        return _encode(_error(request_id, "bad_request", "missing op")), None
+        return enc(_error(request_id, "bad_request", "missing op")), None
     if op == "hello":
         reply = {"v": PROTOCOL, "id": request_id, "ok": True, "result": hello_result(list(ops) + ["hello"])}
-        return _encode(reply), None
+        return enc(reply), None
     if msg.get("v") != PROTOCOL:
-        return _encode(_error(request_id, "protocol_mismatch", "script speaks protocol %d" % PROTOCOL)), None
+        return enc(_error(request_id, "protocol_mismatch", "script speaks protocol %d" % PROTOCOL)), None
     handler = ops.get(op)
     if handler is None:
-        return _encode(_error(request_id, "unknown_op", "unknown op %r" % op)), None
+        return enc(_error(request_id, "unknown_op", "unknown op %r" % op)), None
     args = msg.get("args", {})
     if not isinstance(args, dict):
-        return _encode(_error(request_id, "bad_request", "args must be an object")), None
+        return enc(_error(request_id, "bad_request", "args must be an object")), None
     if op in writes:
         if token is None:
-            return _encode(_error(request_id, "forbidden", "writing operations are not available (no access token)")), None
+            return enc(_error(request_id, "forbidden", "writing operations are not available (no access token)")), None
         if not _token_ok(args.get("token"), token):
-            return _encode(_error(request_id, "forbidden", "missing or wrong access token")), None
+            return enc(_error(request_id, "forbidden", "missing or wrong access token")), None
     args = {k: v for k, v in args.items() if k != "token"}
     try:
         result = handler(args)
-        return _encode({"v": PROTOCOL, "id": request_id, "ok": True, "result": result}), None
+        return enc({"v": PROTOCOL, "id": request_id, "ok": True, "result": result}), None
     except OpError as e:
-        return _encode(_error(request_id, e.code, e.text)), None
+        return enc(_error(request_id, e.code, e.text)), None
     except Exception as e:  # nothing may raise into Live
-        return _encode(_error(request_id, "failed", "%s: %s" % (type(e).__name__, e))), None
+        return enc(_error(request_id, "failed", "%s: %s" % (type(e).__name__, e))), None

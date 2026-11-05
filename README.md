@@ -33,10 +33,10 @@ SDK, with a small Remote Script for what the SDK cannot do.
 
 Tag tracks by what they are: `tag /Lead fx synth`. After that, `mute #fx` reaches every track tagged `fx` at once,
 `mute !#drums` every regular track without the tag, and `mute drums` works when no track name matches it. `tag -l`
-opens the tag board, where you add and remove the tags of every track. Tags are saved with the Set, and they need
+opens the tag board, where you add, rename and remove tags. Tags are saved with the Set, and they need
 the [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/).
 
-![Screen recording of the tag board: tag -l opens it; Synth is typed and added to drums; the arrow keys move to the Lead chip under fx and mark it for removal; Enter applies the 2 changes](docs/assets/images/tags.gif)
+![Screen recording of the tag board (tag -l): "analog" is typed into the add field of #drums, → steps into the suggestions and Enter adds three matching tracks while the text stays; "vermona drm" and Enter add one more; Apply shows 4 changes](docs/assets/images/tags.gif)
 
 ### A pick list you control
 
@@ -66,8 +66,12 @@ These commands ship with cmdAbl. Each feature is a module that declares its comm
 - `arm`: toggle record arm on tracks.
 - `vol`: change the fader level of tracks in dB, by a step or to a level.
 - `tag`: tag tracks; `tag -l` opens the tag board, `tag -e` switches one tag on many tracks, `tag -r` renames a tag.
+- `map`, `midi`: bind a MIDI control to a command line, for example `map CC37 | mute #drums --set 0`; watch what your
+  controller sends. Needs the Remote Script.
 - `help`, `man`, `lom`: list the commands; show a command's full page in Live, or open the Live manual or the cmdAbl
   documentation; show the Live Object Model path of a track, device or chain.
+- `;`: run several commands in one line, such as `mute #drums; vol -6 #bass`. The parts run in order, and each is one
+  undo step.
 - `note`: open the Markdown note of the Live Set.
 - `history`: manage the list of recent commands.
 - `pakabl`: install and manage Ableton Live extensions.
@@ -83,7 +87,7 @@ More: [Commands](https://marvinhauke.github.io/cmdAbl/reference/commands/) for t
 - **Ableton Live with Extensions support.** The Extensions SDK is in beta; cmdAbl is built against version 1.0.0-beta.1.
 - **[Karabiner-Elements](https://karabiner-elements.pqrs.org)** (free), for the `:` key. It is optional: the palette
   also opens from Live's context menu.
-- **The cmdAbl Remote Script** (0.1.8, shipped with cmdAbl). `cmdabl setup` installs it; then choose it as Control
+- **The cmdAbl Remote Script** (0.1.14, shipped with cmdAbl). `cmdabl setup` installs it; then choose it as Control
   Surface in Live. Selecting objects, mute and solo on rack chains and Drum Rack pads, tags and notes need it.
 
 More: [Getting started → What you need](https://marvinhauke.github.io/cmdAbl/getting-started/#what-you-need)

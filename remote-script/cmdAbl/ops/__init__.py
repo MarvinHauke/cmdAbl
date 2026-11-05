@@ -9,6 +9,7 @@ runs) and requires `expectName`.
 """
 
 from .chains import chain_set, chains
+from .midi import midi_last, midi_listen
 from .params import param_display
 from .select import select
 from .setid import set_id
@@ -18,6 +19,8 @@ from .tracks import track_facts
 OPS = {
     "chain_set": chain_set,
     "chains": chains,
+    "midi_last": midi_last,
+    "midi_listen": midi_listen,
     "param_display": param_display,
     "select": select,
     "track_facts": track_facts,
@@ -27,4 +30,4 @@ OPS = {
 }
 
 # Ops that change something: refused without the access token (protocol.handle_request).
-WRITES = frozenset(["chain_set", "set_id", "tags_set"])
+WRITES = frozenset(["chain_set", "midi_listen", "set_id", "tags_set"])

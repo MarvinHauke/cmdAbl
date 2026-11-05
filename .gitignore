@@ -20,6 +20,9 @@ logs/
 __pycache__/
 *.pyc
 
+# Docs exclusions
+docs/userfindings.md
+
 # MkDocs build output
 site/
 
@@ -27,8 +30,6 @@ site/
 # repo MarvinHauke/cmdabl-vendor; put the .tgz files here locally (see README, Development).
 vendor/
 
-# Private plans — never pushed
-docs/feature-plans/private/
 
 # Screen recordings (sources for GIFs; large, never committed)
 *.mov

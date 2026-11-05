@@ -1,7 +1,7 @@
 import type { ModuleApi } from "../types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { ExitCode, fail, ok, type CommandResult, type TargetOutcome } from "../../core/types.js";
-import { buildBoard, groupChanges } from "./board.js";
+import { boardTagEdits, buildBoard, finalTags, groupChanges } from "./board.js";
 import { changed, diffTags, normalizeTagNames, planTags, reverseLines, tagIndex, type TagChange, type TagMode } from "./plan.js";
 
 const SAVE_HINT = "Live was not told about the change: save the Set (Cmd+S) so the tags are kept.";
@@ -77,20 +77,39 @@ export function activate(api: ModuleApi): void {
     const nodes = api.liveSet.nodes().filter((n) => n.kind === "track" && n.scope !== "master");
     const byId = new Map(nodes.map((n) => [n.handleId, n]));
     const shown = await api.ui.board(buildBoard(nodes.map((n) => ({ id: n.handleId, label: n.path, tags: api.tags.of(n) }))));
-    if (!shown.answer || shown.answer.changes.length === 0) return;
+    const answer = shown.answer;
+    if (!answer || (answer.changes.length === 0 && !answer.renamed?.length && !answer.removed?.length)) return;
 
-    const { perTrack, bad } = groupChanges(shown.answer);
+    const { perTrack, bad } = groupChanges(answer);
     if (bad !== undefined) return fail(ExitCode.USAGE, `tag: "${bad}" is not a tag name — use lowercase letters, digits, - and _`);
-    const targets = [...perTrack.keys()].map((id) => byId.get(id)).filter((n): n is ObjectNode => n !== undefined);
-    const result = await applyPlans(
-      targets,
-      (node, before) => {
-        const change = perTrack.get(node.handleId)!;
-        const added = planTags(before, change.add, "add").after;
-        return diffTags(before, planTags(added, change.remove, "remove").after);
-      },
-      true,
-    );
+    const edits = boardTagEdits(answer);
+    if (edits.bad !== undefined) return fail(ExitCode.USAGE, `tag: "${edits.bad}" is not a tag name — use lowercase letters, digits, - and _`);
+    const gone = [...edits.renames.entries()].find(([, to]) => edits.removed.has(to));
+    if (gone) return fail(ExitCode.USAGE, `tag: #${gone[0]} cannot be renamed to #${gone[1]}, which is being removed in the same Apply`);
+
+    // Removing whole tags: the board asks in its own confirm bar and sets `confirmed`. An answer without it (an older or
+    // another page) is asked once here; Cancel applies nothing from this board.
+    if (edits.removed.size > 0 && answer.confirmed !== true) {
+      const carrying = nodes.filter((n) => api.tags.of(n).some((t) => edits.removed.has(t)));
+      const names = [...edits.removed].map((t) => `#${t}`).join(", ");
+      const sure = await api.confirm(`Remove ${names} from ${carrying.length} ${carrying.length === 1 ? "track" : "tracks"}?`, "Remove");
+      if (!sure) return ok("tag: cancelled; nothing from the board was applied");
+    }
+
+    // Per track: renames first, then the removals, then the chip changes.
+    const after = (node: ObjectNode, before: string[]): string[] => finalTags(before, perTrack.get(node.handleId), edits);
+    // Every track the board names (so a no-op reads "no change") and every track a rename or removal changes.
+    const targets = nodes.filter((n) => {
+      if (perTrack.has(n.handleId)) return true;
+      const before = api.tags.of(n);
+      const d = diffTags(before, after(n, before));
+      return d.added.length + d.removed.length > 0;
+    });
+    if (targets.length === 0) return ok("nothing changed");
+    const merging = [...edits.renames.values()].filter((to) => nodes.some((n) => api.tags.of(n).includes(to)));
+    const merges = [...edits.renames.entries()].filter(([, to]) => merging.includes(to)).map(([from, to]) => `merged #${from} into #${to}`);
+    const result0 = await applyPlans(targets, (node, before) => diffTags(before, after(node, before)), true);
+    const result = merges.length > 0 && result0.code === ExitCode.OK ? { ...result0, message: [...merges, result0.message].filter(Boolean).join("\n") } : result0;
     if (result.code !== ExitCode.OK || !shown.cut) return result;
     return { ...result, log: [...(result.log ?? []), "(list cut: the board showed only part of the Set)"] };
   };
@@ -176,7 +195,7 @@ export function activate(api: ModuleApi): void {
       "Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx " +
       "reaches every track tagged fx. With --edit and a tag (tag --edit fx) every regular and return track is listed with a button " +
       "that is lit where it carries the tag: mark tracks with Tab and press Enter to switch the tag on or off on each of them; " +
-      "tag --edit without a tag (or tag --edit #) first asks which tag, and a name that is not in that list creates it. With --rename and two names (tag --rename fx effects) the tag changes its name on every regular and return track that carries it, and writes nothing else; if the new name exists already the two tags merge, a track with both keeps one, and the result says so because renaming back cannot split them again. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Apply writes the changes and shows nothing; Close changes nothing. " +
+      "tag --edit without a tag (or tag --edit #) first asks which tag, and a name that is not in that list creates it. With --rename and two names (tag --rename fx effects) the tag changes its name on every regular and return track that carries it, and writes nothing else; if the new name exists already the two tags merge, a track with both keeps one, and the result says so because renaming back cannot split them again. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Each tag heading has a pencil to rename the tag (a name that exists already merges) and a cross to remove the whole tag; removing whole tags asks once before Apply goes through. Apply writes the changes (renames, then removals, then the chip changes) and shows nothing; Close changes nothing. " +
       "With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target " +
       "that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. " +
       "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +

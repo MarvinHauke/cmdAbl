@@ -29,6 +29,9 @@ You run in two ways. As an in-process subagent, you return your report. As the p
 
 ## What to check
 
+- **UI pages:** check changes to `ui/` against the UX checklist in `.claude/agents/ui.md`, and report a
+  miss as a finding.
+
 - Use subagents when they make the work faster or better (a wide search, independent checks in
   parallel); your call.
 **Contracts**

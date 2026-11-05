@@ -3,6 +3,11 @@ import { createFakeBridge, type FakeBridge, type FakeBridgeOptions } from "../ab
 import type { Command } from "../core/commandRegistry.js";
 import { helpForPath, unknownCompleterKeys, usageForPath } from "../core/commandTree.js";
 import type { Completer } from "../core/complete.js";
+import type { LiveRoutes } from "../core/livePage.js";
+import { formatControl, validateBinding } from "../core/midi.js";
+import type { MidiBinding } from "../core/midiEngine.js";
+import type { MidiControl } from "../core/midi.js";
+import type { MidiMessage as StoredMidiMessage } from "../ableton/bridgeOps.js";
 import type { Provider } from "../core/types.js";
 import type { BoardAnswer, BoardRequest, StateChange } from "../core/ui.js";
 import { MAX_FILE_BYTES, validFileName } from "../core/files.js";
@@ -31,6 +36,8 @@ export interface FakeApiOptions {
   setId?: string | null;
   /** Files the fake `api.files` starts with, by name. */
   files?: Record<string, string>;
+  /** The messages the fake script has kept (`api.midi.last` returns those after `since`). */
+  midiMessages?: StoredMidiMessage[];
 }
 
 export interface FakeApi {
@@ -54,16 +61,35 @@ export interface FakeApi {
   /** Tags by node `handleId`; `api.tags.write` replaces the entry (empty removes it). */
   tagStore: Map<string, string[]>;
   dialogs: Array<{ html: string; width: number; height: number }>;
+  /** The live pages `api.ui.livePage` was asked to show, with their route functions (call them to test the data a page would poll). */
+  livePages: Array<{ name: string; html: string; width: number; height: number; routes: LiveRoutes }>;
   /** Track state by handle id; writes land here. */
   tracks: Map<string, TrackHandle>;
   /** Volumes (0..1) written through the fake's `tracks.setVolume`, by handle id; unset reads 0.85. */
   volumes: Map<string, number>;
   /** How many transactions were opened. */
   transactions: number;
+  /** Names the fake `api.files.readResult` fails on (`read` still answers null for them). */
+  unreadableFiles: Set<string>;
   /** The fake `api.files`, by name; writes land here. */
   fileStore: Map<string, string>;
   /** The Set's id now (`api.set.id(true)` fills it when empty). */
   setId: string | null;
+  /** The bindings last given to `api.midi.setBindings` (rows with `{}` and press/release are refused, as in the engine). */
+  midiBindings: MidiBinding[];
+  /** Listeners registered with `api.onSetChange`; call them to simulate a Set change. */
+  setListeners: Array<(setId: string | null) => void>;
+  /** Listeners of `api.midi.onEvent`; call them with a MidiEvent to simulate a pushed message. */
+  eventListeners: Array<(event: import("../ableton/bridgeOps.js").MidiEvent) => void>;
+  /** What the fake `api.midi.blocked()` answers (default none); call `blockedListeners` after changing it to simulate a map rebuild. */
+  midiBlocked: string[] | null;
+  blockedListeners: Array<(blocked: string[] | null) => void>;
+  /** The fake `midi.statusBar` (default false). */
+  midiStatusBar: boolean;
+  /** The fake `map.enabled` (default true). */
+  mapEnabled: boolean;
+  /** Every `api.midi.listen` call, in order. */
+  midiListens: Array<{ controls: "all" | "none" | readonly MidiControl[]; monitor: boolean }>;
   /** The completers the module registered, by key. */
   completers: Map<string, Completer>;
   /**
@@ -91,11 +117,21 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     tagLists: [],
     tagStore: new Map(Object.entries(options.tags ?? {})),
     dialogs: [],
+    livePages: [],
     tracks: new Map(),
     volumes: new Map(),
     transactions: 0,
     fileStore: new Map(Object.entries(options.files ?? {})),
+    unreadableFiles: new Set(),
     setId: options.setId ?? null,
+    midiBindings: [],
+    setListeners: [],
+    midiBlocked: [],
+    blockedListeners: [],
+    eventListeners: [],
+    midiStatusBar: false,
+    mapEnabled: true,
+    midiListens: [],
     completers: new Map(),
     unknownCompleters: () => unknownCompleterKeys(fake.commands, fake.completers.keys()),
   };
@@ -131,11 +167,51 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       },
     },
     files: {
-      read: async (name) => (validFileName(name) ? (fake.fileStore.get(name) ?? null) : null),
+      readResult: async (name) => {
+        if (!validFileName(name)) return { status: "failed", reason: "not a plain file name" };
+        if (fake.unreadableFiles.has(name)) return { status: "failed", reason: "EACCES" };
+        const text = fake.fileStore.get(name);
+        return text === undefined ? { status: "missing" } : { status: "ok", text };
+      },
+      read: async (name) => (validFileName(name) && !fake.unreadableFiles.has(name) ? (fake.fileStore.get(name) ?? null) : null),
       write: async (name, text) => {
         if (!validFileName(name) || typeof text !== "string" || Buffer.byteLength(text, "utf8") > MAX_FILE_BYTES) return false;
         fake.fileStore.set(name, text);
         return true;
+      },
+    },
+    onSetChange: (listener) => {
+      fake.setListeners.push(listener);
+      listener(fake.setId); // the fake's Set is known from the start
+    },
+    midi: {
+      setBindings: async (list) => {
+        const refused = list.flatMap((b) => {
+          const problem = validateBinding(b.operator, b.line);
+          return problem ? [`${formatControl(b.control)} ${b.operator}: ${problem}`] : [];
+        });
+        fake.midiBindings = list.filter((b) => validateBinding(b.operator, b.line) === null);
+        return { ok: true, value: { count: fake.midiBindings.length, refused } };
+      },
+      last: async (since = 0) => {
+        const messages = (options.midiMessages ?? []).filter((m) => m.seq > since);
+        return { ok: true, value: { last: Math.max(since, ...messages.map((m) => m.seq)), messages } };
+      },
+      onEvent: (listener) => {
+        fake.eventListeners.push(listener);
+        return () => void fake.eventListeners.splice(fake.eventListeners.indexOf(listener) >>> 0, 1);
+      },
+      blocked: () => (fake.midiBlocked === null ? null : [...fake.midiBlocked]),
+      onBlocked: (listener) => {
+        fake.blockedListeners.push(listener);
+        return () => void fake.blockedListeners.splice(fake.blockedListeners.indexOf(listener) >>> 0, 1);
+      },
+      statusBar: async () => fake.midiStatusBar,
+      enabled: async () => fake.mapEnabled,
+      setEnabled: async (on) => ((fake.mapEnabled = on), true),
+      listen: async (controls, listenOptions) => {
+        fake.midiListens.push({ controls, monitor: listenOptions?.monitor === true });
+        return { ok: true, value: { count: controls === "all" ? 4112 : controls === "none" ? 0 : controls.length } };
       },
     },
     log: (line) => void fake.logs.push(line),
@@ -163,6 +239,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       return chosen;
     },
     ui: {
+      livePage: async (name, html, width, height, routes) => {
+        fake.livePages.push({ name, html, width, height, routes });
+        return options.dialogAnswer || null;
+      },
       board: async (request) => {
         fake.boards.push(request);
         return { answer: options.boardAnswer?.(request) ?? null, cut: false };

@@ -40,10 +40,10 @@ Then enable the keyboard rule. In Karabiner-Elements, open **Complex Modificatio
 
 The command ends with one line of advice and a link to step 3. You will see one of these:
 
-- *"Remote Script 0.1.8 is shipped but not running. Restart Live … then enable cmdAbl as a control surface"*: the
+- *"Remote Script 0.1.14 is shipped but not running. Restart Live … then enable cmdAbl as a control surface"*: the
   usual answer on a first install. Go to step 3.
 - *"… is shipped and running"*: nothing to do. If you have just updated cmdAbl, restart Live once.
-- *"… is shipped, but Live still runs 0.1.x. Restart Live to load Remote Script 0.1.8"*: you updated cmdAbl.
+- *"… is shipped, but Live still runs 0.1.x. Restart Live to load Remote Script 0.1.14"*: you updated cmdAbl.
   Restart Live.
 
 ## 3. Turn on the Remote Script in Live
@@ -66,7 +66,7 @@ Check that it works:
   Control Surface (after `cmdabl setup` and a restart). The log is `~/Library/Preferences/Ableton/Live <version>/Log.txt`, where `<version>` is
   your Live version. The Remote Script's lines contain `RemoteScriptMessage: (cmdAbl)`.
 
-![The cmdabl bridge result: Remote Script 0.1.8 is running, with its protocol version, response time and operations](assets/images/bridge.png)
+![The cmdabl bridge result: Remote Script 0.1.14 is running, with its protocol version, response time and operations](assets/images/bridge.png)
 
 *`cmdabl bridge` on a current install.*
 

@@ -21,8 +21,11 @@ Live's Extension Host) with a small companion Remote Script (Python) for what th
 - A handler returns a `CommandResult` (exit code 0 ok, 1 failure, 2 usage, 3 not found,
   4 ambiguous, 5 unavailable). Nothing throws at a user action: an uncaught error takes down the
   whole Extension Host, including other extensions.
-- A dialog gets JSON in and returns one string when it closes; it cannot call the extension while
-  open. Extensions cannot call each other.
+- A dialog gets JSON in and returns one string when it closes. Everything that changes Live happens
+  through a command after it closes. **Exception: a live page** (user, 2026-11-04; plan 0018). It is
+  served from `http://localhost:27184` with a one-time token per dialog, and may only **read** from
+  cmdAbl while open, through routes that exist only for that dialog. It never writes, and it still
+  works when the server can't be reached. Extensions cannot call each other.
 - Keep plans, README and code in sync in the same change.
 
 ## Agent team
@@ -47,20 +50,31 @@ gets a short list of the core features to try by hand, plus what only they can c
   `git diff <file>` and don't touch a file with another agent's uncommitted changes; stage only
   your own files (no `-A`, no interactive `-p`). `src/modules/types.ts` is edited by `cmdabl-core`
   only.
-- **Only the user starts Live and `npm start`**, and only one Extension Host connects at a time.
-  Agents run `npm test` and `npm run build` and hand over a Live test list.
+- **Only the user starts or restarts Live**, and only one Extension Host connects at a time.
+  **The architect may start and restart `npm start`** once the user has said in this session that Live
+  is free (user, 2026-11-03). It runs in a tmux pane next to the architect, in the architect's window,
+  so the user can watch the log. Other agents never run `npm start`; they run `npm test` and
+  `npm run build` and hand over a Live test list.
 - **Testing in Live through MCP** (plan 0016): when the user has said in this session that a test
   Set is open and Live is free, an agent may run its test list with the `cmdabl_*` MCP tools
   (`cmdabl_run`, `cmdabl_log`, `cmdabl_bridge`, `cmdabl_state`). One agent at a time; the architect
   says whose turn it is. Report what passed with the log lines; hand the rest (how dialogs look,
   Cmd+Z, hand moves, anything that asks) to the user. Never run commands that delete or rename
   outside the test list.
+- **A message to an agent that isn't running** (stopped, or the send fails): send it to
+  `cmdabl-architect` instead, naming the intended agent. The architect starts that agent or handles it.
 - **Only the architect pushes or opens pull requests, and only when the user asks.**
 - `scripts/agents.sh` opens core, modules, bridge and reviewer in one tmux window `cmdabl-agents`
-  and starts the architect in the current pane, resuming each by the session id in its agent file.
+  and starts the architect in the current pane, each as a **fresh** session (model from its agent
+  file; the agent file, this file and STATUS are the hand-over). `--resume` continues an agent's stored
+  session instead: use it only for unfinished work, since a long session reloads its whole history.
   `scripts/agents.sh ui` adds the UI agent, `scripts/agents.sh docs` the documentation agent;
-  `scripts/agents.sh core reviewer` or `… architect`
-  starts only those; `DRY_RUN=1` prints the commands.
+  `scripts/agents.sh core reviewer` or `… architect` starts only those.
+  `scripts/agents.sh stop ui docs` ends those agents; `stop` alone ends every peer, never the
+  architect or the pane it runs in. `DRY_RUN=1` prints the commands.
+- **The architect starts and stops the peers itself** with `scripts/agents.sh` (user, 2026-11-04):
+  on-demand agents when their work comes up, any builder when its task is done. It tells the user
+  which agents it started or stopped.
 
 ## Workflow
 

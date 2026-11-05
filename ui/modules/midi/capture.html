@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark" />
+  <title>MIDI</title>
+  <!-- Live page of `map learn` and `midi monitor` (plan 0018, "Live pages"). It may only READ while open.
+       In: CAPTURE_PLACEHOLDER = { title, hint, mode: "learn" | "monitor" } (plain text, set with textContent).
+           LIVE_PLACEHOLDER = null | { base, token }: the live source. With it the page long-polls GET <base>/messages?since=<last>
+           (Authorization: Bearer <token>; the source holds a request up to ~1 s until something newer arrives, the next request follows at once); the answer is { opened, last, messages: [{ seq, type: "cc"|"note_on"|"note_off"|"pb",
+           channel 1-16, number, value, time }] } (the newest 20, OLDEST first; the page keeps one row per control, value updated in place), plus `blocked`: the controls Live refused to forward
+           (shown as "Taken in Live: …"; [] or null hides it), or { error }.
+           null (or a source that stays unreachable) = the fallback: no list, "live view unavailable", Enter reads.
+       Out (close_and_send): "go" on Enter while the live view works, "list" on Enter without a working live view (LIVE null, unreachable, or before the first answer), "go" in learn mode ~150 ms after the first control moved; "" on Esc. The module reads the
+           newest control itself afterwards (api.midi.last), so the page sends no control.
+       Size: 460 x 320. All text goes in with textContent. -->
+  <style>
+    /*SHARED_CSS_PLACEHOLDER*/
+
+    html, body { height: 100%; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
+
+    #head { flex: 0 0 auto; padding: 10px 12px 8px; border-bottom: 1px solid var(--border); }
+    #title { font-weight: 600; color: var(--accent); }
+    #hint { margin-top: 3px; color: var(--dim); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+
+    #list { flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 4px 0; }
+    .msg { display: grid; grid-template-columns: 92px 40px 44px 1fr; gap: 0 8px; padding: 2px 12px; line-height: 18px; white-space: nowrap; }
+    .msg > span { overflow: hidden; text-overflow: ellipsis; }
+    .msg.timed { grid-template-columns: 52px 92px 40px 44px 1fr; }   /* SHOW_TIME: the +N.Ns column in front */
+    .msg .t { color: var(--dim); font-size: 11px; text-align: right; }
+    .msg .k { font-weight: 600; }
+    .msg .c, .msg .n { color: var(--dim); }
+    .msg .v { color: var(--text); }
+    .msg.fresh { background: var(--bg-row); }
+    .msg.fresh .k { color: var(--accent); }
+    #empty { padding: 14px 12px; color: var(--dim); text-align: center; }
+
+    #foot { flex: 0 0 auto; border-top: 1px solid var(--border); padding: 5px 12px; color: var(--dim); font-size: 11px; line-height: 1.5; }
+    #blocked, #note { overflow-wrap: anywhere; }
+    #blocked:empty { display: none; }
+    #note:empty { display: none; }
+    #blocked { color: var(--accent); }
+    kbd { font: inherit; color: var(--text); background: var(--bg-row); border-radius: 3px; padding: 0 5px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <div id="head"><div id="title"></div><div id="hint"></div></div>
+  <div id="list"><div id="empty"></div></div>
+  <div id="foot"><div id="blocked"></div><div id="note"></div><div><kbd>Enter</kbd> done &nbsp; <kbd>Esc</kbd> cancel</div></div>
+
+  <script>
+    // Injected by the extension before the dialog opens (see the contract above).
+    const CAPTURE = /*CAPTURE_PLACEHOLDER*/null;
+    const LIVE = /*LIVE_PLACEHOLDER*/null;   // { base, token } when the live source is reachable, else null
+
+    // The time column (+N.Ns since the page opened) is off by default; it returns as an option on the MIDI settings page.
+    const SHOW_TIME = false;
+    const FALLBACK_NOTE = "When you press Enter, cmdAbl reads what you moved. This page can't show it live.";
+    const KIND = { cc: 'CC', note_on: 'Note on', note_off: 'Note off', pb: 'Pitch bend' };
+    const learn = CAPTURE?.mode === 'learn';
+
+    const list  = document.getElementById('list');
+    const empty = document.getElementById('empty');
+    const note  = document.getElementById('note');
+    const blockedEl = document.getElementById('blocked');
+    document.getElementById('title').textContent = CAPTURE?.title ?? '';
+    const hintEl = document.getElementById('hint');
+    hintEl.textContent = CAPTURE?.hint ?? '';
+    // With the live view the page says what it does itself; the module's own hint is for the fallback.
+    const LIVE_HINT = learn ? "Move the control to bind; it's taken as soon as it moves." : 'Move a control. Values show live. Enter or Esc closes.';
+    function setLive(on) { hintEl.textContent = on ? LIVE_HINT : (CAPTURE?.hint ?? ''); }
+    empty.textContent = learn ? 'Move a control…' : 'Waiting for MIDI…';
+
+    let finished = false;
+    let inflight = null;   // the one request in flight (aborted when the page closes)
+    function send(value) {
+      if (finished) return;
+      finished = true;
+      inflight?.abort();
+      const m = { method: 'close_and_send', params: [value] };
+      if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
+      else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
+    }
+
+    // ── drawing: one row per control, updated in place ──────────────────────
+    // A control (type, channel, number) keeps its row; its value changes without moving anything. A control seen for
+    // the first time is added on top. The row that moved last is marked.
+    const rows = new Map();   // key -> { el, v, t }
+    let seen = 0;             // highest seq drawn
+    let fresh = null;
+    const MAX_ROWS = 40;
+    function cell(cls, text) { const s = document.createElement('span'); s.className = cls; s.textContent = text; return s; }
+    function setText(el, text) { if (el.textContent !== text) el.textContent = text; }
+    function draw(answer) {
+      if (typeof answer.last === 'number' && answer.last < seen) {   // the source restarted: its numbering began again
+        list.textContent = ''; rows.clear(); fresh = null; seen = 0;
+      }
+      const fresh_ = (Array.isArray(answer.messages) ? answer.messages : []).filter(m => typeof m.seq === 'number' && m.seq > seen);
+      if (!fresh_.length) return;
+      for (const m of fresh_) {   // oldest first, so the last message of a control wins
+        seen = Math.max(seen, m.seq);
+        const key = m.type + '|' + m.channel + '|' + (m.type === 'pb' ? '' : m.number);
+        let row = rows.get(key);
+        if (!row) {
+          const el = document.createElement('div');
+          el.className = 'msg' + (SHOW_TIME ? ' timed' : '');
+          row = { el, t: SHOW_TIME ? cell('t', '') : null, v: cell('v', '') };
+          if (row.t) el.append(row.t);
+          el.append(cell('k', KIND[m.type] ?? String(m.type ?? '')), cell('c', 'ch ' + (m.channel ?? '')),
+                    cell('n', m.type === 'pb' ? '' : '#' + (m.number ?? '')), row.v);
+          rows.set(key, row);
+          if (empty.parentNode) empty.remove();
+          list.prepend(el);
+          if (rows.size > MAX_ROWS) {   // the oldest control row goes
+            const last = list.lastElementChild;
+            for (const [k, r] of rows) if (r.el === last) { rows.delete(k); break; }
+            last.remove();
+          }
+        }
+        if (row.t) {
+          const secs = typeof m.time === 'number' && typeof answer.opened === 'number' ? (m.time - answer.opened) / 1000 : NaN;
+          setText(row.t, Number.isFinite(secs) ? '+' + Math.max(0, secs).toFixed(1) + 's' : '');
+        }
+        setText(row.v, String(m.value ?? ''));
+        if (fresh !== row) { fresh?.el.classList.remove('fresh'); row.el.classList.add('fresh'); fresh = row; }
+      }
+    }
+
+    // ── learn: close ~150 ms after the first control moved (the control stays on screen meanwhile) ─
+    let closing = null;
+    function maybeClose(answer) {
+      if (!learn || closing || !answer.messages?.length) return;
+      closing = setTimeout(() => send('go'), 150);
+    }
+
+    // ── "Taken in Live": controls Live refused to forward (Cmd+M or a control surface) ──────────────
+    // From the answer's `blocked`: a list (hidden when empty), or null = unknown. Items are shown as "CC51 ch1".
+    function blockedLabel(b) {
+      if (typeof b === 'string') return b.replace('/ch', ' ch');   // mapping syntax "CC51/ch1" → "CC51 ch1"
+      if (!b || typeof b !== 'object') return '';
+      const kind = b.type === 'cc' ? 'CC' : b.type === 'note_on' || b.type === 'note_off' || b.type === 'note' ? 'Note ' : b.type === 'pb' ? 'PB' : String(b.type ?? '');
+      return kind + (b.type === 'pb' ? '' : String(b.number ?? '')) + (b.channel != null ? ' ch' + b.channel : '');
+    }
+    function drawBlocked(answer) {
+      if (!('blocked' in answer)) return;   // a source without the field: nothing to say
+      const b = answer.blocked;
+      const text = Array.isArray(b) && b.length ? 'Taken in Live: ' + b.map(blockedLabel).filter(Boolean).join(', ') : '';
+      setText(blockedEl, text);
+    }
+
+    // ── the live source: long polling ───────────────────────────────────────
+    // Each request names the newest message seen (`since`); cmdAbl holds it until something newer arrives (at most about 1 s) and
+    // answers at once, and the next request goes out as soon as the answer is here: one in flight, about one request a second when idle.
+    // An error (or a { error } answer) backs off, 200 ms then 1 s, before the fallback rules apply.
+    const MAX_FAILS = 4;   // failures in a row before "Live view unavailable" (about 3 s of backing off)
+    let working = false;   // the live view has answered and still does: Enter then says "go", otherwise "list" (the module lists the messages)
+    let failures = 0;
+    let since = null;      // newest `last` the source reported (null before the first answer: that request is answered at once)
+    function unavailable(on) {
+      note.textContent = on ? 'Live view unavailable. ' + FALLBACK_NOTE : '';
+      if (on) { working = false; setLive(false); }
+      if (on) { list.textContent = ''; rows.clear(); fresh = null; seen = 0; since = null; setText(blockedEl, ''); }
+    }
+    async function poll() {
+      if (finished) return;
+      let delay = 5;
+      const before = since, started = Date.now();
+      try {
+        const ctl = inflight = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), 3000);   // the source holds a request for 1 s at most
+        const url = LIVE.base + '/messages' + (since === null ? '' : '?since=' + encodeURIComponent(since));
+        const res = await fetch(url, { headers: { Authorization: 'Bearer ' + LIVE.token }, signal: ctl.signal, cache: 'no-store' });
+        clearTimeout(timer);
+        const answer = await res.json();
+        if (answer?.error === 'closed') return;   // the dialog is closing: stop asking
+        if (!res.ok || answer?.error) throw new Error('no answer');
+        if (failures >= MAX_FAILS) unavailable(false);
+        failures = 0;
+        if (typeof answer.last === 'number') since = answer.last;
+        if (since === before && Date.now() - started < 50) delay = 100;   // an answer with no news that did not wait: do not hammer
+        draw(answer);
+        drawBlocked(answer);
+        working = true;
+        setLive(true);
+        maybeClose(answer);
+      } catch {
+        failures++;
+        if (failures >= 3) working = false;
+        if (failures === MAX_FAILS) unavailable(true);   // keeps trying, slowly: it may come back
+        delay = failures === 1 ? 200 : 1000;
+      }
+      setTimeout(poll, delay);
+    }
+
+    if (LIVE?.base && LIVE?.token) {
+      setLive(true);
+      poll();
+    } else {
+      list.textContent = '';
+      note.textContent = FALLBACK_NOTE;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); send(working ? 'go' : 'list'); }
+      else if (e.key === 'Escape') { e.preventDefault(); send(''); }
+    });
+  </script>
+</body>
+</html>

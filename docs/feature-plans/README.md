@@ -28,7 +28,7 @@ Progress across all plans is tracked in [`STATUS.md`](STATUS.md): what is on whi
 waits for a Live test, and known issues. This page is the map: what exists, and what comes next in
 which order.
 
-## Where each plan stands (2026-10-22, after 0.1.3)
+## Where each plan stands (2026-10-23, after 0.1.4)
 
 ### Released
 
@@ -36,7 +36,7 @@ which order.
 |---|---|---|---|
 | [0002](0002-command-feedback-pattern.md) | Command feedback | 0.1.0 | Phases A and C: `CommandResult` with exit codes, one presenter, ✓/× for several targets. Phase B (a lighter message channel) is open. |
 | [0003](0003-pakabl-extension-system.md) | pakabl | 0.1.0 | `pakabl install/update/upgrade/list/uninstall` from a curated index. The in-process plugin idea is concluded (blocked on the SDK). |
-| [0005](0005-command-tree-and-module-authoring.md) | Command tree, modules | 0.1.0 | The tree, parser, resolver, pick list, modules, authoring guide. Open: completer snapshots for the palette (step 3, needed by 0006). |
+| [0005](0005-command-tree-and-module-authoring.md) | Command tree, modules | 0.1.0 | The tree, parser, resolver, pick list, modules, authoring guide, completer snapshots (0.1.4). |
 | [0007](0007-ui-surfaces.md) | UI surfaces | 0.1.0 | The `Ui` contract, `board` and module pages. Open: themes, replacement pages, `api.ui.register`. |
 | [0008](0008-tags-and-aliases.md) | Tags and aliases | 0.1.1 | Tags on tracks, `#tag`, `!#tag`, `--pick`. Open: the store, aliases, history across restarts, tags on chains and pads. |
 | [0010](0010-tag-editing.md) | Tag editing | 0.1.2 | Tag board, `tag -e`, `tag -r`. |
@@ -44,6 +44,7 @@ which order.
 | [0012](0012-vol-and-dca.md) | `vol` and `dca` | 0.1.3 (`vol`) | `vol` relative and `--set`, `stop`/`--clip` at limits. `dca` is a draft. |
 | [0013](0013-set-note.md) | Set note | 0.1.3 | `note`, `note -e`; the Set id in the Set; `api.files`. |
 | [0016](0016-test-mcp.md) | Test access for agents | 0.1.3 (dev builds) | `/run`, `/show`, `/log`; MCP tools to run, screenshot and record. |
+| [0006](0006-completion-engine.md) | Completion engine | 0.1.4 (steps 1–2) | Argument completion at every position, completers for modules, the palette switch Off · Hints · Options. Open: paths level by level (step 3), ghost text for the best word (step 4), the server variant. |
 
 [0001](0001-path-addressed-objects-and-commands.md) (path-addressed objects) and
 [0004](0004-command-platform.md) (the platform umbrella) are mostly built through the plans above.
@@ -52,6 +53,8 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
 ### Next, in dependency order
 
 ```
+0018 spike (MIDI in, push) ──┬─> 0018 v1 trigger mode (map, midi, operators) ──> value mode
+                             └─> 0017 phase 2 clip/scene triggers
 0017 phase 1 script files (run) ──> 0017 phase 2 clip/scene triggers (bridge addition, spike)
 0009 `;` action lists ──> 0008 aliases ──> 0017 phase 3 (&&, $1)
 0006 step 3 paths level by level ──> device on/off (`bypass`)
@@ -59,14 +62,18 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
             └─> 0012 dca
 ```
 
-1. **Scripts and triggers** ([0017](0017-scripts-and-triggers.md)), first (user, 2026-10-23):
+1. **MIDI mapping, trigger mode** ([0018](0018-midi-mapping.md)), next (user, 2026-11-03): `map CC37 hold |
+   mute #drums --set {}`; controls, operators (`press`, `release`, `hold`, `toggle`), bindings per Set.
+   Its spike builds the Remote Script → cmdAbl push that 0017's triggers need too. (Number 0014 is
+   unused: the plan was kept private under that number until 2026-11-03.)
+2. **Scripts and triggers** ([0017](0017-scripts-and-triggers.md)), user 2026-10-23:
    `.cmdabl` files run with `run`; then clips and scenes run them on launch, so the Session grid works
    as a grid of commands. Phase 2 needs a bridge addition (script → cmdAbl), still to be decided.
-2. **`;` action lists and aliases** ([0009](0009-ideas-from-clyphx.md), [0008](0008-tags-and-aliases.md));
+3. **`;` action lists and aliases** ([0009](0009-ideas-from-clyphx.md), [0008](0008-tags-and-aliases.md));
    the store exists since 0.1.4.
-3. **Paths level by level** ([0006](0006-completion-engine.md) step 3): the hierarchy in lists such as
+4. **Paths level by level** ([0006](0006-completion-engine.md) step 3): the hierarchy in lists such as
    `mute `; then device on/off as `bypass` (alias `bp`).
-4. **`link`** ([0015](0015-link.md)), then `pan`/`send` and **`dca`** ([0012](0012-vol-and-dca.md)).
+5. **`link`** ([0015](0015-link.md)), then `pan`/`send` and **`dca`** ([0012](0012-vol-and-dca.md)).
 
 ### Later and ideas
 
@@ -93,7 +100,8 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
  ├─ 0013  note
  ├─ 0015  link (named controls with rules for numeric values)
  ├─ 0016  Test access for agents
- └─ 0017  Scripts and triggers (.cmdabl files, run from clips and scenes)
+ ├─ 0017  Scripts and triggers (.cmdabl files, run from clips and scenes)
+ └─ 0018  MIDI mapping (map, midi; operators; later value mode and the matrix)
 0001  Path-addressed objects & commands   (consumer of 0004)
 0003  pakabl extension system             (consumer of 0005)
 ```

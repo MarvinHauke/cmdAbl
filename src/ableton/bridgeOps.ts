@@ -1,6 +1,9 @@
 import type { Bridge } from "./bridgeClient.js";
 import { fail, TEXT_OUTDATED, TEXT_STALE, type BridgeResult } from "./bridgeProtocol.js";
 import type { ObjectNode } from "./objectTree.js";
+import { sendListen, type MidiControls } from "./midiLink.js";
+
+export { midiBlocked, onBlocked, onMidiEvent, type MidiControl, type MidiControls, type MidiEvent } from "./midiLink.js";
 
 // One typed function per Remote Script operation (0001 §4, §8). Modules call
 // these, never `bridge.request("name", …)` with loose arguments. Every function
@@ -471,5 +474,57 @@ export async function setId(bridge: Bridge, create = false): Promise<string | nu
     return typeof id === "string" && id !== "" ? id : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Tell the script which MIDI controls to forward from its input port and push to this extension
+ * (`"none"` by default in the script, `"all"`, or a list), and register this extension as the target
+ * of pushed events (plan 0018). `monitor` also forwards everything for `seconds` (default 30, at most
+ * 120) so `midiLast` sees every message (learn, `midi monitor`); Live then hands those messages to the
+ * script only, so track input and Cmd+M on the port pause until the window ends. While the window is open the
+ * script also shows each message in Live's status bar ("cmdAbl · CC48 ch1 = 127", at most ~20 a second, and
+ * "cmdAbl · monitor off" once at the end); `status: false` turns that off. A writing op.
+ * The controls are remembered and sent again when the script restarts. `blocked` lists listened controls Live
+ * refused to hand to the script (mapped with Cmd+M, or taken by another script), e.g. ["CC51/ch1"]; it is the
+ * result of the script's previous map build (can be stale: rely on `onBlocked(cb)` / `midiBlocked()`, which follow the current one; null = unknown).
+ * Never throws.
+ */
+export function midiListen(
+  bridge: Bridge,
+  controls: MidiControls,
+  options: { monitor?: boolean; seconds?: number; status?: boolean } = {},
+): Promise<BridgeResult<{ count: number; monitor: boolean; blocked: string[] | null }>> {
+  return sendListen(bridge, controls, options);
+}
+
+/** One stored MIDI message: `seq` rises by one per message; `time` is when the script received it (ms since the epoch). */
+export interface MidiMessage {
+  seq: number;
+  type: string;
+  channel: number;
+  number: number;
+  value: number;
+  time: number;
+}
+
+/** The newest MIDI messages after `since` (a seq; 0 = all that are kept), oldest first. Never throws. */
+export async function midiLast(bridge: Bridge, since = 0): Promise<BridgeResult<{ last: number; messages: MidiMessage[] }>> {
+  try {
+    const reply = await bridge.request("midi_last", { since });
+    if (!reply.ok) return reply;
+    const { last, messages } = reply.value;
+    if (typeof last !== "number" || !Array.isArray(messages)) return fail(1, "bad reply from the Remote Script (midi_last)");
+    const rows: MidiMessage[] = [];
+    for (const row of messages) {
+      if (!Array.isArray(row) || row.length !== 6) continue;
+      const [seq, type, channel, number, value, time] = row as unknown[];
+      if (typeof seq === "number" && typeof type === "string" && typeof channel === "number" && typeof number === "number" && typeof value === "number" && typeof time === "number") {
+        rows.push({ seq, type, channel, number, value, time });
+      }
+    }
+    return { ok: true, value: { last, messages: rows } };
+  } catch {
+    return fail(1, "midi_last failed");
   }
 }

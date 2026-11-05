@@ -3,10 +3,9 @@
 **Parent:** [0004](0004-command-platform.md)
 **Depends on:** [0005](0005-command-tree-and-module-authoring.md) (the tree and candidate snapshots).
 
-**Status:** Steps 1–2 planned for 0.1.4 (2026-10-22, reviewed; section "0.1.4: argument completion"
-below; API additions approved by the user 2026-10-22; built and Live-tested through MCP on
-`feat/completion`: core `d0f1337`, `4198526`, `742da98`, `e803fcd`, `c53d6af`; modules `0b980b8`, `514fd39`;
-ui `624c889`; docs `bc72468`, `6092d3e`). Drafted 2026-10-08 — replaces the palette's flat fuzzy search with hierarchical,
+**Status:** Steps 1–2 released in 0.1.4 (2026-10-23, PR #21): argument completion, completers, the palette
+switch Off · Hints · Options. Open: step 3 (paths level by level), step 4 (ghost text), the server
+variant (spike). Drafted 2026-10-08 — replaces the palette's flat fuzzy search with hierarchical,
 shell-style completion driven by the command tree.
 
 ## Context
@@ -286,6 +285,39 @@ self-explanation. The user also wants recent commands first.
 - A separate hint window is not possible: the SDK has only modal dialogs, one at a time, with a fixed
   size. Live's status bar (`show_message`) would need the palette to reach cmdAbl while open; it depends
   on the server spike above.
+
+## Spike result (2026-11-04)
+
+A dialog page can reach cmdAbl's local server while open: both a `data:` page (origin `"null"`) and a
+page served from `http://localhost:27184` (same origin), with ping and POST around 1 ms and a smooth
+100 ms poll. The figures are in [0018](0018-midi-mapping.md) ("Second Live test"). The completion
+server variant is therefore feasible; the design and security rules above apply, and the dialog rule in
+`CLAUDE.md` changes only with the user's decision.
+
+## User findings (2026-11-04)
+
+- **0.1.5 (core):** when a bare word silently resolves to a tag (`mute drums` → `mute #drums`), the
+  suggestions show the expanded form. Built once in the engine, so every module with target
+  arguments gets it.
+- **0.1.6, with the settings page:** the Off/Hints/Options switch moves to the settings; the hint panel
+  becomes an interactive help view (fed by the typed command, its help and the options for its
+  arguments and targets; hover info), sharing one help pattern with the tag board's footer.
+- **Question (user):** must every module write its own completion? Direction: a generic baseline from
+  the command tree's argument kinds gives every new module suggestions and ghost text; modules add
+  completers only for their special cases. Answer (core, 2026-11-04, built as of `4e8520a`):
+  - **Free from the command tree:** commands, subcommands with aliases, options (`--help`, `--pick`),
+    option value labels, enum choices, the hint line (`<name>`, `<a|b>`, `[<name>…]`, `| <line>`);
+    for path arguments the Live paths filtered by `kinds`, `#tag`/`!#tag` rows with counts and the
+    silent-tag row; numbers get the hint only; `;` parts and `|` bindings complete per part. Ghost text
+    is the first row's remainder when it extends the word, otherwise the usage hint (the silent-tag
+    row replaces the word, so it is a row only).
+  - **Needs a module completer** (`api.commands.completer`, `ArgDef.complete`/`OptionDef.complete`):
+    values from module state or disk (pakabl ids, tag names for `tag -r`/`-e`, script names,
+    `map --rm <n>`), their descriptions, ranking beyond prefix/substring. Completers read caches only
+    (one call at palette open, 100 ms budget, no bridge calls).
+  - **Rule:** an argument whose values aren't Live objects is `text` or `enum` with a completer, never
+    `path`, or it shows Live paths.
+  - Open (asked the user): show the tag row while the word is a prefix (`dru` → `#drums`).
 
 ## Open questions
 

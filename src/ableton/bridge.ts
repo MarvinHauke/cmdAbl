@@ -1,6 +1,7 @@
 import { createBridgeClient, createUdpTransport, type Bridge } from "./bridgeClient.js";
 import { createTokenSource } from "./bridgeToken.js";
 import { inspectInstalledScript } from "./installedScript.js";
+import { attachMidi } from "./midiLink.js";
 
 // Access to the Remote Script bridge (the SDK cannot change Live's selection or
 // read some LOM-only facts, so cmdAbl talks to its companion Remote Script over
@@ -19,6 +20,7 @@ export function getBridge(): Bridge {
       installed: () => inspectInstalledScript(),
       token: createTokenSource(),
     });
+    attachMidi(shared); // pushed MIDI events and the re-sent listen survive a recreated client
   }
   return shared;
 }

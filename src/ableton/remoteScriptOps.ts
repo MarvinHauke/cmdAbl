@@ -193,6 +193,27 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
     sdkAlternative: "none (the SDK's mixer.volume is a number 0..1 with no display text)",
   },
   {
+    name: "midi_listen",
+    summary: "Chooses which MIDI controls (CC, notes, pitch bend) the script forwards from its input port and pushes (default none), asks Live to rebuild the MIDI map, and registers the caller as the target of pushed events; monitor forwards everything for a short window (learn) and shows the messages in Live's status bar (status: false turns that off). The reply lists `blocked` controls Live refused to forward (mapped with Cmd+M), and the script pushes a midi_blocked event when that set changes.",
+    params: "{ controls: \"all\" | \"none\" | [{ type: \"cc\"|\"note\"|\"pb\", channel?: 1-16, number?: 0-127 }], monitor?: bool, seconds?: 1-120, status?: bool, token }",
+    changesLive: true,
+    via: "script",
+    usesRoute: false,
+    // Live.MidiMap.forward_midi_cc / _note / _pitchbend and ControlSurface.request_rebuild_midi_map are not LOM objects.
+    lom: [],
+    sdkAlternative: "none: the SDK has no MIDI input",
+  },
+  {
+    name: "midi_last",
+    summary: "The newest MIDI messages the script received after a sequence number (for learn and diagnostics).",
+    params: "{ since?: int }",
+    changesLive: false,
+    via: "script",
+    usesRoute: false,
+    lom: [],
+    sdkAlternative: "none: the SDK has no MIDI input",
+  },
+  {
     name: "set_id",
     summary: "Reads the Live Set's own id (null when it has none); with create it stores a new random id in the Set and marks the Set as modified with the invisible colour toggle of tags_set.",
     params: "{ create?: bool, token }",
