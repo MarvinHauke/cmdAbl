@@ -109,7 +109,7 @@ fakes (`createFakeApi` in `src/modules/testPorts.ts`, which fakes `set.id` and `
 | `api.dialog(html, width, height, name?)` | A page of the module's own, through the dialog queue; resolves with the string the page returns, or null when dismissed. |
 | `api.log(line)` | One log line at info: `cmdAbl [<module>] info: …`. The platform adds the prefix; write the text only. |
 | `api.logger.{debug,info,warn,error}(text)` | The same, at the level you name. `debug` lines show only after `cmdabl log --debug`. |
-| `api.commands` | `add`, plus `roots()`, `help(path)` and `usage(path)` for commands such as `man`. |
+| `api.commands` | `add`, plus `roots()`, `help(path)` and `usage(path)` for commands such as `man`, and `defaults()`: the default commands (bare command word → the line it runs, read-only, fresh in any handler; may be empty at activation). |
 | `api.registerProvider`, `api.onPick`, `api.onCommandRun`, `api.showFeedback` | Palette rows, a listener for picks, a listener for finished commands, and a small message. |
 
 A module that has its own page puts the HTML in `ui/modules/<module>/`. A module may import a page only from its own

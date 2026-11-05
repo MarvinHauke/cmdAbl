@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ExitCode } from "../../core/types.js";
 import { validateTree } from "../../core/commandTree.js";
+import { bindingRow } from "./store.js";
 import { createFakeApi } from "../testPorts.js";
 import { registerMap } from "./command.js";
 import { parseBindings, serializeBindings } from "./store.js";
@@ -247,4 +248,17 @@ test("map learn opens a live page in learn mode; its route shows what moved sinc
   const answer = (await (page.routes.messages as { wait: (s: number | null, c: never) => Promise<unknown> }).wait(null, { cancelled: false, onCancel() {} } as never)) as { messages: Array<{ number: number }> };
   assert.equal(answer.messages[0]!.number, 48);
   assert.equal(fake.midiBindings[0]!.control.number, 48);
+});
+
+test("-l shows what a bare command word with a default expands to", async () => {
+  const { add } = await setup({ defaults: { mute: "mute #drums" } });
+  await add({ control: "CC1", line: "mute" });
+  await add({ control: "CC2", line: "mute #a" });
+  await add({ control: "CC3", line: "solo" });
+  assert.equal(
+    ((await add({}, { list: true }))!).message,
+    "1  CC1  press  | mute → mute #drums\n2  CC2  press  | mute #a\n3  CC3  press  | solo",
+  );
+  const b = { control: { type: "cc", channel: null, number: 4 }, operator: "press", line: "\\mute" } as never;
+  assert.match(bindingRow(1, b, false, { mute: "mute #drums" }), /\| \\mute$/);
 });
