@@ -168,8 +168,8 @@ interface ModuleApi {
   changes asks first ("Discard changes and open settings?"), the same rule as Esc. In 1a the gear is
   on the board and the palette only; `map learn` gets none.
 - **The palette's footer switch goes away** (prompt-1, phase 1a). The switch lives on the settings
-  page with all three values. **Off is the clean palette:** no gear and no extra footer elements, only
-  the prompt and its rows; settings are then reached with `cmdabl config` (later `Cmd+,`, phase 7).
+  page with all three values. **Off is the clean palette:** no gear; the footer shows only the help
+  line (§4, since phase 3), and the window grows by its 37 px so 7 rows stay visible; settings are then reached with `cmdabl config` (later `Cmd+,`, phase 7).
   Hints and Options show the gear. The palette's `settings` answer field stays readable for one
   release and is ignored after that.
 
@@ -348,7 +348,7 @@ see it:
 
 1a. **Declared settings and the settings page:** the `api.settings` part, the `settings` surface
    (link rows rendered, none sent yet), `cmdabl config [<group>]`, `<module> config`, the gear on the board and the palette.
-   `tag.foldAfter` replaces `FOLD_AFTER`, and the palette switch moves (Off is the clean palette).
+   `tag.foldAfter` replaces `FOLD_AFTER`, and the palette switch moves (Off is the clean palette: no gear).
    Only the four 1a keys. Builders: core (store, surface, commands), ui (page), modules (`tag`
    declares).
 1b. **Default commands:** first, the gear and the group lookup use the parsed root instead of splitting
