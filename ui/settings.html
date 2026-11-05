@@ -40,7 +40,7 @@
     /* number field */
     .num { display: inline-flex; align-items: center; gap: 4px; }
     .num button { min-width: 24px; min-height: 24px; padding: 0; font-size: 14px; line-height: 1; }
-    .num input { width: 7ch; min-height: 24px; text-align: center; background: var(--bg); color: var(--text); border: 1px solid var(--dim); border-radius: 2px; font: inherit; }
+    .num input { width: 13ch; min-height: 24px; text-align: center; background: var(--bg); color: var(--text); border: 1px solid var(--dim); border-radius: 2px; font: inherit; }
     .num input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
     .link-btn { min-height: 24px; font-size: 12px; }
     .link-btn .sum { color: var(--dim); margin-left: 6px; }
@@ -154,7 +154,7 @@
         const minus = mk('button', null, '−'); minus.type = 'button'; minus.tabIndex = -1; minus.setAttribute('aria-label', 'less');
         const plus = mk('button', null, '+'); plus.type = 'button'; plus.tabIndex = -1; plus.setAttribute('aria-label', 'more');
         const inp = mk('input'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.autocomplete = 'off'; inp.spellcheck = false; inp.setAttribute('aria-label', row.label);
-        inp.placeholder = String(row.default);
+        inp.placeholder = 'default ' + row.default;   // an empty field shows this (dim), it is not a value
         const clamp = n => Math.min(row.max, Math.max(row.min, Math.round(n)));
         r.input = inp;
         r.step = d => r.set(clamp(r.value + d));
@@ -254,11 +254,21 @@
       if (changedRows().length) showConfirm(); else send('');
     }
 
+    // While the discard bar is up, keys go to its two buttons only (Esc keep editing, Tab/←→ between, Enter = focused button).
     document.addEventListener('keydown', e => {
-      if (confirming) {
-        if (e.key === 'Escape') { e.preventDefault(); cancelConfirm(); }
-        return;   // Tab and Enter work on the two buttons
+      if (!confirming) return;
+      e.stopPropagation();
+      if (e.key === 'Escape') { e.preventDefault(); cancelConfirm(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const b = [document.getElementById('keep'), document.getElementById('discard')];
+        b[document.activeElement === b[0] ? 1 : 0].focus();
       }
+      else if (e.key !== 'Tab' && e.key !== 'Enter' && e.key !== ' ') e.preventDefault();   // nothing reaches the fields behind the bar
+    }, true);
+
+    document.addEventListener('keydown', e => {
+      if (confirming) return;   // handled in the capture listener above
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const r = R[cur];
       if (e.key === 'ArrowDown') { e.preventDefault(); moveTo(cur + 1); }
@@ -270,7 +280,7 @@
         else if (r.row.kind === 'int') { e.preventDefault(); r.step(d * (e.shiftKey ? 10 : 1)); }
         else if (r.row.kind === 'bool') { e.preventDefault(); r.set(d > 0); }
       }
-      else if (/^[0-9]$/.test(e.key) && r.row.kind === 'int') { r.input.focus(); r.input.select(); }   // the digit then lands in the field
+      else if (/^[0-9]$/.test(e.key) && r.row.kind === 'int') { if (document.activeElement !== r.input) { r.input.focus(); r.input.select(); } }   // first digit from the row replaces the value; with the field focused it types normally
       else if (e.key === ' ' && r.row.kind === 'bool') { e.preventDefault(); r.set(!r.value); }
       else if (e.key === 'Enter') { e.preventDefault(); if (isLink(r)) openLink(r); else save(); }
       else if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
@@ -282,7 +292,6 @@
       document.getElementById('cancel').addEventListener('click', requestClose);
       document.getElementById('keep').addEventListener('click', cancelConfirm);
       document.getElementById('discard').addEventListener('click', () => send(''));
-      confirmEl.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelConfirm(); } });
       let start = 0;
       if (SETTINGS?.focus) { const i = R.findIndex(r => r.el.parentElement?.dataset.group === SETTINGS.focus); if (i >= 0) start = i; }
       moveTo(start, false);
