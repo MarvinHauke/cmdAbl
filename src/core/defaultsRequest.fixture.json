@@ -7,6 +7,7 @@
     { "command": "note", "line": "note -e", "summary": "keep a note in the Set", "bareBehaviour": "runs on its own" },
     { "command": "find", "line": "find -d", "summary": "search the Set", "bareBehaviour": "needs <query>" },
     { "command": "tag", "line": "tag bass", "summary": "tag tracks", "bareBehaviour": "shows its subcommands", "error": "unknown option \"bass\" for \"tag\"" },
+    { "command": "mark", "line": "mark --bad", "summary": "mark a position", "bareBehaviour": "runs on its own", "error": "unknown option \"--bad\" for \"mark\"", "saved": "mark" },
     { "command": "cmdabl", "line": "", "summary": "configure cmdAbl", "bareBehaviour": "shows its subcommands" }
   ]
 }

@@ -29,7 +29,7 @@ export function buildDefaultsRequest(
     const stored = byCommand.get(node.name);
     const line = typed?.line ?? stored?.line ?? "";
     const error = typed?.error ?? stored?.error;
-    return { command: node.name, line, summary: node.summary, bareBehaviour: bareBehaviour(node), ...(error !== undefined ? { error } : {}) };
+    return { command: node.name, line, summary: node.summary, bareBehaviour: bareBehaviour(node), ...(error !== undefined ? { error } : {}), ...(typed ? { saved: stored?.line ?? "" } : {}) };
   });
   return { title: options.title ?? "Default commands", ...(options.focus !== undefined && rows.some((r) => r.command === options.focus) ? { focus: options.focus } : {}), rows };
 }
@@ -49,6 +49,10 @@ export function capDefaults(request: DefaultsRequest): { request: DefaultsReques
     const out: DefaultsRow = { command, line: clip(row.line), summary: clip(row.summary), bareBehaviour: clip(row.bareBehaviour) };
     if (out.line !== row.line || out.summary !== row.summary) cut = true;
     if (typeof row.error === "string" && row.error !== "") out.error = clip(row.error);
+    if (typeof row.saved === "string") {
+      out.saved = clip(row.saved);
+      if (out.saved !== row.saved) cut = true;
+    }
     rows.push(out);
   }
   const focus = typeof request.focus === "string" && seen.has(request.focus) ? request.focus : undefined;
@@ -80,7 +84,7 @@ export function parseDefaultsAnswer(raw: string | null | undefined, request: Def
       const row = rows.get(command);
       if (!row || typeof v !== "string") continue;
       const line = v.trim();
-      if (line.length > MAX_LINE || line === row.line.trim()) continue;
+      if (line.length > MAX_LINE || line === (row.saved ?? row.line).trim()) continue;
       changes[command] = line;
     }
   } else if (value.changes !== undefined) {
@@ -164,8 +168,8 @@ export function createDefaultsFlow(deps: DefaultsFlowDeps): DefaultsFlow {
           const answer = await deps.ui.defaults(request, check);
           if (!answer) break;
           const changes: Record<string, string> = { ...answer.changes };
-          // A line that failed the last save and was left as it is is still pending: it is checked (and fails) again.
-          for (const [command, pending] of Object.entries(typed)) if (!(command in changes) && request.rows.some((r) => r.command === command)) changes[command] = pending.line;
+          // A typed line left as it is differs from the row's `saved`, so the page reports it again and it is checked (and fails) again;
+          // one put back to `saved` is no change and drops out.
           const valid: Record<string, string> = {};
           const nextTyped: Record<string, { line: string; error: string }> = {};
           for (const [command, line] of Object.entries(changes)) {

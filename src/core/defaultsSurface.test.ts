@@ -65,6 +65,15 @@ test("buildDefaultsRequest: one row per top-level command with its line, summary
   const typed = buildDefaultsRequest(registry.roots(), [{ command: "mute", line: "mute #a" }], { typed: { mute: { line: "solo", error: "must start" } } });
   assert.equal(typed.rows[0]!.line, "solo");
   assert.equal(typed.rows[0]!.error, "must start");
+  assert.equal(typed.rows[0]!.saved, "mute #a"); // the stored line, to compare against
+  assert.equal(buildDefaultsRequest(registry.roots(), [], { typed: { mute: { line: "solo", error: "e" } } }).rows[0]!.saved, ""); // none stored
+  assert.equal("saved" in buildDefaultsRequest(registry.roots(), [{ command: "mute", line: "mute #a" }]).rows[0]!, false); // first open: omitted
+});
+
+test("parseDefaultsAnswer compares against `saved ?? line`", () => {
+  const req = { title: "t", rows: [{ command: "mute", line: "solo", summary: "", bareBehaviour: "", error: "e", saved: "mute #a" }] };
+  assert.deepEqual(parseDefaultsAnswer(JSON.stringify({ changes: { mute: "solo" } }), req, () => {})!.changes, { mute: "solo" }); // typed text left as it is
+  assert.deepEqual(parseDefaultsAnswer(JSON.stringify({ changes: { mute: "mute #a" } }), req, () => {})!.changes, {}); // put back to saved
 });
 
 test("capDefaults: rows and texts are capped, bad rows dropped", () => {
@@ -160,7 +169,7 @@ test("flow: an invalid line reopens the page on its row with the text and the er
 });
 
 test("flow: Enter on the reopened page without a fix checks the pending line again; Esc ends it", async () => {
-  const t = flowFor([() => ({ changes: { mute: "bogus" } }), () => ({ changes: {} }), () => null]);
+  const t = flowFor([() => ({ changes: { mute: "bogus" } }), () => ({ changes: { mute: "bogus" } }), () => null]);
   const out = await t.flow.open();
   assert.equal(t.requests.length, 3);
   assert.equal(t.requests[2]!.rows[0]!.line, "bogus");

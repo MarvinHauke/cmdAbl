@@ -270,6 +270,12 @@ export interface DefaultsRow {
   bareBehaviour: string;
   /** Why `line` is not usable (a hand edit that does not parse, or the last save): the page shows it next to the field. */
   error?: string;
+  /**
+   * The line stored in the file ("" = none), only on a page reopened after a failed save, where `line` is the typed text.
+   * Omitted on a first open (= `line`). The page compares against `saved ?? line`, so a typed fix counts as a change and
+   * a line put back to `saved` is no change.
+   */
+  saved?: string;
 }
 
 /** One row per top-level command (capped at 200 rows, texts at 300 characters). */
