@@ -40,9 +40,11 @@ All releases were tested in Live, including the installed `.ablx`.
     line (`ui/help.js`) on the board, settings, defaults and pick list; `ui.helpLine`; key caps; text
     fields show their help on hover only (0019 §3). User hand check open: the look (key caps, subject in
     normal weight), hover, the defaults page's red error line. The defaults page opened from `map config` drew its list scrolled with an empty area (a stale WKWebView paint, inferred); a repaint nudge after load fixed it in Live. The hop settings → defaults keeps one window size (640 wide, the settings height; `6981df7`) and places the list before the first paint (`0fb0d57`): about 200 ms, no jump. Merging both pages into one dialog (no hop at all) is a later option.
-  - **Next: phase 3** (the palette help view): the layout is agreed with the user first, then
+  - **Next: [0021](0021-installation-and-setup-page.md) the setup page** (user, 2026-11-05: in 0.1.6, before
+    phase 3). Step 0 (spike: a page at activation, Karabiner's import link) is the architect's.
+  - Then phase 3 (the palette help view): the layout is agreed with the user first, then
     descriptions in the snapshot (core) and the view (ui).
-- 0.1.6 = 0019 phases 1–3 (contracts 1–3 approved 2026-11-05, the status rows (4) still open). The
+- 0.1.6 = 0019 phases 1–3 and 0021 (contracts 1–3 approved 2026-11-05; the status rows (4) approved with 0021). The
   palette help view's layout gets agreed with the user before it's built (phase 3). Aliases moved to
   the [0020](0020-aliases.md) draft. Ideas from `docs/userfindings.md`
   (local, not in git) that are still open are listed there under "Moved".
@@ -86,7 +88,7 @@ Older checks that were never reported; most can now run through MCP.
 ## Backlog (not ordered)
 
 - **Track colors** (user, 2026-11-05): a `color` module to color tracks (e.g. `color #drums red`).
-  To plan when there's time between tests; needs a plan (next free number 0021).
+  To plan when there's time between tests; needs a plan (number 0022; 0021 is the setup page).
 
 - Group-aware toggles (user, 2026-11-04): today `mute #synth` then `mute #drums` toggles each track on
   its own, so a track in both tags (e.g. Vermona) is unmuted again by the second command. That's logical,
@@ -113,12 +115,7 @@ Older checks that were never reported; most can now run through MCP.
   opt-in per binding (e.g. an `open` operator or a per-command "may open a dialog" flag), at most one
   dialog at a time, never during a running dialog.
 
-- **Simpler installation and a clear `cmdabl setup` result** (user, 2026-11-05): fewer steps from
-  download to a working palette (Karabiner trigger, Remote Script, control surface, Live restart). The
-  setup dialog becomes a status page: one row per step with a green ✓ (ok), a yellow ! (warning, e.g.
-  "rule already linked" or "restart Live once") or a red ✗ (failed), a short sentence, and the fix or
-  docs link as a button instead of raw paths and URLs. Fits the 0.1.6 settings/help pattern; needs a
-  plan.
+- **Simpler installation and a clear `cmdabl setup` result**: planned as [0021](0021-installation-and-setup-page.md), in work for 0.1.6.
 
 - **0.1.6: settings and help pattern** (user findings, 2026-11-04; plan [0019](0019-settings-and-help.md), draft):
   - a settings page per window (gear button, `<module> config`: `tag config`, MIDI, note) plus a

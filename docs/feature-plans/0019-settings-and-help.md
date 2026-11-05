@@ -230,9 +230,8 @@ sections, then switches. Unit tests for the helper run in Node, and the pages ar
 
 ### 6. `cmdabl setup` as a status page
 
-**Open (user, 2026-11-05):** the style of status rows is liked, but the contract isn't approved. It needs
-refining, especially for the installation process, and is decided together with the "simpler
-installation" backlog item. The text below is the starting point.
+**Moved to [0021](0021-installation-and-setup-page.md)** (user, 2026-11-05): the status rows, the action
+buttons and the setup page are planned and approved there. The text below was the starting point.
 
 - `setup` returns `CommandResult.sections` with **status rows**. `notify`'s section items may now be
   `{ text, status?: "ok" | "warn" | "fail", action?: { label, command } | { label, url } }`. Strings
