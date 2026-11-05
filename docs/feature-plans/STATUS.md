@@ -39,7 +39,7 @@ All releases were tested in Live, including the installed `.ablx`.
   - **Phase 2 done** (MCP Live test 2026-11-05; `34383b2`, `c0a28bc`, `7c3cdfc`, `724931e`; scroll fix `0ca2e8f`, `952c118`): the help
     line (`ui/help.js`) on the board, settings, defaults and pick list; `ui.helpLine`; key caps; text
     fields show their help on hover only (0019 §3). User hand check open: the look (key caps, subject in
-    normal weight), hover, the defaults page's red error line. The defaults page opened from `map config` drew its list scrolled with an empty area (a stale WKWebView paint, inferred); a repaint nudge after load fixed it in Live.
+    normal weight), hover, the defaults page's red error line. The defaults page opened from `map config` drew its list scrolled with an empty area (a stale WKWebView paint, inferred); a repaint nudge after load fixed it in Live. The hop settings → defaults keeps one window size (640 wide, the settings height; `6981df7`) and places the list before the first paint (`0fb0d57`): about 200 ms, no jump. Merging both pages into one dialog (no hop at all) is a later option.
   - **Next: phase 3** (the palette help view): the layout is agreed with the user first, then
     descriptions in the snapshot (core) and the view (ui).
 - 0.1.6 = 0019 phases 1–3 (contracts 1–3 approved 2026-11-05, the status rows (4) still open). The
