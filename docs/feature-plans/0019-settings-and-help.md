@@ -153,6 +153,8 @@ interface ModuleApi {
   in the tree that the module doesn't write itself, documented in `man` like `--help`.
   **It takes the word `config`:** `tag config` used to address a track named "config" and now opens
   the settings; `tag "config"` keeps the old meaning. The help text and the 0.1.6 release notes say so.
+- **The gear reruns the whole line**, so it is only for commands that read and then show a page
+  (`tag -l`, `tag -e`); noted on `BoardRequest.gear`.
 - **The gear button** in a page's footer (board, note, MIDI monitor): a page can't open a second dialog,
   so the gear closes the page with `{ "settings": true }`, and core opens the settings page on that
   module's group. When the settings page closes, core runs the page's command line again, so the user
@@ -320,7 +322,8 @@ see it:
    `tag.foldAfter` replaces `FOLD_AFTER`, and the palette switch moves (Off is the clean palette).
    Only the four 1a keys. Builders: core (store, surface, commands), ui (page), modules (`tag`
    declares).
-1b. **Default commands:** `default_commands.json` and its store, the expansion step, `\<command>`, the
+1b. **Default commands:** first, the gear and the group lookup use the parsed root instead of splitting
+   the raw line (1a splits on whitespace, which breaks with `\mute` and aliases). Then `default_commands.json` and its store, the expansion step, `\<command>`, the
    defaults page (live, `/check`, fallback check after closing), the link rows, the palette's
    expansion row with Tab, and the log line `typed ⇒ ran`. Builders: core (store, expansion, route),
    ui (page, palette row).
