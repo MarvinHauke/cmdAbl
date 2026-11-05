@@ -5,7 +5,7 @@ import { PALETTE_WIDTH, paletteHeight } from "./paletteSize.js";
 import type { LivePages, LiveRoutes } from "./livePage.js";
 import { takePaletteAnswer, type PaletteRequestSettings, type PaletteSettings } from "./settings.js";
 import { parseSelectAnswer } from "./pickResult.js";
-import { notifySize, sectionsText } from "./notifySize.js";
+import { notifySize, sectionsSize, sectionsText, usesStatusLayout } from "./notifySize.js";
 import { boardSize, parseBoardAnswer } from "./board.js";
 import { pickHeight, pickWidth } from "./pickSize.js";
 import { logger } from "./log.js";
@@ -395,10 +395,11 @@ export function createDefaultUi(
       HELP: request.help ?? null,
     });
   const sizeOf = (request: NotifyRequest): [number, number] => {
-    const { width, height } = notifySize(request.sections ? sectionsText(request.sections) : request.text, {
-      buttons: request.sections?.some((s) => s.items.some((i) => typeof i !== "string" && i.action)) === true,
-      toggle: request.toggle !== undefined,
-    });
+    const toggle = request.toggle !== undefined;
+    const { width, height } =
+      request.sections && usesStatusLayout(request.sections, toggle)
+        ? sectionsSize(request.sections, { toggle })
+        : notifySize(request.sections ? sectionsText(request.sections) : request.text);
     return [width, height];
   };
 

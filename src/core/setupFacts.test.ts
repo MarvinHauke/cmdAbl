@@ -6,8 +6,7 @@ import * as path from "node:path";
 import { gatherFacts, KARABINER_RULE_DESCRIPTION, ruleEnabledIn, writableFolder } from "./setupFacts.js";
 import { runMacRemoteScriptSetup } from "./setup.js";
 import { isKarabinerImportUrl, openUrl } from "./openUrl.js";
-import { notifySize } from "./notifySize.js";
-import { sectionsText } from "./notifySize.js";
+import { sectionsSize, sectionsText, usesStatusLayout } from "./notifySize.js";
 import { karabinerImportUrl } from "./setupRows.js";
 
 const config = (profiles: unknown) => JSON.stringify({ profiles });
@@ -86,11 +85,19 @@ test("openUrl accepts Karabiner's import link and nothing else but https", async
   assert.equal((await openUrl("karabiner://x", { platform: "darwin", spawn })).code, 1);
 });
 
-test("notifySize: row buttons, the help line and the checkbox add height; plain text is unchanged", () => {
-  const plain = notifySize("a\nb");
-  assert.deepEqual(notifySize("a\nb", {}), plain);
-  assert.ok(notifySize("a\nb", { buttons: true }).height > plain.height);
-  assert.ok(notifySize("a\nb", { toggle: true }).height > plain.height);
-  const text = sectionsText([{ heading: "h", items: [{ text: "row", status: "ok", action: { label: "Go", command: "c" } }, "plain"] }]);
-  assert.match(text, /row {2}\[Go\]/);
+test("sectionsSize: the setup page's boxes add up (4 rows in 3 sections plus the checkbox ≈ the measured need); plain sections keep the old sizing", () => {
+  const setup = [
+    { heading: "Keyboard trigger", items: [{ text: "The : key opens cmdAbl.", status: "ok" as const }] },
+    { heading: "Remote Script", items: [{ text: "Remote Script 0.1.14 is installed.", status: "ok" as const }, { text: "cmdAbl answers in Live.", status: "ok" as const }] },
+    { heading: "Data folder", items: [{ text: "Settings and tags can be saved.", status: "ok" as const }] },
+  ];
+  const size = sectionsSize(setup, { toggle: true });
+  assert.ok(size.height >= 330 && size.height <= 370, String(size.height)); // 32 + 54 + 15 + 4×24 + 4 + 42 + 12 + 36 + 12 + 24 + slack
+  assert.ok(sectionsSize(setup, { toggle: false }).height < size.height); // no help line without a button or checkbox
+  const long = [{ heading: "h", items: [{ text: "x".repeat(300), status: "warn" as const, action: { label: "Go", command: "c" } }] }];
+  assert.ok(sectionsSize(long, { toggle: false }).height > sectionsSize([{ heading: "h", items: [{ text: "x", status: "warn" as const, action: { label: "Go", command: "c" } }] }], { toggle: false }).height);
+  assert.equal(usesStatusLayout([{ heading: "h", items: ["a"] }], false), false);
+  assert.equal(usesStatusLayout([{ heading: "h", items: ["a"] }], true), true);
+  assert.equal(usesStatusLayout(setup, false), true);
+  assert.match(sectionsText([{ heading: "h", items: [{ text: "row", status: "ok", action: { label: "Go", command: "c" } }, "plain"] }]), /row {2}\[Go\]/);
 });

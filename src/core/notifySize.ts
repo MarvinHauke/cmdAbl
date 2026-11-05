@@ -1,4 +1,4 @@
-import { itemText, type StatusItem } from "./types.js";
+import { itemText, type ResultSection, type StatusItem } from "./types.js";
 
 // Size of the message dialog, from its text. The numbers are those of
 // ui/feedback.html in Live's webview (measured in Live 12.4.15b6 on
@@ -30,12 +30,7 @@ export function notifyCharsPerLine(width: number): number {
   return Math.max(1, Math.floor((width - NOTIFY_HORIZONTAL_CHROME - NOTIFY_WIDTH_MARGIN) / NOTIFY_CHAR_WIDTH));
 }
 
-/** Extra footer height when the page draws row buttons (24 px rows), a help line (36) and a checkbox row (28). */
-export const NOTIFY_BUTTON_ROW_EXTRA = 6;
-export const NOTIFY_HELP_LINE_HEIGHT = 36;
-export const NOTIFY_TOGGLE_HEIGHT = 28;
-
-export function notifySize(text: string, extras: { buttons?: boolean; toggle?: boolean } = {}): { width: number; height: number } {
+export function notifySize(text: string): { width: number; height: number } {
   const lines = text.split("\n");
   const longest = lines.reduce((max, l) => Math.max(max, l.length), 0); // no spread: a huge text must not throw
   const wanted = Math.ceil(longest * NOTIFY_CHAR_WIDTH) + NOTIFY_HORIZONTAL_CHROME + NOTIFY_WIDTH_MARGIN;
@@ -49,10 +44,7 @@ export function notifySize(text: string, extras: { buttons?: boolean; toggle?: b
   // Where a line wraps the estimate can be off by one: leave a line of slack.
   // Unwrapped text stays tight.
   if (lines.some((l) => l.length > perLine)) rows += 1;
-  // Rows with a button are 24 px high instead of 18; a help line and a checkbox row sit in the footer.
-  const extra =
-    (extras.buttons ? NOTIFY_BUTTON_ROW_EXTRA * rows + NOTIFY_HELP_LINE_HEIGHT : 0) + (extras.toggle ? NOTIFY_TOGGLE_HEIGHT + (extras.buttons ? 0 : NOTIFY_HELP_LINE_HEIGHT) : 0);
-  const height = Math.min(Math.max(NOTIFY_FIXED_HEIGHT + NOTIFY_LINE_HEIGHT * rows + extra, NOTIFY_MIN_HEIGHT), extras.buttons || extras.toggle ? 620 : NOTIFY_MAX_HEIGHT);
+  const height = Math.min(Math.max(NOTIFY_FIXED_HEIGHT + NOTIFY_LINE_HEIGHT * rows, NOTIFY_MIN_HEIGHT), NOTIFY_MAX_HEIGHT);
   return { width, height };
 }
 
@@ -67,4 +59,58 @@ export function sectionsText(sections: Array<{ heading: string; meta?: string; i
 function itemLine(item: string | StatusItem): string {
   if (typeof item === "string") return item;
   return `${item.status ? "✓ " : ""}${itemText(item)}${item.action ? `  [${item.action.label}]` : ""}`;
+}
+
+// ── sections with status rows (plan 0021) ────────────────────────────────────
+// ui/feedback.html lays these out in boxes, so the height is the sum of the boxes (css values of the page):
+// body padding 16 + 16, a 12 px gap between msg, help line and footer; per section a 18 px heading, a 5 px
+// margin and rows of at least 24 px (32 with a button) with a 4 px gap; between sections 10 + 1 + 10; the help line is 36 px and
+// there only when a row has a button or there is a checkbox; the footer is one 24 px line.
+
+const NOTIFY_HELP_LINE_HEIGHT = 36;
+const SEC_PAGE_PADDING = 32;
+const SEC_GAP = 12;
+const SEC_HEAD = NOTIFY_LINE_HEIGHT;
+const SEC_ITEMS_MARGIN = 5;
+const SEC_ROW_MIN = 24;
+const SEC_ROW_BUTTON = 32; // measured: a row with a button
+const SEC_ROW_PAD = 6; // vertical padding of a wrapped row (2 + 2 + a line of slack)
+const SEC_ROW_GAP = 4;
+const SEC_SEPARATOR = 21;
+const SEC_FOOTER = 24;
+const SEC_SLACK = 8;
+/** Width taken by the row's mark, its gaps and the item indent; a button adds its label and 24 px. */
+const SEC_ROW_CHROME = 16 + 12 + 8 + 14;
+
+export function sectionsSize(sections: ResultSection[], options: { toggle: boolean }): { width: number; height: number } {
+  const rowText = (i: string | StatusItem) => (typeof i === "string" ? i : i.text);
+  const buttonWidth = (i: string | StatusItem) => (typeof i === "string" || !i.action ? 0 : Math.ceil(i.action.label.length * NOTIFY_CHAR_WIDTH) + 24 + 8);
+  const rowWidth = (i: string | StatusItem) => Math.ceil(rowText(i).length * NOTIFY_CHAR_WIDTH) + SEC_ROW_CHROME + buttonWidth(i);
+  let wanted = 0;
+  for (const s of sections) {
+    wanted = Math.max(wanted, Math.ceil((s.meta ? `${s.heading}  ${s.meta}` : s.heading).length * NOTIFY_CHAR_WIDTH));
+    for (const i of s.items) wanted = Math.max(wanted, rowWidth(i));
+  }
+  const width = Math.min(Math.max(wanted + NOTIFY_HORIZONTAL_CHROME + NOTIFY_WIDTH_MARGIN, NOTIFY_MIN_WIDTH), NOTIFY_MAX_WIDTH);
+  const room = width - NOTIFY_HORIZONTAL_CHROME - NOTIFY_WIDTH_MARGIN;
+  let body = 0;
+  sections.forEach((s, n) => {
+    body += (n > 0 ? SEC_SEPARATOR : 0) + SEC_HEAD + SEC_ITEMS_MARGIN;
+    s.items.forEach((i, k) => {
+      const perLine = Math.max(1, Math.floor((room - SEC_ROW_CHROME - buttonWidth(i)) / NOTIFY_CHAR_WIDTH));
+      const lines = Math.max(1, Math.ceil(rowText(i).length / perLine));
+      body += (k > 0 ? SEC_ROW_GAP : 0) + Math.max(buttonWidth(i) > 0 ? SEC_ROW_BUTTON : SEC_ROW_MIN, lines * NOTIFY_LINE_HEIGHT + SEC_ROW_PAD);
+    });
+  });
+  const help = options.toggle || sections.some((s) => s.items.some((i) => typeof i !== "string" && i.action));
+  const height = SEC_PAGE_PADDING + body + (help ? SEC_GAP + NOTIFY_HELP_LINE_HEIGHT : 0) + SEC_GAP + SEC_FOOTER + SEC_SLACK;
+  return { width, height: Math.min(Math.max(height, NOTIFY_MIN_HEIGHT), 640) };
+}
+
+/**
+ * True when the page lays the sections out as status rows (an object item) or with a checkbox. Plain-string items in such a
+ * page are estimated as full rows, so a mixed page is sized high (cmdAbl sends status rows only in the setup page).
+ */
+export function usesStatusLayout(sections: ResultSection[] | undefined, toggle: boolean): boolean {
+  return toggle || (sections?.some((s) => s.items.some((i) => typeof i !== "string")) ?? false);
 }

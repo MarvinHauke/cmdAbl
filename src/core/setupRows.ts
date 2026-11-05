@@ -70,7 +70,7 @@ export function buildSetupRows(facts: SetupFacts): SetupRows {
     const heading = "Keyboard trigger";
     if (!t.installed) {
       add(heading, "karabiner", {
-        text: "Karabiner-Elements is not installed. Without it, : doesn't open cmdAbl; only the right-click menu does. Strongly recommended.",
+        text: "Karabiner-Elements is not installed. Without it the : key doesn't open cmdAbl; only the right-click menu does. Strongly recommended.",
         status: "warn",
         action: { label: "Get Karabiner", help: "Open the Karabiner-Elements download page in your browser.", url: KARABINER_HOME_URL },
       });
@@ -83,17 +83,17 @@ export function buildSetupRows(facts: SetupFacts): SetupRows {
     } else if (t.enabled === false) {
       add(heading, "karabiner", { text: "The cmdAbl rule is added but not enabled. Enable it in Karabiner → Complex Modifications.", status: "warn" });
     } else if (t.enabled === true) {
-      add(heading, "karabiner", { text: ": opens cmdAbl", status: "ok" });
+      add(heading, "karabiner", { text: "The : key opens cmdAbl.", status: "ok" });
     } else {
-      add(heading, "karabiner", { text: "The cmdAbl rule is added. If : doesn't open cmdAbl, enable it in Karabiner.", status: "ok" });
+      add(heading, "karabiner", { text: "The cmdAbl rule is added. If the : key doesn't open cmdAbl, enable it in Karabiner.", status: "ok" });
     }
   } else if (facts.platform === "win32") {
     const t = facts.trigger;
     add("Keyboard trigger", "karabiner", t.ruleThere
-      ? { text: ": opens cmdAbl (AutoHotkey script is in the startup folder)", status: "ok" }
+      ? { text: "The : key opens cmdAbl (the AutoHotkey script is in the startup folder).", status: "ok" }
       : t.installed
         ? { text: "The AutoHotkey script is not installed yet.", status: "warn", action: { label: "Install", command: KEYBOARD_COMMAND } }
-        : { text: "AutoHotkey v2 is not installed. Without it, : doesn't open cmdAbl; only the right-click menu does.", status: "warn" });
+        : { text: "AutoHotkey v2 is not installed. Without it the : key doesn't open cmdAbl; only the right-click menu does.", status: "warn" });
   }
 
   // ── Remote Script ──

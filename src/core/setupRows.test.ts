@@ -120,7 +120,7 @@ test("Windows: AutoHotkey rows; other platforms: no trigger row", () => {
 
 test("setupLines: marks, text and buttons as lines for a headless run", () => {
   const lines = setupLines(buildSetupRows(facts({ script: { installed: { status: "missing" }, running: down }, data: false })).sections);
-  assert.match(lines, /^Keyboard trigger\n {2}✓ : opens cmdAbl$/m);
+  assert.match(lines, /^Keyboard trigger\n {2}✓ The : key opens cmdAbl\.$/m);
   assert.match(lines, /^ {2}! The Remote Script is not installed.* \[Copy: cmdabl setup copy\]$/m);
   assert.match(lines, /^ {2}✗ cmdAbl can't write to its data folder/m);
 });
