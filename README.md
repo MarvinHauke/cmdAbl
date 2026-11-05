@@ -36,7 +36,7 @@ Tag tracks by what they are: `tag /Lead fx synth`. After that, `mute #fx` reache
 opens the tag board, where you add, rename and remove tags. Tags are saved with the Set, and they need
 the [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/).
 
-![Screen recording of the tag board: tag -l opens it; Synth is typed and added to drums; the arrow keys move to the Lead chip under fx and mark it for removal; Enter applies the 2 changes](docs/assets/images/tags.gif)
+![Screen recording of the tag board (tag -l): "analog" is typed into the add field of #drums, → steps into the suggestions and Enter adds three matching tracks while the text stays; "vermona drm" and Enter add one more; Apply shows 4 changes](docs/assets/images/tags.gif)
 
 ### A pick list you control
 

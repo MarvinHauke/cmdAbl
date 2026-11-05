@@ -296,9 +296,9 @@ tracks.
 `tag -l` (or `tag --list`) opens the tag board. It shows one section per tag. The board opens with the cursor in the
 **New tag** row.
 
-![Screen recording of the tag board: tag -l opens it; Synth is typed and added to drums; the arrow keys move to the Lead chip under fx and mark it for removal; Enter applies the 2 changes](assets/images/tags.gif)
+![Screen recording of the tag board (tag -l): "analog" is typed into the add field of #drums, → steps into the suggestions and Enter adds three matching tracks while the text stays; "vermona drm" and Enter add one more; Apply shows 4 changes](assets/images/tags.gif)
 
-*`tag -l`: add tracks to tags, mark a chip for removal, apply. The log lists what changed.*
+*`tag -l`: add several tracks to #drums by typing and Enter. Nothing changes in Live until you press Apply.*
 
 Each tag's heading line holds a fold arrow, the tag's name, an **add…** input and the number of tracks. Below it,
 the tag's tracks sit as chips.
@@ -366,6 +366,7 @@ tag, **untagged**); `→` goes in, `←` goes out.
 | A heading | `←` | Folds an open tag. |
 | The **untagged** heading | `→` `Enter` | Unfolds it; again, steps onto the tracks. |
 | A heading | `F2` | Renames the tag. |
+| A heading | typing | Unfolds the tag and types into its **add…** field. On **untagged**, types into the target tag's field (or **New tag**). |
 | An **add…** field | typing | Suggests tracks. |
 | An **add…** field | `Tab` | Completes the text with the highlighted suggestion. It does not add. In an empty field, it moves on as usual. |
 | An **add…** field | `Enter` | Adds the highlighted track. The text and the list stay, unless the added name is exactly what you typed: then the field clears. With no match, nothing is added. In an empty field, it applies. |
