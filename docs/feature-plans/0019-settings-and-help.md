@@ -104,7 +104,7 @@ interface ModuleApi {
 
   | Key | Kind | Default | From | Phase |
   |---|---|---|---|---|
-  | `palette.above` | enum off/hints/options | off | prompt-1 (moves from the footer) | 1a |
+  | ~~`palette.above`~~ | enum off/hints/options | off | prompt-1; **removed** with the area above the prompt (§4, 2026-11-05) | 1a |
   | `tag.foldAfter` | int 1–500 | 20 | tag-3 | 1a |
   | `map.enabled` | bool | true | 0018 | 1a |
   | `midi.statusBar` | bool | false | 0018 | 1a |
@@ -208,8 +208,16 @@ interface ModuleApi {
   caret, since the row already says what it is.
 - **Empty prompt or no known command yet:** the idle text, the palette's keys (key caps).
 - **`ui.helpLine` off:** the footer shows the keys only (the open question below is settled this way).
-- **"Help above the prompt"** (`palette.above` Off · Help · Options) stays as it is. Its Help panel isn't
-  changed in this phase.
+- **The area above the prompt goes away** (user, 2026-11-05, after the phase 3 Live test): the footer says what
+  the Hints panel said, and the rows already list the options, so Hints and Options have no job left.
+  - `palette.above` is removed (an old value in `settings.json` is ignored); `ui.helpLine` is the one switch
+    for palette help.
+  - The **moving text** moves into the rows: the highlighted row's description scrolls slowly when it is cut
+    off; the other rows keep their "…".
+  - The `config` row ("open the settings of …") is offered as a normal suggestion row after a command.
+  - The palette has **no Settings button** (user): the footer is the help line only. Settings are reached
+    with `cmdabl config`, `<command> config`, later `Cmd+,` (phase 7).
+  - The window gets shorter by the panel; the number of visible rows stays.
 - **Where it comes from:** the completion snapshot. Each argument and option gets a `description`
   (additive, `CmdComplete`); the command's help is already there. The completion engine (which runs on the
   snapshot in the page) works out what to show: `complete()` returns `help?: { command, summary, focus?:
