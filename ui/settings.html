@@ -13,7 +13,7 @@
 
     #scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 0; }
     #scroll:focus { outline: none; }
-    .group h3 { font-size: 11px; font-weight: 400; color: var(--dim); padding: 10px 16px 4px; text-transform: none; user-select: none; }
+    .group h3 { font-size: 11px; font-weight: 700; color: var(--text); padding: 10px 16px 4px; text-transform: none; user-select: none; }
     .row { position: relative; display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 4px 16px 4px 22px; cursor: default; }
     .row.cur { background: var(--bg-row); }
     .row.cur::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
@@ -154,6 +154,8 @@
         const commit = () => { const n = Number(inp.value.trim()); r.set(inp.value.trim() !== '' && Number.isFinite(n) ? clamp(n) : r.value); inp.value = String(r.value); };
         inp.addEventListener('focus', () => moveTo(idx));
         inp.addEventListener('blur', commit);
+        // While typing: a value that fits counts at once (reset and the change count follow); the text itself is left alone until blur.
+        inp.addEventListener('input', () => { const t = inp.value.trim(); const n = Number(t); if (t !== '' && Number.isInteger(n) && n >= row.min && n <= row.max) r.set(n); });
         inp.addEventListener('keydown', e => {
           if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commit(); save(); }
           else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); e.stopPropagation(); commit(); inp.blur(); moveTo(idx + (e.key === 'ArrowUp' ? -1 : 1)); }
@@ -200,7 +202,7 @@
       updateFooter();
     }
 
-    const KEYS = '↑↓ row · ←→ change (⇧ ×10) · digits type · Space toggle · Enter save · Esc close';
+    const KEYS = '↑↓ row · ←→ change (⇧ ×10) · Space toggle · Enter save · Esc close';
     function updateFooter() {
       if (confirming) return;
       const r = R[hover >= 0 ? hover : cur];
@@ -209,8 +211,7 @@
         helpEl.appendChild(mk('span', 'txt', r.row.help || ''));
         helpEl.appendChild(mk('span', 'def', isLink(r) ? '' : 'Default: ' + fmt(r.row, r.row.default)));
       } else if (r && !isLink(r)) { helpEl.appendChild(mk('span', 'txt')); helpEl.appendChild(mk('span', 'def', 'Default: ' + fmt(r.row, r.row.default))); }
-      const n = changedRows().length;
-      keysEl.textContent = (R[cur] && isLink(R[cur]) ? '↑↓ row · Enter open · Esc close' : KEYS) + (n ? '  ·  ' + n + ' change' + (n === 1 ? '' : 's') : '');
+      keysEl.textContent = (R[cur] && isLink(R[cur]) ? '↑↓ row · Enter open · Esc close' : KEYS);
     }
 
     function changesObj() {
