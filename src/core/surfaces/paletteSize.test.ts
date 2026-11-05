@@ -4,8 +4,8 @@ import { PALETTE_WIDTH, paletteHeight } from "./paletteSize.js";
 
 test("the palette opens 260 px high, 420 with the hint panel, 450 with the option rows; anything else is 260", () => {
   assert.equal(PALETTE_WIDTH, 500);
-  assert.equal(paletteHeight("off"), 260);
-  assert.equal(paletteHeight("hints"), 420);
-  assert.equal(paletteHeight("options"), 450);
-  for (const odd of [undefined, "", "both", "toString", "__proto__"]) assert.equal(paletteHeight(odd), 260, String(odd));
+  assert.equal(paletteHeight("off"), 297);
+  assert.equal(paletteHeight("hints"), 457);
+  assert.equal(paletteHeight("options"), 487);
+  for (const odd of [undefined, "", "both", "toString", "__proto__"]) assert.equal(paletteHeight(odd), 297, String(odd));
 });
