@@ -933,13 +933,13 @@ Setup and status commands of cmdAbl itself.
 
 show what is set up and what still needs you
 
-Opens the setup page: one row per step (keyboard trigger, Remote Script, restarting Live, the control surface, the data folder) with ✓ / ! / ✗ and a button where a step needs you. It opens by itself on the first start and after an update that needs a step (switch off with "Don't open this page by itself" or `cmdabl config setup`). `cmdabl setup copy` copies or updates the Remote Script, `cmdabl setup karabiner` links the Karabiner rule (macOS) or installs the AutoHotkey script (Windows) the old way. Without a screen (an agent's run) the rows come back as text lines.
+Opens the setup page: one row per step (keyboard trigger, Remote Script, restarting Live, the control surface, the data folder) with ✓ / ! / ✗ and a button where a step needs you. It opens by itself on the first start and after an update that needs a step (switch off with "Don't open this page by itself" or `cmdabl config setup`). `cmdabl setup script` copies or updates the Remote Script, `cmdabl setup karabiner` links the Karabiner rule (macOS) or installs the AutoHotkey script (Windows) the old way. Without a screen (an agent's run) the rows come back as text lines.
 
-**Usage:** `cmdabl setup [<copy|karabiner>]`
+**Usage:** `cmdabl setup [<script|karabiner>]`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
-| `<step>` | one of `copy`, `karabiner` | no | copy: copy or update the Remote Script; karabiner: link the Karabiner rule (AutoHotkey script on Windows) |
+| `<step>` | one of `script`, `karabiner` | no | script: copy or update the Remote Script; karabiner: link the Karabiner rule (AutoHotkey script on Windows) |
 
 **Examples**
 
@@ -950,7 +950,7 @@ cmdabl setup
 show the setup page
 
 ```
-cmdabl setup copy
+cmdabl setup script
 ```
 
 copy or update the Remote Script, then restart Live once

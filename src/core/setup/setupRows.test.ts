@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSetupRows, hasNewTrouble, karabinerImportUrl, setupLines, COPY_COMMAND, type SetupFacts } from "./setupRows.js";
+import { buildSetupRows, hasNewTrouble, karabinerImportUrl, setupLines, SCRIPT_COMMAND, type SetupFacts } from "./setupRows.js";
 import type { StatusItem } from "../types.js";
 
 const hello = (script: string) => ({ ok: true as const, value: { script, v: 1, ops: [] as string[] } });
@@ -56,7 +56,7 @@ test("the import link encodes the local rule address", () => {
 test("Remote Script: missing → Copy; older → Update names both versions; copy failed → red; current → ✓", () => {
   const missing = row(facts({ script: { installed: { status: "missing" }, running: down } }), "script")!;
   assert.equal(missing.status, "warn");
-  assert.deepEqual(missing.item.action, { label: "Copy", help: "Copy the Remote Script into Live's User Library.", command: COPY_COMMAND });
+  assert.deepEqual(missing.item.action, { label: "Copy", help: "Copy the Remote Script into Live's User Library.", command: SCRIPT_COMMAND });
   const old = row(facts({ script: { installed: { status: "outdated", version: "0.1.14" }, running: down } }), "script")!;
   assert.equal(old.status, "warn");
   assert.match(old.item.text, /Installed 0\.1\.14, this cmdAbl brings 0\.1\.15/);
@@ -121,6 +121,6 @@ test("Windows: AutoHotkey rows; other platforms: no trigger row", () => {
 test("setupLines: marks, text and buttons as lines for a headless run", () => {
   const lines = setupLines(buildSetupRows(facts({ script: { installed: { status: "missing" }, running: down }, data: false })).sections);
   assert.match(lines, /^Keyboard trigger\n {2}✓ The : key opens cmdAbl\.$/m);
-  assert.match(lines, /^ {2}! The Remote Script is not installed.* \[Copy: cmdabl setup copy\]$/m);
+  assert.match(lines, /^ {2}! The Remote Script is not installed.* \[Copy: cmdabl setup script\]$/m);
   assert.match(lines, /^ {2}✗ cmdAbl can't write to its data folder/m);
 });

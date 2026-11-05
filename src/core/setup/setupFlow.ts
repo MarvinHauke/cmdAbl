@@ -1,6 +1,6 @@
 import type { ModuleFiles } from "../settings/files.js";
 import { capSections } from "../surfaces/present.js";
-import { buildSetupRows, hasNewTrouble, setupLines, type SetupFacts, type SetupRows } from "./setupRows.js";
+import { buildSetupRows, hasNewTrouble, setupLines, SCRIPT_COMMAND, type SetupFacts, type SetupRows } from "./setupRows.js";
 import { ExitCode, ok, fail, type CommandResult, type ItemAction, type ResultSection } from "../types.js";
 import type { NotifyAnswer, NotifyRequest } from "../surfaces/ui.js";
 import type { SettingsStore } from "../settings/settings.js";
@@ -122,7 +122,7 @@ export function createSetupFlow(deps: SetupFlowDeps): SetupFlow {
       if (!action) break;
       if ("command" in action) {
         const result = await deps.runCommand(action.command);
-        if (action.command === "cmdabl setup copy") copyFailed = result.code === ExitCode.OK ? null : (result.message ?? "failed");
+        if (action.command === SCRIPT_COMMAND) copyFailed = result.code === ExitCode.OK ? null : (result.message ?? "failed");
         else if (result.code !== ExitCode.OK) warn(`setup: ${action.command}: ${result.message ?? "failed"}`);
       } else {
         const result = await deps.openUrl(action.url);

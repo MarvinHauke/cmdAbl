@@ -191,7 +191,7 @@ export function activate(activation: ActivationContext) {
   // ── core: the only commands baked in (see src/core/command/builtins.ts) ───────────
   // `cmdabl curve` measures the first regular track (plan 0012): no fader moves, nothing is written.
   const firstTrack = () => liveNodes().find((n) => n.kind === "track" && n.scope === "regular");
-  // The setup page (plan 0021): rows from facts, buttons run `cmdabl setup copy` or open a link, then the page comes again.
+  // The setup page (plan 0021): rows from facts, buttons run `cmdabl setup script` or open a link, then the page comes again.
   const hostStart = Date.now();
   const setupFlow = createSetupFlow({
     notifyAnswer: (request) => ui.notifyAnswer(request),

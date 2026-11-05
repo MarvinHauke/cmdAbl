@@ -8,7 +8,7 @@ import type { ResultSection, StatusItem } from "../types.js";
 
 export const KARABINER_HOME_URL = "https://karabiner-elements.pqrs.org/";
 /** What the controls of the page run: the flow looks these up in the sections it sent, so they are the only commands a page can trigger. */
-export const COPY_COMMAND = "cmdabl setup copy";
+export const SCRIPT_COMMAND = "cmdabl setup script";
 export const KEYBOARD_COMMAND = "cmdabl setup karabiner";
 
 /** The route Karabiner fetches the rule from (httpTrigger.ts) and the import link that makes it fetch it. */
@@ -100,7 +100,7 @@ export function buildSetupRows(facts: SetupFacts): SetupRows {
   const { shipped, installed, running, copyNewerThanHost, copyFailed } = facts.script;
   const live = running?.ok ? running.value.script : null;
   const heading = "Remote Script";
-  const copy = (label: "Copy" | "Update") => ({ label, help: "Copy the Remote Script into Live's User Library.", command: COPY_COMMAND });
+  const copy = (label: "Copy" | "Update") => ({ label, help: "Copy the Remote Script into Live's User Library.", command: SCRIPT_COMMAND });
   let scriptReady = false; // the installed copy is the one this cmdAbl ships
   if (copyFailed) {
     add(heading, "script", { text: `Copying the Remote Script failed: ${copyFailed}`, status: "fail", action: copy("Copy") }, copyFailed);

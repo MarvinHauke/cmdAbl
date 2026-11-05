@@ -325,7 +325,7 @@ test("cmdabl setup: no flow is exit 5; a step word runs the step; an unknown wor
   });
   assert.equal((await run("cmdabl setup")).result.code, ExitCode.OK);
   assert.deepEqual(shown, ["page"]);
-  const copy = (await run("cmdabl setup copy")).result;
+  const copy = (await run("cmdabl setup script")).result;
   assert.equal(copy.code, ExitCode.OK);
   assert.match(copy.message ?? "", /copied.*Restart Live once/);
   const kb = (await run("cmdabl setup karabiner")).result;

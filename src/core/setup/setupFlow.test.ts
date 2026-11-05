@@ -31,7 +31,7 @@ function harness(over: { answers?: Array<NotifyAnswer | null>; facts?: (copyFail
     notifyAnswer: async (r) => (requests.push(r), answers.shift() ?? null),
     headless: () => over.headless === true,
     facts: async (c) => (over.facts ?? (() => goodFacts()))(c),
-    runCommand: async (line) => (ran.push(line), line === "cmdabl setup copy" ? ok("copied") : fail(ExitCode.FAILURE, "no")),
+    runCommand: async (line) => (ran.push(line), line === "cmdabl setup script" ? ok("copied") : fail(ExitCode.FAILURE, "no")),
     openUrl: async (url) => (opened.push(url), ok()),
     settings: { get: async () => settings as never, set: async (p) => (saved.push(p), true) },
     files: { read: async (n) => files.get(n) ?? null, write: async (n, t) => (files.set(n, t), true) },
@@ -77,7 +77,7 @@ test("a command button runs its command, then the page comes again with the new 
     copyScript: () => ok(),
   });
   await flow.show();
-  assert.deepEqual(ran, ["cmdabl setup copy"]);
+  assert.deepEqual(ran, ["cmdabl setup script"]);
   assert.equal(requests.length, 2);
   const states = (r: NotifyRequest) => r.sections!.flatMap((s) => s.items).map((i) => (typeof i === "object" ? i.status : "text"));
   assert.ok(states(requests[0]!).includes("warn"));
@@ -112,10 +112,10 @@ test("a url button opens its url, nothing else; an index without an action does 
 });
 
 test("actionAt looks in the sent sections only; parseNotifyAnswer drops what the request does not offer", () => {
-  const sections: ResultSection[] = [{ heading: "h", items: ["plain", { text: "a", status: "ok" }, { text: "b", status: "warn", action: { label: "Go", command: "cmdabl setup copy" } }] }];
+  const sections: ResultSection[] = [{ heading: "h", items: ["plain", { text: "a", status: "ok" }, { text: "b", status: "warn", action: { label: "Go", command: "cmdabl setup script" } }] }];
   assert.equal(actionAt(sections, [0, 0]), undefined);
   assert.equal(actionAt(sections, [0, 1]), undefined);
-  assert.deepEqual(actionAt(sections, [0, 2]), { label: "Go", command: "cmdabl setup copy" });
+  assert.deepEqual(actionAt(sections, [0, 2]), { label: "Go", command: "cmdabl setup script" });
   assert.equal(actionAt(sections, [5, 0]), undefined);
   const request = { sections, toggle: { label: "x", setting: "s", on: false } };
   assert.deepEqual(parseNotifyAnswer('{"action":[0,2],"toggle":true}', request), { action: [0, 2], toggle: true });
@@ -191,7 +191,7 @@ test("headless: the rows come back as lines, no page opens, the state is untouch
   const h = harness({ facts: () => missingFacts(null), headless: true });
   const r = await h.flow.show();
   assert.equal(r.code, ExitCode.OK);
-  assert.match(r.message ?? "", /! The Remote Script is not installed.*\[Copy: cmdabl setup copy\]/);
+  assert.match(r.message ?? "", /! The Remote Script is not installed.*\[Copy: cmdabl setup script\]/);
   assert.equal(h.requests.length, 0);
   assert.equal(h.files.size, 0);
 });

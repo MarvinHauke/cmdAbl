@@ -47,7 +47,7 @@ test("writableFolder: a temp folder is, a path under a file is not", () => {
   assert.equal(writableFolder(path.join(file, "sub")), false);
 });
 
-test("setup copy against a temp folder: copies, updates over an older copy, and leaves a linked folder alone", { skip: process.platform === "win32" }, () => {
+test("setup script against a temp folder: copies, updates over an older copy, and leaves a linked folder alone", { skip: process.platform === "win32" }, () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "cmdabl-copy-"));
   const source = path.join(root, "src", "cmdAbl");
   fs.mkdirSync(source, { recursive: true });
