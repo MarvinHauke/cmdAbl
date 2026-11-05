@@ -579,8 +579,11 @@ export function shortHelpIn(roots: readonly CommandNode<any, any>[], node: Comma
 function nodeAt(roots: readonly CommandNode<any, any>[], path: string[]): CommandNode<any, any> | undefined {
   let level: readonly CommandNode<any, any>[] = roots;
   let node: CommandNode<any, any> | undefined;
-  for (const word of path) {
-    node = level.find((n) => n.name === word);
+  for (const [i, word] of path.entries()) {
+    let next = level.find((n) => n.name === word);
+    // `<command> config`: the platform's settings subcommand sits beside the children (plan 0019).
+    if (!next && i === 1 && node?.config?.name === word) next = node.config;
+    node = next;
     if (!node) return undefined;
     level = node.children ?? [];
   }

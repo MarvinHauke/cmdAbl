@@ -120,3 +120,14 @@ test("the palette offers `config` as the first word after a command with setting
   assert.deepEqual(labels("tag -"), []);
   assert.equal(complete("tag ", 4, data).items.find((i) => i.label === "config")?.description, "open the settings of tag");
 });
+
+test("help and usage resolve `<command> config` through the registry's roots (what man reads)", async () => {
+  const { helpForPath, usageForPath } = await import("./commandTree.js");
+  const registry = build();
+  for (const name of ["tag", "map"]) {
+    assert.match(helpForPath(registry.roots(), [name, "config"])!, /open the settings of/);
+    assert.match(usageForPath(registry.roots(), [name, "config"])!, /config/);
+  }
+  assert.equal(helpForPath(registry.roots(), ["plain", "config"]), undefined);
+  assert.equal(helpForPath(registry.roots(), ["tag", "config", "x"]), undefined);
+});
