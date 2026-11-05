@@ -154,7 +154,7 @@ interface ModuleApi {
   **It takes the word `config`:** `tag config` used to address a track named "config" and now opens
   the settings; `tag "config"` keeps the old meaning. The help text and the 0.1.6 release notes say so.
 - **The gear reruns the whole line**, so it is only for commands that read and then show a page
-  (`tag -l`, `tag -e`); noted on `BoardRequest.gear`.
+  (`tag -l`; `tag -e` is a pick list and has no gear); noted on `BoardRequest.gear`.
 - **The gear button** in a page's footer (board, note, MIDI monitor): a page can't open a second dialog,
   so the gear closes the page with `{ "settings": true }`, and core opens the settings page on that
   module's group. When the settings page closes, core runs the page's command line again, so the user
