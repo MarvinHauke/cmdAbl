@@ -24,17 +24,17 @@ All releases were tested in Live, including the installed `.ablx`.
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
-- **In work: 0.1.6 on `feat/0.1.6-settings`, [0019](0019-settings-and-help.md).** Phase 1a is done (user hand check 2026-11-05). Phase 1a (declared
-  settings, the settings page, `cmdabl config`, `<module> config`, gears, `tag.foldAfter`, the palette
-  switch moved) is built and passed the MCP Live test (2026-11-05). Hand check passed (user, 2026-11-05);
-  follow-ups done and Live-checked: Apply/Cancel buttons on the settings page, "Settings" as text
-  instead of the ⚙ icon, typing in the int field (digits append, empty stays empty, the confirm bar
-  owns the keys). "N settings saved" goes to Live's status bar (user: yes), but deferred to the
-  next Remote Script update: it needs a new additive bridge op (`status`, text → `show_message`);
-  until then the message window stays. **In work: 1b** (2026-11-05), default commands with their own live page;
-  core part committed (`6ea2d1c`); now cmdabl-ui (defaults page, palette row), cmdabl-modules
-  (`map -l` expansion, history `typed`) and a core follow-up (`<cmd> config` for every top-level command).
-  README and docs pages for settings and defaults: cmdabl-docs before the release. Phase 1 was refined with the user on 2026-11-05.
+- **In work: 0.1.6 on `feat/0.1.6-settings`, [0019](0019-settings-and-help.md).**
+  - **Phase 1a done** (user hand check 2026-11-05): declared settings, the settings page with Apply/Cancel,
+    `cmdabl config`, `<module> config`, the "Settings" button, `tag.foldAfter`, the palette switch moved.
+  - **Phase 1b built**, MCP Live test passed (2026-11-05), waiting for the user's hand check: default
+    commands, the defaults page (live check, reopen on an invalid line), the palette row, `map -l` arrow,
+    history `typed`, `config` after every command except man/help.
+  - Deferred: "N settings saved" to Live's status bar (user: yes) with the next Remote Script update
+    (a new additive bridge op `status` → `show_message`). `map -l` shows the arrow only for one-word
+    bindings, not `;` chains (`api.commands.expand(line)` would be the way, undecided).
+  - **Next: phase 2** (the help line), then phase 3 (the palette help view, layout agreed with the user
+    first).
 - 0.1.6 = 0019 phases 1–3 (contracts 1–3 approved 2026-11-05, the status rows (4) still open). The
   palette help view's layout gets agreed with the user before it's built (phase 3). Aliases moved to
   the [0020](0020-aliases.md) draft. Ideas from `docs/userfindings.md`
