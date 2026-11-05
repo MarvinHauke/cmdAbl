@@ -314,7 +314,8 @@ see it:
 - **Defaults page contract** (`Ui.defaults(request, check)`, a live page named `defaults`): request
   `{ title, focus?: command, rows: [{ command, line, summary, bareBehaviour, error? }] }`, answer
   `{ changes: { [command]: line } }` (`''` removes) or `''`. `error` is why `line` is not usable (a hand edit, or the last save);
-  after a failed save the row carries the typed text. The route is `GET /live/defaults/check?command=<c>&line=<l>`
+  after a failed save the row carries the typed text, and `saved?: string` (additive, 2026-11-05) the stored line, so the
+  page compares against `saved ?? line`. The route is `GET /live/defaults/check?command=<c>&line=<l>`
   and answers `{ ok: true }` or `{ ok: false, error }`; live routes now receive the query string (`LiveQuery`, additive).
   The request is filled into the page by core (`DEFAULTS_PLACEHOLDER`); `*` in it is escaped, so no text can spell the `LIVE` placeholder.
   `src/core/defaultsRequest.fixture.json` is a sample request.
@@ -323,6 +324,8 @@ see it:
 - **Link rows:** `cmdabl` group → "Default commands" (`target: "defaults"`, summary "N set"); a group named like a top-level command →
   "Default command" (`target: "defaults:<command>"`, summary = its line or "not set"). The opened page's "saved" line is added to the settings line.
 - `cmdabl config defaults [<command>]` (the second word only after `defaults`); `defaults` completes among the groups.
+- `api.commands.defaults()` (user-approved 2026-11-05, additive, read-only): the same usable defaults for modules;
+  `map -l` shows `CC48 | mute → mute #drums`. History stores `typed` and shows `mute #drums ← mute`.
 - The gear and the group lookup use `rootCommandOf` (the parsed root), so `\tag -l` and aliases find their group.
 
 ## Open questions
