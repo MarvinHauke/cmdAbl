@@ -41,7 +41,7 @@ All releases were tested in Live, including the installed `.ablx`.
     fields show their help on hover only (0019 §3). User hand check open: the look (key caps, subject in
     normal weight), hover, the defaults page's red error line. The defaults page opened from `map config` drew its list scrolled with an empty area (a stale WKWebView paint, inferred); a repaint nudge after load fixed it in Live. The hop settings → defaults keeps one window size (640 wide, the settings height; `6981df7`) and places the list before the first paint (`0fb0d57`): about 200 ms, no jump. Merging both pages into one dialog (no hop at all) is a later option.
   - **[0021](0021-installation-and-setup-page.md) the setup page: built** (MCP Live test 2026-11-05; `93d4b1d`,
-    `12e5d7e`, fixes `2945e79`, `64ca28e`, `6aae291`, `c0c6184`): `cmdabl setup` as a status page, `setup copy`,
+    `12e5d7e`, fixes `2945e79`, `64ca28e`, `6aae291`, `c0c6184`): `cmdabl setup` as a status page, `setup script`,
     `setup karabiner`, the Setup group (`setup.openOnStart`, `setup.autoScript`), the page opening on the first
     palette use after start, `GET /karabiner/cmdabl.json` and the Karabiner import link (verified in the spike).
     User hand check open: Get Karabiner / Add rule (does the page hide behind Karabiner or the browser?), Copy

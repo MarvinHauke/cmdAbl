@@ -153,7 +153,7 @@ install still goes through the page's **Copy** button unless the setting is on.
 
 - **Unit:** the row builder from facts (each row's ✓/!/✗ and button); the action lookup (an index
   without an action is ignored, a page can't send a command); the opening rule (first start, update
-  needing a step, the same yellow row not reopening, `openOnStart` off); `setup copy` against a temp
+  needing a step, the same yellow row not reopening, `openOnStart` off); `setup script` against a temp
   folder; the import URL encoding.
 - **Browser (fake requests):** the page with every status and button, the checkbox, the help line.
 - **Live (MCP):** `cmdabl setup` headless lines; the page via `cmdabl_show`; Copy with an outdated
