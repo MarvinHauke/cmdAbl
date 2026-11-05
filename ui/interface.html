@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- prompt surface (see src/core/surfaces/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. HELP_PLACEHOLDER = null | boolean (ui.helpLine; null = on; false = the footer shows the keys only, otherwise it explains the command and the argument at the caret). SETTINGS_PLACEHOLDER = null | { above: "off"|"hints"|"options", gear: boolean } (the page no longer changes settings; the gear, drawn only when gear is true, answers { settings: true, text } and nothing else, and has no key: the keyboard way is the config command). While the line is exactly one bare word that has an entry in COMPLETION.defaults (plan 0019 §7), one dim row "word → line" sits above the list: Enter sends the typed word (core expands it), Tab or a click writes the expanded line into the prompt. One list below the prompt (recent lines, targets; options after typing `-`; subcommands at a group position). above="hints": a read-only which-key panel above the prompt shows the command's options and subcommands; above="options": a selectable tool zone above it (↑ enters, best row next to the prompt). -->
+<!-- prompt surface (see src/core/surfaces/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. HELP_PLACEHOLDER = null | boolean (ui.helpLine; null = on; false = the footer shows the keys only, otherwise it explains the command and the argument at the caret). While the line is exactly one bare word that has an entry in COMPLETION.defaults (plan 0019 §7), one dim row "word → line" sits above the list: Enter sends the typed word (core expands it), Tab or a click writes the expanded line into the prompt. One list below the prompt (recent lines, targets; options after typing `-`; subcommands at a group position); nothing sits above the prompt. The highlighted row's description, when cut off, scrolls slowly (marquee; not with prefers-reduced-motion). -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -57,39 +57,6 @@
     #hint { flex: 1 1 0; min-width: 0; height: 28px; overflow: hidden; line-height: 14px; }
     #hint > div { line-height: 14px; }
     #hint.keys > div { display: block; }
-    #gear[hidden] { display: none; }
-    #gear { margin-left: auto; flex: 0 0 auto; min-height: 24px; display: inline-flex; align-items: center; font-size: 12px; }
-    #gear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-    /* ── the area above the prompt (hints / options mode): a fixed height reserved from open on, so nothing moves.
-          A dim heading at its top says what it is; one dim note in the middle while it has no rows. ── */
-    .zone { flex: 0 0 auto; position: relative; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
-    .zone.hidden { display: none; }
-    #tools { height: 190px; }
-    #hints { height: 160px; }
-    .zhead { flex: 0 0 auto; padding: 4px 12px 3px; font-size: 10px; line-height: 14px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; }
-    .znote { position: absolute; left: 0; right: 0; top: 55%; transform: translateY(-50%); text-align: center; font-size: 11px; color: var(--dim); pointer-events: none; }
-    .znote:empty { display: none; }
-    .zbody { flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
-
-    /* selectable tool zone (above = options): best match at the bottom, next to the prompt; then it scrolls */
-    #toolsBody { display: flex; flex-direction: column; }
-    #toolsBody > :first-child { margin-top: auto; }   /* sits at the bottom while the zone is short (safe with overflow) */
-    #toolsBody .row { flex-shrink: 0; }
-
-    /* hint panel (which-key style): read-only, never takes a key. One grid, three aligned columns. */
-    #hintsBody {
-      display: grid; grid-template-columns: auto minmax(0, auto) minmax(0, 1fr); column-gap: 16px; align-content: start;
-      padding: 6px 12px 4px; font-size: 11px; line-height: 18px; user-select: none; cursor: default;
-    }
-    #hintsBody .hint { display: contents; }
-    #hintsBody .hk { position: relative; color: var(--accent); font-weight: 600; white-space: nowrap; }
-    #hintsBody .cur .hk::before { content: '▸'; position: absolute; left: -10px; }
-    #hintsBody .cur .hv, #hintsBody .cur .hd { color: var(--text); }
-    #hintsBody .hdt { display: inline-block; white-space: nowrap; }
-    #hintsBody .cur .hd { text-overflow: clip; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent); }
-    #hintsBody .hv { color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #hintsBody .hd { color: var(--dim); opacity: .75; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* ── dropdown (Set zone, below the prompt) ── */
     #dropdown { flex: 1; overflow-y: auto; }
@@ -111,12 +78,12 @@
     /* One line per row: the title keeps its width up to the row, the grey text gives way first. */
     .label { flex: 0 1 auto; min-width: 90px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .desc  { flex: 1 1 0; min-width: 0; color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* The highlighted row's cut-off description scrolls: an inner span the marquee moves; the fade replaces the "…" while it does. */
+    .desc .dt { display: inline-block; white-space: nowrap; }
+    .desc.marq { text-overflow: clip; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent); }
   </style>
 </head>
 <body>
-
-  <div id="tools" class="zone hidden"><div class="zhead"></div><div class="zbody" id="toolsBody"></div><div class="znote"></div></div>
-  <div id="hints" class="zone hidden"><div class="zhead"></div><div class="zbody" id="hintsBody"></div><div class="znote"></div></div>
 
   <div id="bar">
     <span id="colon">:</span>
@@ -128,7 +95,7 @@
 
   <div id="dropdown"></div>
 
-  <div id="foot"><div id="hint"></div><button id="gear" type="button" tabindex="-1" hidden>Settings</button></div>
+  <div id="foot"><div id="hint"></div></div>
 
   <!-- Shared matcher, inlined as a `CmdMatch` global at build time. -->
   <script>/*MATCH_PLACEHOLDER*/</script>
@@ -145,17 +112,11 @@
     // null, or the snapshot CmdComplete.complete(line, cursor, COMPLETION) works on:
     //   { tree, completions, paths, tags }. null = no argument completion.
     const COMPLETION = /*COMPLETION_PLACEHOLDER*/null;
-    // null, or { above, gear }: `above` is what sits above the prompt (set on the settings page, not here); `gear` draws the Settings button in the footer (false = no button);
-    const SETTINGS = /*SETTINGS_PLACEHOLDER*/null;
     // null, or true/false: the request's `help` (ui.helpLine). null counts as on. false = the footer shows the palette's keys only.
     const HELP = /*HELP_PLACEHOLDER*/null;
 
     const input     = document.getElementById('input');
     const dropdown  = document.getElementById('dropdown');
-    const hintsZone = document.getElementById('hints');
-    const toolsZone = document.getElementById('tools');
-    const hintsEl   = document.getElementById('hintsBody');
-    const tools     = document.getElementById('toolsBody');
     const ghostMirror = document.querySelector('#ghost .mirror');
     const ghostHint   = document.querySelector('#ghost .hint');
 
@@ -171,9 +132,6 @@
     let newLine   = null;  // rows + ranker without history lines, built on first use
     let chosen    = false; // the user moved the selection (arrows, Tab) since the last keystroke
     let mode      = 'word0'; // 'word0': fuzzy rows for the first word; 'args': CmdComplete rows
-    const ABOVE = ['off', 'hints', 'options'];
-    const above   = ABOVE.includes(SETTINGS?.above) ? SETTINGS.above : 'off';   // what sits above the prompt (args mode only): nothing, a hint panel, or a selectable tool zone
-    let hintRows  = [];     // the panel's rows (read-only): the command's options and subcommands
     let dashed    = false;  // the word at the caret starts with `-`: the options are the list
     let view      = null;    // args mode: { replace: {from, to}, usage }
     let segView   = null;    // the `;` part the caret is in ({ start, end }), null when the line is no chain
@@ -239,7 +197,6 @@
       const segCaret = caretAll - (segView ? segView.start : 0);
       mode = modeAt(segRaw, segCaret);
       view = null;
-      hintRows = [];
       dashed = false;
       if (mode === 'args') {
         if (!COMPLETION) return [];
@@ -249,17 +206,11 @@
         const tool = rows.filter(r => r.zone === 'tool'), set = rows.filter(r => r.zone !== 'tool');
         const hist = recentLines(raw, caret);
         // The list holds targets (recent lines first). Options join it only once `-` is typed, and
-        // subcommands at a group position with no targets; otherwise the tool rows are only hints.
+        // subcommands at a group position with no targets.
         dashed = raw.slice(res.replace.from, caret).startsWith('-');
-        // above = options: the tool rows are a selectable zone above the prompt, best row next to it.
-        if (above === 'options') {
-          for (const r of tool) r.pane = 'tool';
-          hintRows = [];
-          return [...tool, ...hist, ...set];
-        }
         const toolInList = dashed || (!set.length && tool[0]?.type === 'command');
-        hintRows = above === 'hints' ? fullTool(raw, res, tool) : [];
-        return [...hist, ...set, ...(toolInList ? tool : [])];
+        // The command rows of the tool zone (the `config` row) stay offered after the targets.
+        return [...hist, ...set, ...(toolInList ? tool : tool.filter(r => r.type === 'command'))];
       }
       const part = wordAtCaret(segRaw, segCaret);
       // The word before the caret is a complete command name: its arguments follow, no completion.
@@ -298,15 +249,6 @@
           && query.length > item.id.length && query.startsWith(item.id))));
     }
 
-    // The hint panel shows the command's whole set of tool rows, also while the word at the caret
-    // is filtering them (`-`, `--ed`) or they are listed below: complete() again with that word removed.
-    function fullTool(raw, res, tool) {
-      const { from, to } = res.replace;
-      if (from === to) return tool;
-      const again = CmdComplete.complete(raw.slice(0, from) + raw.slice(to), from, COMPLETION);
-      return again.items.filter(r => r.zone === 'tool').map(r => ({ type: r.kind, zone: r.zone, title: r.label, subtitle: r.description, insert: r.insert }));
-    }
-
     // Word 0: one list below the prompt in ranking order (index 0 is the best row overall, the
     // default highlight); `zone` only records the kind of row.
     function zoned(rows) {
@@ -331,11 +273,8 @@
       return items.findIndex(r => r.type === 'command' || (dashed && r.type === 'option'));
     }
 
-    // Rows top to bottom as drawn: the tool zone reversed (best next to the prompt), then the list.
-    function displayOrder() {
-      const idx = items.map((_, i) => i);
-      return [...idx.filter(i => items[i].pane === 'tool').reverse(), ...idx.filter(i => items[i].pane !== 'tool')];
-    }
+    // Rows top to bottom as drawn: the list order.
+    function displayOrder() { return items.map((_, i) => i); }
 
     // Take a word-0 row inside a `;` chain: it replaces the part's first word (or the whole part) and
     // leaves the rest of the chain alone. `descend` adds the space after a command, like Tab does.
@@ -456,9 +395,9 @@
       ghostMirror.style.marginLeft = hint ? -input.scrollLeft + 'px' : '0';
     }
 
-    // The marked row's summary, when clipped, scrolls sideways like a marquee: it starts after 700 ms on the
+    // The highlighted row's description, when cut off, scrolls sideways like a marquee: it starts after 700 ms on the
     // row, moves at 40 px/s (a transform on an inner span, so nothing reflows), waits 1 s at the end, jumps
-    // back and goes again. Any render (another row, another key) stops it. Reduced motion: a title instead.
+    // back and goes again. Any render (another row, another key) stops it. Reduced motion: no scroll, the full text as a title.
     let marqueeTimer = null, marqueeAnim = null;
     function stopMarquee() {
       clearTimeout(marqueeTimer); marqueeTimer = null;
@@ -466,13 +405,14 @@
     }
     function armMarquee() {
       stopMarquee();
-      const hd = hintsEl.querySelector('.cur .hd');
+      const hd = dropdown.querySelector('.row.active:not(.exp) .desc');
       const t = hd?.firstChild;
       if (!t || !t.animate) return;
       const dist = Math.ceil(t.offsetWidth - hd.clientWidth);
       if (dist <= 1) return;   // fits: nothing to read
-      const travel = dist + 18;   // the end of the text clears the fade at the right edge
       if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { hd.title = t.textContent; return; }
+      const travel = dist + 18;   // the end of the text clears the fade at the right edge
+      hd.classList.add('marq');
       const run = () => {
         marqueeAnim = t.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-travel) + 'px)' }],
                                 { duration: travel / 0.04, easing: 'linear', fill: 'forwards' });
@@ -484,14 +424,6 @@
         };
       };
       marqueeTimer = setTimeout(run, 700);
-    }
-
-    // The heading and the note of an area above the prompt (textContent only). The heading names the
-    // recognized command; the note shows while the area has no rows.
-    function fillZone(zone, name, tail, empty, wordZeroNote) {
-      const cmd = mode === 'args' ? /^\s*(\S+)/.exec(segView ? input.value.slice(segView.start, segView.end) : input.value)?.[1] : null;
-      zone.querySelector('.zhead').textContent = name + (cmd ? ' · ' + cmd + tail : '');
-      zone.querySelector('.znote').textContent = !empty ? '' : mode === 'args' ? 'No options here' : wordZeroNote;
     }
 
     // ── default command (plan 0019 §7) ─────────────────────────────────────
@@ -515,8 +447,6 @@
       updateGhost();
 
       dropdown.innerHTML = '';
-      hintsEl.innerHTML = '';
-      tools.innerHTML = '';
 
       const draw = (item, i) => {
         const row = document.createElement('div');
@@ -527,7 +457,9 @@
         label.textContent = item.title;
         const desc = document.createElement('span');
         desc.className = 'desc';
-        desc.textContent = item.subtitle ?? '';
+        if (i === activeIdx && item.subtitle) {   // the highlighted row: an inner span the marquee can move
+          const t = document.createElement('span'); t.className = 'dt'; t.textContent = item.subtitle; desc.appendChild(t);
+        } else desc.textContent = item.subtitle ?? '';
         row.append(label, desc);
         row.addEventListener('mousedown', e => {
           e.preventDefault();
@@ -548,37 +480,8 @@
         row.addEventListener('mousedown', e => { e.preventDefault(); useExpansion(exp); });
         dropdown.appendChild(row);
       }
-      for (const i of displayOrder()) (items[i].pane === 'tool' ? tools : dropdown).appendChild(draw(items[i], i));
-      // The area above the prompt is reserved at a fixed height for the whole session in hints/options
-      // mode (empty at word 0), so the prompt and the list never move while typing.
-      toolsZone.classList.toggle('hidden', above !== 'options');
-      fillZone(toolsZone, 'Options', ' — ↑ to choose', !tools.firstChild, 'Type a command to see its options');
-      tools.scrollTop = tools.scrollHeight;   // the best row (the bottom one) in view
-      // The list keeps its place (and the footer its position) even when it is empty.
-
-      // The hint panel: read-only, built from the command's tool rows.
-      for (const h of hintRows) {
-        // Three aligned columns: the long flag, the short flag with its value names, the summary.
-        // complete() describes a row as "-e <tag|#> list the tracks…": split the leading flag/value words off.
-        const words = (h.subtitle ?? '').split(/\s+/).filter(Boolean);
-        let n = 0;
-        while (n < words.length && /^(-\w+,?|<[^>]*>|\[[^\]]*\]\S*)$/.test(words[n])) n++;
-        const cell = document.createElement('div');
-        const cur = items[activeIdx];
-        cell.className = 'hint' + (cur && cur.zone === 'tool' && cur.title === h.title ? ' cur' : '');   // the row highlighted in the list
-        const k = document.createElement('span'); k.className = 'hk'; k.textContent = h.title;
-        const v = document.createElement('span'); v.className = 'hv'; v.textContent = words.slice(0, n).join(' ');
-        const d = document.createElement('span'); d.className = 'hd';
-        const summary = words.slice(n).join(' ');
-        if (cell.classList.contains('cur')) {   // the marked row only: an inner span the marquee can move
-          const t = document.createElement('span'); t.className = 'hdt'; t.textContent = summary; d.appendChild(t);
-        } else d.textContent = summary;
-        cell.append(k, v, d);
-        hintsEl.appendChild(cell);
-      }
+      for (const i of displayOrder()) dropdown.appendChild(draw(items[i], i));
       armMarquee();
-      hintsZone.classList.toggle('hidden', above !== 'hints');
-      fillZone(hintsZone, 'Hints', '', !hintsEl.firstChild, 'Type a command to see what it can do');
 
       document.querySelector('.row.active')?.scrollIntoView({ block: 'nearest' });
       help.update();
@@ -618,15 +521,12 @@
       if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) { activeIdx = 0; chosen = false; render(); }
     });
 
-    // ↑/↓ walk the rows as drawn (the tool zone on top when it is selectable, the list below; the hint
-    // panel is never part of it); the ends stop.
+    // ↑/↓ walk the rows as drawn; the ends stop.
     function moveSel(d) {
       const order = displayOrder();
       if (!order.length) return;
-      if (activeIdx < 0) {   // nothing highlighted: ↑ goes to the best tool row, ↓ to the first list row
-        const next = d < 0 ? items.findIndex(r => r.pane === 'tool') : items.findIndex(r => r.pane !== 'tool');
-        if (next === -1) return;
-        activeIdx = next; chosen = true; render();
+      if (activeIdx < 0) {   // nothing highlighted: ↑ goes to the last row, ↓ to the first
+        activeIdx = d < 0 ? order[order.length - 1] : order[0]; chosen = true; render();
         return;
       }
       activeIdx = order[Math.max(0, Math.min(order.indexOf(activeIdx) + d, order.length - 1))];
@@ -706,16 +606,6 @@
         moveSel(-1);
       }
     });
-
-    // The gear (only when the request draws it): answers { settings: true, text } and nothing else; core opens the settings
-    // and then the palette again with `text` in the prompt. A click only, so the keyboard focus stays in the input.
-    if (SETTINGS?.gear === true) {
-      document.getElementById('gear').hidden = false;
-      document.getElementById('gear').addEventListener('mousedown', e => {
-        e.preventDefault();
-        sendRaw(JSON.stringify({ settings: true, text: input.value }));
-      });
-    }
 
     // ── init ───────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
