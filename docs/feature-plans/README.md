@@ -55,17 +55,17 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
 ### Next, in dependency order
 
 ```
-0019 settings and help pattern (draft) ─────┬─> settings pages (tag, MIDI, note), footer help on hover
+0019 settings and help pattern (in progress) ┬─> settings pages (tag, MIDI, note), footer help on hover
                                             ├─> one keyboard model for all selection lists
                                             └─> simpler installation, setup as a status page
 0017 phase 1 script files (run) ──> 0017 phase 2 clip/scene triggers (uses 0018's UDP push)
 0018 value mode ──> 0015 link ──┬─> pan / send
                                 └─> 0012 dca
-0008 aliases ──> 0017 phase 3 (&&, $1)
+0019 §7 default commands ──> 0020 aliases ──> 0017 phase 3 (&&, $1)
 0006 step 3 paths level by level ──> device on/off (`bypass`)
 ```
 
-1. **Settings and help pattern** ([0019](0019-settings-and-help.md), draft; user, 2026-11-04/05), for 0.1.6: a settings page per
+1. **Settings and help pattern** ([0019](0019-settings-and-help.md), in progress: phase 1a; user, 2026-11-04/05), for 0.1.6: a settings page per
    window plus `cmdabl config`; a footer help line that follows mouse and focus; one keyboard model
    for every list; note timestamps ([0013](0013-set-note.md)); `cmdabl setup` as a status page. A new
    UI surface, so the contract part needs the user's approval.
@@ -73,8 +73,9 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
    then clips and scenes run them on launch (phase 2), on 0018's push channel.
 3. **MIDI value mode** ([0018](0018-midi-mapping.md)): `map learn | vol #synth`; bindings that open a
    page; per-control thresholds.
-4. **Aliases** ([0008](0008-tags-and-aliases.md), [0009](0009-ideas-from-clyphx.md)); the store exists
-   since 0.1.4.
+4. **Aliases** ([0020](0020-aliases.md), draft; from [0008](0008-tags-and-aliases.md) and
+   [0009](0009-ideas-from-clyphx.md)): an `alias` module on 0019's expansion step; syntax and the
+   default rule still open.
 5. **Paths level by level** ([0006](0006-completion-engine.md) step 3); then `bypass` (alias `bp`).
 6. **`link`** ([0015](0015-link.md)), then `pan`/`send` and **`dca`** ([0012](0012-vol-and-dca.md)).
    Number 0014 is unused (the MIDI plan was private under it until 2026-11-03).
@@ -106,7 +107,8 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
  ├─ 0016  Test access for agents
  ├─ 0017  Scripts and triggers (.cmdabl files, run from clips and scenes)
  ├─ 0018  MIDI mapping (map, midi; operators; later value mode and the matrix)
- └─ 0019  Settings and help pattern (declared settings, help line, list keys, setup page)
+ ├─ 0019  Settings and help pattern (declared settings, default commands, help line, list keys, setup page)
+ └─ 0020  Aliases (the alias module)
 0001  Path-addressed objects & commands   (consumer of 0004)
 0003  pakabl extension system             (consumer of 0005)
 ```

@@ -52,8 +52,12 @@ yourself.
   1. STATUS and the plan are up to date.
   2. Stop every builder that worked on it (never compact builders: a fresh start is cheaper than a
      summary).
-  3. Tell the user it's a good moment to compact your own session, e.g.
-     `/compact keep: open decisions, STATUS, next step`. You can't run `/compact` yourself.
+  3. Tell the user it's a good moment to compact your own session. You can't run `/compact` yourself.
+     **Whenever you suggest compacting** (any session, user 2026-11-05), give a ready-to-paste
+     `/compact` line written for that session and moment: what it must keep (open decisions, the
+     current phase and its branch, who is running, the next step) and what it may drop (finished
+     tasks, test logs). E.g. `/compact keep: 0019 phase 1b open (defaults page, /check route), core
+     running on feat/0.1.6-settings, decisions in 0019 §7; drop: 1a task and test logs`.
   A new feature starts its builders fresh.
 - Give the user short overviews: what changed, what is open, what's next.
 - You are the only agent that pushes or opens pull requests, and only when the user asks.

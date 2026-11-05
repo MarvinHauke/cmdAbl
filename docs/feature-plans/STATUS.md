@@ -23,12 +23,15 @@ All releases were tested in Live, including the installed `.ablx`.
 ## Now
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
-  `gitleaks`, no force push). Nothing is in work.
-- **Next (user, 2026-11-04/05): 0.1.6, the settings and help pattern** (backlog below; drafted as
-  [0019](0019-settings-and-help.md); contracts 1–3 approved 2026-11-05, the status rows (4) still open).
-  **Start with phase 1:** declared settings, the settings page, `cmdabl config`, `<module> config`,
-  and default commands (`default_commands.json`). The palette help view's layout gets agreed with the user
-  before it's built (phase 3). Ideas from `docs/userfindings.md`
+  `gitleaks`, no force push).
+- **In work: 0.1.6 on `feat/0.1.6-settings`, [0019](0019-settings-and-help.md) phase 1a** (declared
+  settings, the settings page, `cmdabl config`, `<module> config`, gear on the board and the palette,
+  `tag.foldAfter`, the palette switch moved). Builder: cmdabl-core (store, surface, commands); then
+  cmdabl-ui (page) and cmdabl-modules (`tag` declares). **Next: 1b**, default commands with their own
+  live page. Phase 1 was refined with the user on 2026-11-05; the decisions are in 0019.
+- 0.1.6 = 0019 phases 1–3 (contracts 1–3 approved 2026-11-05, the status rows (4) still open). The
+  palette help view's layout gets agreed with the user before it's built (phase 3). Aliases moved to
+  the [0020](0020-aliases.md) draft. Ideas from `docs/userfindings.md`
   (local, not in git) that are still open are listed there under "Moved".
 - How testing works: the architect runs Live test lists through the `cmdabl_*` MCP tools (plan 0016)
   once the user has said Live is free, and may start and restart `npm start` itself; the user gets a

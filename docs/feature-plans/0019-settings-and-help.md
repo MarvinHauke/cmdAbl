@@ -1,6 +1,6 @@
 # Settings and help pattern
 
-**Status:** Draft (2026-11-05). The 0.1.6 theme. User findings from 2026-11-04 (tag-1, tag-4, prompt-1,
+**Status:** In Progress (2026-11-05, phase 1a). The 0.1.6 theme. User findings from 2026-11-04 (tag-1, tag-4, prompt-1,
 prompt-2, note-1's option), the settings page wish (user, 2026-10-22) and the setup status page
 (user, 2026-11-05).
 
@@ -13,6 +13,10 @@ prompt-2, note-1's option), the settings page wish (user, 2026-10-22) and the se
 4. **Status rows with buttons in `notify` (§6):** not approved yet. The user likes the style, but it needs
    refining, especially for the installation process. It stays open and is decided together with the
    "simpler installation" backlog item.
+
+**Phase 1 refined with the user (2026-11-05, grilling round):** phase 1 is split into 1a (declared
+settings) and 1b (default commands); default commands get their own live page instead of rows on the
+settings page; a later phase 7 for shortcuts. The decisions are in §1, §2, §7 and "Phased rollout".
 
 **Parent:** [0004](0004-command-platform.md)
 **Depends on:** [0007](0007-ui-surfaces.md) (surfaces), [0006](0006-completion-engine.md) (the palette's
@@ -96,14 +100,17 @@ interface ModuleApi {
   shortcuts that exist today (`map --off`). That keeps writes in one place.
 - **The first declared keys:**
 
-  | Key | Kind | Default | From |
-  |---|---|---|---|
-  | `palette.above` | enum off/hints/options | off | prompt-1 (moves from the footer) |
-  | `ui.helpLine` | bool | true | tag-4 |
-  | `tag.foldAfter` | int 1–500 | 20 | tag-3 |
-  | `map.enabled` | bool | true | 0018 |
-  | `midi.statusBar` | bool | false | 0018 |
-  | `note.editLoop` | bool | false | note-1 (with 0013's timestamped entries) |
+  | Key | Kind | Default | From | Phase |
+  |---|---|---|---|---|
+  | `palette.above` | enum off/hints/options | off | prompt-1 (moves from the footer) | 1a |
+  | `tag.foldAfter` | int 1–500 | 20 | tag-3 | 1a |
+  | `map.enabled` | bool | true | 0018 | 1a |
+  | `midi.statusBar` | bool | false | 0018 | 1a |
+  | `ui.helpLine` | bool | true | tag-4 | 2 |
+  | `note.editLoop` | bool | false | note-1 (with 0013's timestamped entries) | 6 |
+
+  **A key is declared in the phase that gives it an effect** (user, 2026-11-05), so the page never
+  shows a switch that does nothing.
 
   `palette.above`'s label in the page is "Help above the prompt", with values Off · Help · Options
   (see §4). The stored value `"hints"` stays.
@@ -119,7 +126,13 @@ interface ModuleApi {
 - **Rows:** a bool is a switch, an enum a segmented switch like today's footer switch, and an int a
   number field with − / +. A row whose value differs from the default shows a dim "reset" button.
 - **Keys:** ↑/↓ move between rows (§5), ←/→ change an enum or int, Space toggles a bool, Enter
-  applies, and Esc closes (asking first when there are changes, like the board).
+  saves, and Esc leaves without saving: with changes it asks first ("Discard 2 changes?"), like the
+  board (user, 2026-11-05).
+- **Link rows:** a row may be a button that leads to another page instead of a value
+  (`{ key, label, help, kind: "link", target: "defaults" | "defaults:<command>", summary }`, e.g.
+  "Default commands… (3 set)"). It closes the page with `{ changes, open: target }`; core saves the
+  changes first, then opens the target. The page renders link rows from 1a on; core adds the first
+  ones (the defaults page, §7) in 1b.
 - **The help line** (§3) shows the hovered or focused row's `help` text and its default.
 - **The answer** is checked by `parseSettingsAnswer` (never throws). Unknown keys, values that don't fit
   and no-ops are dropped. Core then calls `store.set()` after the page closes and answers with one line
@@ -139,10 +152,15 @@ interface ModuleApi {
 - **The gear button** in a page's footer (board, note, MIDI monitor): a page can't open a second dialog,
   so the gear closes the page with `{ "settings": true }`, and core opens the settings page on that
   module's group. When the settings page closes, core runs the page's command line again, so the user
-  is back where they were and sees the change. A page with pending changes asks first ("Discard
-  changes and open settings?"), the same rule as Esc.
-- **The palette's footer switch goes away** (prompt-1). In its place is a gear and the help line. The
-  palette's `settings` answer field stays readable for one release and is ignored after that.
+  is back where they were and sees the change. This holds for Enter and Esc (Esc discards the
+  settings changes, the page still comes back; a second Esc on it closes it). A page with pending
+  changes asks first ("Discard changes and open settings?"), the same rule as Esc. In 1a the gear is
+  on the board and the palette only; `map learn` gets none.
+- **The palette's footer switch goes away** (prompt-1, phase 1a). The switch lives on the settings
+  page with all three values. **Off is the clean palette:** no gear and no extra footer elements, only
+  the prompt and its rows; settings are then reached with `cmdabl config` (later `Cmd+,`, phase 7).
+  Hints and Options show the gear. The palette's `settings` answer field stays readable for one
+  release and is ignored after that.
 
 ### 3. The help line (`ui/help.js`, `ui/shared.css`)
 
@@ -224,11 +242,16 @@ like an alias for the bare word, for every top-level command (mute, solo, arm, v
   ```json
   { "mute": "mute #drums", "note": "note -e", "find": "find -d" }
   ```
-- **The config page:** every `<module> config` page has a "Default command" row at the top, one per
-  command the module declares. It reads from the file and writes back to it. The platform adds the row,
-  so modules don't declare anything for it.
-- **Later, all in one place:** `cmdabl config defaults` lists every entry on one page. It's another view
-  over the same file. Nothing is copied, so nothing has to be kept in sync.
+- **The defaults page** (`cmdabl config defaults`, user 2026-11-05): its own page, a **live page**
+  (0018) with a table: one row per top-level command, the command name, a text field for the line,
+  and ✓ or the error next to it. It reads the file when it opens and writes back once when it closes
+  (Enter saves, Esc asks when there are changes). The settings page stays a plain page.
+  - `cmdabl config` has one link row "Default commands… (3 set)"; every `<module> config` has a link
+    row "Default command: mute #drums…" that opens the defaults page focused on that command
+    (`cmdabl config defaults mute`). The platform adds these rows, so modules don't declare anything.
+  - Keys follow §5: ↑/↓ rows, → into the field, typing edits, Enter saves.
+  - Nothing is copied: every view reads and writes the same file. Hand edits (e.g. in nvim) stay a
+    first-class way.
 
 **The store** (`src/core/defaultCommands.ts`) uses the same mechanics as `settings.json`:
 - it re-reads the file when the file's stamp changed, so a hand edit applies the next time the palette
@@ -238,9 +261,13 @@ like an alias for the bare word, for every top-level command (mute, solo, arm, v
 - a missing file means no defaults.
 
 **Validation:**
-- **On save from the page:** the line is parsed against the command tree. A usage error (`mute --sett 1`)
-  is shown on the row and not saved. Targets are not resolved at this point, so a tag that doesn't exist
-  yet is allowed.
+- **While typing (live):** the page asks a read-only route `/check?line=…` (token-bound, only for this
+  dialog, 0018 rules) that parses the line against the command tree and answers ok or the usage error.
+  Targets are not resolved, so a tag that doesn't exist yet is allowed. The route never writes.
+- **After closing (always, and the fallback):** core parses every changed line again. Valid lines are
+  saved; if any is invalid, the page reopens on that row with the typed text and the error. This is the
+  only check when the local server can't be reached (e.g. its port is taken), so the page works
+  without it, as every live page must.
 - **On load (hand edits):** an entry that doesn't parse, or doesn't start with its own command, is
   ignored and gets one warning in the log. The config page shows it as invalid, with the text you wrote,
   so you can fix it there.
@@ -256,25 +283,27 @@ see it:
 | `\mute` | `mute` without the default |
 | `mute; solo` | each `;` part expands on its own |
 
-- **The palette shows the expansion** while the line is the bare word: a row `mute → mute #drums`, like
-  the silent tag row (0006). The log line and the history record the expanded line.
+- **The palette shows the expansion** while the line is the bare word: one dim row `mute → mute #drums`,
+  like the silent tag row (0006). Always compact: the line that will run, not the path to it. Enter
+  runs it; Tab writes the expansion into the prompt to edit it.
+- **The log line shows what was typed and what ran** (user, 2026-11-05; needed to catch mistakes):
+  `run: mute ⇒ mute #drums (default)`. History stores what ran, with the typed form next to it.
+- **MIDI bindings expand at each firing** (`map CC48 | mute`), so editing a default changes what the
+  control does; `map -l` shows the expansion.
+- **Aliases** (0020, later): a default belongs to the root command only. Whether an alias that expands
+  to a bare command picks up the default is decided with 0020.
 - **Commands that already do something bare** (`note`, `tag`, `history`): the default replaces that
   behaviour, and `\note` brings it back. The config row says so.
 - **Not in scope:** subcommands (`midi monitor`) get no defaults.
 
 ## Open questions
 
-- **Default with options only:** `mute --set 1` is incomplete. Should the default's targets fill in
-  (`mute --set 1 #drums`)? Proposed: no in v1, only the bare word expands.
-- **Defaults in MIDI bindings:** does `map CC48 | mute` expand at each firing (one rule everywhere, but
-  editing a default changes what the control does), or once, when it's bound (the binding keeps
-  `mute #drums`)? Proposed: at each firing, with the binding list showing the expansion.
-
-- **Gear return:** should core run the page's command line again after settings close (proposed), or
-  just end? Running it again is right for the board and the note. It's odd for `map learn`, so learn
-  gets no gear.
-- **Key for the settings page in the palette:** a gear only, or also a key (`Cmd+,` as in Live)?
-  Karabiner owns the trigger, and Live may take `Cmd+,` before the page sees it. Test in Live.
+- **Later: defaults with options only** (user, 2026-11-05: not in v1). `mute --set 1` stays a usage
+  error; filling in the default's targets (`mute --set 1 #drums`) may come later.
+- **Later: checking inside plain pages.** A page that checks lines itself against the completion
+  snapshot (a second parser in the UI) is deferred; the defaults page's live `/check` covers the need.
+- **`Cmd+,` for settings** (phase 7): wanted (user, 2026-11-05). Karabiner owns the trigger, and Live may
+  take `Cmd+,` before the page sees it. Test in Live first.
 - **`ui.helpLine` off:** should it also hide the palette's help view, or only the footer line?
   Proposed: footer only, since the help view has its own switch.
 - **Per-window size settings** (0007 "configurable dialog sizes"): would they fit here as `int` keys?
@@ -282,12 +311,15 @@ see it:
 
 ## Phased rollout
 
-1. **Declared settings and the settings page:** the `api.settings` part, the `settings` surface,
-   `cmdabl config`, `<module> config`, and the gear on the board. `tag.foldAfter` replaces
-   `FOLD_AFTER`, and the palette switch moves. Builders: core (store, surface, commands),
-   ui (page), modules (`tag` declares).
-   **Default commands go in the same phase:** `default_commands.json`, the expansion step, `\<command>`,
-   the row on every config page, and the expansion row in the palette.
+1a. **Declared settings and the settings page:** the `api.settings` part, the `settings` surface
+   (link rows rendered, none sent yet), `cmdabl config [<group>]`, `<module> config`, the gear on the board and the palette.
+   `tag.foldAfter` replaces `FOLD_AFTER`, and the palette switch moves (Off is the clean palette).
+   Only the four 1a keys. Builders: core (store, surface, commands), ui (page), modules (`tag`
+   declares).
+1b. **Default commands:** `default_commands.json` and its store, the expansion step, `\<command>`, the
+   defaults page (live, `/check`, fallback check after closing), the link rows, the palette's
+   expansion row with Tab, and the log line `typed ⇒ ran`. Builders: core (store, expansion, route),
+   ui (page, palette row).
 2. **The help line:** `help.js` on the board, the settings page and the pick list, and `ui.helpLine`.
 3. **The palette help view:** descriptions in the snapshot first; the help view and footer line in
    `interface.html` after the layout is agreed with the user.
@@ -295,6 +327,8 @@ see it:
 5. **The setup status page:** waits for approval 4 and the installation refinement. Then status rows and
    actions in `notify`, and the setup rows.
 6. **With 0013:** the note's timestamped entries and `note.editLoop`, gear on the note page.
+7. **Shortcuts** (after 0.1.6, user 2026-11-05): `Cmd+,` opens settings, tested in Live first (Karabiner
+   and Live may take it), and the start of 0006's keymap for global keys. The list keys stay in §5.
 
 Each phase is released on its own branch state and tested in Live before the next one starts. 0.1.6
 ships when phases 1–3 are in. 4–6 may follow as 0.1.7 if they take longer.

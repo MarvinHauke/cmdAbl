@@ -58,6 +58,8 @@ mutes all of them. Aliases come along: a saved command line, e.g.
 - The pick list shows a row's tags next to its kind.
 
 ### Aliases
+
+**Moved to [0020](0020-aliases.md) (2026-11-05).** The notes below are the starting point carried over there.
 - `alias add <name> "<command line>"`, `alias remove <name>`, `alias list` (like `history`).
 - Expanded as the first word before parsing; arguments typed after the alias are appended
   (`fxoff` → `mute --set 1 #fx`; `m bass` with `alias m mute` → `mute bass`). No recursion.
