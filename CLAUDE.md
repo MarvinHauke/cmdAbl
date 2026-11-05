@@ -71,7 +71,10 @@ gets a short list of the core features to try by hand, plus what only they can c
   `scripts/agents.sh ui` adds the UI agent, `scripts/agents.sh docs` the documentation agent;
   `scripts/agents.sh core reviewer` or `… architect` starts only those.
   `scripts/agents.sh stop ui docs` ends those agents; `stop` alone ends every peer, never the
-  architect or the pane it runs in. `DRY_RUN=1` prints the commands.
+  architect or the pane it runs in. `scripts/agents.sh status` lists who runs where. Outside tmux
+  the script opens (or attaches to) the tmux session `cmdabl`. It marks every pane it starts
+  (`@cmdabl_agent`) and counts an agent as running only while its marked pane runs something other
+  than a shell. `DRY_RUN=1` prints the commands.
 - **The architect starts and stops the peers itself** with `scripts/agents.sh` (user, 2026-11-04):
   on-demand agents when their work comes up, any builder when its task is done. It tells the user
   which agents it started or stopped.
