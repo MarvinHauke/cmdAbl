@@ -52,7 +52,7 @@ All releases were tested in Live, including the installed `.ablx`.
     `help` in the `man` module, `npm run docs:reference` works again. No `ModuleApi` change.
   - **Phase 3 done** (MCP Live test 2026-11-05; `9f686f7`, `7ea19e8`, `f2566ed`, `662290d`): the palette's
     footer help line (0019 §4): command and summary, the argument or option at the caret, keys when idle;
-    `CompletionResult.help`; option alias fix `a16e3c1`; descriptions in the snapshot; the palette 37 px taller. User hand check open:
+    `CompletionResult.help`; option alias fix `a16e3c1`; descriptions in the snapshot; the palette taller by the footer (51 px; key caps whole and descriptions wrapping since `9191ea5`, `38306b4`, `69041d4`). User hand check open:
     the look, `ui.helpLine` off in the palette.
   - **Area above the prompt removed** (user, 2026-11-05; MCP Live test; `27ac6aa`, `0993bc4`): no Hints/Options,
     no `palette.above`, no Settings button in the palette; the highlighted row's description scrolls; `config`

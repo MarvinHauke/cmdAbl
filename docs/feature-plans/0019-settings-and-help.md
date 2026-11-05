@@ -169,7 +169,7 @@ interface ModuleApi {
   on the board and the palette only; `map learn` gets none.
 - **The palette's footer switch goes away** (prompt-1, phase 1a). The switch lives on the settings
   page with all three values. **Off is the clean palette:** no gear; the footer shows only the help
-  line (§4, since phase 3), and the window grows by its 37 px so 7 rows stay visible; settings are then reached with `cmdabl config` (later `Cmd+,`, phase 7).
+  line (§4, since phase 3), and the window grows by its 51 px so 7 rows stay visible; settings are then reached with `cmdabl config` (later `Cmd+,`, phase 7).
   Hints and Options show the gear. The palette's `settings` answer field stays readable for one
   release and is ignored after that.
 
@@ -198,7 +198,8 @@ interface ModuleApi {
 **Decided with the user (2026-11-05, replaces the first proposal of a help view above the prompt):**
 
 - The palette gets a **footer with the help line** (§3), like the other pages, under the rows. The prompt
-  never moves, and the footer has a fixed height of two lines.
+  never moves, and the footer has a fixed height (51 px: three text lines, or a line and a key-cap row).
+  Line 2 wraps to two lines instead of being cut (user, 2026-11-05); only longer text ends in "…".
 - **What it shows**, from the parsed line at the caret:
   1. line 1: the command (or subcommand) and its one-line help: `tag -e: edit a tag's tracks on the board`;
   2. line 2: the argument at the caret with its description: `<tag|#>  a tag name, or # to pick one`; for
