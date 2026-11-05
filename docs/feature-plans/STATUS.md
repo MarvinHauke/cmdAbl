@@ -32,7 +32,9 @@ All releases were tested in Live, including the installed `.ablx`.
   owns the keys). "N settings saved" goes to Live's status bar (user: yes), but deferred to the
   next Remote Script update: it needs a new additive bridge op (`status`, text → `show_message`);
   until then the message window stays. **In work: 1b** (2026-11-05), default commands with their own live page;
-  cmdabl-core first (parsed root, store, expansion, `/check`), then cmdabl-ui (defaults page, palette row). Phase 1 was refined with the user on 2026-11-05.
+  core part committed (`6ea2d1c`); now cmdabl-ui (defaults page, palette row), cmdabl-modules
+  (`map -l` expansion, history `typed`) and a core follow-up (`<cmd> config` for every top-level command).
+  README and docs pages for settings and defaults: cmdabl-docs before the release. Phase 1 was refined with the user on 2026-11-05.
 - 0.1.6 = 0019 phases 1–3 (contracts 1–3 approved 2026-11-05, the status rows (4) still open). The
   palette help view's layout gets agreed with the user before it's built (phase 3). Aliases moved to
   the [0020](0020-aliases.md) draft. Ideas from `docs/userfindings.md`
