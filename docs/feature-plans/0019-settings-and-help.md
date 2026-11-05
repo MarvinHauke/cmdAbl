@@ -193,25 +193,25 @@ interface ModuleApi {
 - **Users:** the board (replaces its own footer logic), the settings page, the pick list, the note, the
   MIDI pages and the palette.
 
-### 4. The palette: hints become help (prompt-2)
+### 4. The palette: a help line in the footer
 
-**Refine before building (user, 2026-11-05):** the snapshot's descriptions are approved. The layout below
-is a first proposal. The hints and options modes aren't right yet in the plain palette, so the architect
-works the help view out with the user (sketch or browser prototype) before the ui builder builds it.
+**Decided with the user (2026-11-05, replaces the first proposal of a help view above the prompt):**
 
-- The "hints" area above the prompt becomes a **help view**. It stays read-only, and the prompt never
-  moves (0006 "Layout without jumping"). It holds:
-  1. **the command line:** `tag — show, edit and rename tags` (the command's one-line help);
-  2. **the caret's argument:** `<target> — a track path or #tag (several allowed)`, from the `ArgDef`'s
-     label and description; for an option waiting for its value, the option's description;
-  3. **the options:** the compact grid that exists today, so each option shows its own description in
-     the help line when hovered or highlighted.
-- **Where it comes from:** the completion snapshot already carries the command tree's help. Each
-  argument and option needs a `description` in the snapshot (additive, `CmdComplete`). There's no new
-  call while the page is open.
-- **The footer** gets the help line (§3). It shows the highlighted row's detail and hovered options,
-  and its idle text is the palette's keys.
-- **"options" mode** (the selectable zone) stays as it is.
+- The palette gets a **footer with the help line** (§3), like the other pages, under the rows. The prompt
+  never moves, and the footer has a fixed height of two lines.
+- **What it shows**, from the parsed line at the caret:
+  1. line 1: the command (or subcommand) and its one-line help: `tag -e: edit a tag's tracks on the board`;
+  2. line 2: the argument at the caret with its description: `<tag|#>  a tag name, or # to pick one`; for
+     an option waiting for its value, the option and its description; while typing an option (`-`), the
+     highlighted option's description.
+- **A highlighted suggestion row doesn't change it** (user): the line keeps explaining the argument at the
+  caret, since the row already says what it is.
+- **Empty prompt or no known command yet:** the idle text, the palette's keys (key caps).
+- **`ui.helpLine` off:** the footer shows the keys only (the open question below is settled this way).
+- **"Help above the prompt"** (`palette.above` Off · Help · Options) stays as it is. Its Help panel isn't
+  changed in this phase.
+- **Where it comes from:** the completion snapshot. Each argument and option gets a `description`
+  (additive, `CmdComplete`); the command's help is already there. There's no new call while the page is open.
 
 ### 5. One keyboard model for selection lists (`ui/listnav.js`)
 
@@ -338,8 +338,6 @@ see it:
   snapshot (a second parser in the UI) is deferred; the defaults page's live `/check` covers the need.
 - **`Cmd+,` for settings** (phase 7): wanted (user, 2026-11-05). Karabiner owns the trigger, and Live may
   take `Cmd+,` before the page sees it. Test in Live first.
-- **`ui.helpLine` off:** should it also hide the palette's help view, or only the footer line?
-  Proposed: footer only, since the help view has its own switch.
 - **Per-window size settings** (0007 "configurable dialog sizes"): would they fit here as `int` keys?
   Probably yes, later.
 
