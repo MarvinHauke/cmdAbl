@@ -51,10 +51,10 @@
     }
 
     /* ── footer ── */
-    /* The footer is always there with a fixed height (two help lines, 14px each + 4px padding above and below = 36px, plus the
+    /* The footer is always there with a fixed height (room for three 14px text lines, or one text line and a key-cap line: 42px, + 4px padding above and below = 50px, plus the
        1px border), so the prompt and the rows never move whatever the help says. */
     #foot { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-top: 1px solid var(--border); color: var(--dim); font-size: 11px; user-select: none; }
-    #hint { flex: 1 1 0; min-width: 0; height: 28px; overflow: hidden; line-height: 14px; }
+    #hint { flex: 1 1 0; min-width: 0; height: 42px; overflow: hidden; line-height: 14px; }
     #hint > div { line-height: 14px; }
     #hint.keys > div { display: block; }
 

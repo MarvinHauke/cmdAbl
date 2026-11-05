@@ -91,4 +91,7 @@ kbd {
 .kp { white-space: nowrap; }
 .helpline.keys { -webkit-line-clamp: none !important; }   /* !important: the page rules set the clamp by id */
 
-.helpline.two .l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 14px; }   /* { lines } override: one clipped line each */
+.helpline.two .l { line-height: 14px; }   /* { lines } override (the palette's footer): line 1 is one clipped line, line 2 wraps to at most two */
+.helpline.two .l:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.helpline.two .l:not(:first-child) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.helpline.two .l:has(.kp) { display: block; line-height: 18px; height: 18px; overflow: visible; }   /* a key-cap line: the caps (13px + 3px border) fit whole */
