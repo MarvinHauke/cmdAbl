@@ -131,3 +131,14 @@ test("help and usage resolve `<command> config` through the registry's roots (wh
   assert.equal(helpForPath(registry.roots(), ["plain", "config"]), undefined);
   assert.equal(helpForPath(registry.roots(), ["tag", "config", "x"]), undefined);
 });
+
+test("every top-level command can get `config`; a command's own `config` subcommand wins", () => {
+  const registry = build();
+  assert.equal(registry.attachConfig("plain", config("plain")), true);
+  assert.equal(registry.attachConfig("own", config("own")), false);
+  const parsed = parse("plain config", registry.roots());
+  assert.equal(parsed.kind, "run");
+  assert.equal((parsed as { node: { name: string } }).node.name, "config");
+  const quoted = parse('plain "config"', registry.roots());
+  assert.equal((quoted as { node: { name: string } }).node.name, "plain"); // quoted keeps the old meaning
+});

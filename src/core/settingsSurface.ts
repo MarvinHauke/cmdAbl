@@ -199,7 +199,17 @@ export function createSettingsFlow(deps: SettingsFlowDeps): SettingsFlow {
     has: (group) => deps.registry.groups().some((g) => g.id === group),
     async open(options = {}) {
       try {
-        const groups = deps.registry.groups();
+        const groups = [...deps.registry.groups()];
+        // A command without declared settings still has a page when core gives it link rows (`mute config`: its default command).
+        if (options.group !== undefined && !groups.some((g) => g.id === options.group) && deps.links) {
+          let rows: SettingsRow[] = [];
+          try {
+            rows = await deps.links(options.group);
+          } catch {
+            rows = [];
+          }
+          if (rows.length > 0) groups.push({ id: options.group, heading: options.group, items: [] });
+        }
         if (options.group !== undefined && !groups.some((g) => g.id === options.group)) {
           return fail(ExitCode.NOT_FOUND, `config: no settings group "${options.group}" (groups: ${groups.map((g) => g.id).join(", ")})`);
         }

@@ -199,3 +199,18 @@ test("link rows core adds reach the page (after the declared rows) and what the 
   assert.equal((await broken.open()).code, ExitCode.OK);
   assert.ok(seen[1]!.groups.every((g) => g.items.every((r) => r.kind !== "link")));
 });
+
+test("a command without declared settings has a page when it gets link rows (`mute config`); with none it is exit 3", async () => {
+  const t = setup();
+  const seen: SettingsRequest[] = [];
+  const flow = createSettingsFlow({
+    registry: t.registry,
+    store: t.store,
+    links: async (group) => (group === "mute" ? [{ key: "link:defaults:mute", label: "Default command", help: "h", kind: "link", target: "defaults:mute", summary: "not set" }] : []),
+    ui: { settings: async (request) => (seen.push(request), null) },
+  });
+  assert.equal((await flow.open({ group: "mute", only: true })).code, ExitCode.OK);
+  assert.deepEqual(seen[0]!.groups.map((g) => [g.id, g.items.length]), [["mute", 1]]);
+  assert.equal(seen[0]!.title, "mute Settings");
+  assert.equal((await flow.open({ group: "nope", only: true })).code, ExitCode.NOT_FOUND);
+});

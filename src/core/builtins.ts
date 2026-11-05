@@ -92,7 +92,7 @@ export function registerBuiltins(registry: CommandRegistry, deps: BuiltinsDeps =
         description:
           "Opens the Settings page: one group per module that declares settings (cmdAbl, MIDI mapping, tag, …), core's first. " +
           "Change values with the keys (↑/↓ rows, ←/→ a choice or number, Space a switch) and press Enter to save; Esc leaves without saving. " +
-          "With a group the page opens on it. `cmdabl config defaults [<command>]` opens the default commands (a bare command word runs the line you choose). <command> config (tag config, map config) shows just that command's group; " +
+          "With a group the page opens on it. `cmdabl config defaults [<command>]` opens the default commands (a bare command word runs the line you choose). <command> config (tag config, mute config, …) works for every command and shows just that command's settings (at least its default command); " +
           "`config` right after such a command is this word now, so to name a track called config, quote it (tag \"config\").",
         examples: [
           { line: "cmdabl config", note: "all settings" },

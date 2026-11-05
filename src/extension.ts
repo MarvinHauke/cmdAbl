@@ -335,15 +335,17 @@ export function activate(activation: ActivationContext) {
   // The command list itself is a provider (priority 0); modules add theirs.
   moduleApi.registerProvider(createCommandProvider(registry));
   for (const mod of MODULES) mod.activate(moduleApiFor(mod));
-  // `<command> config` for every command whose module declared settings (plan 0019); `cmdabl config` is a real subcommand.
-  for (const group of settingsRegistry.groups()) {
-    if (group.id === "cmdabl") continue;
-    const attached = registry.attachConfig(group.id, {
+  // `<command> config` for every top-level command (plan 0019): its settings group, or just its default-command row.
+  // `cmdabl config` is a real subcommand; a command with its own `config` subcommand keeps it.
+  for (const name of registry.roots().map((n) => n.name)) {
+    const attached = registry.attachConfig(name, {
       name: "config",
-      summary: `open the settings of ${group.id}`,
-      run: () => settingsFlow.open({ group: group.id, only: true }),
+      summary: `open the settings of ${name}`,
+      run: () => settingsFlow.open({ group: name, only: true }),
     });
-    if (!attached) logger("settings").warn(`group "${group.id}" has no command of that name; \`${group.id} config\` does not exist`);
+    if (!attached && name !== "cmdabl" && settingsRegistry.groups().some((g) => g.id === name)) {
+      logger("settings").warn(`group "${name}" could not get \`${name} config\` (the command has its own \`config\`)`);
+    }
   }
   // A command that names a completer nobody registered would complete nothing: say so once, at startup.
   for (const problem of registry.unknownCompleters()) logger("host").warn(problem);
