@@ -3,8 +3,8 @@
 
 export const PALETTE_WIDTH = 500;
 export const PALETTE_BASE_HEIGHT = 260;
-/** The help footer every palette has (plan 0019 §4): 28 text + 8 padding + 1 border; the prompt and rows keep their space. */
-export const PALETTE_FOOTER_HEIGHT = 37;
+/** The help footer every palette has (plan 0019 §4): 42 text (three 14 px lines, or a line and a key-cap row) + 8 padding + 1 border; the prompt and rows keep their space. */
+export const PALETTE_FOOTER_HEIGHT = 51;
 
-/** The height in px: 297 = base 260 + the footer 37. */
+/** The height in px: 311 = base 260 + the footer 51. */
 export const PALETTE_HEIGHT = PALETTE_BASE_HEIGHT + PALETTE_FOOTER_HEIGHT;
