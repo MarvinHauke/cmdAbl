@@ -95,9 +95,10 @@ Older checks that were never reported; most can now run through MCP.
 
 - **MIDI bindings that open a page** (user, 2026-11-05; again with default commands: `map CC48 | mute`
   with the default `mute #` fires `mute #`, whose tag pick list counts as cancelled, exit 4; after 0.1.6).
-  0.1.6 only adds a note when binding such a line. A warning at firing and a "needs a dialog" mark in
-  `map -l` need a firing hook for modules (`onFiring` with `needsDialog`, a ModuleApi change) and come
-  with this item: `map CC48 | note` does nothing today, because
+  0.1.6 only logs a clear line when a firing's dialog is cancelled (core's headless gate). A note when
+  binding (proposed: `api.commands.dialogs(line)` → parts that would ask for a tag, a pick, a confirm or
+  a page; core parses, the module only words it) and a "needs a dialog" mark in `map -l` are ModuleApi
+  changes and come with this item: `map CC48 | note` does nothing today, because
   bound lines run headless and a dialog counts as cancelled (0018 engine rules). Wanted: a control
   that opens a page such as `note` or `tag -l`, like the palette would. Needs a decision in 0018: an
   opt-in per binding (e.g. an `open` operator or a per-command "may open a dialog" flag), at most one
