@@ -66,7 +66,7 @@ const help = (() => {
     if (Array.isArray(o)) { idleInto(box, o); return; }   // a state line made of key caps
     if (o && o.lines) {
       line.classList.add('two');
-      for (const l of o.lines) { const d = document.createElement('div'); d.className = 'l'; if (Array.isArray(l)) idleInto(d, l); else text(d, l); box.append(d); }
+      for (const l of o.lines) { const d = document.createElement('div'); d.className = 'l'; if (Array.isArray(l)) { d.classList.add('caps'); idleInto(d, l); } else text(d, l); box.append(d); }
       return;
     }
     if (o) {
