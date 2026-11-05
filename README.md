@@ -87,7 +87,7 @@ More: [Commands](https://marvinhauke.github.io/cmdAbl/reference/commands/) for t
 - **Ableton Live with Extensions support.** The Extensions SDK is in beta; cmdAbl is built against version 1.0.0-beta.1.
 - **[Karabiner-Elements](https://karabiner-elements.pqrs.org)** (free), for the `:` key. It is optional: the palette
   also opens from Live's context menu.
-- **The cmdAbl Remote Script** (0.1.8, shipped with cmdAbl). `cmdabl setup` installs it; then choose it as Control
+- **The cmdAbl Remote Script** (0.1.14, shipped with cmdAbl). `cmdabl setup` installs it; then choose it as Control
   Surface in Live. Selecting objects, mute and solo on rack chains and Drum Rack pads, tags and notes need it.
 
 More: [Getting started → What you need](https://marvinhauke.github.io/cmdAbl/getting-started/#what-you-need)

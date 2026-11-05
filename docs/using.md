@@ -304,8 +304,13 @@ Each tag's heading line holds a fold arrow, the tag's name, an **add…** input 
 the tag's tracks sit as chips.
 
 - **Add a track.** Type a track's name in **add…**. The best match shows as ghost text, and the tracks that do not
-  carry the tag yet show as up to six chips below it. `Tab` puts the highlighted track in the field, and `Enter`
-  adds it. A click on a suggestion adds it too. A new chip has a dashed ring. "no match" means nothing was added.
+  carry the tag yet show as up to six suggestions below it. `Enter` adds the highlighted track. A click on a
+  suggestion adds it too. A new chip has a dashed ring. "no match" means nothing was added.
+  - The text and the list stay after `Enter`, so you can add similar names one after another. If the added name is
+    exactly what you typed, the field clears instead, and the next `Enter` applies. `Esc` clears the field.
+  - `Tab` completes the text with the highlighted suggestion. It does not add.
+  - `→` enters the suggestion row, on the highlighted suggestion (the one `↑` `↓` picked). There, `←` `→` walk the suggestions, `←` on the first returns to the field, and
+    typing edits the text.
 - **Remove a track from a tag.** Only the **×** on a chip removes it (or `Backspace` on a chip you selected). The
   chip is struck through, and a second press unmarks it. A click on a chip's name only selects the chip, so a stray
   click removes nothing.
@@ -362,15 +367,20 @@ tag, **untagged**); `→` goes in, `←` goes out.
 | The **untagged** heading | `→` `Enter` | Unfolds it; again, steps onto the tracks. |
 | A heading | `F2` | Renames the tag. |
 | An **add…** field | typing | Suggests tracks. |
-| An **add…** field | `Tab` | Puts the highlighted track in the field. In an empty field, it moves on as usual. |
-| An **add…** field | `Enter` | Adds the highlighted track. With no match, nothing is added. In an empty field, it applies. |
+| An **add…** field | `Tab` | Completes the text with the highlighted suggestion. It does not add. In an empty field, it moves on as usual. |
+| An **add…** field | `Enter` | Adds the highlighted track. The text and the list stay, unless the added name is exactly what you typed: then the field clears. With no match, nothing is added. In an empty field, it applies. |
 | An **add…** field | `↑` `↓` | Move through the suggestions. Without suggestions, they go to the other headings. |
-| An **add…** field | `→` | At the end of the text (an empty field too), goes onto the first chip. |
+| An **add…** field | `→` | With suggestions showing, enters the suggestion row. Otherwise, at the end of the text (an empty field too), goes onto the first chip. |
 | An **add…** field | `←` | At the start of the text, goes out to the heading. |
 | An **add…** field | `Alt+←` `Alt+→` | Move the cursor in the typed text. |
 | An **add…** field | `Backspace` | In an empty field, marks the last chip for removal. A second press unmarks it. |
 | An **add…** field | `Shift+Backspace` | In an empty field, marks the whole tag for removal. |
 | An **add…** field | `Esc` | Clears the typed text. In an empty field, it closes the board. |
+| The suggestion row | `←` `→` | Walk the suggestions. `←` on the first returns to the field. |
+| The suggestion row | `Enter` | Adds the highlighted track. The text and the list stay, unless the added name is exactly what you typed: then the field clears. |
+| The suggestion row | `Tab` | Completes the text with it and returns to the field. |
+| The suggestion row | typing | Returns to the field and edits the text. |
+| The suggestion row | `Esc` | Leaves the row. The text stays; a second `Esc` clears it. |
 | A chip | `←` `→` | Step through the chips. `→` on the last chip stays. `←` on the first returns to the field. |
 | A chip | `Backspace` `Delete` | Mark the chip for removal. A second press unmarks it. A chip you just added disappears. |
 | A chip | `↑` `↓` | Go to the heading, or to the next one. |
