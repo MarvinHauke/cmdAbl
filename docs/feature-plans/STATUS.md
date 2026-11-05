@@ -100,7 +100,8 @@ Older checks that were never reported; most can now run through MCP.
     `cmdabl settings` page (user, 2026-10-22) over `settings.json`; it takes the palette's
     Off/Hints/Options switch, the board's fold threshold and `midi.statusBar`;
   - one help pattern: a quiet help line that follows the mouse and focus (like Live's Info View, can
-    be switched off), used by the board footer and the palette's hint panel (0006);
+    be switched off), used by the board footer and the palette's hint panel (0006). No browser
+    tooltips: the footer text changes on hover instead (user, 2026-11-05; tooltips removed in 0.1.5);
   - note: timestamped entries with view and edit modes (0013).
   - one keyboard model for every selection list (user, 2026-11-05): the palette rows, the pick list,
     the board's suggestions and chips. → from the end of a field enters the list, ←/→ (and ↑/↓ by
