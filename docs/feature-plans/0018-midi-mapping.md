@@ -287,6 +287,12 @@ longer shows incoming MIDI by default. Setting `midi.statusBar` (boolean, defaul
 settings pattern (0.1.6). The monitor's `+N.Ns` time column goes from the default page too (user);
 it comes back as an option there, as +seconds or as a timestamp.
 
+### Later: bindings that open a page (user, 2026-11-05)
+
+`map CC48 toggle | note` runs but shows nothing: bound lines are headless, so a dialog counts as
+cancelled. The user wants controls that open pages (`note`, `tag -l`). Open design: opt-in per binding
+or per command, one dialog at a time, never while a dialog is open. See STATUS backlog.
+
 ### Live pages (user, 2026-11-04: the localhost variant)
 
 **The rule and its exception** (`CLAUDE.md`):

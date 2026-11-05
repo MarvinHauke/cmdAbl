@@ -88,6 +88,12 @@ Older checks that were never reported; most can now run through MCP.
   mute silences a path (track, chain, pad), bypass skips a device's processing. Deferred until the `mute`
   listing has a hierarchy (plan 0006 step 3); order set by the user.
 
+- **MIDI bindings that open a page** (user, 2026-11-05): `map CC48 | note` does nothing today, because
+  bound lines run headless and a dialog counts as cancelled (0018 engine rules). Wanted: a control
+  that opens a page such as `note` or `tag -l`, like the palette would. Needs a decision in 0018: an
+  opt-in per binding (e.g. an `open` operator or a per-command "may open a dialog" flag), at most one
+  dialog at a time, never during a running dialog.
+
 - **Simpler installation and a clear `cmdabl setup` result** (user, 2026-11-05): fewer steps from
   download to a working palette (Karabiner trigger, Remote Script, control surface, Live restart). The
   setup dialog becomes a status page: one row per step with a green ✓ (ok), a yellow ! (warning, e.g.
