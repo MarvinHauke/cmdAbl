@@ -19,6 +19,7 @@ export function declaredBy(activate: (api: ModuleApi) => void): Command[] {
     onCommandRun: () => {},
     onSetChange: () => {},
     midi: { blocked: () => null, onBlocked: () => () => {} },
+    settings: { declare: () => {}, get: async () => undefined },
   } as unknown as ModuleApi;
   activate(api);
   return registry.roots();

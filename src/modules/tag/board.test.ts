@@ -140,3 +140,15 @@ test("tag -l: a created name is lowercased and merges into the existing tag of t
   assert.deepEqual(fake.tagStore.get("Lead"), ["fx"]);
   assert.match(logOf(r), /\/Lead: no change/);
 });
+
+test("tag --list: declares tag.foldAfter and passes its value to the board", async () => {
+  const { fake, run } = setup({ Lead: ["fx"] }, [null]);
+  assert.deepEqual(fake.settingGroups.map((g) => [g.heading, g.items.map((i) => [i.key, i.kind, i.default])]), [
+    ["Tags", [["tag.foldAfter", "int", 20]]],
+  ]);
+  await run({ list: true });
+  assert.equal(fake.boards[0]!.foldAfter, 20);
+  fake.settingValues["tag.foldAfter"] = 3;
+  await run({ list: true });
+  assert.equal(fake.boards[1]!.foldAfter, 3);
+});
