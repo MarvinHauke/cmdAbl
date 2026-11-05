@@ -24,15 +24,15 @@ All releases were tested in Live, including the installed `.ablx`.
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
-- **In work: 0.1.6 on `feat/0.1.6-settings`, [0019](0019-settings-and-help.md).** Phase 1a (declared
+- **In work: 0.1.6 on `feat/0.1.6-settings`, [0019](0019-settings-and-help.md).** Phase 1a is done (user hand check 2026-11-05). Phase 1a (declared
   settings, the settings page, `cmdabl config`, `<module> config`, gears, `tag.foldAfter`, the palette
   switch moved) is built and passed the MCP Live test (2026-11-05). Hand check passed (user, 2026-11-05);
   follow-ups done and Live-checked: Apply/Cancel buttons on the settings page, "Settings" as text
   instead of the ⚙ icon, typing in the int field (digits append, empty stays empty, the confirm bar
   owns the keys). "N settings saved" goes to Live's status bar (user: yes), but deferred to the
   next Remote Script update: it needs a new additive bridge op (`status`, text → `show_message`);
-  until then the message window stays. **Next: 1b**, default commands with their own live page; it starts with
-  the parsed root for the gear/group lookup. Phase 1 was refined with the user on 2026-11-05.
+  until then the message window stays. **In work: 1b** (2026-11-05), default commands with their own live page;
+  cmdabl-core first (parsed root, store, expansion, `/check`), then cmdabl-ui (defaults page, palette row). Phase 1 was refined with the user on 2026-11-05.
 - 0.1.6 = 0019 phases 1–3 (contracts 1–3 approved 2026-11-05, the status rows (4) still open). The
   palette help view's layout gets agreed with the user before it's built (phase 3). Aliases moved to
   the [0020](0020-aliases.md) draft. Ideas from `docs/userfindings.md`
