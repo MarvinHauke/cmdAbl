@@ -148,12 +148,19 @@
       return el;
     }
 
-    // Scroll vertically only: the row in view with a row or two of context; never sideways (focus() on a field may try).
+    // Scroll only inside the list, and only when it doesn't fit: the row "nearest" in view with a row of context.
+    // The document itself never scrolls (html/body are overflow: hidden; a webview may still scroll them programmatically).
     function revealRow(el) {
-      const pad = el.offsetHeight * 1.5, top = el.offsetTop, bottom = top + el.offsetHeight;
-      if (top - pad < scrollEl.scrollTop) scrollEl.scrollTop = Math.max(0, top - pad);
-      else if (bottom + pad > scrollEl.scrollTop + scrollEl.clientHeight) scrollEl.scrollTop = bottom + pad - scrollEl.clientHeight;
+      const max = scrollEl.scrollHeight - scrollEl.clientHeight;
+      if (max <= 0) scrollEl.scrollTop = 0;
+      else {
+        const pad = el.offsetHeight, top = el.offsetTop, bottom = top + el.offsetHeight;
+        if (top - pad < scrollEl.scrollTop) scrollEl.scrollTop = Math.min(max, Math.max(0, top - pad));
+        else if (bottom + pad > scrollEl.scrollTop + scrollEl.clientHeight) scrollEl.scrollTop = Math.min(max, bottom + pad - scrollEl.clientHeight);
+        else if (scrollEl.scrollTop > max) scrollEl.scrollTop = max;
+      }
       scrollEl.scrollLeft = 0;
+      if (document.scrollingElement) { document.scrollingElement.scrollTop = 0; document.scrollingElement.scrollLeft = 0; }
     }
     scrollEl.addEventListener('scroll', () => { if (scrollEl.scrollLeft) scrollEl.scrollLeft = 0; });
 
@@ -282,6 +289,7 @@
     document.addEventListener('focusin', () => { updateFooter(); keepInView(); requestAnimationFrame(keepInView); });
     document.addEventListener('input', () => { keepInView(); requestAnimationFrame(keepInView); });
     document.addEventListener('focusout', () => setTimeout(updateFooter, 0));
+    window.addEventListener('resize', keepInView);   // the dialog may get its size after the first layout
 
     document.addEventListener('DOMContentLoaded', () => {
       help.init(helpEl, {

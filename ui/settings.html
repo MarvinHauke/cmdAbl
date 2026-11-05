@@ -200,11 +200,24 @@
       return el;
     }
 
+    // Scroll only inside the list, 'nearest'; the document itself never scrolls (scrollIntoView may scroll it in a webview).
+    function revealRow(el) {
+      const max = scrollEl.scrollHeight - scrollEl.clientHeight;
+      if (max <= 0) scrollEl.scrollTop = 0;
+      else {
+        const sr = scrollEl.getBoundingClientRect(), r = el.getBoundingClientRect();
+        if (r.top < sr.top) scrollEl.scrollTop = Math.max(0, scrollEl.scrollTop - (sr.top - r.top));
+        else if (r.bottom > sr.bottom) scrollEl.scrollTop = Math.min(max, scrollEl.scrollTop + (r.bottom - sr.bottom));
+      }
+      if (document.scrollingElement) { document.scrollingElement.scrollTop = 0; document.scrollingElement.scrollLeft = 0; }
+    }
+    window.addEventListener('resize', () => { if (R[cur]) revealRow(R[cur].el); });
+
     function moveTo(i, scroll = true) {
       if (!R.length) return;
       cur = Math.max(0, Math.min(R.length - 1, i));
       R.forEach((r, k) => r.el.classList.toggle('cur', k === cur));
-      if (scroll) R[cur].el.scrollIntoView({ block: 'nearest' });
+      if (scroll) revealRow(R[cur].el);
       updateFooter();
     }
 
