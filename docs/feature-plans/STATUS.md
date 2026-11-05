@@ -54,6 +54,10 @@ All releases were tested in Live, including the installed `.ablx`.
     footer help line (0019 §4): command and summary, the argument or option at the caret, keys when idle;
     `CompletionResult.help`; option alias fix `a16e3c1`; descriptions in the snapshot; the palette 37 px taller. User hand check open:
     the look, `ui.helpLine` off in the palette.
+  - **Area above the prompt removed** (user, 2026-11-05; MCP Live test; `27ac6aa`, `0993bc4`): no Hints/Options,
+    no `palette.above`, no Settings button in the palette; the highlighted row's description scrolls; `config`
+    is a normal row after a command. Docs: `docs/using.md` "Show the options above the prompt" (with
+    screenshots) is stale, for cmdabl-docs before the PR.
   - **Next:** the user's hand checks (help line, setup page, phase 3), docs for 0.1.6 (cmdabl-docs), then the
     release.
 - 0.1.6 = 0019 phases 1–3 and 0021 (contracts 1–3 approved 2026-11-05; the status rows (4) approved with 0021). The
