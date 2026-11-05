@@ -326,7 +326,8 @@
       else if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
     });
 
-    document.addEventListener('DOMContentLoaded', () => {
+    // Runs now, at the end of body (the DOM above exists): the list is placed on the focused row before the first paint.
+    {
       build();
       applyEl.addEventListener('click', () => { document.activeElement?.blur(); if (!applyEl.disabled) save(); });
       document.getElementById('cancel').addEventListener('click', requestClose);
@@ -339,7 +340,7 @@
       if (start > 0) { const h = R[start].el.parentElement; scrollEl.scrollTop = h.offsetTop - scrollEl.offsetTop; }
       help.init(helpEl, { idle: () => (R[cur] && isLink(R[cur]) ? LINK_KEYS : KEYS), enabled: helpOn, current: () => R[cur]?.el });
       updateFooter();
-    });
+    }
   </script>
 </body>
 </html>

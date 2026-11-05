@@ -291,7 +291,8 @@
     document.addEventListener('focusout', () => setTimeout(updateFooter, 0));
     window.addEventListener('resize', keepInView);   // the dialog may get its size after the first layout
 
-    document.addEventListener('DOMContentLoaded', () => {
+    // Runs now, at the end of body (the DOM above exists): the list is placed on the focused row before the first paint.
+    {
       help.init(helpEl, {
         idle: () => (document.activeElement?.tagName === 'INPUT' ? KEYS_FIELD : KEYS_ROWS),
         enabled: DEFAULTS?.help !== false,
@@ -309,15 +310,14 @@
       moveTo(start, true, false);
       if (DEFAULTS?.focus && R[start]) R[start].input.focus({ preventScroll: true }); else scrollEl.focus({ preventScroll: true });
       updateFooter();
-      // The webview may have laid out at another size, or painted before the scroll took effect: once the dialog has settled,
-      // put the row in view again and nudge the scroll so the list is repainted where scrollTop says it is.
+      // The webview may paint stale: once the dialog has settled, nudge the scroll by one pixel and back so the list is repainted
+      // where scrollTop says it is. The position set above is kept (a real size change is handled by the resize listener).
       for (const ms of [0, 60, 200, 500]) setTimeout(() => {
         if (!R[cur]) return;
-        revealRow(R[cur].el);
         const t = scrollEl.scrollTop;
         if (scrollEl.scrollHeight > scrollEl.clientHeight) { scrollEl.scrollTop = t + (t > 0 ? -1 : 1); void scrollEl.offsetHeight; scrollEl.scrollTop = t; }
       }, ms);
-    });
+    }
   </script>
 </body>
 </html>
