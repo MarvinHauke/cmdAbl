@@ -110,6 +110,11 @@ test("defaultsSize: grows with the rows up to a maximum", () => {
   assert.equal(defaultsSize(request(Array.from({ length: 100 }, (_, i) => ({ command: `c${i}` })))).height, 600);
 });
 
+test("defaultsSize: width 640 like the settings page; a height from the settings page wins", () => {
+  assert.equal(defaultsSize(request([{ command: "a" }])).width, 640);
+  assert.equal(defaultsSize({ ...request([{ command: "a" }]), height: 333 }).height, 333);
+});
+
 function flowFor(answers: Array<(r: DefaultsRequest) => DefaultsAnswer | null>, start: Record<string, string> = {}) {
   const registry = tree();
   const mem = memoryStore(() => registry.roots(), start);
@@ -197,11 +202,14 @@ test("flow: unknown focus is exit 3; a failing write is exit 1; a throwing page 
 });
 
 test("flow: openTarget takes defaults and defaults:<command>, nothing else", async () => {
-  const t = flowFor([() => null, () => null]);
+  const t = flowFor([() => null, () => null, () => null]);
   await t.flow.openTarget("defaults");
   await t.flow.openTarget("defaults:note");
   assert.equal(t.requests[0]!.focus, undefined);
   assert.equal(t.requests[1]!.focus, "note");
+  await t.flow.openTarget("defaults", { height: 410 });
+  assert.equal(t.requests[0]!.height, undefined);
+  assert.equal(t.requests[2]!.height, 410);
   assert.equal((await t.flow.openTarget("other")).code, ExitCode.NOT_FOUND);
   assert.equal((await t.flow.openTarget("defaults:zzz")).code, ExitCode.NOT_FOUND);
 });

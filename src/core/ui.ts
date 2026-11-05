@@ -289,6 +289,8 @@ export interface DefaultsRequest {
   focus?: string;
   /** `ui.helpLine` (plan 0019 §3): whether the page's help line follows the hover. Set by the platform. */
   help?: boolean;
+  /** Dialog height in px, set when the page is opened from the settings page so the window keeps its size (not used by the page). */
+  height?: number;
   rows: DefaultsRow[];
 }
 

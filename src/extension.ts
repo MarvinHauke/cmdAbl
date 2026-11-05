@@ -97,7 +97,7 @@ export function activate(activation: ActivationContext) {
     ui,
     log: (line) => logger("settings").warn(line),
     // A link row closed the settings page: the defaults page opens after the changes were saved.
-    onOpen: (target) => defaultsFlow.openTarget(target),
+    onOpen: (target, window) => defaultsFlow.openTarget(target, window),
     // The default-command rows the platform adds: one in cmdAbl's group (how many are set), one in a module's group (its command).
     links: async (group) => {
       const { count, lines } = await defaultsFlow.summary();

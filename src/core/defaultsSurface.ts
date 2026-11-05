@@ -95,7 +95,8 @@ export function parseDefaultsAnswer(raw: string | null | undefined, request: Def
 
 /** Dialog size: a row is about 44 px; the page scrolls beyond the maximum. */
 export function defaultsSize(request: DefaultsRequest): { width: number; height: number } {
-  return { width: 720, height: Math.min(Math.max(150 + request.rows.length * 44, 280), 600) };
+  const own = Math.min(Math.max(150 + request.rows.length * 44, 280), 600);
+  return { width: 640, height: request.height === undefined ? own : Math.min(Math.max(request.height, 240), 600) };
 }
 
 const savedText = (set: number, removed: number): string => {
@@ -120,9 +121,9 @@ export interface DefaultsFlow {
    * (until it is fixed or the page is closed). Answers with one line ("2 default commands saved"), or exit 1 when the file
    * could not be written; closing without Enter changes nothing and says nothing. Never throws.
    */
-  open(options?: { focus?: string }): Promise<CommandResult>;
+  open(options?: { focus?: string; height?: number }): Promise<CommandResult>;
   /** A link row's target (`defaults` or `defaults:<command>`) from the settings page; anything else is exit 3. */
-  openTarget(target: string): Promise<CommandResult>;
+  openTarget(target: string, window?: { height: number }): Promise<CommandResult>;
   /** The live check for the page (also what the check after closing uses). */
   check: DefaultsCheck;
   /** How many usable defaults there are, and the line of one command ("" = none). */
@@ -163,7 +164,8 @@ export function createDefaultsFlow(deps: DefaultsFlowDeps): DefaultsFlow {
         const logLines: string[] = [];
         for (let round = 0; round < 20; round++) {
           const built = buildDefaultsRequest(deps.roots(), await deps.store.entries(), { focus, typed });
-          const { request, cut } = capDefaults(built);
+          const { request: capped, cut } = capDefaults(built);
+          const request = options.height !== undefined ? { ...capped, height: options.height } : capped;
           if (cut) warn("defaults: the page was cut (more than 200 commands or texts over 300 characters)");
           const answer = await deps.ui.defaults(request, check);
           if (!answer) break;
@@ -205,9 +207,10 @@ export function createDefaultsFlow(deps: DefaultsFlowDeps): DefaultsFlow {
         return fail(ExitCode.FAILURE, `config defaults: ${e instanceof Error ? e.message : String(e)}`);
       }
     },
-    async openTarget(target) {
-      if (target === "defaults") return flow.open();
-      if (target.startsWith("defaults:")) return flow.open({ focus: target.slice("defaults:".length) });
+    async openTarget(target, window) {
+      const height = window ? { height: window.height } : {};
+      if (target === "defaults") return flow.open(height);
+      if (target.startsWith("defaults:")) return flow.open({ focus: target.slice("defaults:".length), ...height });
       return fail(ExitCode.NOT_FOUND, `config: unknown page "${target}"`);
     },
   };

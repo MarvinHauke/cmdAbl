@@ -159,7 +159,7 @@ test("isGearAnswer: exactly settings:true; settingsSize stays within the dialog 
   for (const no of [null, "", "nope", '{"settings":{"above":"off"}}', '{"settings":false}', "[true]"]) assert.equal(isGearAnswer(no), false, String(no));
   const small = settingsSize({ title: "t", groups: [{ id: "a", heading: "A", items: [] }] });
   const big = settingsSize(capSettings({ title: "t", groups: Array.from({ length: 20 }, (_, i) => ({ id: `g${i}`, heading: "H", items: [] })) }).request);
-  assert.ok(small.height >= 260 && big.height <= 560 && small.width === 560);
+  assert.ok(small.height >= 260 && big.height <= 560 && small.width === 640);
 });
 
 test("a link row's open target is opened after the changes were saved (phase 1b)", async () => {
@@ -171,11 +171,12 @@ test("a link row's open target is opened after the changes were saved (phase 1b)
       get: () => t.store.get(),
       set: async (patch) => (order.push("saved"), t.store.set(patch)),
     },
-    onOpen: async (target) => void order.push(`open ${target}`),
+    onOpen: async (target, window) => void order.push(`open ${target} h${window.height}`),
     ui: { settings: async () => ({ changes: { "tag.foldAfter": 4 }, open: "defaults" } satisfies SettingsAnswer) },
   });
   assert.equal((await flow.open()).message, "1 setting saved");
-  assert.deepEqual(order, ["saved", "open defaults"]);
+  assert.match(order[1]!, /^open defaults h\d+$/);
+  assert.equal(order[0], "saved");
 });
 
 test("link rows core adds reach the page (after the declared rows) and what the opened page saved is told too", async () => {

@@ -162,7 +162,7 @@ export function parseSettingsAnswer(raw: string | null | undefined, request: Set
 export function settingsSize(request: SettingsRequest): { width: number; height: number } {
   const rows = request.groups.reduce((n, g) => n + g.items.length, 0);
   const height = 120 + request.groups.length * 40 + rows * 46;
-  return { width: 560, height: Math.min(Math.max(height, 260), 560) };
+  return { width: 640, height: Math.min(Math.max(height, 260), 560) };
 }
 
 /** "2 settings saved". */
@@ -173,7 +173,7 @@ export interface SettingsFlowDeps {
   store: SettingsStore;
   ui: Pick<Ui, "settings">;
   /** A link row closed the page (phase 1b): core opens the target after the changes were saved. */
-  onOpen?: (target: string) => Promise<CommandResult | void>;
+  onOpen?: (target: string, window: { height: number }) => Promise<CommandResult | void>;
   /** Link rows core adds to a group's page (phase 1b: the default-commands rows), after its declared rows. Never throws; a throw means none. */
   links?: (group: string) => Promise<SettingsRow[]>;
   log?: (line: string) => void;
@@ -240,7 +240,7 @@ export function createSettingsFlow(deps: SettingsFlowDeps): SettingsFlow {
           result = saved ? { ...ok(savedText(count)), log: Object.entries(answer.changes).map(([k, v]) => `set ${k} = ${JSON.stringify(v)}`) } : fail(ExitCode.FAILURE, "config: the settings could not be saved (they stay in effect until Live restarts)");
         }
         if (answer.open !== undefined && deps.onOpen) {
-          const opened = await deps.onOpen(answer.open);
+          const opened = await deps.onOpen(answer.open, { height: settingsSize(request).height });
           if (opened && opened.code !== ExitCode.OK) return opened;
           // What the opened page saved is told too ("1 setting saved, 2 default commands saved").
           if (opened?.message) {
