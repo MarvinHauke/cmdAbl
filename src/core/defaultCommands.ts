@@ -112,6 +112,8 @@ export interface DefaultEntry {
 export interface DefaultsStore {
   /** The usable defaults, `command → line` (re-read when the file changed since). */
   get(): Promise<Record<string, string>>;
+  /** The usable defaults as of the last load or `set`, without reading the file (for synchronous callers). */
+  peek(): Record<string, string>;
   /** Every entry of the file whose value is text, usable or not (an invalid one carries its `error`). */
   entries(): Promise<DefaultEntry[]>;
   /**
@@ -225,6 +227,7 @@ export function createDefaultsStore(deps: DefaultsDeps): DefaultsStore {
   };
 
   return {
+    peek: () => usable(),
     get: () =>
       exclusive(async () => {
         await current();

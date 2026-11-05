@@ -203,6 +203,13 @@ export interface ModuleApi {
      * warning at activation. Never throws at the caller.
      */
     completer(key: string, source: Completer): void;
+    /**
+     * The usable default commands (plan 0019 §7), `command → line` (what a bare `mute` runs), the same data as
+     * `CompletionData.defaults`. Read-only and synchronous: it reflects the last load of the defaults file, which the
+     * platform refreshes at every run and every palette open (so call it from a handler or completer, not at activation,
+     * when it can still be empty). For display only (e.g. `map -l`); expansion is the platform's.
+     */
+    defaults(): Readonly<Record<string, string>>;
   };
   /**
    * Show the pick list; resolves with the chosen objects, or null if cancelled.

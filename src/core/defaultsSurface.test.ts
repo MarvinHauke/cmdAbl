@@ -31,6 +31,7 @@ function memoryStore(roots: () => ReturnType<CommandRegistry["roots"]>, start: R
     });
   const store: DefaultsStore = {
     get: async () => Object.fromEntries(entries().filter((e) => !e.error).map((e) => [e.command, e.line])),
+    peek: () => Object.fromEntries(entries().filter((e) => !e.error).map((e) => [e.command, e.line])),
     entries: async () => entries(),
     set: async (changes) => {
       sets.push({ ...changes });

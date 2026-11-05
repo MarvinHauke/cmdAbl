@@ -40,6 +40,8 @@ export interface FakeApiOptions {
   midiMessages?: StoredMidiMessage[];
   /** Setting values the fake `api.settings.get` answers, by full key (a declared key without one answers its default). */
   settings?: Record<string, unknown>;
+  /** What `api.commands.defaults()` returns (default: none). */
+  defaults?: Record<string, string>;
 }
 
 export interface FakeApi {
@@ -247,6 +249,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       help: (path) => helpForPath(fake.commands, path),
       usage: (path) => usageForPath(fake.commands, path),
       completer: (key, source) => void (fake.completers.has(key) ? undefined : fake.completers.set(key, source)),
+      defaults: () => ({ ...(options.defaults ?? {}) }),
     },
     pick: async (_title, candidates, multi = false, pickOptions) => {
       if (pickOptions?.state) fake.pickStates.push(pickOptions.state);

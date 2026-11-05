@@ -29,6 +29,7 @@ import { createModuleFiles } from "./core/files.js";
 import { createSettingsRegistry, createSettingsStore, toPaletteRequestSettings } from "./core/settings.js";
 import { createSettingsFlow } from "./core/settingsSurface.js";
 import { createDefaultsStore } from "./core/defaultCommands.js";
+import { attachConfigs } from "./core/configAttach.js";
 import { createDefaultsFlow } from "./core/defaultsSurface.js";
 import { rootCommandOf } from "./core/parse.js";
 import { bareBehaviour } from "./core/defaultCommands.js";
@@ -264,6 +265,7 @@ export function activate(activation: ActivationContext) {
       help: (path) => helpForPath(registry.roots(), path),
       usage: (path) => usageForPath(registry.roots(), path),
       completer: (key, source) => registry.completer(key, source),
+      defaults: () => defaultsStore.peek(),
     },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
@@ -335,18 +337,13 @@ export function activate(activation: ActivationContext) {
   // The command list itself is a provider (priority 0); modules add theirs.
   moduleApi.registerProvider(createCommandProvider(registry));
   for (const mod of MODULES) mod.activate(moduleApiFor(mod));
-  // `<command> config` for every top-level command (plan 0019): its settings group, or just its default-command row.
-  // `cmdabl config` is a real subcommand; a command with its own `config` subcommand keeps it.
-  for (const name of registry.roots().map((n) => n.name)) {
-    const attached = registry.attachConfig(name, {
-      name: "config",
-      summary: `open the settings of ${name}`,
-      run: () => settingsFlow.open({ group: name, only: true }),
-    });
-    if (!attached && name !== "cmdabl" && settingsRegistry.groups().some((g) => g.id === name)) {
-      logger("settings").warn(`group "${name}" could not get \`${name} config\` (the command has its own \`config\`)`);
-    }
-  }
+  // `<command> config` for every top-level command but man/help (plan 0019): its settings group, or just its default-command row.
+  attachConfigs(registry, {
+    make: (name) => ({ name: "config", summary: `open the settings of ${name}`, run: () => settingsFlow.open({ group: name, only: true }) }),
+    groups: () => settingsRegistry.groups().map((g) => g.id),
+    warn: (text) => logger("settings").warn(text),
+  });
+  void defaultsStore.get().catch(() => {}); // primes `api.commands.defaults()`
   // A command that names a completer nobody registered would complete nothing: say so once, at startup.
   for (const problem of registry.unknownCompleters()) logger("host").warn(problem);
 
