@@ -27,7 +27,9 @@ All releases were tested in Live, including the installed `.ablx`.
 - **In work: 0.1.6 on `feat/0.1.6-settings`, [0019](0019-settings-and-help.md).**
   - **Phase 1a done** (user hand check 2026-11-05): declared settings, the settings page with Apply/Cancel,
     `cmdabl config`, `<module> config`, the "Settings" button, `tag.foldAfter`, the palette switch moved.
-  - **Phase 1b built**, MCP Live test passed (2026-11-05), waiting for the user's hand check: default
+  - **Phase 1b done** (MCP Live test and user hand check 2026-11-05; follow-ups: shake on an invalid line,
+    Tab/Shift+Tab on the defaults and settings pages, `\<cmd>` offers commands only, a log warning when a
+    MIDI firing's dialog is cancelled): default
     commands, the defaults page (live check, reopen on an invalid line), the palette row, `map -l` arrow,
     history `typed`, `config` after every command except man/help, `\<cmd>` in the palette (completes
     like the command; Enter takes the highlighted command row).
