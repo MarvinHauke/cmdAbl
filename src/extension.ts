@@ -30,7 +30,7 @@ import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/surfaces/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/surfaces/ui.js";
 import { createModuleFiles } from "./core/settings/files.js";
-import { createSettingsRegistry, createSettingsStore, toPaletteRequestSettings } from "./core/settings/settings.js";
+import { createSettingsRegistry, createSettingsStore } from "./core/settings/settings.js";
 import { createSettingsFlow } from "./core/surfaces/settingsSurface.js";
 import { createDefaultsStore } from "./core/command/defaultCommands.js";
 import { attachConfigs } from "./core/command/configAttach.js";
@@ -79,15 +79,15 @@ export function activate(activation: ActivationContext) {
   // Declared settings (plan 0019): core's groups are in the registry from the start, the modules declare theirs at activation.
   const settingsRegistry = createSettingsRegistry((text) => logger("settings").warn(text));
   const settingsStore = createSettingsStore({ base: dataFolder, registry: settingsRegistry, warn: (text) => logger("settings").warn(text) });
-  // A page's gear (plan 0019): remembered here, taken by the run (board) or the palette loop right after the page closed.
-  let pendingGear: { surface: "board" | "palette"; text?: string } | undefined;
+  // A page's gear (plan 0019): remembered here, taken by the run right after the board closed.
+  let pendingGear: { surface: "board" } | undefined;
   // Live pages (plan 0018): a module's dialog may read from it through token-guarded routes of the trigger server.
   // Registered in release builds too; unavailable (data-page fallback) when the port is taken.
   let trigger: { listening(): boolean } | undefined;
   const livePages = createLivePages({ port: TRIGGER_PORT, available: () => trigger?.listening() === true });
   const gate = createUiGate(
     withHelpLine(
-      createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.above": settings.above }), livePages, (gear) => {
+      createDefaultUi(context, dialogs, livePages, (gear) => {
         pendingGear = gear;
       }),
       async () => (await settingsStore.get())["ui.helpLine"],
@@ -511,7 +511,7 @@ export function activate(activation: ActivationContext) {
       } finally {
         activeLine = undefined;
       }
-      const gear = pendingGear as { surface: "board" | "palette"; text?: string } | undefined;
+      const gear = pendingGear as { surface: "board" } | undefined;
       pendingGear = undefined;
       const group = gear?.surface === "board" ? rootCommandOf(line, registry.roots()) : undefined;
       if (group === undefined || round >= 20 || !settingsFlow.has(group)) break;
@@ -641,20 +641,8 @@ export function activate(activation: ActivationContext) {
       const items = itemLists.flat();
       paletteItems = items;
       // Tab on a pick list puts an object into the prompt: reopen with it (same queue, same guard).
-      let cursor = 0;
       for (;;) {
-        pendingGear = undefined;
-        const result = await ui.prompt({ items, completion, settings: toPaletteRequestSettings(await settingsStore.get()), ...(initial !== undefined ? { initial: { text: initial, cursor } } : {}) });
-        // The palette's gear (plan 0019): the settings open, then the palette again with what was typed.
-        const gear = pendingGear as { surface: "board" | "palette"; text?: string } | undefined;
-        pendingGear = undefined;
-        if (!result && gear?.surface === "palette") {
-          await openSettings({ group: "cmdabl" });
-          initial = gear.text ?? "";
-          cursor = initial.length;
-          continue;
-        }
-        cursor = 0;
+        const result = await ui.prompt({ items, completion, ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
         initial = result ? await dispatch(result) : undefined;
         if (initial === undefined) break;
       }

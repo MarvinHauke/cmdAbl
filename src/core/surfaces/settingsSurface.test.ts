@@ -31,15 +31,16 @@ function setup(answer?: (request: SettingsRequest) => string | null) {
 
 test("the request has core's groups first, then the modules' by name, with current values and defaults", async () => {
   const { requests, flow, store } = setup();
-  await store.set({ "tag.foldAfter": 3, "palette.above": "hints" });
+  await store.set({ "tag.foldAfter": 3, "ui.helpLine": false });
   await flow.open();
   const r = requests[0]!;
   assert.equal(r.title, "cmdAbl Settings");
   assert.deepEqual(r.groups.map((g) => g.id), ["cmdabl", "setup", "map", "midi", "tag"]);
   const tag = r.groups[4]!.items[0]!;
   assert.deepEqual(tag, { key: "tag.foldAfter", label: "Fold after", help: foldAfter.help, kind: "int", value: 3, default: 20, min: 1, max: 500 });
-  const above = r.groups[0]!.items[0]!;
-  assert.equal(above.kind === "enum" && above.value, "hints");
+  const helpLine = r.groups[0]!.items[0]!;
+  assert.equal(helpLine.kind === "bool" && helpLine.value, false);
+  assert.equal(r.groups[0]!.items.some((i) => i.key === "demo.mode"), false);
   assert.equal(r.focus, undefined);
 });
 
@@ -107,9 +108,9 @@ test("parseSettingsAnswer drops unknown keys, wrong kinds, out-of-range values, 
   assert.deepEqual(answer({ changes: { "tag.foldAfter": 2.5 } })?.changes, {});
   assert.deepEqual(answer({ changes: { "tag.foldAfter": "3" } })?.changes, {});
   assert.deepEqual(answer({ changes: { "tag.foldAfter": 20 } })?.changes, {}); // no-op
-  assert.deepEqual(answer({ changes: { "palette.above": "options" } })?.changes, { "palette.above": "options" });
-  assert.deepEqual(answer({ changes: { "palette.above": "both" } })?.changes, {}); // not a choice
-  assert.deepEqual(answer({ changes: { "palette.above": "hints" } })?.changes, {}); // no-op (the request's value)
+  assert.deepEqual(answer({ changes: { "demo.mode": "options" } })?.changes, { "demo.mode": "options" });
+  assert.deepEqual(answer({ changes: { "demo.mode": "both" } })?.changes, {}); // not a choice
+  assert.deepEqual(answer({ changes: { "demo.mode": "hints" } })?.changes, {}); // no-op (the request's value)
   assert.deepEqual(answer({ changes: { "map.enabled": true } })?.changes, { "map.enabled": true });
   assert.deepEqual(answer({ changes: { "map.enabled": 1 } })?.changes, {});
   assert.deepEqual(answer({ changes: { unknown: 1, "link:defaults": "x" } })?.changes, {}); // unknown key, link row

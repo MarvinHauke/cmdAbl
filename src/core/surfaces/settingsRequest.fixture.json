@@ -8,9 +8,9 @@
       "heading": "cmdAbl",
       "items": [
         {
-          "key": "palette.above",
-          "label": "Help above the prompt",
-          "help": "Show the command's options above the prompt while you type: Help is a read-only panel, Options a list you can pick from. Off keeps the palette clean.",
+          "key": "demo.mode",
+          "label": "Demo mode",
+          "help": "An enum row for the page tests.",
           "kind": "enum",
           "value": "hints",
           "default": "off",

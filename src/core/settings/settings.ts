@@ -9,13 +9,8 @@ import type { PaletteResult } from "../types.js";
 // a value of the wrong type means the default and one warning. A write goes to a temporary file
 // and is renamed. Nothing throws. No URL, TextEncoder or structuredClone (the host has none).
 
-/** Where the palette shows the options and subcommands: not at all, as a hint panel, or as selectable rows. */
-export const ABOVE_VALUES = ["off", "hints", "options"] as const;
-export type Above = (typeof ABOVE_VALUES)[number];
-
 /** Core's own keys, with their defaults (the declarations below say the rest: label, help, kind). */
 export const SETTINGS_DEFAULTS = {
-  "palette.above": "off" as Above,
   /** MIDI mapping (plan 0018): false drops every incoming message, `map --off`. */
   "map.enabled": true,
   /** The MIDI monitor and learn also show incoming messages in Live's status bar (off by default). */
@@ -30,7 +25,6 @@ export const SETTINGS_DEFAULTS = {
 
 export type SettingKey = keyof typeof SETTINGS_DEFAULTS;
 export interface SettingsValues {
-  "palette.above": Above;
   "map.enabled": boolean;
   "midi.statusBar": boolean;
   "ui.helpLine": boolean;
@@ -62,18 +56,6 @@ export const CORE_GROUPS: readonly SettingGroup[] = [
     id: "cmdabl",
     heading: "cmdAbl",
     items: [
-      {
-        key: "palette.above",
-        label: "Help above the prompt",
-        help: "Show the command's options above the prompt while you type: Help is a read-only panel, Options a list you can pick from. Off keeps the palette clean.",
-        kind: "enum",
-        default: "off",
-        choices: [
-          { value: "off", label: "Off" },
-          { value: "hints", label: "Help" },
-          { value: "options", label: "Options" },
-        ],
-      },
       { key: "ui.helpLine", label: "Help line", help: "Show what the hovered or focused control does in the footer.", kind: "bool", default: true },
     ],
   },
@@ -214,21 +196,6 @@ export function createSettingsRegistry(warn: (text: string) => void = () => {}):
   for (const g of CORE_GROUPS) registry.declare(g.id, g, { core: true });
   return registry;
 }
-
-/** What the palette page gets and returns (plain JSON). */
-export interface PaletteSettings {
-  above: Above;
-}
-
-/** What the palette request carries: the switch's value, and whether the page draws the gear (never when above is off: the clean palette). */
-export interface PaletteRequestSettings extends PaletteSettings {
-  gear: boolean;
-}
-
-export const toPaletteSettings = (values: SettingsValues): PaletteSettings => ({ above: values["palette.above"] });
-
-/** What the palette request carries: the gear only with Help or Options above the prompt (Off is the clean palette). */
-export const toPaletteRequestSettings = (values: SettingsValues): PaletteRequestSettings => ({ ...toPaletteSettings(values), gear: values["palette.above"] !== "off" });
 
 /** Core's keys typed, every declared key (a module's, too) by name. */
 export type SettingsSnapshot = SettingsValues & Record<string, unknown>;
@@ -372,60 +339,28 @@ export function createSettingsStore(deps: SettingsDeps): SettingsStore {
   };
 }
 
-/** `{ above: "off" | "hints" | "options" }` from the page, or null for anything else. */
-export function parsePaletteSettings(value: unknown): PaletteSettings | null {
-  return isRecord(value) && typeof value.above === "string" && (ABOVE_VALUES as readonly string[]).includes(value.above) ? { above: value.above as Above } : null;
-}
-
 /**
- * What the palette page returned: the result to run (null when there is none — dismissed, unreadable, or a
- * settings-only answer from Esc after the checkbox was toggled) and the settings to save, if it sent valid ones.
+ * What the palette page returned: the result to run, or null (dismissed or unreadable). A `settings` field an old
+ * page may still carry is dropped (plan 0019 §4: the palette no longer changes settings).
  */
-export function parsePaletteAnswer(raw: string | null): { result: PaletteResult | null; settings: PaletteSettings | null; gear?: { text: string } } {
-  if (!raw) return { result: null, settings: null };
+export function parsePaletteAnswer(raw: string | null): { result: PaletteResult | null } {
+  if (!raw) return { result: null };
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { result: null, settings: null };
+    return { result: null };
   }
-  if (!isRecord(parsed)) return { result: null, settings: null };
-  // The gear (plan 0019): `{ settings: true, text }` — open the settings, then the palette again with `text`.
-  if (parsed.settings === true) return { result: null, settings: null, gear: { text: typeof parsed.text === "string" ? parsed.text.slice(0, 2000) : "" } };
-  const settings = parsePaletteSettings(parsed.settings); // the old footer switch, read for one release
+  if (!isRecord(parsed)) return { result: null };
   const { settings: _settings, ...rest } = parsed;
   const isResult = typeof rest.type === "string" && typeof rest.id === "string";
-  return { result: isResult ? (rest as unknown as PaletteResult) : null, settings };
+  return { result: isResult ? (rest as unknown as PaletteResult) : null };
 }
 
-/**
- * What the palette surface does with the page's answer: hand valid settings to `onSettings` (a throwing saver
- * is ignored: saving must never fail the run), log an unreadable answer, and return the result to run, or null
- * (dismissed, unreadable, or settings only). Never throws.
- */
-export function takePaletteAnswer(
-  raw: string | null,
-  onSettings: ((settings: PaletteSettings) => void) | undefined,
-  logMalformed: (raw: string) => void,
-  onGear?: (gear: { text: string }) => void,
-): PaletteResult | null {
+/** What the palette surface does with the page's answer: the result to run, or null (dismissed or unreadable, which is logged). Never throws. */
+export function takePaletteAnswer(raw: string | null, logMalformed: (raw: string) => void): PaletteResult | null {
   if (!raw) return null;
-  const answer = parsePaletteAnswer(raw);
-  if (answer.gear) {
-    try {
-      onGear?.(answer.gear);
-    } catch {
-      // see below
-    }
-    return null;
-  }
-  if (answer.settings) {
-    try {
-      onSettings?.(answer.settings);
-    } catch {
-      // see above
-    }
-  }
-  if (!answer.result && !answer.settings) logMalformed(raw);
-  return answer.result;
+  const { result } = parsePaletteAnswer(raw);
+  if (!result) logMalformed(raw);
+  return result;
 }

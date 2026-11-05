@@ -1,9 +1,9 @@
 import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { PaletteItem, PaletteResult, ResultSection } from "../types.js";
 import type { CompletionData } from "../complete/complete.js";
-import { PALETTE_WIDTH, paletteHeight } from "./paletteSize.js";
+import { PALETTE_WIDTH, PALETTE_HEIGHT } from "./paletteSize.js";
 import type { LivePages, LiveRoutes } from "./livePage.js";
-import { takePaletteAnswer, type PaletteRequestSettings, type PaletteSettings } from "../settings/settings.js";
+import { takePaletteAnswer } from "../settings/settings.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsSize, sectionsText, usesStatusLayout } from "./notifySize.js";
 import { boardSize, parseBoardAnswer } from "./board.js";
@@ -43,16 +43,6 @@ export interface PromptRequest {
    * Absent: the page offers no argument completion.
    */
   completion?: CompletionData;
-  /**
-   * The palette's stored settings (plan 0006 "Two zones"), for the page to start with: `above` is the value of
-   * `palette.above`; `gear` says whether the page draws the settings button (plan 0019: false when `above` is
-   * "off", the clean palette: no gear and no extra footer elements). The page no longer changes settings itself
-   * (the footer switch is gone); it still returns a changed `above` in `PaletteResult.settings` for one release.
-   *
-   * The gear answers `{ "settings": true, "text": "<what is in the prompt now>" }` (nothing else): core opens
-   * the settings page, and afterwards the palette again with `text` in the prompt and the caret at its end.
-   */
-  settings?: PaletteRequestSettings;
   /**
    * Open with this text in the input and the caret at `cursor` (0 = at the
    * start): used when a pick list's Tab put an object into the prompt, e.g.
@@ -374,15 +364,13 @@ const dataUrl = (html: string) => `data:text/html;charset=utf-8,${encodeURICompo
 export function createDefaultUi(
   context: ExtensionContext<"1.0.0">,
   queue: DialogQueue = createDialogQueue(),
-  /** Called with the settings a palette result carried (also one that carried nothing else). */
-  onSettings?: (settings: PaletteSettings) => void,
   /** The live pages the trigger server serves; absent: live pages open as data pages. */
   live?: LivePages,
   /**
-   * A page's gear (plan 0019): the board or the palette answered `{ "settings": true }`. Core opens the settings and
-   * runs the page's command line again. The surface itself answers null (closed) for it. `text` is the palette's prompt.
+   * A page's gear (plan 0019): the board answered `{ "settings": true }`. Core opens the settings and
+   * runs the page's command line again. The surface itself answers null (closed) for it.
    */
-  onGear?: (gear: { surface: "board" | "palette"; text?: string }) => void,
+  onGear?: (gear: { surface: "board" }) => void,
 ): Ui {
   const show = (name: string, html: string, width: number, height: number): Promise<string | null> =>
     // A failure is already logged by the queue; here it only counts as dismissed.
@@ -411,11 +399,10 @@ export function createDefaultUi(
         ITEMS: request.items,
         INITIAL: request.initial ?? null,
         COMPLETION: request.completion ?? null,
-        SETTINGS: request.settings ?? null,
         HELP: request.help ?? null,
       });
-      const raw = await show("palette", html, PALETTE_WIDTH, paletteHeight(request.settings?.above));
-      return takePaletteAnswer(raw, onSettings, (bad) => logger("ui").error(`malformed palette result: ${bad.slice(0, 200)}`), (gear) => onGear?.({ surface: "palette", text: gear.text }));
+      const raw = await show("palette", html, PALETTE_WIDTH, PALETTE_HEIGHT);
+      return takePaletteAnswer(raw, (bad) => logger("ui").error(`malformed palette result: ${bad.slice(0, 200)}`));
     },
 
     async select(request) {

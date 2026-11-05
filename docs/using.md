@@ -597,7 +597,6 @@ type, means the default for that setting and a warning in the log.
 
 | Key | Values | What it does |
 | --- | --- | --- |
-| `"palette.above"` | `"off"` (default), `"hints"`, `"options"` | The footer switch of the palette, [above](#show-the-options-above-the-prompt). |
 | `"map.enabled"` | `true` (default), `false` | `false` drops every incoming MIDI message. `map --off` and `map --on` set it. |
 | `"midi.statusBar"` | `true`, `false` (default) | `true` also shows incoming MIDI in Live's status bar while `midi monitor` or `map learn` is open. |
 
