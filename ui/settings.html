@@ -46,9 +46,9 @@
     .link-btn .sum { color: var(--dim); margin-left: 6px; }
 
     /* footer: the help line (ui/help.js) and the buttons on one row; fixed height, so nothing jumps */
-    #foot { flex: none; box-sizing: border-box; height: 46px; border-top: 1px solid var(--border); padding: 6px 16px 8px; font-size: 11px; line-height: 15px; color: var(--dim); }
-    #normal { display: flex; align-items: center; gap: 12px; height: 30px; }
-    #help { flex: 1; min-width: 0; height: 30px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }   /* two lines at most */
+    #foot { flex: none; box-sizing: border-box; height: 62px; border-top: 1px solid var(--border); padding: 6px 16px 8px; font-size: 11px; line-height: 15px; color: var(--dim); }
+    #normal { display: flex; align-items: center; gap: 12px; height: 46px; }
+    #help { flex: 1; min-width: 0; height: 45px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* three lines at most: the "Default: X" end must not be cut */
     #foot.confirming { background: hsla(31, 100%, 67%, 0.12); border-top-color: var(--accent); }
     #confirm { display: flex; align-items: center; gap: 8px; }
     #confirm[hidden] { display: none; }
@@ -56,7 +56,7 @@
     #keep { border-color: var(--accent); color: var(--accent); }
     #discard { border-color: hsl(0, 75%, 62%); color: hsl(0, 75%, 62%); }
     #confirm button { min-height: 24px; }
-    #foot.confirming #confirm { height: 30px; }
+    #foot.confirming #confirm { height: 46px; }
     #normal[hidden] { display: none; }
     #btns { flex: none; display: flex; align-items: center; gap: 8px; }
     #btns button { min-height: 24px; font-size: 12px; }
@@ -192,7 +192,7 @@
         };
       }
       el.appendChild(ctl);
-      el.dataset.help = row.label + ': ' + (row.help || '') + (isLink(r) ? '' : (row.help ? ' ' : '') + 'Default: ' + fmt(row, row.default) + '.');
+      el.dataset.help = row.label + ': ' + (row.help || '') + (isLink(r) ? (row.help ? '' : 'opens its page (Enter)') : (row.help ? ' ' : '') + 'Default: ' + fmt(row, row.default) + '.');
       el.addEventListener('mousedown', e => { if (!(e.target instanceof Element && e.target.closest('input'))) e.preventDefault(); });
       el.addEventListener('click', e => { if (e.target === el || e.target.classList?.contains('label')) moveTo(idx); });
       r.refresh();

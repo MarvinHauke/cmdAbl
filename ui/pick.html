@@ -324,7 +324,7 @@
 
     // The footer line (ui/help.js): hovered element's help, else the keys of the zone. A notice or the diagnostic wins.
     function keyLine() {
-      const esc = ['Esc', 'cancel'], type = ['type', 'to filter'];
+      const esc = ['Esc', 'cancel'], type = 'type to filter';   // not a key: plain text
       if (!PICK.multi) return canFill ? [['Enter', 'run'], ['Tab', 'put in prompt'], esc, type] : [['Enter', 'choose'], esc, type];
       if (!marked.size) return zone === 'list' ? [['Space', 'mark'], ['Tab', 'mark'], esc, type] : [['Tab', 'mark'], ['↓', 'list'], esc, type];
       return zone === 'list' ? [['Space', 'mark'], ['Tab', 'mark'], ['Enter', 'confirm'], esc, type] : [['Tab', 'mark'], ['↓', 'list'], ['Enter', 'confirm'], esc, type];

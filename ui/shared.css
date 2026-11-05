@@ -64,7 +64,7 @@ button:hover { border-color: var(--text); color: #fff; }
 @keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
 
 /* Help line (ui/help.js, plan 0019 §3): dim text, the subject of a help text in normal weight, key names as small key caps. */
-.helpline .subj { color: var(--text); font-weight: 400; }
+.helpline .subj { color: var(--text); font-weight: 400; white-space: nowrap; }
 .helpline.warn { color: var(--accent); }
 .helpline.bad { color: hsl(0, 75%, 62%); }
 kbd {

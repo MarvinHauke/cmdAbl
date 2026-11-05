@@ -54,18 +54,22 @@ const help = (() => {
     if (!line) return;
     line.textContent = '';
     line.classList.remove('warn', 'bad');
+    // One block child holds all of it: the line is a -webkit-box (for the line clamp), whose direct children become
+    // boxes of their own and would shrink the subject and the key caps apart from the text.
+    const box = document.createElement('div');
+    line.append(box);
     const o = opts.override ? opts.override(target()) : null;
-    if (Array.isArray(o)) { idleInto(line, o); return; }   // a state line made of key caps
+    if (Array.isArray(o)) { idleInto(box, o); return; }   // a state line made of key caps
     if (o) {
       const t = typeof o === 'string' ? { text: o } : o;
       line.classList.toggle('warn', !!t.warn);
       line.classList.toggle('bad', !!t.bad);
-      line.append(t.text);
+      box.append(t.text);
       return;
     }
     const el = target();
-    if (el && el.dataset.help) text(line, el.dataset.help);
-    else idleInto(line, opts.idle ? opts.idle() : '');
+    if (el && el.dataset.help) text(box, el.dataset.help);
+    else idleInto(box, opts.idle ? opts.idle() : '');
   }
 
   function init(lineEl, options) {

@@ -1062,8 +1062,9 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       help.init(hintEl, { idle: curHint, enabled: BOARD?.help !== false,
-        // State lines (what is marked for removal, click-to-assign, the suggestion keys) beat a focused field's help, never a hover.
-        override: () => { if (armed) return { text: armedText, warn: true }; const h = curHint(); return h !== keyHint && !help.hovered() ? h : null; } });
+        // State lines beat the keys, never a hover: what is marked for removal always; click-to-assign and the suggestion keys
+        // only while no heading, chip or button has the focus (a focused text field has no help of its own on the line).
+        override: () => { if (armed) return { text: armedText, warn: true }; const h = curHint(); if (h === keyHint || help.hovered()) return null; return S.some(s => s.removeAll) || !help.target() ? h : null; } });
       S.forEach((s, si) => { if (!s.readonly) buildSection(si); });
       S.forEach((s, si) => { if (s.readonly) buildSection(si); });   // the read-only (untagged) section goes to the end
       buildCreate();
