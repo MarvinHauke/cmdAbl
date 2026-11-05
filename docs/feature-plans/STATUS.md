@@ -36,8 +36,12 @@ All releases were tested in Live, including the installed `.ablx`.
   - Deferred: "N settings saved" to Live's status bar (user: yes) with the next Remote Script update
     (a new additive bridge op `status` → `show_message`). `map -l` shows the arrow only for one-word
     bindings, not `;` chains (`api.commands.expand(line)` would be the way, undecided).
-  - **Next: phase 2** (the help line), then phase 3 (the palette help view, layout agreed with the user
-    first).
+  - **Phase 2 done** (MCP Live test 2026-11-05; `34383b2`, `c0a28bc`, `7c3cdfc`, `724931e`): the help
+    line (`ui/help.js`) on the board, settings, defaults and pick list; `ui.helpLine`; key caps; text
+    fields show their help on hover only (0019 §3). User hand check open: the look (key caps, subject in
+    normal weight), hover, the defaults page's red error line.
+  - **Next: phase 3** (the palette help view): the layout is agreed with the user first, then
+    descriptions in the snapshot (core) and the view (ui).
 - 0.1.6 = 0019 phases 1–3 (contracts 1–3 approved 2026-11-05, the status rows (4) still open). The
   palette help view's layout gets agreed with the user before it's built (phase 3). Aliases moved to
   the [0020](0020-aliases.md) draft. Ideas from `docs/userfindings.md`

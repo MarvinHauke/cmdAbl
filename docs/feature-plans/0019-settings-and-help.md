@@ -177,8 +177,11 @@ interface ModuleApi {
 
 - **Markup:** any element may carry `data-help="…"` (plain text, set with `textContent`). The page
   calls `help.init(lineEl, { idle: () => keyLine })`.
-- **Rule:** the line shows the `data-help` of the hovered element, else the focused one, else the
-  page's idle text (its keys). Leaving an element returns to the next in that order. There's no delay
+- **Rule:** the line shows the `data-help` of the hovered element, else the focused one (**not a text
+  field**: its help shows on hover only, its placeholder already says what to type), else the
+  page's idle text (its keys). Decided 2026-11-05 (reviewer finding): every page always has a field
+  focused, so focus help on fields would hide the key line for good. On the settings and defaults
+  pages the cursor row's help stays, since the row is what is explained there. Leaving an element returns to the next in that order. There's no delay
   and no animation, the line is one line at most (two on the board, as today), and the footer never
   changes height.
 - **Off** (`ui.helpLine = false`): the line shows the idle text only. Pages get the value in their
