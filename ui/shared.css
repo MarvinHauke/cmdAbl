@@ -90,3 +90,5 @@ kbd {
 }
 .kp { white-space: nowrap; }
 .helpline.keys { -webkit-line-clamp: none !important; }   /* !important: the page rules set the clamp by id */
+
+.helpline.two .l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 14px; }   /* { lines } override: one clipped line each */

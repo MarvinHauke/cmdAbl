@@ -9,6 +9,8 @@
 //                                                   counts as "focused" when no real element has focus.
 //     override (el) => string | [pairs] | { text, warn?, bad? } | null   a state line that wins over everything (pending-change warning,
 //                                                   an error of the row; el = target()): `warn` draws it in the accent colour, `bad` red.
+//   An override may also be { lines: [a, b] }: two lines (a string, or key-cap pairs as idle), each clipped to one line (the palette's footer: the command, then the
+//   argument at the caret). Each is drawn like a data-help text (a "Subject: rest" gets the subject in normal weight).
 //   The line shows, in this order: override, the data-help of the hovered element, of the focused one
 //   (document.activeElement, else current()), else idle. Leaving an element falls back to the next in that order.
 //   help.hovered() tells whether the target is the hovered element (a state line may yield to a hover only);
@@ -55,13 +57,18 @@ const help = (() => {
   function update() {
     if (!line) return;
     line.textContent = '';
-    line.classList.remove('warn', 'bad', 'keys');
+    line.classList.remove('warn', 'bad', 'keys', 'two');
     // One block child holds all of it: the line is a -webkit-box (for the line clamp), whose direct children become
     // boxes of their own and would shrink the subject and the key caps apart from the text.
     const box = document.createElement('div');
     line.append(box);
     const o = opts.override ? opts.override(target()) : null;
     if (Array.isArray(o)) { idleInto(box, o); return; }   // a state line made of key caps
+    if (o && o.lines) {
+      line.classList.add('two');
+      for (const l of o.lines) { const d = document.createElement('div'); d.className = 'l'; if (Array.isArray(l)) idleInto(d, l); else text(d, l); box.append(d); }
+      return;
+    }
     if (o) {
       const t = typeof o === 'string' ? { text: o } : o;
       line.classList.toggle('warn', !!t.warn);

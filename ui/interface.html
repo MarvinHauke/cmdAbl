@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- prompt surface (see src/core/surfaces/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. SETTINGS_PLACEHOLDER = null | { above: "off"|"hints"|"options", gear: boolean } (the page no longer changes settings; the gear, drawn only when gear is true, answers { settings: true, text } and nothing else, and has no key: the keyboard way is the config command). While the line is exactly one bare word that has an entry in COMPLETION.defaults (plan 0019 §7), one dim row "word → line" sits above the list: Enter sends the typed word (core expands it), Tab or a click writes the expanded line into the prompt. One list below the prompt (recent lines, targets; options after typing `-`; subcommands at a group position). above="hints": a read-only which-key panel above the prompt shows the command's options and subcommands; above="options": a selectable tool zone above it (↑ enters, best row next to the prompt). -->
+<!-- prompt surface (see src/core/surfaces/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. HELP_PLACEHOLDER = null | boolean (ui.helpLine; null = on; false = the footer shows the keys only, otherwise it explains the command and the argument at the caret). SETTINGS_PLACEHOLDER = null | { above: "off"|"hints"|"options", gear: boolean } (the page no longer changes settings; the gear, drawn only when gear is true, answers { settings: true, text } and nothing else, and has no key: the keyboard way is the config command). While the line is exactly one bare word that has an entry in COMPLETION.defaults (plan 0019 §7), one dim row "word → line" sits above the list: Enter sends the typed word (core expands it), Tab or a click writes the expanded line into the prompt. One list below the prompt (recent lines, targets; options after typing `-`; subcommands at a group position). above="hints": a read-only which-key panel above the prompt shows the command's options and subcommands; above="options": a selectable tool zone above it (↑ enters, best row next to the prompt). -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -51,9 +51,14 @@
     }
 
     /* ── footer ── */
+    /* The footer is always there with a fixed height (two help lines, 14px each + 4px padding above and below = 36px, plus the
+       1px border), so the prompt and the rows never move whatever the help says. */
     #foot { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-top: 1px solid var(--border); color: var(--dim); font-size: 11px; user-select: none; }
-    #foot[hidden] { display: none; }
-    #gear { margin-left: auto; min-height: 24px; display: inline-flex; align-items: center; font-size: 12px; }
+    #hint { flex: 1 1 0; min-width: 0; height: 28px; overflow: hidden; line-height: 14px; }
+    #hint > div { line-height: 14px; }
+    #hint.keys > div { display: block; }
+    #gear[hidden] { display: none; }
+    #gear { margin-left: auto; flex: 0 0 auto; min-height: 24px; display: inline-flex; align-items: center; font-size: 12px; }
     #gear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
     /* ── the area above the prompt (hints / options mode): a fixed height reserved from open on, so nothing moves.
@@ -123,10 +128,12 @@
 
   <div id="dropdown"></div>
 
-  <div id="foot" hidden><button id="gear" type="button" tabindex="-1">Settings</button></div>
+  <div id="foot"><div id="hint"></div><button id="gear" type="button" tabindex="-1" hidden>Settings</button></div>
 
   <!-- Shared matcher, inlined as a `CmdMatch` global at build time. -->
   <script>/*MATCH_PLACEHOLDER*/</script>
+  <!-- Help line (plan 0019 §3), inlined as the `help` global at build time. -->
+  <script>/*HELP_JS_PLACEHOLDER*/</script>
 
   <script>
     // Injected by the extension before the dialog opens. PaletteItem[]:
@@ -138,8 +145,10 @@
     // null, or the snapshot CmdComplete.complete(line, cursor, COMPLETION) works on:
     //   { tree, completions, paths, tags }. null = no argument completion.
     const COMPLETION = /*COMPLETION_PLACEHOLDER*/null;
-    // null, or { above, gear }: `above` is what sits above the prompt (set on the settings page, not here); `gear` draws the Settings button in the footer (false = clean palette, no footer).
+    // null, or { above, gear }: `above` is what sits above the prompt (set on the settings page, not here); `gear` draws the Settings button in the footer (false = no button);
     const SETTINGS = /*SETTINGS_PLACEHOLDER*/null;
+    // null, or true/false: the request's `help` (ui.helpLine). null counts as on. false = the footer shows the palette's keys only.
+    const HELP = /*HELP_PLACEHOLDER*/null;
 
     const input     = document.getElementById('input');
     const dropdown  = document.getElementById('dropdown');
@@ -235,7 +244,7 @@
       if (mode === 'args') {
         if (!COMPLETION) return [];
         const res = CmdComplete.complete(raw, caret, COMPLETION);
-        view = { replace: res.replace, usage: res.usage ?? null };
+        view = { replace: res.replace, usage: res.usage ?? null, help: res.help ?? null };
         const rows = res.items.map(r => ({ type: r.kind, zone: r.zone, title: r.label, subtitle: r.description, insert: r.insert }));
         const tool = rows.filter(r => r.zone === 'tool'), set = rows.filter(r => r.zone !== 'tool');
         const hist = recentLines(raw, caret);
@@ -572,7 +581,26 @@
       fillZone(hintsZone, 'Hints', '', !hintsEl.firstChild, 'Type a command to see what it can do');
 
       document.querySelector('.row.active')?.scrollIntoView({ block: 'nearest' });
+      help.update();
     }
+
+    // ── help footer (plan 0019 §4) ─────────────────────────────────────────
+    // Two lines, fixed height. Line 1: the command (or subcommand) and its summary; line 2: the argument at the caret, the option
+    // waiting for its value, or (while typing `-`) the highlighted option. A highlighted suggestion row never changes it (user's
+    // choice), except that option row. Empty prompt, unknown command, `help: false`: the palette's keys.
+    // The data is core's `help` of the completion result: { command, summary, focus?: { label, text } }.
+    const HELP_ON = HELP !== false;
+    const KEYS = [['Tab', 'complete'], ['↑↓', 'choose'], ['Enter', 'run'], ['Esc', 'close']];
+    function helpOverride() {
+      const h = HELP_ON && mode === 'args' ? view?.help : null;
+      if (!h || !h.command) return null;
+      const cur = items[activeIdx];
+      let l2 = '';
+      if (dashed && cur && cur.type === 'option') l2 = cur.title + ': ' + (cur.subtitle ?? '');
+      else if (h.focus) l2 = h.focus.label + (h.focus.text ? ': ' + h.focus.text : '');
+      return { lines: [h.command + ': ' + h.summary, l2 || KEYS] };   // nothing at the caret: the keys fill the reserved line
+    }
+    help.init(document.getElementById('hint'), { idle: () => KEYS, enabled: false, override: helpOverride });
 
     // ── keyboard ───────────────────────────────────────────────────────────
     input.addEventListener('input', () => { activeIdx = 0; chosen = false; render(); });
@@ -675,9 +703,8 @@
 
     // The gear (only when the request draws it): answers { settings: true, text } and nothing else; core opens the settings
     // and then the palette again with `text` in the prompt. A click only, so the keyboard focus stays in the input.
-    const foot = document.getElementById('foot');
     if (SETTINGS?.gear === true) {
-      foot.hidden = false;
+      document.getElementById('gear').hidden = false;
       document.getElementById('gear').addEventListener('mousedown', e => {
         e.preventDefault();
         sendRaw(JSON.stringify({ settings: true, text: input.value }));
