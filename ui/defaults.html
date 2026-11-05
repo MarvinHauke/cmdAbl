@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- defaults surface (see src/core/ui.ts DefaultsRequest, plan 0019 §7), a LIVE page (plan 0018). In: DEFAULTS_PLACEHOLDER = { title, focus?: command, rows: [{ command, line, summary, bareBehaviour, error?, saved? }] } (one row per top-level command; `line` is the text for the field ('' = none); `saved` = the stored line when it differs from `line` (after a failed save `line` is the typed text): changes are counted against `saved ?? line`; `bareBehaviour` is what the bare word does without one, shown as the field's placeholder; `error` = why `line` is not usable, shown at once) and LIVE_PLACEHOLDER = null | { base, token }: with it, while typing (debounced) GET `${base}/check?command=<c>&line=<l>` (Authorization: Bearer token) answers { ok: true } | { ok: false, error } (read-only; if it can't be reached the page says nothing and doesn't block: core checks again after closing). Rows: name, a text field for the line, a "reset" (clears the line) and the check result (✓ or the error) beside the field. `focus` puts the cursor in that row's field. Keys (plan 0019 §5): ↑/↓ rows, → or typing goes into the field, ↑/↓ in the field change row, ← at the start of the field and Esc return to the row; Enter saves; Esc closes. Footer as on the settings page: the focused row's summary, the key line, and mouse buttons "Apply (N changes)" (= Enter) and "Cancel" (= Esc); with changes Esc asks "Discard N changes?" in the footer first, and that bar owns the keys. Out (close_and_send): JSON { changes: { [command]: line } } on save (only rows whose line changed; '' removes the default), '' when closed. Text goes in with textContent / value only. -->
+<!-- defaults surface (see src/core/ui.ts DefaultsRequest, plan 0019 §7), a LIVE page (plan 0018). In: DEFAULTS_PLACEHOLDER = { title, focus?: command, rows: [{ command, line, summary, bareBehaviour, error?, saved? }] } (one row per top-level command; `line` is the text for the field ('' = none); `saved` = the stored line when it differs from `line` (after a failed save `line` is the typed text): changes are counted against `saved ?? line`; `bareBehaviour` is what the bare word does without one, shown as the field's placeholder; `error` = why `line` is not usable, shown at once) and LIVE_PLACEHOLDER = null | { base, token }: with it, while typing (debounced) GET `${base}/check?command=<c>&line=<l>` (Authorization: Bearer token) answers { ok: true } | { ok: false, error } (read-only; if it can't be reached the page says nothing and doesn't block: core checks again after closing). Rows: name, a text field for the line, a "reset" (clears the line) and the check result (✓ or the error) beside the field. `focus` puts the cursor in that row's field. Keys (plan 0019 §5): ↑/↓ rows, → or typing goes into the field, ↑/↓ in the field change row, ← at the start of the field and Esc return to the row; Enter saves (a changed row with a known error from the check shakes its field and nothing closes; pending/unknown rows go through); Esc closes. Footer as on the settings page: the focused row's summary, the key line, and mouse buttons "Apply (N changes)" (= Enter) and "Cancel" (= Esc); with changes Esc asks "Discard N changes?" in the footer first, and that bar owns the keys. Out (close_and_send): JSON { changes: { [command]: line } } on save (only rows whose line changed; '' removes the default), '' when closed. Text goes in with textContent / value only. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -187,7 +187,18 @@
       keysEl.textContent = document.activeElement?.tagName === 'INPUT' ? '↑↓ row · ← or Esc back to the rows · Enter apply' : '↑↓ row · → or type to edit · Enter apply · Esc close';
     }
 
+    // A changed row whose live check said no: nothing closes. Shake its field, focus the first one, keep the error in the footer.
+    // Pending or unknown (no server) rows don't count: core checks after closing.
     function save() {
+      const bad = changedRows().filter(x => x.status.classList.contains('bad'));
+      if (bad.length) {
+        for (const x of bad) { x.input.classList.remove('shake'); void x.input.offsetWidth; x.input.classList.add('shake'); }
+        const f = bad[0], i = R.indexOf(f);
+        moveTo(i, true, false);
+        f.input.focus({ preventScroll: true });
+        updateFooter();
+        return;
+      }
       const changes = {};
       for (const x of changedRows()) changes[x.r.command] = x.input.value.trim();
       send(Object.keys(changes).length ? JSON.stringify({ changes }) : '');

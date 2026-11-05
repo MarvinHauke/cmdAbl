@@ -58,3 +58,7 @@ button:hover { border-color: var(--text); color: #fff; }
 @supports not selector(::-webkit-scrollbar) {
   * { scrollbar-width: thin; scrollbar-color: var(--dim) transparent; }
 }
+
+/* a refused input: remove the class, force a reflow, add it again to replay */
+.shake { animation: shake 0.25s; }
+@keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
