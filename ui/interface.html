@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. SETTINGS_PLACEHOLDER = null | { above: "off"|"hints"|"options" }. Out also carries { settings: { above } } (alone on Esc after a change). One list below the prompt (recent lines, targets; options after typing `-`; subcommands at a group position). above="hints": a read-only which-key panel above the prompt shows the command's options and subcommands; above="options": a selectable tool zone above it (↑ enters, best row next to the prompt). -->
+<!-- prompt surface (see src/core/ui.ts). In: ITEMS_PLACEHOLDER = PaletteItem[], INITIAL_PLACEHOLDER = null | { text, cursor } (prefilled input and caret position). COMPLETION_PLACEHOLDER = null | the CmdComplete snapshot. Out (close_and_send): JSON PaletteResult, or '' when dismissed. SETTINGS_PLACEHOLDER = null | { above: "off"|"hints"|"options", gear: boolean } (the page no longer changes settings; the gear, drawn only when gear is true, answers { settings: true, text } and nothing else, and has no key: the keyboard way is the config command). One list below the prompt (recent lines, targets; options after typing `-`; subcommands at a group position). above="hints": a read-only which-key panel above the prompt shows the command's options and subcommands; above="options": a selectable tool zone above it (↑ enters, best row next to the prompt). -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -52,10 +52,10 @@
 
     /* ── footer ── */
     #foot { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-top: 1px solid var(--border); color: var(--dim); font-size: 11px; user-select: none; }
-    #above { display: inline-flex; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
-    #above span { padding: 1px 8px; cursor: default; }
-    #above span + span { border-left: 1px solid var(--border); }
-    #above span.on { background: var(--bg-row); color: var(--accent); }
+    #foot[hidden] { display: none; }
+    #gear { margin-left: auto; min-height: 24px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+    #gear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    #gear .ico { font-size: 14px; line-height: 1; }
 
     /* ── the area above the prompt (hints / options mode): a fixed height reserved from open on, so nothing moves.
           A dim heading at its top says what it is; one dim note in the middle while it has no rows. ── */
@@ -121,7 +121,7 @@
 
   <div id="dropdown"></div>
 
-  <div id="foot"><span>Above the prompt</span><span id="above" role="radiogroup"><span data-v="off">Off</span><span data-v="hints">Hints</span><span data-v="options">Options</span></span></div>
+  <div id="foot" hidden><button id="gear" type="button" tabindex="-1" title="Settings"><span class="ico" aria-hidden="true">⚙</span>Settings</button></div>
 
   <!-- Shared matcher, inlined as a `CmdMatch` global at build time. -->
   <script>/*MATCH_PLACEHOLDER*/</script>
@@ -136,7 +136,7 @@
     // null, or the snapshot CmdComplete.complete(line, cursor, COMPLETION) works on:
     //   { tree, completions, paths, tags }. null = no argument completion.
     const COMPLETION = /*COMPLETION_PLACEHOLDER*/null;
-    // null, or { above }: the footer switch's initial state ("off" when absent).
+    // null, or { above, gear }: `above` is what sits above the prompt (set on the settings page, not here); `gear` draws the Settings button in the footer (false = clean palette, no footer).
     const SETTINGS = /*SETTINGS_PLACEHOLDER*/null;
 
     const input     = document.getElementById('input');
@@ -161,8 +161,7 @@
     let chosen    = false; // the user moved the selection (arrows, Tab) since the last keystroke
     let mode      = 'word0'; // 'word0': fuzzy rows for the first word; 'args': CmdComplete rows
     const ABOVE = ['off', 'hints', 'options'];
-    const startAbove = ABOVE.includes(SETTINGS?.above) ? SETTINGS.above : 'off';
-    let above     = startAbove;   // what sits above the prompt (args mode only): nothing, a hint panel, or a selectable tool zone
+    const above   = ABOVE.includes(SETTINGS?.above) ? SETTINGS.above : 'off';   // what sits above the prompt (args mode only): nothing, a hint panel, or a selectable tool zone
     let hintRows  = [];     // the panel's rows (read-only): the command's options and subcommands
     let dashed    = false;  // the word at the caret starts with `-`: the options are the list
     let view      = null;    // args mode: { replace: {from, to}, usage }
@@ -172,15 +171,16 @@
     // Returns a structured PaletteResult to the host as a JSON string (the
     // bridge can only carry one string); null/empty closes without acting.
     function send(result) {
-      // The setting goes back with the answer; on Esc only when the checkbox was flipped (core runs nothing then).
-      const out = result != null ? { ...result, settings: { above } } : above !== startAbove ? { settings: { above } } : null;
-      const payload = out == null ? '' : JSON.stringify(out);
+      const payload = result == null ? '' : JSON.stringify(result);
+      sendRaw(payload);
+    }
+    function sendRaw(payload) {
       const msg = { method: 'close_and_send', params: [payload] };
       if (window.webkit?.messageHandlers?.live) {
         window.webkit.messageHandlers.live.postMessage(msg);
       } else if (window.chrome?.webview) {
         window.chrome.webview.postMessage(msg);
-      }
+      } else window.__sent = payload;   // plain browser: for checking with sample data
     }
 
     // ── mode: first word (fuzzy) or arguments (CmdComplete) ────────────────
@@ -632,18 +632,16 @@
       }
     });
 
-    // The footer switch (Off · Hints · Options): a click sets it and re-renders at once; no key, and
-    // keyboard focus stays in the input.
-    const aboveBox = document.getElementById('above');
-    const showAbove = () => aboveBox.querySelectorAll('span').forEach(el => el.classList.toggle('on', el.dataset.v === above));
-    showAbove();
-    aboveBox.addEventListener('mousedown', e => {
-      e.preventDefault();   // no focus change
-      const v = e.target.dataset?.v;
-      if (!ABOVE.includes(v) || v === above) return;
-      above = v; showAbove();
-      chosen = false; render(); input.focus();
-    });
+    // The gear (only when the request draws it): answers { settings: true, text } and nothing else; core opens the settings
+    // and then the palette again with `text` in the prompt. A click only, so the keyboard focus stays in the input.
+    const foot = document.getElementById('foot');
+    if (SETTINGS?.gear === true) {
+      foot.hidden = false;
+      document.getElementById('gear').addEventListener('mousedown', e => {
+        e.preventDefault();
+        sendRaw(JSON.stringify({ settings: true, text: input.value }));
+      });
+    }
 
     // ── init ───────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
