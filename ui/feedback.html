@@ -46,8 +46,8 @@
     #help { flex-shrink: 0; height: 36px; color: var(--dim); font-size: 11px; line-height: 18px; overflow: hidden; }
     #help[hidden], #tgl[hidden] { display: none; }
     #footer { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
-    #tgl { display: flex; align-items: center; gap: 6px; min-height: 24px; margin-right: auto; cursor: pointer; }
-    #tgl input { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+    #tgl { display: flex; align-items: center; gap: 5px; min-height: 24px; margin-right: auto; cursor: pointer; color: var(--dim); font-size: 11px; }
+    #tgl input { width: 12px; height: 12px; accent-color: var(--accent); cursor: pointer; }
     #footer button { min-height: 24px; }
     #link { border-color: var(--accent); color: var(--accent); }
     #link[hidden] { display: none; }
@@ -201,7 +201,15 @@
         const helpEl = document.getElementById('help');
         helpEl.hidden = false;
         help.init(helpEl, {
-          idle: () => [['Tab', 'next button'], ['Enter', 'activate'], ['Space', 'toggle'], ['Esc', 'close']],
+          // Only keys that do something here: Tab needs a row button or the checkbox.
+          idle: () => {
+            const k = [];
+            if (hasActions || TOGGLE) k.push(['Tab', hasActions ? 'next button' : 'checkbox']);
+            if (hasActions) k.push(['Enter', 'activate']);
+            if (TOGGLE) k.push(['Space', 'toggle']);
+            k.push(['Esc', 'close']);
+            return k;
+          },
           enabled: HELP !== false,
         });
       }

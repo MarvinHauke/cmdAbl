@@ -25,7 +25,8 @@ const help = (() => {
     if (hovered && hovered.isConnected) return hovered;
     // A focused text field carries its help for hover only: it is the page's resting place, and the keys matter more there.
     const a = document.activeElement;
-    const f = a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') ? null : closestHelp(a);
+    const isText = a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !/^(checkbox|radio|button)$/.test(a.type)));
+    const f = isText ? null : closestHelp(a);
     if (f) return f;
     const c = opts.current ? opts.current() : null;
     return c && c.dataset && c.dataset.help ? c : (c ? closestHelp(c) : null);
