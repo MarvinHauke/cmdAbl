@@ -2,7 +2,7 @@
   {
     "repo": "madisonrickert/ablevsep",
     "description": "Separate any audio clip into stems with any of MVSEP's 100+ models, right inside Ableton Live",
-    "stars": 58,
+    "stars": 60,
     "pushed": "2026-07-13",
     "ablx": [
       "AbleVSEP-1.2.0.ablx"
@@ -29,7 +29,7 @@
   {
     "repo": "dnvsfn/ableton-midnight-tools",
     "description": "An Ableton Live 12 extension: right-click MIDI chord-rhythm transforms + a diatonic chord generator with per-chord editing, built on the official Extensions SDK.",
-    "stars": 17,
+    "stars": 16,
     "pushed": "2026-07-09",
     "ablx": [
       "Midnight-Tools-0.2.0.ablx"
@@ -47,28 +47,28 @@
   {
     "repo": "ntworm/rc-surface",
     "description": "Source-available Ableton Live extension that turns any phone into a wireless MIDI + multi-sensor controller. PolyForm Noncommercial.",
-    "stars": 13,
-    "pushed": "2026-10-29",
+    "stars": 14,
+    "pushed": "2026-11-07",
     "ablx": [
-      "RC-Surface-2.0.0.ablx"
-    ]
-  },
-  {
-    "repo": "bencodec/Ableton-MIDI-Key-Detector-Extension",
-    "description": "An Ableton Live extension that detects the most likely musical key and scale of your MIDI material, available as a Detect Key right-click action throughout Live.",
-    "stars": 12,
-    "pushed": "2026-06-02",
-    "ablx": [
-      "Key-Detector-1.0.0.ablx"
+      "RC-Surface-2.1.0.ablx"
     ]
   },
   {
     "repo": "fortymileswest/clip-tool",
     "description": "Free Ableton Live 12 extension: edit a clip's audio on its waveform. Trim, fade, clean up, fold to mono, pitch and loop-safe time-stretch, then replace, copy or send to Simpler. Original sample never altered.",
-    "stars": 11,
+    "stars": 12,
     "pushed": "2026-10-10",
     "ablx": [
       "clip-tool.ablx"
+    ]
+  },
+  {
+    "repo": "bencodec/Ableton-MIDI-Key-Detector-Extension",
+    "description": "An Ableton Live extension that detects the most likely musical key and scale of your MIDI material, available as a Detect Key right-click action throughout Live.",
+    "stars": 11,
+    "pushed": "2026-06-02",
+    "ablx": [
+      "Key-Detector-1.0.0.ablx"
     ]
   },
   {
@@ -111,9 +111,9 @@
     "repo": "ntworm/rc-setlist",
     "description": "Source-available setlist extension for Ableton Live.",
     "stars": 5,
-    "pushed": "2026-11-01",
+    "pushed": "2026-11-07",
     "ablx": [
-      "RC-Setlist-1.0.0.ablx"
+      "RC-Setlist-1.1.0.ablx"
     ]
   },
   {
