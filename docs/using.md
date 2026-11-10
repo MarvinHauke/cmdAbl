@@ -62,6 +62,8 @@ The palette has a footer under the rows. It explains the line you are typing, an
   already says what it is.
 - With an empty prompt, or before you have typed a known command, the footer shows the palette's keys.
 
+![The palette with `vol -` typed: the rows --set, --clip, --pick and --help; the footer shows "vol: change the fader level of tracks, in dB" and "--set (-s): treat the number as the level to set, not a step from where the fader is"](assets/images/palette-footer.png)
+
 The footer is part of the [help line](#the-help-line). With `ui.helpLine` switched off, it shows the keys only.
 
 If a row's description is longer than the row, the highlighted row scrolls it slowly. The other rows end in `…`.
@@ -609,6 +611,8 @@ from its default shows a dim **reset** button.
 | --- | --- | --- | --- | --- | --- |
 | Does | move between rows | change a choice or a number | flip a switch | save and close | close without saving |
 
+![The settings page from `cmdabl config`: groups cmdAbl, Setup, MIDI mapping, MIDI monitor and Tags with their switches and numbers; the footer shows the help line for the Help line row, with Apply (disabled) and Cancel](assets/images/settings-page.png)
+
 The footer has **Apply** (the same as `Enter`; it shows how many changes it will save) and **Cancel** (the same as
 `Esc`). If you changed something, `Esc` asks "Discard N changes?" first. After you save, cmdAbl says how many
 settings it saved.
@@ -644,6 +648,8 @@ To run the command without its default, put a backslash before it: `\mute`. Quot
 **Set a default.** Open the defaults page with `cmdabl config defaults`. `cmdabl config defaults mute`, or `mute config`
 and its **Default command** row, opens it on one command. The page lists every command with a text field for its
 line. What the bare word does without a default is the grey text in the field.
+
+![The default commands page: rows for cmdabl, goto, mute, solo and lom; the cmdabl row holds an invalid line with a red error next to it and in the footer, and the footer shows Apply (1 change)](assets/images/defaults-invalid.png)
 
 - While you type, cmdAbl checks the line and shows ✓ or the reason it does not work next to it. It checks the
   syntax only; it does not look for the objects, so a tag that does not exist yet is fine.

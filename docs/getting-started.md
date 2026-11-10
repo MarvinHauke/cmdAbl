@@ -30,6 +30,8 @@ or a scene, and choose **: cmdAbl**. The first time you open the palette after i
 Later it opens by itself only when something new needs you, such as a new Remote Script after an update.
 To open it any time, type `cmdabl setup` in the palette and press `Enter`.
 
+![The setup page with every step done: Keyboard trigger, Remote Script and Data folder, each with a check mark, the box Don't open this page by itself and a Close button](assets/images/setup-page.png)
+
 The page has one row per step. A mark at the start of the row tells you where it stands: ✓ is done, ! needs you,
 and ✗ failed. Where a step needs you, the row has a button.
 
