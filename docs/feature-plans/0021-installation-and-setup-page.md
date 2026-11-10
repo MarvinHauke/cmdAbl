@@ -93,7 +93,11 @@ disk, `karabiner_cli`, the Remote Script's `hello`, and the version shipped with
   `cmdabl setup karabiner` (link the file) stays as the fallback.
 - **Open Karabiner** (user, 2026-11-10): the row "added but not enabled" opens `karabiner://karabiner/` with `openUrl`,
   which brings up the Karabiner-Elements Settings window (checked by hand; it does not pick the Complex Modifications tab).
-  `openUrl` allows exactly that string, next to the import link.
+  `openUrl` allows exactly that string, next to the import link. Clicked in Live 2026-11-10: Karabiner Settings comes up, the page comes back.
+- A heading link to the Karabiner website was built and reverted the same day (user): Get Karabiner already covers "not installed".
+- **Mock for screenshots and hand checks** (user, 2026-11-10; `a125a9d`): `cmdabl setup --simulate <state>` in development builds only
+  (`no-karabiner`, `no-rule`, `rule-off`, `no-script`, `old-script`). It overlays the facts the rows are built from and
+  never touches the auto-open state. **The buttons act for real** (e.g. Update under `old-script` copies the Remote Script).
 - ✓ is decided as today (the rule is linked or imported) plus, if possible, the rule being enabled
   (read `~/.config/karabiner/karabiner.json`, read-only). If reading that is unreliable, ✓ means
   "imported", and the row says "enable it in Karabiner if `:` doesn't work".

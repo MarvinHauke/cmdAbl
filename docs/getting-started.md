@@ -40,7 +40,7 @@ and ✗ failed. Where a step needs you, the row has a button.
   Karabiner** opens its download page; install it and run `cmdabl setup` again. If it is installed, **Add rule**
   opens Karabiner's own import dialog. Click **Import**, then **Enable**. The rule opens the palette with `:`
   (Shift+period, which types `:` on German (QWERTZ) keyboards) while Ableton Live is focused. If the row says the
-  rule is added but not enabled, enable it in Karabiner under **Complex Modifications**.
+  rule is added but not enabled, **Open Karabiner** opens Karabiner's settings; enable the rule under **Complex Modifications**.
 - **Remote Script.** **Copy** copies the companion Remote Script into Live's User Library, in
   `~/Music/Ableton/User Library/Remote Scripts/cmdAbl`. **Update** appears when the copy there is older than the one
   that comes with this cmdAbl. The Remote Script lets cmdAbl select tracks, change rack chains and pads, and keep
