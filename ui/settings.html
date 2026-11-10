@@ -338,7 +338,7 @@
       moveTo(start, false);
       scrollEl.focus({ preventScroll: true });
       if (start > 0) { const h = R[start].el.parentElement; scrollEl.scrollTop = h.offsetTop - scrollEl.offsetTop; }
-      help.init(helpEl, { idle: () => (R[cur] && isLink(R[cur]) ? LINK_KEYS : KEYS), enabled: helpOn, current: () => R[cur]?.el });
+      help.init(helpEl, { oneRow: 'keys', idle: () => (R[cur] && isLink(R[cur]) ? LINK_KEYS : KEYS), enabled: helpOn, current: () => R[cur]?.el });
       updateFooter();
     }
   </script>

@@ -9,6 +9,9 @@
 //                                                   counts as "focused" when no real element has focus.
 //     override (el) => string | [pairs] | { text, warn?, bad? } | null   a state line that wins over everything (pending-change warning,
 //                                                   an error of the row; el = target()): `warn` draws it in the accent colour, `bad` red.
+//   oneRow (option, default false): the line is exactly one row. A key-cap line drops whole groups from the end until it fits (never
+//     wraps inside a group; order the pairs by importance, least important last); a text line is clipped with an ellipsis and its
+//     full text goes in the line's title. oneRow: 'keys' does this for key-cap lines only (settings, defaults: their help text may take three lines). Redrawn on window resize. Needs CSS `.helpline.one` (shared.css).
 //   An override may also be { lines: [a, b] }: two lines (a string, or key-cap pairs as idle), each clipped to one line (the palette's footer: the command, then the
 //   argument at the caret). Each is drawn like a data-help text (a "Subject: rest" gets the subject in normal weight).
 //   The line shows, in this order: override, the data-help of the hovered element, of the focused one
@@ -40,6 +43,16 @@ const help = (() => {
     else parent.append(s);
   }
 
+  // oneRow: draw the groups of `v`, then drop from the end while the box overflows its line.
+  function fitInto(parent, v) {
+    let n = v.length;
+    line.classList.add('one');
+    idleInto(parent, v);
+    while (n > 1 && parent.scrollWidth > parent.clientWidth + 1) { n--; parent.textContent = ''; idleInto(parent, v.slice(0, n)); }
+    // The first group alone is still too wide: show it with an ellipsis and the full text in the title.
+    if (parent.scrollWidth > parent.clientWidth + 1) { line.classList.remove('keys'); line.title = parent.textContent; }
+  }
+
   function idleInto(parent, v) {
     if (Array.isArray(v)) {
       line.classList.add('keys');   // key caps: no line clamp (its ellipsis can land inside a cap)
@@ -58,12 +71,16 @@ const help = (() => {
     if (!line) return;
     line.textContent = '';
     line.classList.remove('warn', 'bad', 'keys', 'two');
+    line.classList.toggle('one', opts.oneRow === true);
+    line.removeAttribute('title');
     // One block child holds all of it: the line is a -webkit-box (for the line clamp), whose direct children become
     // boxes of their own and would shrink the subject and the key caps apart from the text.
     const box = document.createElement('div');
     line.append(box);
     const o = opts.override ? opts.override(target()) : null;
-    if (Array.isArray(o)) { idleInto(box, o); return; }   // a state line made of key caps
+    const put = v => { if (opts.oneRow && Array.isArray(v)) fitInto(box, v); else { idleInto(box, v); clip(); } };
+    const clip = () => { if (opts.oneRow === true && box.scrollWidth > box.clientWidth + 1) line.title = box.textContent; };
+    if (Array.isArray(o)) { put(o); return; }   // a state line made of key caps
     if (o && o.lines) {
       line.classList.add('two');
       for (const l of o.lines) { const d = document.createElement('div'); d.className = 'l'; if (Array.isArray(l)) { d.classList.add('caps'); idleInto(d, l); } else text(d, l); box.append(d); }
@@ -74,11 +91,12 @@ const help = (() => {
       line.classList.toggle('warn', !!t.warn);
       line.classList.toggle('bad', !!t.bad);
       box.append(t.text);
+      clip();
       return;
     }
     const el = target();
-    if (el && el.dataset.help) text(box, el.dataset.help);
-    else idleInto(box, opts.idle ? opts.idle() : '');
+    if (el && el.dataset.help) { text(box, el.dataset.help); clip(); }
+    else put(opts.idle ? opts.idle() : '');
   }
 
   function init(lineEl, options) {
@@ -86,6 +104,7 @@ const help = (() => {
     line.classList.add('helpline');
     document.addEventListener('mouseover', e => { const h = closestHelp(e.target); if (h !== hovered) { hovered = h; update(); } });
     document.addEventListener('mouseout', e => { if (!e.relatedTarget && hovered) { hovered = null; update(); } });
+    if (opts.oneRow) window.addEventListener('resize', update);
     document.addEventListener('focusin', update);
     document.addEventListener('focusout', () => setTimeout(update, 0));   // activeElement is the new one only after the event
     update();

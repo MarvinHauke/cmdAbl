@@ -182,8 +182,8 @@ interface ModuleApi {
   page's idle text (its keys). Decided 2026-11-05 (reviewer finding): every page always has a field
   focused, so focus help on fields would hide the key line for good. On the settings and defaults
   pages the cursor row's help stays, since the row is what is explained there. Leaving an element returns to the next in that order. There's no delay
-  and no animation, the line is one line at most (two on the board, as today), and the footer never
-  changes height.
+  and no animation, the footer never changes height. Board and pick list: the line is exactly one row (key groups are
+  dropped from the end until they fit, never wrapped; text gets an ellipsis and its full text in a title; redrawn on resize). Settings and defaults fit the key line to one row; their help text keeps up to three lines.
 - **Off** (`ui.helpLine = false`): the line shows the idle text only. Pages get the value in their
   request (`help: boolean`, one field every surface takes).
 - **Look:** the board's footer as it is (dim text, one line, left-aligned). Proposed improvements for the

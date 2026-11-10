@@ -294,6 +294,7 @@
     // Runs now, at the end of body (the DOM above exists): the list is placed on the focused row before the first paint.
     {
       help.init(helpEl, {
+        oneRow: 'keys',
         idle: () => (document.activeElement?.tagName === 'INPUT' ? KEYS_FIELD : KEYS_ROWS),
         enabled: DEFAULTS?.help !== false,
         current: () => R[cur]?.el,

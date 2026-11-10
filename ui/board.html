@@ -203,7 +203,7 @@
     // Esc or Close with pending changes warns first (footer); a second Esc or Close discards,
     // any other key cancels the warning. Without changes it closes at once.
     const hintEl = document.getElementById('hint');
-    const keyHint = [['Tab', 'complete'], ['⌫', 'remove'], ...(S.some(s => s.renamable) ? [['F2', 'rename']] : []), ['↑↓', 'tags'], ['→', 'into'], ['←', 'out']];
+    const keyHint = [['Tab', 'complete'], ['⌫', 'remove'], ...(S.some(s => s.renamable) ? [['F2', 'rename']] : []), ['↑↓', 'tags'], ['←→', 'out/into']];
     // The footer line: what whole tags will be removed (once marked), else the keys.
     // A suggestion list is showing in the focused add field: ←/→ walk it (instead of going into the chips).
     const sugOpen = () => S.some(s => s.inputEl && s.inputEl === document.activeElement && s.q && (s.sugList?.length ?? 0) > 0);
@@ -1061,7 +1061,7 @@
     });
 
     document.addEventListener('DOMContentLoaded', () => {
-      help.init(hintEl, { idle: curHint, enabled: BOARD?.help !== false,
+      help.init(hintEl, { oneRow: true, idle: curHint, enabled: BOARD?.help !== false,
         // State lines beat the keys, never a hover: what is marked for removal always; click-to-assign and the suggestion keys
         // only while no heading, chip or button has the focus (a focused text field has no help of its own on the line).
         override: () => { if (armed) return { text: armedText, warn: true }; const h = curHint(); if (h === keyHint || help.hovered()) return null; return S.some(s => s.removeAll) || !help.target() ? h : null; } });

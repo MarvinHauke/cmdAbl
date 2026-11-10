@@ -445,7 +445,7 @@
       document.getElementById('title').textContent = PICK.title;
       if (PICK.preview) cmd.hidden = false;
       render();
-      help.init(hint, { idle: keyLine, enabled: PICK.help !== false, override: stateLine });
+      help.init(hint, { oneRow: true, idle: keyLine, enabled: PICK.help !== false, override: stateLine });
       filter.focus();
     });
   </script>
