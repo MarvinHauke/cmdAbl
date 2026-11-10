@@ -62,9 +62,10 @@ All releases were tested in Live, including the installed `.ablx`.
     `mkdocs build --strict` pass. User docs done (`abd9a87`, `d6b813c`; reviewer facts check passed).
     Screenshots done (`03049a3`, `89d14e0`); defaults page placeholders fit and its help line has a sentence
     break (`46ce180`, checked in Live); setup page docs link follows the renamed heading (`488b4d6`).
-    Open: the user's hand checks, the "Open Karabiner" button (below), then the PR. Installed `.ablx` tested by the user in Live 12.4.25b1 (2026-11-10).
+    Open: the setup page's Update row and `setup.autoScript` (last hand check), then the PR. Installed `.ablx` tested by the user in Live 12.4.25b1 (2026-11-10).
   - **Open Karabiner** (user, 2026-11-10): the row "rule added but not enabled" gets a button that opens Karabiner-Elements Settings (`karabiner://karabiner/`, checked by hand: opens the Settings window; exact-match allow in `openUrl`). cmdabl-core; 0021 §3. Built `8026d0f`, clicked in Live. Mock `cmdabl setup --simulate <state>` (dev builds) `a125a9d`; all states captured 2026-11-10.
   - **Restart Live** (user, 2026-11-10; 0021 §2): a button on the restart row (macOS). Built `8e0fbd0`, cancel message `f2b9894`. Live test 2026-11-10 (user): the button quits Live and Live comes back (also after Don't Save, past the 3 s grace); Cancel keeps Live open, no error page, and quitting Live by hand afterwards does not restart it; headless refused (exit 5); no Automation prompt on this Mac.
+  - **Docs images refreshed** (2026-11-11; `e824ab7`): 16 images and the GIFs (hero, tags, vol-note) retaken from the new demo Set (Kick, Bass, Lead, Percs, Synth; tags #drums, #bass, #synth); captions follow. Kept old: find-nested, vol-clip, vol-stop. Fixes found on the way: the help line is one row (`cc7879a`, UX checklist item 10), help columns keep a gap after long names (`29e84bc`); both seen in Live.
   - **Live 12 marking** (user, 2026-11-10): 0.1.6 is the last release built for Live 12, tested with
     the Live 12.4.25 beta (12.4.16, the non-beta release, has no Extensions; corrected by the user the same day). Release notes, the README badge and `docs/limits.md` say so; an extra git tag
     `live12-last` on the release commit next to `v0.1.6`.
