@@ -92,7 +92,7 @@
       const idx = R.length;
       const el = mk('div', 'row');
       const input = mk('input'); input.type = 'text'; input.autocomplete = 'off'; input.spellcheck = false;
-      input.value = r.line || ''; input.placeholder = 'bare word: ' + (r.bareBehaviour || ''); input.setAttribute('aria-label', 'Default for ' + r.command);
+      input.value = r.line || ''; input.placeholder = 'bare: ' + (r.bareBehaviour || ''); input.title = 'Bare word: ' + (r.bareBehaviour || ''); input.setAttribute('aria-label', 'Default for ' + r.command);
       const reset = mk('button', 'reset', 'reset'); reset.type = 'button'; reset.tabIndex = -1; reset.title = 'Clear the line: the bare word does what it does without a default'; reset.dataset.help = 'Reset: clear the line, the bare word does what it does without a default';
       const status = mk('span', 'status');
       const x = { r, el, input, orig: (r.saved ?? r.line ?? '').trim(), status, seq: 0, timer: 0 };
@@ -105,7 +105,7 @@
       };
       x.refresh = () => {
         reset.classList.toggle('show', input.value.trim() !== '');
-        el.dataset.help = r.command + ': ' + (r.summary || '') + (input.value.trim() ? ' \\' + r.command + ' skips the default.' : '');
+        el.dataset.help = r.command + ': ' + (r.summary ? r.summary.replace(/[.\s]+$/, '') + '.' : '') + (input.value.trim() ? ' \\' + r.command + ' skips the default.' : '');
         el.classList.toggle('changed', input.value.trim() !== x.orig);
       };
       // Check while typing, debounced. Out of date answers are dropped; an unreachable route says nothing (core checks after closing).
