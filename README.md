@@ -1,7 +1,7 @@
 [![Latest release](https://img.shields.io/github/v/release/MarvinHauke/cmdAbl)](https://github.com/MarvinHauke/cmdAbl/releases/latest)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://marvinhauke.github.io/cmdAbl/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![macOS · Live 12 (Extensions beta)](https://img.shields.io/badge/macOS%20%C2%B7%20Live%2012%20%28Extensions%20beta%29-lightgrey)](https://marvinhauke.github.io/cmdAbl/limits/)
+[![macOS · Live 12.4.16 (Extensions beta)](https://img.shields.io/badge/macOS%20%C2%B7%20Live%2012.4.16%20%28Extensions%20beta%29-lightgrey)](https://marvinhauke.github.io/cmdAbl/limits/)
 
 # cmdAbl
 
@@ -75,8 +75,10 @@ These commands ship with cmdAbl. Each feature is a module that declares its comm
 - `note`: open the Markdown note of the Live Set.
 - `history`: manage the list of recent commands.
 - `pakabl`: install and manage Ableton Live extensions.
-- `cmdabl setup`, `cmdabl bridge`, `cmdabl log`: install the key trigger and the Remote Script; show the Remote
-  Script's status; show cmdAbl's log.
+- `cmdabl setup`, `cmdabl bridge`, `cmdabl log`: show what is set up (key trigger, Remote Script) and fix it; show the
+  Remote Script's status; show cmdAbl's log.
+- `cmdabl config`, `<command> config`: change cmdAbl's settings and set default commands, so that a bare `mute` can
+  run `mute #drums`.
 
 More: [Commands](https://marvinhauke.github.io/cmdAbl/reference/commands/) for the usage of each command, and
 [Writing a command](https://marvinhauke.github.io/cmdAbl/guides/command-authoring/) to build a module.
@@ -84,10 +86,10 @@ More: [Commands](https://marvinhauke.github.io/cmdAbl/reference/commands/) for t
 ## Requirements
 
 - **macOS.** cmdAbl has been tested on macOS only.
-- **Ableton Live with Extensions support.** The Extensions SDK is in beta; cmdAbl is built against version 1.0.0-beta.1.
+- **Ableton Live with Extensions support.** The Extensions SDK is in beta; cmdAbl is built against version 1.0.0-beta.1. This release is tested with Live 12.4.16.
 - **[Karabiner-Elements](https://karabiner-elements.pqrs.org)** (free), for the `:` key. It is optional: the palette
   also opens from Live's context menu.
-- **The cmdAbl Remote Script** (0.1.14, shipped with cmdAbl). `cmdabl setup` installs it; then choose it as Control
+- **The cmdAbl Remote Script** (0.1.14, shipped with cmdAbl). The setup page copies it; then choose it as Control
   Surface in Live. Selecting objects, mute and solo on rack chains and Drum Rack pads, tags and notes need it.
 
 More: [Getting started → What you need](https://marvinhauke.github.io/cmdAbl/getting-started/#what-you-need)
@@ -101,8 +103,9 @@ You need a Mac and a Live with Extensions support (see [Requirements](#requireme
 2. **Install the extension.** Download the latest `.ablx` from the
    [Releases page](https://github.com/MarvinHauke/cmdAbl/releases/latest). In Live, open **Settings → Extensions**,
    and drag the file onto the box or click **Choose file**.
-3. **Run `cmdabl setup`.** Open the palette from the context menu, type `cmdabl setup` and press Enter. It links the Karabiner rule and
-   installs the Remote Script. Then in Karabiner-Elements, open **Complex Modifications → Add predefined rule**, choose **cmdAbl** and click **Enable**.
+3. **Use the setup page.** Open the palette from the context menu. The first time, the setup page opens
+   by itself (or type `cmdabl setup`). Its buttons add the Karabiner rule (**Add rule**, then **Import** and **Enable**
+   in Karabiner-Elements) and copy the Remote Script (**Copy**).
 4. **Restart Live**, then open **Settings → Tempo & MIDI → MIDI** and choose **cmdAbl** under **Control Surface**.
 
 More: [Getting started](https://marvinhauke.github.io/cmdAbl/getting-started/) explains each step, with screenshots.

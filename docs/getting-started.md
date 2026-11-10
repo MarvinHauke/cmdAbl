@@ -7,9 +7,9 @@ the Set that is open. This page takes you from installing cmdAbl to your first c
 
 - A Mac. cmdAbl has been tested on macOS only.
 - A version of Ableton Live with Extensions support. The Extensions SDK is in beta; cmdAbl is built against
-  version 1.0.0-beta.1 of it.
+  version 1.0.0-beta.1 of it. This release is tested with Live 12.4.16.
 - [Karabiner-Elements](https://karabiner-elements.pqrs.org) (free), for the `:` key. This is optional. Without it,
-  you open the palette from a context menu. If you want it, install it before step 2.
+  you open the palette from a context menu. If you want it, install it before step 2, or use the button on the setup page.
 
 ## 1. Install the extension
 
@@ -23,36 +23,51 @@ Live.
 
 *Settings → Extensions: drag the `.ablx` onto the box, or click Choose file.*
 
-## 2. Run `cmdabl setup`
+## 2. Check the setup page
 
 The `:` key does not work yet, so open the palette from the context menu: right-click a clip, a track, a clip slot
-or a scene, and choose **: cmdAbl**. Type `cmdabl setup` and press `Enter`. The command does two things:
+or a scene, and choose **: cmdAbl**. The first time you open the palette after installing cmdAbl, the **setup page** opens first.
+Later it opens by itself only when something new needs you, such as a new Remote Script after an update.
+To open it any time, type `cmdabl setup` in the palette and press `Enter`.
 
-- **Keyboard trigger.** It links cmdAbl's Karabiner rule into Karabiner-Elements. If Karabiner-Elements is not
-  installed, the message says so and nothing is linked. Run the command again after you install it.
-- **Remote Script.** It copies the companion Remote Script into Live's User Library, in
-  `~/Music/Ableton/User Library/Remote Scripts/cmdAbl`. The Remote Script lets cmdAbl select tracks, change rack
-  chains and pads, and keep tags. Step 3 turns it on.
+The page has one row per step. A mark at the start of the row tells you where it stands: ✓ is done, ! needs you,
+and ✗ failed. Where a step needs you, the row has a button.
 
-Then enable the keyboard rule. In Karabiner-Elements, open **Complex Modifications → Add predefined rule**, choose
-**cmdAbl**, and click **Enable**. The rule opens the palette with `:` (Shift+period, which types `:` on German
-(QWERTZ) keyboards) while Ableton Live is focused.
+- **Keyboard trigger.** Without Karabiner-Elements, `:` does not open cmdAbl. If it is not installed, **Get
+  Karabiner** opens its download page; install it and run `cmdabl setup` again. If it is installed, **Add rule**
+  opens Karabiner's own import dialog. Click **Import**, then **Enable**. The rule opens the palette with `:`
+  (Shift+period, which types `:` on German (QWERTZ) keyboards) while Ableton Live is focused. If the row says the
+  rule is added but not enabled, enable it in Karabiner under **Complex Modifications**.
+- **Remote Script.** **Copy** copies the companion Remote Script into Live's User Library, in
+  `~/Music/Ableton/User Library/Remote Scripts/cmdAbl`. **Update** appears when the copy there is older than the one
+  that comes with this cmdAbl. The Remote Script lets cmdAbl select tracks, change rack chains and pads, and keep
+  tags.
+- **Restart Live** and **control surface.** These rows tell you what is left. The control surface row has a **How**
+  button that opens this page. Step 3 explains them.
+- **Data folder.** It turns ✗ if cmdAbl cannot write to its data folder. Then your settings and tags are not saved.
 
-The command ends with one line of advice and a link to step 3. You will see one of these:
+At the bottom, the box **Don't open this page by itself** stops the automatic opening. You can also set it on the
+[settings page](using.md#settings) as `setup.openOnStart`, in the Setup group.
 
-- *"Remote Script 0.1.14 is shipped but not running. Restart Live … then enable cmdAbl as a control surface"*: the
-  usual answer on a first install. Go to step 3.
-- *"… is shipped and running"*: nothing to do. If you have just updated cmdAbl, restart Live once.
-- *"… is shipped, but Live still runs 0.1.x. Restart Live to load Remote Script 0.1.14"*: you updated cmdAbl.
-  Restart Live.
+The Setup group has a second setting, `setup.autoScript`. When it is on, cmdAbl copies a newer Remote Script at
+start without asking. Live still needs one restart to load it. A first install still goes through **Copy**, unless you turned this setting on first.
+
+Two commands do the same as the buttons, in case you prefer to type:
+
+- `cmdabl setup script` copies or updates the Remote Script.
+- `cmdabl setup karabiner` links cmdAbl's Karabiner rule into Karabiner-Elements without the import dialog. In
+  Karabiner, open **Complex Modifications → Add predefined rule**, choose **cmdAbl** and click **Enable**.
 
 ## 3. Turn on the Remote Script in Live
 
-The copied script does not appear in Live's Control Surface list until Live restarts. Do both steps:
+After you copy the script, the setup page shows "Restart Live once to load Remote Script …". The copied script does not
+appear in Live's Control Surface list until Live restarts. Do both steps:
 
 1. **Restart Live.** After the restart, cmdAbl appears in the Control Surface list.
 2. Open **Settings → Tempo & MIDI → MIDI**. Under **Control Surface**, choose **cmdAbl**. Leave Input and Output
    set to *None*. Choosing it starts the script; you do not need to restart Live again.
+
+When it works, `cmdabl setup` shows "cmdAbl answers in Live." with a ✓.
 
 ![Live's Settings, Tempo & MIDI page, MIDI section: slot 1 has Control Surface set to cmdAbl and Input and Output set to None](assets/images/control-surface.png)
 
@@ -63,7 +78,7 @@ Check that it works:
 - Run `cmdabl bridge` in the palette. It sends one request to the Remote Script and reports its version, the protocol
   version, the response time and the operations it supports.
 - Live's log also shows `cmdAbl [script] listening on 127.0.0.1:27185`. That line appears once cmdAbl is chosen as
-  Control Surface (after `cmdabl setup` and a restart). The log is `~/Library/Preferences/Ableton/Live <version>/Log.txt`, where `<version>` is
+  Control Surface (after you copy the script and restart). The log is `~/Library/Preferences/Ableton/Live <version>/Log.txt`, where `<version>` is
   your Live version. The Remote Script's lines contain `RemoteScriptMessage: (cmdAbl)`.
 
 ![The cmdabl bridge result: Remote Script 0.1.14 is running, with its protocol version, response time and operations](assets/images/bridge.png)

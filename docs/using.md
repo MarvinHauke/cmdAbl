@@ -51,22 +51,22 @@ A name with spaces is quoted for you.
 
 ![The palette after `tag --rename `: the five tags of the Set with their track counts, and the grey hint `<old>`.](assets/images/complete-rename.png)
 
-#### Show the options above the prompt
+### The footer: what the line means
 
-The footer of the palette has a switch, **Above the prompt: Off · Hints · Options**. Click it with the mouse. The
-choice is saved in [`settings.json`](#settings) and used the next time you open the palette. The palette opens taller for **Hints** and **Options**.
-If you switch while the palette is open, the layout changes fully at the next open.
+The palette has a footer under the rows. It explains the line you are typing, and the prompt never moves:
 
-- **Off** (the default): one list below the prompt. Options appear in it after you type `-`.
-- **Hints**: a reference panel above the prompt, headed `Hints · <command>`, lists the command's options in
-  columns: the long flag, the short flag with its values, and the description. You cannot select in it. After
-  `-`, the option highlighted in the list is marked with `▸` in the panel, and a long description scrolls after a
-  short moment.
-- **Options**: the options sit above the prompt and you can select them. `↑` goes up into them, and `Tab` takes one.
+- **Line 1** names the command (or subcommand) you have typed and what it does, such as
+  `tag -e: edit a tag's tracks on the board`.
+- **Line 2** describes the argument at the cursor, such as `<tag|#>`, or the option you are typing (or the value it
+  waits for). The text follows the cursor. Moving the highlight over a row does not change it, because the row
+  already says what it is.
+- With an empty prompt, or before you have typed a known command, the footer shows the palette's keys.
 
-![The palette in Hints mode after `tag -`: the panel above the prompt lists the options of tag in columns, and the list below the prompt shows the same options. The footer switch is set to Hints.](assets/images/above-hints.png)
+The footer is part of the [help line](#the-help-line). With `ui.helpLine` switched off, it shows the keys only.
 
-![The palette in Options mode after `tag `: the six options of tag above the prompt, the grey hint `[<target>]` after it, the tracks below, and the footer switch set to Options.](assets/images/above-options.png)
+If a row's description is longer than the row, the highlighted row scrolls it slowly. The other rows end in `…`.
+
+After a command name, the list also offers a `config` row, which opens that command's settings. See [Settings](#settings).
 
 ## Name the objects
 
@@ -591,14 +591,95 @@ If the page cannot show live values, it shows the newest messages as a list when
 
 ## Settings
 
-cmdAbl keeps a few settings in `settings.json`, in cmdAbl's data folder (the Extensions Data folder in Ableton's
-Application Support). A missing file means the defaults. A broken file, or a value of the wrong
-type, means the default for that setting and a warning in the log.
+The settings page is where you change how cmdAbl behaves. Open it from the palette:
+
+- `cmdabl config` opens the page with every group of settings.
+- `cmdabl config tag` opens it on one group. You can also type `<command> config`, such as `tag config` or
+  `map config`, which opens the page on that command's group. This works after every command except `man` and
+  `help`. The palette offers `config` as a row after a command name. To use the word `config` as a name (a track
+  called config), quote it: `tag "config"`.
+- The **Settings** button in the footer of the tag board (`tag -l`) opens the page on the tag group. When you close
+  the page, the board comes back.
+
+The page has one group per area, with the core settings first. Each row has a name, a switch, a choice or a number,
+and a short explanation in the [help line](#the-help-line) when you point at it or move to it. A value that differs
+from its default shows a dim **reset** button.
+
+| Key | `↑` `↓` | `←` `→` | `Space` | `Enter` | `Esc` |
+| --- | --- | --- | --- | --- | --- |
+| Does | move between rows | change a choice or a number | flip a switch | save and close | close without saving |
+
+The footer has **Apply** (the same as `Enter`; it shows how many changes it will save) and **Cancel** (the same as
+`Esc`). If you changed something, `Esc` asks "Discard N changes?" first. After you save, cmdAbl says how many
+settings it saved.
+
+Some rows open another page instead of holding a value. **Default commands…** opens the [default
+commands](#default-commands). When you open it, cmdAbl first saves the changes you made.
+
+The settings are kept in `settings.json`, in cmdAbl's data folder (the Extensions Data folder in Ableton's
+Application Support). You can edit it by hand too. A missing file means the defaults. A broken file, or a value of
+the wrong type, means the default for that setting and a warning in the log.
 
 | Key | Values | What it does |
 | --- | --- | --- |
+| `"ui.helpLine"` | `true` (default), `false` | Shows what the control under the mouse, or with focus, does in the footer of the pages. `false` shows the keys only. See [the help line](#the-help-line). |
+| `"tag.foldAfter"` | 1 to 500, default 20 | On the tag board, tags with more tracks than this start folded. |
 | `"map.enabled"` | `true` (default), `false` | `false` drops every incoming MIDI message. `map --off` and `map --on` set it. |
 | `"midi.statusBar"` | `true`, `false` (default) | `true` also shows incoming MIDI in Live's status bar while `midi monitor` or `map learn` is open. |
+| `"setup.openOnStart"` | `true` (default), `false` | Opens the [setup page](getting-started.md#2-check-the-setup-page) by itself. |
+| `"setup.autoScript"` | `true`, `false` (default) | Copies a newer Remote Script at start without asking. Live still needs one restart to load it. |
+
+## Default commands
+
+A default command gives a bare command word a line to run. If `mute` has the default `mute #drums`, typing only
+`mute` runs `mute #drums`. Anything you add changes nothing: `mute bass` runs `mute bass`. Each part of a line with
+`;` expands on its own.
+
+A default has to start with its own command. `mute` can run `mute #drums`, but not `solo #drums`. Only top-level
+commands have defaults, not subcommands such as `midi monitor`. A command that already does something bare, such
+as `note`, `tag` or `history`, does that no more once it has a default.
+
+To run the command without its default, put a backslash before it: `\mute`. Quoting works too: `"mute"`.
+
+**Set a default.** Open the defaults page with `cmdabl config defaults`. `cmdabl config defaults mute`, or `mute config`
+and its **Default command** row, opens it on one command. The page lists every command with a text field for its
+line. What the bare word does without a default is the grey text in the field.
+
+- While you type, cmdAbl checks the line and shows ✓ or the reason it does not work next to it. It checks the
+  syntax only; it does not look for the objects, so a tag that does not exist yet is fine.
+- `Enter` saves, and `Esc` closes. `↑` and `↓` move between rows. As on the settings page, the footer has **Apply**
+  and **Cancel**, and `Esc` asks first if you changed something.
+- If a line is invalid when you save, the page opens again on that row with your text and the reason. The same check
+  runs if cmdAbl could not check while you typed, and the page still works then.
+
+The defaults are in `default_commands.json`, next to `settings.json`, and you can edit the file by hand:
+
+```json
+{ "mute": "mute #drums", "note": "note -e" }
+```
+
+A hand edit applies the next time you open the palette. An entry that does not work is skipped with a warning in
+the log, and the defaults page shows it as invalid with the text you wrote, so you can fix it there.
+
+**In the palette.** When the line is exactly a command word with a default, a dim row shows `mute → mute #drums`.
+`Enter` runs it. `Tab` writes the line into the prompt so you can change it.
+
+**In the log and the history.** The log shows what you typed and what ran, as `mute ⇒ mute #drums (default)`. The
+history keeps what ran and shows what you typed after it.
+
+**With MIDI.** A [MIDI binding](#midi-mapping) to a bare command word expands the default every time the control
+fires, so changing the default changes what the control does. `map -l` shows it with an arrow, such as
+`1  CC48  press  | mute → mute #drums`, for bindings of one word. A binding with `;` is shown as written.
+
+## The help line
+
+Pages have a quiet line in the footer that explains what the control under the mouse does, like Live's Info View.
+It shows the help of the element under the mouse, otherwise of the element with focus, otherwise the page's keys. A
+text field explains itself when you hover it, not when it has focus, so the keys stay visible while you type.
+
+The line is on the tag board, the settings page, the defaults page, the pick list, the setup page and other message pages with buttons. The palette's
+footer is the same line; see [the footer](#the-footer-what-the-line-means). Switch it off with `ui.helpLine` on the
+[settings page](#settings): the footers then show the keys only.
 
 ## What the palette tells you
 

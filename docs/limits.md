@@ -7,12 +7,13 @@ already know about each one.
 ## Platform and Live
 
 - **macOS only.** cmdAbl is tested on macOS only. Chains and Drum Rack pads need macOS as well. The Windows setup has not been tested.
+- **Tested with Live 12.4.16.** This release is the last one built for Live 12. Live 13 support comes with the next releases.
 - **The Extensions SDK is in beta.** cmdAbl needs a version of Ableton Live with Extensions support, and is built
   against the Extensions SDK 1.0.0-beta.1.
 - **cmdAbl runs in a sandbox.** It may read only Live's Extensions and Extensions Data folders and its temp folder.
   It cannot read the User Library, so it cannot tell a missing Remote Script from an old copy that Live has not loaded
-  or one that is not chosen as Control Surface, and says "not running" for all three. Workaround: run `cmdabl setup`
-  (it reinstalls the current script), restart Live and choose cmdAbl as Control Surface.
+  or one that is not chosen as Control Surface, and says "not running" for all three. Workaround: open `cmdabl setup` and use
+  its Copy button (it reinstalls the current script), restart Live and choose cmdAbl as Control Surface.
 - **pakabl installs may be blocked by a stricter sandbox.** pakabl writes into Live's Extensions folder, which works
   today. Ableton has announced a stricter sandbox for extensions. If it arrives, installing through pakabl may be
   blocked in a later version of Live, and pakabl as a whole may stop working.
