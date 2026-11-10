@@ -1,6 +1,7 @@
 import { TEXT_NOT_RUNNING, type BridgeResult, type HelloInfo } from "../../ableton/bridgeProtocol.js";
 import type { InstalledScript } from "../../ableton/installedScript.js";
 import type { ResultSection, StatusItem } from "../types.js";
+import { KARABINER_SETTINGS_URL } from "./openUrl.js";
 
 // The rows of the setup page (plan 0021 §2), built from facts. Pure: the facts come in, sections and a
 // signature per row go out. Gathering the facts (files, bridge, Karabiner) is setupFacts.ts; showing the page and
@@ -81,7 +82,9 @@ export function buildSetupRows(facts: SetupFacts): SetupRows {
         action: { label: "Add rule", help: "Karabiner asks to import the cmdAbl rule; then enable it there.", url: facts.importUrl },
       });
     } else if (t.enabled === false) {
-      add(heading, "karabiner", { text: "The cmdAbl rule is added but not enabled. Enable it in Karabiner → Complex Modifications.", status: "warn" });
+      add(heading, "karabiner", { text: "The cmdAbl rule is added but not enabled. Enable it in Karabiner → Complex Modifications.", status: "warn",
+        action: { label: "Open Karabiner", help: "Open Karabiner-Elements Settings; enable the cmdAbl rule under Complex Modifications.", url: KARABINER_SETTINGS_URL },
+      });
     } else if (t.enabled === true) {
       add(heading, "karabiner", { text: "The : key opens cmdAbl.", status: "ok" });
     } else {

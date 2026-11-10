@@ -29,7 +29,7 @@ test("all good: every row is ✓, no button, no signature", () => {
   for (const s of built.sections) for (const i of s.items as StatusItem[]) assert.equal(i.action, undefined);
 });
 
-test("Karabiner: not installed is yellow with Get Karabiner; no rule → Add rule with the import link; not enabled → yellow, no button; never red", () => {
+test("Karabiner: not installed is yellow with Get Karabiner; no rule → Add rule with the import link; not enabled → yellow with Open Karabiner; never red", () => {
   const none = row(facts({ trigger: { installed: false, ruleThere: false, enabled: null } }), "karabiner")!;
   assert.equal(none.status, "warn");
   assert.match(none.item.text, /Strongly recommended/);
@@ -40,7 +40,8 @@ test("Karabiner: not installed is yellow with Get Karabiner; no rule → Add rul
   assert.equal(norule.item.action && "url" in norule.item.action && norule.item.action.url, karabinerImportUrl(27184));
   const off = row(facts({ trigger: { enabled: false } }), "karabiner")!;
   assert.equal(off.status, "warn");
-  assert.equal(off.item.action, undefined);
+  assert.equal(off.item.action?.label, "Open Karabiner");
+  assert.equal(off.item.action && "url" in off.item.action && off.item.action.url, "karabiner://karabiner/");
   const unknown = row(facts({ trigger: { enabled: null } }), "karabiner")!;
   assert.equal(unknown.status, "ok");
   assert.match(unknown.item.text, /enable it in Karabiner/);

@@ -5,7 +5,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { gatherFacts, KARABINER_RULE_DESCRIPTION, ruleEnabledIn, writableFolder } from "./setupFacts.js";
 import { runMacRemoteScriptSetup } from "./setup.js";
-import { isKarabinerImportUrl, openUrl } from "./openUrl.js";
+import { isKarabinerImportUrl, KARABINER_SETTINGS_URL, openUrl } from "./openUrl.js";
 import { sectionsSize, sectionsText, usesStatusLayout } from "../surfaces/notifySize.js";
 import { karabinerImportUrl } from "./setupRows.js";
 
@@ -83,6 +83,12 @@ test("openUrl accepts Karabiner's import link and nothing else but https", async
   assert.equal((await openUrl(url, { platform: "darwin", spawn })).code, 0);
   assert.deepEqual(opened, [["open", url]]);
   assert.equal((await openUrl("karabiner://x", { platform: "darwin", spawn })).code, 1);
+  opened.length = 0;
+  assert.equal((await openUrl(KARABINER_SETTINGS_URL, { platform: "darwin", spawn })).code, 0);
+  assert.deepEqual(opened, [["open", "karabiner://karabiner/"]]);
+  for (const bad of ["karabiner://karabiner/x", "karabiner://karabiner/?a", "karabiner://karabiner", "karabiner://karabiner/ "]) {
+    assert.equal((await openUrl(bad, { platform: "darwin", spawn })).code, 1, bad);
+  }
 });
 
 test("sectionsSize: the setup page's boxes add up (4 rows in 3 sections plus the checkbox ≈ the measured need); plain sections keep the old sizing", () => {
