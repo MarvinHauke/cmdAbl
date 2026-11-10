@@ -59,9 +59,10 @@ All releases were tested in Live, including the installed `.ablx`.
     is a normal row after a command. Docs: `docs/using.md` "Show the options above the prompt" (with
     screenshots) is stale, for cmdabl-docs before the PR.
   - **Release prep (2026-11-10):** version bumped to 0.1.6 (user). Tests, build, `docs:reference` and
-    `mkdocs build --strict` pass. Open: user docs for 0.1.6 (cmdabl-docs: settings and defaults pages,
-    `config`, help line and footer, setup page; the stale "above the prompt" section), reviewer facts check,
-    the user's hand checks, the installed `.ablx` test on **Live 12.4.16**.
+    `mkdocs build --strict` pass. User docs done (`abd9a87`, `d6b813c`; reviewer facts check passed).
+    Open: screenshots (settings page, defaults page with an invalid line, palette footer, setup page; the
+    architect via `cmdabl_capture` once Live is free), the user's hand checks, the installed `.ablx` test on
+    **Live 12.4.16**.
   - **Live 12 marking** (user, 2026-11-10): 0.1.6 is the last release built for Live 12, tested with
     Live 12.4.16. Release notes, the README badge and `docs/limits.md` say so; an extra git tag
     `live12-last` on the release commit next to `v0.1.6`.
