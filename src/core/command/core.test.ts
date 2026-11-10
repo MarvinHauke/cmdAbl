@@ -337,7 +337,7 @@ test("cmdabl setup: no flow is exit 5; a step word runs the step; an unknown wor
 test("setup docs links hang off one base URL", async () => {
   const { DOCS_BASE_URL, KEYBOARD_DOCS_URL, REMOTE_SCRIPT_DOCS_URL } = await import("../setup/setup.js");
   assert.ok(KEYBOARD_DOCS_URL.startsWith(DOCS_BASE_URL) && REMOTE_SCRIPT_DOCS_URL.startsWith(DOCS_BASE_URL));
-  assert.equal(KEYBOARD_DOCS_URL, "https://marvinhauke.github.io/cmdAbl/getting-started/#2-run-cmdabl-setup");
+  assert.equal(KEYBOARD_DOCS_URL, "https://marvinhauke.github.io/cmdAbl/getting-started/#2-check-the-setup-page");
 });
 
 test("validateTree: requires must be a known companion on a runnable node", () => {

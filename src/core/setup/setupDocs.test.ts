@@ -34,5 +34,6 @@ test("setup's docs links point at headings that exist in getting-started.md", ()
 
 test("slugify matches MkDocs for the headings in use", () => {
   assert.equal(slugify("2. Run `cmdabl setup`"), "2-run-cmdabl-setup");
+  assert.equal(slugify("2. Check the setup page"), "2-check-the-setup-page");
   assert.equal(slugify("3. Turn on the Remote Script in Live"), "3-turn-on-the-remote-script-in-live");
 });
