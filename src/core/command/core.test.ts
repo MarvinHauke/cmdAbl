@@ -823,3 +823,16 @@ test("cmdabl curve: sweeps 1001 values, logs the table, summarises; failures kee
   assert.equal((await mk((async () => ({ ok: true, value: [] })) as never, false)("cmdabl curve")).result.code, ExitCode.NOT_FOUND);
   assert.equal((await mk((async () => { throw new Error("x"); }) as never)("cmdabl curve")).result.code, ExitCode.UNAVAILABLE);
 });
+
+test("cmdabl setup --simulate exists only when the build asks for it, and is absent from help", async () => {
+  const shown: unknown[] = [];
+  const dev = await builtins({ simulate: true, setup: { show: async (s) => (shown.push(s), ok()) } });
+  assert.equal((await dev.run("cmdabl setup --simulate rule-off")).result.code, ExitCode.OK);
+  assert.equal((await dev.run("cmdabl setup --simulate nope")).result.code, ExitCode.USAGE);
+  assert.equal((await dev.run("cmdabl setup")).result.code, ExitCode.OK);
+  assert.deepEqual(shown, ["rule-off", undefined]);
+  const prod = await builtins({ setup: { show: async (s) => (shown.push(s), ok()) } });
+  assert.equal((await prod.run("cmdabl setup --simulate rule-off")).result.code, ExitCode.USAGE);
+  assert.doesNotMatch((await prod.run("cmdabl setup --help")).result.message ?? "", /simulate/);
+  assert.equal(shown.length, 2);
+});

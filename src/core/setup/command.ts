@@ -1,6 +1,7 @@
 import { ok, fail, ExitCode, type CommandResult } from "../types.js";
 import type { Command } from "../command/commandRegistry.js";
 import { runAhkSetup, runKarabinerSetup, runRemoteScriptSetup } from "./setup.js";
+import { SIMULATE_STATES, isSimulateState } from "./simulate.js";
 import type { SetupFlow } from "./setupFlow.js";
 
 // `cmdabl setup` (plan 0021): the setup page, and its steps `script` and `karabiner`.
@@ -8,6 +9,8 @@ import type { SetupFlow } from "./setupFlow.js";
 export interface SetupCommandDeps {
   /** `cmdabl setup` (plan 0021): the page and its flow; absent: it answers exit 5. */
   setup?: Pick<SetupFlow, "show">;
+  /** Development builds only (CMDABL_DEV_ROUTES): register the hidden option `--simulate <state>`. Absent in production builds, so the reference and released help never list it. */
+  simulate?: boolean;
   /** Test hooks: the steps `cmdabl setup script` and `cmdabl setup karabiner` run. */
   steps?: {
     copyScript?: () => { ok: boolean; text: string };
@@ -36,7 +39,16 @@ export function setupCommand(deps: SetupCommandDeps): Command {
       { line: "cmdabl setup karabiner", note: "link the Karabiner rule without the import link" },
     ],
     args: [{ name: "step", kind: "enum", required: false, choices: ["script", "karabiner"], summary: "script: copy or update the Remote Script; karabiner: link the Karabiner rule (AutoHotkey script on Windows)" }],
+    // Hidden: only registered in development builds; production builds, the reference and released help never list it.
+    ...(deps.simulate
+      ? { options: [{ name: "simulate", takesValue: true, choices: [...SIMULATE_STATES], summary: "development: show the page as if the machine were in this state" }] }
+      : {}),
     run: async (invocation) => {
+      const simulate = invocation.options.simulate;
+      if (simulate !== undefined) {
+        if (!deps.simulate || !isSimulateState(simulate)) return fail(ExitCode.USAGE, `setup: unknown state "${String(simulate)}"`);
+        return deps.setup ? deps.setup.show(simulate) : fail(ExitCode.UNAVAILABLE, "setup: the setup page is not available in this build");
+      }
       const step = invocation.args[0]?.[0];
       if (step === "script") return stepResult("Remote Script copied. Restart Live once to load it.", (deps.steps?.copyScript ?? runRemoteScriptSetup)());
       if (step === "karabiner") return stepResult(undefined, (deps.steps?.keyboard ?? (process.platform === "win32" ? runAhkSetup : runKarabinerSetup))());

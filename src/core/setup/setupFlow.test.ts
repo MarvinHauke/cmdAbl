@@ -253,3 +253,25 @@ test("parseNotifyAnswer: a link answer only for a section that has a link; capSe
   assert.equal(out[2]!.link, undefined);
   assert.equal(out[3]!.link, undefined);
 });
+
+test("--simulate: only the facts change; the state file is not written; the page keeps simulating after a button; openIfNeeded never simulates", async () => {
+  const { simulateFacts, SIMULATE_STATES } = await import("./simulate.js");
+  const { buildSetupRows } = await import("./setupRows.js");
+  const base = goodFacts();
+  const status = (state: (typeof SIMULATE_STATES)[number]) => buildSetupRows(simulateFacts(base, state)).rows.map((r) => `${r.id}:${r.status}`);
+  assert.deepEqual(status("no-karabiner").slice(0, 1), ["karabiner:warn"]);
+  assert.deepEqual(status("no-rule").slice(0, 1), ["karabiner:warn"]);
+  assert.deepEqual(status("rule-off").slice(0, 1), ["karabiner:warn"]);
+  assert.ok(status("no-script").includes("script:warn"));
+  assert.ok(status("old-script").includes("script:warn"));
+  assert.deepEqual(base, goodFacts()); // the input is not changed
+  const h = harness({ answers: [{ action: [1, 0] }, null] });
+  const r = await h.flow.show("no-script");
+  assert.equal(r.code, ExitCode.OK);
+  assert.equal(h.requests.length, 2);
+  assert.deepEqual(h.ran, ["cmdabl setup script"]); // the button still acts for real
+  for (const req of h.requests) assert.ok(req.sections!.some((s) => s.items.some((i) => typeof i === "object" && i.action && "command" in i.action))); // still simulating
+  assert.equal(h.files.has(SETUP_STATE_FILE), false); // nothing remembered
+  const g = harness({ state: { seenVersion: "0.1.6", shown: [] } });
+  assert.equal(await g.flow.openIfNeeded(), false); // the real (good) facts decide
+});

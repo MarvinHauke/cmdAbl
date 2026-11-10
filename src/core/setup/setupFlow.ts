@@ -3,6 +3,7 @@ import { capSections } from "../surfaces/present.js";
 import { buildSetupRows, hasNewTrouble, setupLines, SCRIPT_COMMAND, type SetupFacts, type SetupRows } from "./setupRows.js";
 import { ExitCode, ok, fail, type CommandResult, type ItemAction, type ResultSection } from "../types.js";
 import type { NotifyAnswer, NotifyRequest } from "../surfaces/ui.js";
+import { simulateFacts, type SimulateState } from "./simulate.js";
 import type { SettingsStore } from "../settings/settings.js";
 
 // The setup page's flow (plan 0021 §1, §4): show the rows, run the button the user pressed, show the page again;
@@ -65,7 +66,7 @@ export interface SetupFlowDeps {
 
 export interface SetupFlow {
   /** `cmdabl setup`: the page, always. Headless: the rows as lines. */
-  show(): Promise<CommandResult>;
+  show(simulate?: SimulateState): Promise<CommandResult>;
   /** The opening rule: show the page if it should open by itself now. True when it did. Never throws. */
   openIfNeeded(): Promise<boolean>;
   /** Gather the facts now in the background, so the first `openIfNeeded` does not wait for the probes. Never throws. */
@@ -92,8 +93,9 @@ export function createSetupFlow(deps: SetupFlowDeps): SetupFlow {
   /** Why the last copy by the page failed; shown as a red row until a copy works. */
   let copyFailed: string | null = null;
 
-  async function request(): Promise<{ req: NotifyRequest; built: SetupRows; sections: ResultSection[] }> {
-    const built = buildSetupRows(await deps.facts(copyFailed));
+  async function request(simulate?: SimulateState): Promise<{ req: NotifyRequest; built: SetupRows; sections: ResultSection[] }> {
+    const facts = await deps.facts(copyFailed);
+    const built = buildSetupRows(simulate ? simulateFacts(facts, simulate) : facts);
     const sections = capSections(built.sections); // the indexes the answer uses are those of the sections sent
     const openOnStart = (await deps.settings.get())["setup.openOnStart"];
     return {
@@ -108,10 +110,10 @@ export function createSetupFlow(deps: SetupFlowDeps): SetupFlow {
     };
   }
 
-  async function page(): Promise<SetupRows> {
+  async function page(simulate?: SimulateState): Promise<SetupRows> {
     let last: SetupRows | undefined;
     for (let round = 0; round < MAX_ROUNDS; round++) {
-      const { req, built, sections } = await request();
+      const { req, built, sections } = await request(simulate);
       last = built;
       const answer = await deps.notifyAnswer(req);
       if (answer?.toggle !== undefined) {
@@ -133,10 +135,14 @@ export function createSetupFlow(deps: SetupFlowDeps): SetupFlow {
   }
 
   return {
-    async show() {
+    async show(simulate) {
       try {
-        if (deps.headless()) return ok(setupLines(buildSetupRows(await deps.facts(copyFailed)).sections));
-        const built = await page();
+        if (deps.headless()) {
+          const facts = await deps.facts(copyFailed);
+          return ok(setupLines(buildSetupRows(simulate ? simulateFacts(facts, simulate) : facts).sections));
+        }
+        const built = await page(simulate);
+        if (simulate) return ok(); // a simulated page is not a seen page: nothing is remembered
         // A page the user opened himself counts as seen: what it showed does not reopen it by itself.
         await deps.files.write(SETUP_STATE_FILE, JSON.stringify({ seenVersion: deps.version, shown: built.rows.filter((r) => r.signature !== "").map((r) => r.signature) } satisfies SetupState));
         return ok();
