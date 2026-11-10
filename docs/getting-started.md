@@ -31,10 +31,19 @@ or a scene, and choose **: cmdAbl**. The first time you open the palette after i
 Later it opens by itself only when something new needs you, such as a new Remote Script after an update.
 To open it any time, type `cmdabl setup` in the palette and press `Enter`.
 
-![The setup page with every step done: Keyboard trigger, Remote Script and Data folder, each with a check mark, the box Don't open this page by itself and a Close button](assets/images/setup-page.png)
-
 The page has one row per step. A mark at the start of the row tells you where it stands: ✓ is done, ! needs you,
 and ✗ failed. Where a step needs you, the row has a button.
+
+On a fresh Mac, the page looks like this. Karabiner-Elements and the Remote Script are not installed yet, so
+their rows show ! and a button:
+
+![The setup page on a fresh Mac: the Keyboard trigger row says Karabiner-Elements is not installed, with a Get Karabiner button; the Remote Script row says it is not installed, with a Copy button; the Data folder row has a check mark; below are the key hints and the box Don't open this page by itself, and a Close button](assets/images/setup-no-karabiner.png)
+
+Use the buttons described below to fix each ! row. When every row shows ✓, the page looks like this:
+
+![The setup page with every step done: Keyboard trigger, Remote Script and Data folder, each with a check mark, the box Don't open this page by itself and a Close button](assets/images/setup-page.png)
+
+What each row does:
 
 - **Keyboard trigger.** Without Karabiner-Elements, `:` does not open cmdAbl. If it is not installed, **Get
   Karabiner** opens its download page; install it and run `cmdabl setup` again. If it is installed, **Add rule**
