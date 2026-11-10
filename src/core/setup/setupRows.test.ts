@@ -125,3 +125,11 @@ test("setupLines: marks, text and buttons as lines for a headless run", () => {
   assert.match(lines, /^ {2}! The Remote Script is not installed.* \[Copy: cmdabl setup script\]$/m);
   assert.match(lines, /^ {2}✗ cmdAbl can't write to its data folder/m);
 });
+
+test("restart row: macOS gets the Restart Live button (cmdabl setup restart), Windows the plain row", () => {
+  const f = (platform: NodeJS.Platform) => facts({ platform, script: { running: down, copyNewerThanHost: true } });
+  const mac = row(f("darwin"), "restart")!;
+  assert.equal(mac.item.action?.label, "Restart Live");
+  assert.equal(mac.item.action && "command" in mac.item.action && mac.item.action.command, "cmdabl setup restart");
+  assert.equal(row(f("win32"), "restart")!.item.action, undefined);
+});

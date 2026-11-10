@@ -18,7 +18,7 @@ const goodFacts = (over: Partial<SetupFacts["script"]> = {}): SetupFacts => ({
 });
 const missingFacts = (copyFailed: string | null): SetupFacts => goodFacts({ installed: { status: "missing" }, running: down, copyFailed });
 
-function harness(over: { answers?: Array<NotifyAnswer | null>; facts?: (copyFailed: string | null) => SetupFacts; headless?: boolean; settings?: Record<string, unknown>; state?: SetupState } = {}) {
+function harness(over: { answers?: Array<NotifyAnswer | null>; facts?: (copyFailed: string | null) => SetupFacts; headless?: boolean; restart?: boolean; settings?: Record<string, unknown>; state?: SetupState } = {}) {
   const requests: NotifyRequest[] = [];
   const ran: string[] = [];
   const opened: string[] = [];
@@ -31,7 +31,7 @@ function harness(over: { answers?: Array<NotifyAnswer | null>; facts?: (copyFail
     notifyAnswer: async (r) => (requests.push(r), answers.shift() ?? null),
     headless: () => over.headless === true,
     facts: async (c) => (over.facts ?? (() => goodFacts()))(c),
-    runCommand: async (line) => (ran.push(line), line === "cmdabl setup script" ? ok("copied") : fail(ExitCode.FAILURE, "no")),
+    runCommand: async (line) => (ran.push(line), line === "cmdabl setup script" || (over.restart && line === "cmdabl setup restart") ? ok("copied") : fail(ExitCode.FAILURE, "no")),
     openUrl: async (url) => (opened.push(url), ok()),
     settings: { get: async () => settings as never, set: async (p) => (saved.push(p), true) },
     files: { read: async (n) => files.get(n) ?? null, write: async (n, t) => (files.set(n, t), true) },
@@ -237,6 +237,7 @@ test("--simulate: only the facts change; the state file is not written; the page
   assert.deepEqual(status("rule-off").slice(0, 1), ["karabiner:warn"]);
   assert.ok(status("no-script").includes("script:warn"));
   assert.ok(status("old-script").includes("script:warn"));
+  assert.ok(status("restart").includes("restart:warn"));
   assert.deepEqual(base, goodFacts()); // the input is not changed
   const h = harness({ answers: [{ action: [1, 0] }, null] });
   const r = await h.flow.show("no-script");
@@ -247,4 +248,14 @@ test("--simulate: only the facts change; the state file is not written; the page
   assert.equal(h.files.has(SETUP_STATE_FILE), false); // nothing remembered
   const g = harness({ state: { seenVersion: "0.1.6", shown: [] } });
   assert.equal(await g.flow.openIfNeeded(), false); // the real (good) facts decide
+});
+
+test("the Restart Live button ends the flow when it worked; a failure shows the page again", async () => {
+  const good = harness({ answers: [{ action: [1, 1] }, null], restart: true });
+  assert.equal((await good.flow.show("restart")).code, ExitCode.OK);
+  assert.deepEqual(good.ran, ["cmdabl setup restart"]);
+  assert.equal(good.requests.length, 1); // no page over Live's save dialog
+  const bad = harness({ answers: [{ action: [1, 1] }, null] });
+  await bad.flow.show("restart");
+  assert.equal(bad.requests.length, 2);
 });

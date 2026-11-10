@@ -10,6 +10,7 @@ import { KARABINER_SETTINGS_URL } from "./openUrl.js";
 export const KARABINER_HOME_URL = "https://karabiner-elements.pqrs.org/";
 /** What the controls of the page run: the flow looks these up in the sections it sent, so they are the only commands a page can trigger. */
 export const SCRIPT_COMMAND = "cmdabl setup script";
+export const RESTART_COMMAND = "cmdabl setup restart";
 export const KEYBOARD_COMMAND = "cmdabl setup karabiner";
 
 /** The route Karabiner fetches the rule from (httpTrigger.ts) and the import link that makes it fetch it. */
@@ -127,12 +128,14 @@ export function buildSetupRows(facts: SetupFacts): SetupRows {
 
   if (scriptReady || (installed.status === "unknown" && live !== null)) {
     const answering = running?.ok === true && live === shipped;
+    // The button quits Live and starts it again; macOS only (Windows keeps the plain row).
+    const restartAction = facts.platform === "darwin" ? { label: "Restart Live", help: "Quit Live (it asks about unsaved changes) and start it again.", command: RESTART_COMMAND } : undefined;
     const stale = live !== null && live !== shipped; // Live runs another version than the one on disk
     if (stale || (copyNewerThanHost === true && !answering)) {
-      add(heading, "restart", { text: `Restart Live once to load Remote Script ${shipped}.`, status: "warn" }, shipped);
+      add(heading, "restart", { text: `Restart Live once to load Remote Script ${shipped}.`, status: "warn", action: restartAction }, shipped);
     } else if (copyNewerThanHost === true && answering) {
       // Same version, newer files (an update during a development line): the version can't tell, the file time does.
-      add(heading, "restart", { text: "The Remote Script files changed after Live started. Restart Live once to load them.", status: "warn" }, `files:${shipped}`);
+      add(heading, "restart", { text: "The Remote Script files changed after Live started. Restart Live once to load them.", status: "warn", action: restartAction }, `files:${shipped}`);
     }
     if (answering) {
       add(heading, "surface", { text: "cmdAbl answers in Live.", status: "ok" });

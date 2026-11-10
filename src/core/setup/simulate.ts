@@ -4,7 +4,7 @@ import type { SetupFacts } from "./setupRows.js";
 // screenshots and hand checks. Only the facts fed into the rows change; nothing is written, and the opening rule
 // (decideOpen) and the seen-state file never see a simulated page.
 
-export const SIMULATE_STATES = ["no-karabiner", "no-rule", "rule-off", "no-script", "old-script"] as const;
+export const SIMULATE_STATES = ["no-karabiner", "no-rule", "rule-off", "no-script", "old-script", "restart"] as const;
 export type SimulateState = (typeof SIMULATE_STATES)[number];
 
 export function isSimulateState(value: unknown): value is SimulateState {
@@ -24,5 +24,8 @@ export function simulateFacts(facts: SetupFacts, state: SimulateState): SetupFac
       return { ...facts, script: { ...facts.script, installed: { status: "missing" }, copyFailed: null } };
     case "old-script":
       return { ...facts, script: { ...facts.script, installed: { status: "outdated", version: "0.0.1" }, copyFailed: null } };
+    case "restart":
+      // The script is copied and current, but Live has not loaded it.
+      return { ...facts, script: { ...facts.script, installed: { status: "current", version: facts.script.shipped }, running: null, copyNewerThanHost: true, copyFailed: null } };
   }
 }

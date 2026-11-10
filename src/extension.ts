@@ -224,6 +224,7 @@ export function activate(activation: ActivationContext) {
   });
   registerBuiltins(registry, {
     setup: setupFlow,
+    headless: () => gate.active(),
     simulate: CMDABL_DEV_ROUTES, // the hidden `cmdabl setup --simulate <state>` (development builds only)
     settings: settingsFlow,
     defaults: defaultsFlow,
