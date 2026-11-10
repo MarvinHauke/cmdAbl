@@ -36,7 +36,7 @@ test("argv: paths and pid are arguments, never in the script text", () => {
 });
 
 interface Call { command: string; args: string[]; detached?: boolean }
-function fakeSpawn(osaExit: number | "hang" | "error") {
+function fakeSpawn(osaExit: number | "hang" | "error", stderr = "not allowed") {
   const calls: Call[] = [];
   const spawn = ((command: string, args: string[], options: { detached?: boolean }) => {
     calls.push({ command, args, detached: options.detached });
@@ -48,8 +48,9 @@ function fakeSpawn(osaExit: number | "hang" | "error") {
       if (command === "/bin/sh") child.emit("spawn");
       else if (osaExit === "error") child.emit("error", new Error("ENOENT"));
       else if (osaExit !== "hang") {
-        if (osaExit !== 0) child.stderr!.emit("data", "not allowed");
+        if (osaExit !== 0) child.stderr!.emit("data", stderr);
         child.emit("exit", osaExit);
+        child.emit("close", osaExit); // after the stdio has ended
       }
     });
     return child;
@@ -108,4 +109,32 @@ test("`setup restart` refuses in a headless run and never reaches the restart", 
   assert.equal(called, 0);
   assert.equal((await run(false)).code, ExitCode.OK);
   assert.equal(called, 1);
+});
+
+test("restart: Cancel in Live's save dialog (-128) is ok, not an error; the helper is stopped", async () => {
+  const cancelled = "49:53: execution error: Ableton Live 12 Beta got an error: User cancelled. (-128)";
+  const f = fakeSpawn(1, cancelled);
+  const killed: number[] = [];
+  const realKill = process.kill;
+  process.kill = ((pid: number) => (killed.push(pid), true)) as never;
+  try {
+    const r = await restartLive({ ...base, spawn: f.spawn });
+    assert.equal(r.code, ExitCode.OK);
+    assert.equal(r.message, "Restart cancelled; Live stays open.");
+    assert.ok(killed.length >= 1 && killed.every((pid) => pid === 999999)); // only the helper was stopped (never Live)
+  } finally {
+    process.kill = realKill;
+  }
+});
+
+test("restart: no Automation permission (-1743) says where to allow it; any other error shows osascript's text, without the permission hint", async () => {
+  const denied = await restartLive({ ...base, spawn: fakeSpawn(1, "execution error: Not authorized to send Apple events to Ableton Live 12 Beta. (-1743)").spawn });
+  assert.equal(denied.code, ExitCode.FAILURE);
+  assert.equal(denied.message, "restart: macOS did not allow cmdAbl to control Live. Allow it in System Settings → Privacy & Security → Automation, then try again.");
+  const other = await restartLive({ ...base, spawn: fakeSpawn(1, "execution error: something odd (-600)").spawn });
+  assert.equal(other.code, ExitCode.FAILURE);
+  assert.equal(other.message, "restart: Live did not accept the quit request: execution error: something odd (-600)");
+  assert.ok(!/permission/i.test(other.message ?? ""));
+  const silent = await restartLive({ ...base, spawn: fakeSpawn(2, "").spawn });
+  assert.equal(silent.message, "restart: Live did not accept the quit request (exit 2)");
 });

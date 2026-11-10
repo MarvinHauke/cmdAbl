@@ -86,12 +86,15 @@ export async function restartLive(deps: RestartDeps = {}): Promise<CommandResult
     helper.unref();
 
     // 2. Ask Live to quit. A save dialog keeps osascript waiting, so a command still running after the grace time is a good sign.
-    const abort = (text: string): CommandResult => {
+    const stopHelper = (): void => {
       try {
         if (helper.pid !== undefined) process.kill(helper.pid); // nothing is quitting: the helper must not restart Live later
       } catch {
         /* already gone */
       }
+    };
+    const abort = (text: string): CommandResult => {
+      stopHelper();
       return fail(ExitCode.FAILURE, text);
     };
     const quit = spawn("/usr/bin/osascript", quitArgs(app), { stdio: ["ignore", "ignore", "pipe"], env: childEnv() });
@@ -110,12 +113,21 @@ export async function restartLive(deps: RestartDeps = {}): Promise<CommandResult
     const outcome = await new Promise<{ error?: string; code?: number | null; running?: true }>((resolve) => {
       const timer = setTimeout(() => resolve({ running: true }), deps.graceMs ?? 3000);
       quit.once("error", (e) => (clearTimeout(timer), resolve({ error: e.message })));
-      quit.once("exit", (code) => (clearTimeout(timer), resolve({ code })));
+      // 'close' fires after osascript's stdio has ended, so its whole stderr is in (no timer needed, unlike 'exit').
+      quit.once("close", (code) => (clearTimeout(timer), resolve({ code })));
     });
     if (outcome.error !== undefined) return abort(`restart: cannot ask Live to quit: ${outcome.error}`);
     if (outcome.code !== undefined && outcome.code !== 0) {
       const why = stderr.trim();
-      return abort(`restart: Live did not accept the quit request${why ? `: ${why}` : ` (exit ${outcome.code})`}. If macOS asked for permission, allow it and try again`);
+      // Cancel in Live's save dialog is the user's choice, not a failure: Live stays open and the helper must not restart it.
+      if (why.includes("(-128)")) {
+        stopHelper();
+        return ok("Restart cancelled; Live stays open.");
+      }
+      if (why.includes("(-1743)")) {
+        return abort("restart: macOS did not allow cmdAbl to control Live. Allow it in System Settings → Privacy & Security → Automation, then try again.");
+      }
+      return abort(`restart: Live did not accept the quit request${why ? `: ${why}` : ` (exit ${outcome.code})`}`);
     }
     return ok("Live is asked to quit; it starts again after you answer its save dialog.");
   } catch (e: unknown) {
