@@ -42,7 +42,8 @@ control surface. Nobody types `cmdabl setup` to install.
 
 **Non-goals**
 
-- Selecting the control surface or restarting Live for the user (impossible, see Context).
+- Selecting the control surface for the user (impossible, see Context). Restarting Live was a non-goal too; the user
+  asked for a **Restart Live** button on 2026-11-10 (spike, ships in 0.1.6 only if clean; see the table).
 - Editing Karabiner's `karabiner.json` (Q4: too invasive for another app's config).
 - A trigger without Karabiner (Q5): researched on the side (see Open questions), not built here.
 - Windows: the rows exist there too (AutoHotkey instead of Karabiner), but only macOS is tested.
@@ -72,7 +73,7 @@ disk, `karabiner_cli`, the Remote Script's `hello`, and the version shipped with
 |---|---|---|---|---|
 | Karabiner | "`:` opens cmdAbl" | not installed: "Without Karabiner, `:` doesn't open cmdAbl; only the right-click menu does. Strongly recommended." · installed, rule not added or not enabled | — (never red, Q8) | **Get Karabiner** (url) · **Add rule** (import link, §3) |
 | Remote Script | installed and current | missing · older than shipped ("Installed 0.1.14, this cmdAbl brings 0.1.15") | copy failed | **Copy** · **Update** (command `cmdabl setup script`) |
-| Live restart | — | the copy on disk is newer than the running script: "Restart Live once to load it" | — | none |
+| Live restart | — | the copy on disk is newer than the running script: "Restart Live once to load it" | — | **Restart Live** (macOS, spike 2026-11-10): an Apple Event `quit` to the Live app cmdAbl runs in (Live asks to save; Cancel keeps Live open), a detached helper reopens the same app once that Live has exited (gives up after ~120 s). Refuses headless runs (exit 5: no `cmdabl_run`, no MIDI binding can quit Live); the page closes after it. macOS may ask once for Automation permission. |
 | Control surface | the script answers `hello` | installed, Live started after the copy, and no answer: "Choose cmdAbl in Settings → Tempo & MIDI → Control Surface" | — | **How** (docs url) |
 | Data folder | writable | — | not writable | none |
 
