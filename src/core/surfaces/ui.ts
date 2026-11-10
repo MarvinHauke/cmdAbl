@@ -159,6 +159,8 @@ export interface NotifyAnswer {
   action?: [number, number];
   toggle?: boolean;
   open?: true;
+  /** `sectionIndex` of a heading whose link was clicked (the section has a `link` in the request, else dropped). */
+  link?: number;
 }
 
 /**
@@ -380,7 +382,8 @@ export function createDefaultUi(
     fillTemplate(notifyTemplate, {
       MESSAGE: request.text,
       LINK: request.link ?? null,
-      SECTIONS: request.sections ?? null,
+      // A section link's url stays in core: the page gets label and help only.
+      SECTIONS: request.sections?.map((s) => (s.link ? { ...s, link: { label: s.link.label, ...(s.link.help ? { help: s.link.help } : {}) } } : s)) ?? null,
       TOGGLE: request.toggle ?? null,
       HELP: request.help ?? null,
     });

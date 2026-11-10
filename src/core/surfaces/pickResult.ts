@@ -62,7 +62,7 @@ export function wantsOpen(raw: string | null | undefined): boolean {
  */
 export function parseNotifyAnswer(
   raw: string | null | undefined,
-  request: { link?: unknown; toggle?: unknown; sections?: Array<{ items: Array<string | { action?: unknown }> }> },
+  request: { link?: unknown; toggle?: unknown; sections?: Array<{ link?: unknown; items: Array<string | { action?: unknown }> }> },
 ): NotifyAnswer | null {
   if (!raw) return null;
   let value: unknown;
@@ -81,7 +81,8 @@ export function parseNotifyAnswer(
       if (item !== undefined && typeof item !== "string" && item.action) out.action = [s as number, i as number];
     }
   }
+  if (Number.isInteger(v.link) && request.sections?.[v.link as number]?.link !== undefined) out.link = v.link as number;
   if (typeof v.toggle === "boolean" && request.toggle !== undefined) out.toggle = v.toggle;
   if (v.open === true && request.link !== undefined) out.open = true;
-  return out.action || out.toggle !== undefined || out.open ? out : null;
+  return out.action || out.link !== undefined || out.toggle !== undefined || out.open ? out : null;
 }

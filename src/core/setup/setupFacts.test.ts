@@ -107,3 +107,10 @@ test("sectionsSize: the setup page's boxes add up (4 rows in 3 sections plus the
   assert.equal(usesStatusLayout(setup, false), true);
   assert.match(sectionsText([{ heading: "h", items: [{ text: "row", status: "ok", action: { label: "Go", command: "c" } }, "plain"] }]), /row {2}\[Go\]/);
 });
+
+test("sectionsSize: a section link needs the help line, like a row button", () => {
+  const plain = [{ heading: "h", items: [{ text: "a", status: "ok" as const }] }];
+  const linked = [{ heading: "h", items: [{ text: "a", status: "ok" as const }], link: { label: "L", url: "https://x" } }];
+  assert.ok(sectionsSize(linked, { toggle: false }).height > sectionsSize(plain, { toggle: false }).height);
+  assert.equal(sectionsSize(linked, { toggle: false }).height, sectionsSize(plain, { toggle: true }).height);
+});

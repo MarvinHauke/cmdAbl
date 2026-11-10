@@ -118,7 +118,7 @@ export function createSetupFlow(deps: SetupFlowDeps): SetupFlow {
         const saved = await deps.settings.set({ "setup.openOnStart": !answer.toggle });
         if (!saved) warn("setup: could not save setup.openOnStart");
       }
-      const action = answer?.action ? actionAt(sections, answer.action) : undefined;
+      const action = answer?.action ? actionAt(sections, answer.action) : answer?.link !== undefined ? sections[answer.link]?.link : undefined;
       if (!action) break;
       if ("command" in action) {
         const result = await deps.runCommand(action.command);

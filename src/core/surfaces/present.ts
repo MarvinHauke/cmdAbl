@@ -1,5 +1,5 @@
 import { isHttpsUrl } from "../setup/openUrl.js";
-import { ExitCode, type CommandResult, type ItemAction, type ResultLink, type ResultSection, type StatusItem } from "../types.js";
+import { ExitCode, type CommandResult, type ItemAction, type ResultLink, type ResultSection, type SectionLink, type StatusItem } from "../types.js";
 
 /**
  * The one place a CommandResult becomes user-visible feedback.
@@ -120,7 +120,12 @@ export function capSections(sections: ResultSection[] | undefined): ResultSectio
     const shown = items.slice(0, MAX_ITEMS);
     if (items.length > MAX_ITEMS) shown.push("…");
     const meta = clip(section.meta).trim();
-    out.push({ heading, ...(meta ? { meta } : {}), items: shown });
+    const l = section.link as Partial<SectionLink> | null | undefined;
+    const linkOk = typeof l === "object" && l !== null && typeof l.label === "string" && l.label.trim() !== "" && typeof l.url === "string" && l.url !== "" && l.url.length <= MAX_ACTION;
+    const link: SectionLink | null = linkOk
+      ? { label: clip(l.label).trim(), ...(typeof l.help === "string" && l.help.trim() !== "" ? { help: clip(l.help) } : {}), url: l.url! }
+      : null;
+    out.push({ heading, ...(meta ? { meta } : {}), ...(link ? { link } : {}), items: shown });
   }
   return out;
 }

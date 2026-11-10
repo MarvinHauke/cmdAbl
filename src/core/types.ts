@@ -125,6 +125,13 @@ export type ItemStatus = "ok" | "warn" | "fail";
  */
 export type ItemAction = { label: string; help?: string; command: string } | { label: string; help?: string; url: string };
 
+/** A link in a section heading: `label` and `help` are shown, `url` stays in core. */
+export interface SectionLink {
+  label: string;
+  help?: string;
+  url: string;
+}
+
 /** A row with a status mark and/or a button instead of a plain string. */
 export interface StatusItem {
   text: string;
@@ -136,6 +143,11 @@ export interface ResultSection {
   heading: string;
   /** Short text next to the heading, e.g. a count. */
   meta?: string;
+  /**
+   * A quiet link in the heading line (setup page). Clicking it closes the page with `{ link: sectionIndex }`; the flow opens
+   * the `url`. Like a row action, the page never sends the url, and it is not sent to the page at all.
+   */
+  link?: SectionLink;
   items: Array<string | StatusItem>;
 }
 

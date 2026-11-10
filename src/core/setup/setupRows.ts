@@ -90,6 +90,9 @@ export function buildSetupRows(facts: SetupFacts): SetupRows {
     } else {
       add(heading, "karabiner", { text: "The cmdAbl rule is added. If the : key doesn't open cmdAbl, enable it in Karabiner.", status: "ok" });
     }
+    // Always a quiet link to the Karabiner website in the heading; rows keep one button each.
+    const keyboard = sections.find((s) => s.heading === heading);
+    if (keyboard) keyboard.link = { label: "Karabiner-Elements ↗", help: "Open the Karabiner-Elements website in your browser.", url: KARABINER_HOME_URL };
   } else if (facts.platform === "win32") {
     const t = facts.trigger;
     add("Keyboard trigger", "karabiner", t.ruleThere

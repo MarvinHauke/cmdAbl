@@ -125,3 +125,12 @@ test("setupLines: marks, text and buttons as lines for a headless run", () => {
   assert.match(lines, /^ {2}! The Remote Script is not installed.* \[Copy: cmdabl setup script\]$/m);
   assert.match(lines, /^ {2}✗ cmdAbl can't write to its data folder/m);
 });
+
+test("the Keyboard trigger heading has the Karabiner website link on macOS in every state, and not on Windows", () => {
+  for (const trigger of [{ installed: false, ruleThere: false, enabled: null }, { ruleThere: false, enabled: null }, { enabled: false }, { enabled: true }, { enabled: null }] as const) {
+    const s = buildSetupRows(facts({ trigger: { ...trigger } })).sections.find((x) => x.heading === "Keyboard trigger")!;
+    assert.deepEqual(s.link, { label: "Karabiner-Elements ↗", help: "Open the Karabiner-Elements website in your browser.", url: "https://karabiner-elements.pqrs.org/" });
+  }
+  const win = buildSetupRows(facts({ platform: "win32", trigger: { installed: true, ruleThere: true } })).sections.find((x) => x.heading === "Keyboard trigger")!;
+  assert.equal(win.link, undefined);
+});
