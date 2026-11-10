@@ -5,7 +5,7 @@ known issues. Maintained by the architect. The order of the next features and ho
 each other is in the [plan index](README.md#next-in-dependency-order); design decisions live in the
 numbered plans. Finished work is in the git history, not here.
 
-_Last updated: 2026-11-05 (cleanup after 0.1.5)._
+_Last updated: 2026-11-10 (0.1.6 release prep; Live 13 next)._
 
 ## Released
 
@@ -58,8 +58,16 @@ All releases were tested in Live, including the installed `.ablx`.
     no `palette.above`, no Settings button in the palette; the highlighted row's description scrolls; `config`
     is a normal row after a command. Docs: `docs/using.md` "Show the options above the prompt" (with
     screenshots) is stale, for cmdabl-docs before the PR.
-  - **Next:** the user's hand checks (help line, setup page, phase 3), docs for 0.1.6 (cmdabl-docs), then the
-    release.
+  - **Release prep (2026-11-10):** version bumped to 0.1.6 (user). Tests, build, `docs:reference` and
+    `mkdocs build --strict` pass. Open: user docs for 0.1.6 (cmdabl-docs: settings and defaults pages,
+    `config`, help line and footer, setup page; the stale "above the prompt" section), reviewer facts check,
+    the user's hand checks, the installed `.ablx` test on **Live 12.4.16**.
+  - **Live 12 marking** (user, 2026-11-10): 0.1.6 is the last release built for Live 12, tested with
+    Live 12.4.16. Release notes, the README badge and `docs/limits.md` say so; an extra git tag
+    `live12-last` on the release commit next to `v0.1.6`.
+- **After 0.1.6: development moves to Live 13** (user, 2026-11-10; Live 13.0b25 installed). First step: a
+  Live 13 compatibility check (SDK version and `minimumApiVersion`, the Remote Script under Live 13's
+  Python, the sandbox, `LIVE_MANUAL_VERSION`), then decide what changes for 0.2.x.
 - 0.1.6 = 0019 phases 1–3 and 0021 (contracts 1–3 approved 2026-11-05; the status rows (4) approved with 0021). The
   palette help view's layout gets agreed with the user before it's built (phase 3). Aliases moved to
   the [0020](0020-aliases.md) draft. Ideas from `docs/userfindings.md`
