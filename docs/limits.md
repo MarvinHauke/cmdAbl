@@ -7,7 +7,7 @@ already know about each one.
 ## Platform and Live
 
 - **macOS only.** cmdAbl is tested on macOS only. Chains and Drum Rack pads need macOS as well. The Windows setup has not been tested.
-- **Tested with Live 12.4.16.** This release is the last one built for Live 12. Live 13 support comes with the next releases.
+- **Tested with the Live 12.4.25 beta.** Live 12.4.16, the current non-beta release, has no Extensions. This release is the last one built for Live 12. Live 13 support comes with the next releases.
 - **The Extensions SDK is in beta.** cmdAbl needs a version of Ableton Live with Extensions support, and is built
   against the Extensions SDK 1.0.0-beta.1.
 - **cmdAbl runs in a sandbox.** It may read only Live's Extensions and Extensions Data folders and its temp folder.

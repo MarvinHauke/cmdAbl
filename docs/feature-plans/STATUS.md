@@ -62,9 +62,10 @@ All releases were tested in Live, including the installed `.ablx`.
     `mkdocs build --strict` pass. User docs done (`abd9a87`, `d6b813c`; reviewer facts check passed).
     Screenshots done (`03049a3`, `89d14e0`); defaults page placeholders fit and its help line has a sentence
     break (`46ce180`, checked in Live); setup page docs link follows the renamed heading (`488b4d6`).
-    Open: the user's hand checks, the installed `.ablx` test on **Live 12.4.16**, then the PR.
+    Open: the user's hand checks, the "Open Karabiner" button (below), then the PR. Installed `.ablx` tested by the user in Live 12.4.25b1 (2026-11-10).
+  - **Open Karabiner** (user, 2026-11-10): the row "rule added but not enabled" gets a button that opens Karabiner-Elements Settings (`karabiner://karabiner/`, checked by hand: opens the Settings window; exact-match allow in `openUrl`). cmdabl-core; 0021 §3.
   - **Live 12 marking** (user, 2026-11-10): 0.1.6 is the last release built for Live 12, tested with
-    Live 12.4.16. Release notes, the README badge and `docs/limits.md` say so; an extra git tag
+    the Live 12.4.25 beta (12.4.16, the non-beta release, has no Extensions; corrected by the user the same day). Release notes, the README badge and `docs/limits.md` say so; an extra git tag
     `live12-last` on the release commit next to `v0.1.6`.
 - **After 0.1.6: development moves to Live 13** (user, 2026-11-10; Live 13.0b25 installed). First step: a
   Live 13 compatibility check (SDK version and `minimumApiVersion`, the Remote Script under Live 13's

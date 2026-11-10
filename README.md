@@ -1,7 +1,7 @@
 [![Latest release](https://img.shields.io/github/v/release/MarvinHauke/cmdAbl)](https://github.com/MarvinHauke/cmdAbl/releases/latest)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://marvinhauke.github.io/cmdAbl/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![macOS · Live 12.4.16 (Extensions beta)](https://img.shields.io/badge/macOS%20%C2%B7%20Live%2012.4.16%20%28Extensions%20beta%29-lightgrey)](https://marvinhauke.github.io/cmdAbl/limits/)
+[![macOS · Live 12.4.25 beta (Extensions beta)](https://img.shields.io/badge/macOS%20%C2%B7%20Live%2012.4.25%20beta%20%28Extensions%20beta%29-lightgrey)](https://marvinhauke.github.io/cmdAbl/limits/)
 
 # cmdAbl
 
@@ -86,7 +86,7 @@ More: [Commands](https://marvinhauke.github.io/cmdAbl/reference/commands/) for t
 ## Requirements
 
 - **macOS.** cmdAbl has been tested on macOS only.
-- **Ableton Live with Extensions support.** The Extensions SDK is in beta; cmdAbl is built against version 1.0.0-beta.1. This release is tested with Live 12.4.16.
+- **Ableton Live with Extensions support.** The Extensions SDK is in beta; cmdAbl is built against version 1.0.0-beta.1. This release is tested with the Live 12.4.25 beta (Live 12.4.16, the current non-beta release, has no Extensions).
 - **[Karabiner-Elements](https://karabiner-elements.pqrs.org)** (free), for the `:` key. It is optional: the palette
   also opens from Live's context menu.
 - **The cmdAbl Remote Script** (0.1.14, shipped with cmdAbl). The setup page copies it; then choose it as Control

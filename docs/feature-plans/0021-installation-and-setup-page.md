@@ -91,6 +91,9 @@ disk, `karabiner_cli`, the Remote Script's `hello`, and the version shipped with
   `karabiner://karabiner/assets/complex_modifications/import?url=http%3A%2F%2F127.0.0.1%3A27199%2Fkarabiner%2Fcmdabl.json`
   (a temporary server) made Karabiner fetch the file and show its Import dialog with the cmdAbl rule.
   `cmdabl setup karabiner` (link the file) stays as the fallback.
+- **Open Karabiner** (user, 2026-11-10): the row "added but not enabled" opens `karabiner://karabiner/` with `openUrl`,
+  which brings up the Karabiner-Elements Settings window (checked by hand; it does not pick the Complex Modifications tab).
+  `openUrl` allows exactly that string, next to the import link.
 - ✓ is decided as today (the rule is linked or imported) plus, if possible, the rule being enabled
   (read `~/.config/karabiner/karabiner.json`, read-only). If reading that is unreliable, ✓ means
   "imported", and the row says "enable it in Karabiner if `:` doesn't work".

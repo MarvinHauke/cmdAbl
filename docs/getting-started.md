@@ -7,7 +7,8 @@ the Set that is open. This page takes you from installing cmdAbl to your first c
 
 - A Mac. cmdAbl has been tested on macOS only.
 - A version of Ableton Live with Extensions support. The Extensions SDK is in beta; cmdAbl is built against
-  version 1.0.0-beta.1 of it. This release is tested with Live 12.4.16.
+  version 1.0.0-beta.1 of it. This release is tested with the Live 12.4.25 beta
+  (Live 12.4.16, the current non-beta release, has no Extensions).
 - [Karabiner-Elements](https://karabiner-elements.pqrs.org) (free), for the `:` key. This is optional. Without it,
   you open the palette from a context menu. If you want it, install it before step 2, or use the button on the setup page.
 
