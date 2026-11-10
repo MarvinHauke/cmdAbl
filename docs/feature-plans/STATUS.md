@@ -64,6 +64,7 @@ All releases were tested in Live, including the installed `.ablx`.
     break (`46ce180`, checked in Live); setup page docs link follows the renamed heading (`488b4d6`).
     Open: the user's hand checks, the "Open Karabiner" button (below), then the PR. Installed `.ablx` tested by the user in Live 12.4.25b1 (2026-11-10).
   - **Open Karabiner** (user, 2026-11-10): the row "rule added but not enabled" gets a button that opens Karabiner-Elements Settings (`karabiner://karabiner/`, checked by hand: opens the Settings window; exact-match allow in `openUrl`). cmdabl-core; 0021 §3. Built `8026d0f`, clicked in Live. Mock `cmdabl setup --simulate <state>` (dev builds) `a125a9d`; all states captured 2026-11-10.
+  - **Restart Live** (user, 2026-11-10; 0021 §2): a button on the restart row (macOS). Built `8e0fbd0`. Live test 2026-11-10: headless refused (exit 5), the button quit Live and Live started again by itself (~5 s), no Automation prompt; Cancel in Live's save dialog keeps Live open, but showed the raw AppleScript error (-128). Fix with cmdabl-core: Cancel → "Restart cancelled; Live stays open." (exit 0).
   - **Live 12 marking** (user, 2026-11-10): 0.1.6 is the last release built for Live 12, tested with
     the Live 12.4.25 beta (12.4.16, the non-beta release, has no Extensions; corrected by the user the same day). Release notes, the README badge and `docs/limits.md` say so; an extra git tag
     `live12-last` on the release commit next to `v0.1.6`.
