@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- notify surface (see src/core/surfaces/ui.ts). SIZE: src/core/surfaces/notifySize.ts (sectionsSize) mirrors this page's CSS heights: heading 18, plain row 24, row with a button 32, wrapped row lines×18+6, help line 36, footer 24, section separator 21, plus the gaps (page padding 16, block gap 12, items margin 5, row gap 4). Change a height here and notifySize together. In: MESSAGE_PLACEHOLDER = the message string; SECTIONS_PLACEHOLDER = null or [{ heading, meta?, items: [string] }] (drawn instead of the message: accent heading, dim meta right-aligned, items as wrapping chips, a rule between sections; an item "…" means the list was cut); LINK_PLACEHOLDER = null or { label, url } (an accent button with the label next to Close, the url as its tooltip; the page never opens or returns the url); an item may also be { text, status?: 'ok'|'warn'|'fail', action?: { label, help? } } (a full-width row: mark ✓ ! ✗ in theme colours, the text, the action's label as a button at the row end; command/url of an action are core's, the page never reads them); TOGGLE_PLACEHOLDER = null or { label, setting, on } (a checkbox in the footer, initially checked when on is true; setting is core's); HELP_PLACEHOLDER = null or false (false: no help line text follows hover/focus). A help line and the footer checkbox show only when an action or the toggle exists; otherwise the page is as before. Out: '' (Close, Esc, Enter with no button focused), '{"open":true}' when the link button is clicked (core opens its own copy of the url), '{"action":[sectionIndex,itemIndex]}' when a row button is used. With a toggle, every answer except an unchanged plain close carries "toggle":boolean (the checkbox's state); an unchanged close answers ''. Keys: Tab through the buttons and the checkbox, Enter or Space activates. -->
+<!-- notify surface (see src/core/surfaces/ui.ts). SIZE: src/core/surfaces/notifySize.ts (sectionsSize) mirrors this page's CSS heights: heading 18, plain row 24, row with a button 32, wrapped row lines×18+6, help line 36, footer 24, section separator 21, plus the gaps (page padding 16, block gap 12, items margin 5, row gap 4). Change a height here and notifySize together. In: MESSAGE_PLACEHOLDER = the message string; SECTIONS_PLACEHOLDER = null or [{ heading, meta?, link?: { label, help? }, items: [string] }] (drawn instead of the message: accent heading, dim meta right-aligned, items as wrapping chips, a rule between sections; an item "…" means the list was cut; a section's link is a quiet button (dim, accent on hover/focus) in the heading line after the heading, in the Tab order before the section's rows, its help in the help line; it never changes the heading height and the page never sees a url); LINK_PLACEHOLDER = null or { label, url } (an accent button with the label next to Close, the url as its tooltip; the page never opens or returns the url); an item may also be { text, status?: 'ok'|'warn'|'fail', action?: { label, help? } } (a full-width row: mark ✓ ! ✗ in theme colours, the text, the action's label as a button at the row end; command/url of an action are core's, the page never reads them); TOGGLE_PLACEHOLDER = null or { label, setting, on } (a checkbox in the footer, initially checked when on is true; setting is core's); HELP_PLACEHOLDER = null or false (false: no help line text follows hover/focus). A help line and the footer checkbox show only when an action or the toggle exists; otherwise the page is as before. Out: '' (Close, Esc, Enter with no button focused), '{"open":true}' when the link button is clicked (core opens its own copy of the url), '{"action":[sectionIndex,itemIndex]}' when a row button is used, '{"link":sectionIndex}' when a section link is used. With a toggle, every answer except an unchanged plain close carries "toggle":boolean (the checkbox's state); an unchanged close answers ''. Keys: Tab through the buttons and the checkbox, Enter or Space activates. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -29,6 +29,10 @@
     .sec + .sec { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
     .sec-head { display: flex; align-items: baseline; gap: 12px; }
     .sec-head .h { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+    /* Section link: quiet text button in the heading line. Height stays 18 (notifySize); the hit area grows through ::before to 24 px. */
+    .sec-head .slink { flex: none; position: relative; min-height: 0; height: 18px; padding: 0; border: 0; background: none; color: var(--dim); font: inherit; line-height: 18px; cursor: pointer; }
+    .sec-head .slink::before { content: ''; position: absolute; inset: -3px -4px; }
+    .sec-head .slink:hover, .sec-head .slink:focus-visible { color: var(--accent); background: none; }
     .sec-head .meta { margin-left: auto; flex: none; color: var(--dim); font-size: 11px; }
     .sec-items { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 5px; padding-left: 2ch; }
     .chip { background: var(--bg-row); border: 1px solid var(--border); border-radius: 2px; padding: 0 6px; line-height: 18px; overflow-wrap: anywhere; min-width: 0; }
@@ -116,6 +120,17 @@
         h.className = 'h';
         h.textContent = String(s.heading ?? '');
         head.appendChild(h);
+        const l = s.link;
+        if (l && typeof l.label === 'string' && l.label) {
+          hasActions = true;
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'slink';
+          b.textContent = l.label;
+          b.dataset.help = typeof l.help === 'string' && l.help ? l.help : l.label + ': open this link (Enter)';
+          b.addEventListener('click', () => send(answer({ link: si })));
+          head.appendChild(b);
+        }
         if (s.meta) {
           const meta = document.createElement('span');
           meta.className = 'meta';
