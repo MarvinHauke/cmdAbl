@@ -40,6 +40,9 @@ export function groupByTopic<T>(
 /** The `help` list: a heading per topic, its commands indented below it with their summaries. */
 export function commandListText(defs: ReadonlyArray<{ name: string; description: string; topic?: string }>): string {
   return groupByTopic(defs, (def) => def.name, (def) => def.topic)
-    .flatMap((g, i) => [...(i ? [""] : []), g.title, ...g.items.map((def) => `  ${def.name.padEnd(12)} ${def.description}`)])
+    .flatMap((g, i) => {
+      const width = Math.max(12, ...g.items.map((d) => d.name.length + 1));
+      return [...(i ? [""] : []), g.title, ...g.items.map((def) => `  ${def.name.padEnd(width)} ${def.description}`)];
+    })
     .join("\n");
 }

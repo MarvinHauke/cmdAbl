@@ -509,24 +509,28 @@ export function usage(node: CommandNode<any, any>, path: string[]): string {
   return parts.join(" ");
 }
 
+/** Rows `  name  summary`, the name column as wide as the longest name plus two spaces (at least 12 wide plus one). */
+function rows(entries: ReadonlyArray<[string, string]>, min = 12): string[] {
+  const width = Math.max(min, ...entries.map(([name]) => name.length + 1));
+  return entries.map(([name, text]) => `  ${name.padEnd(width)} ${text}`);
+}
+
 /** The lines of the `commands:`, `arguments:` and `options:` sections (shared by the short and the full help). */
 function sections(node: CommandNode<any, any>): string[] {
   const lines: string[] = [];
   if (node.children?.length) {
     lines.push("", "commands:");
-    for (const child of node.children) lines.push(`  ${child.name.padEnd(12)} ${child.summary}`);
+    lines.push(...rows(node.children.map((child) => [child.name, child.summary])));
   }
-  if (node.config) lines.push("", "settings:", `  ${`${node.name} config`.padEnd(12)} ${node.config.summary}`);
+  if (node.config) lines.push("", "settings:", ...rows([[`${node.name} config`, node.config.summary]]));
   const described = (node.args ?? []).filter((arg) => arg.summary);
   if (described.length) {
     lines.push("", "arguments:");
-    for (const arg of described) lines.push(`  ${`<${arg.name}>`.padEnd(12)} ${arg.summary}`);
+    lines.push(...rows(described.map((arg): [string, string] => [`<${arg.name}>`, arg.summary ?? ""])));
   }
   if (effectiveOptions(node).length) {
     lines.push("", "options:");
-    for (const opt of effectiveOptions(node)) {
-      lines.push(`  ${optionFlag(opt).padEnd(22)} ${opt.summary}${optionNotes(opt)}`);
-    }
+    lines.push(...rows(effectiveOptions(node).map((opt): [string, string] => [optionFlag(opt), `${opt.summary}${optionNotes(opt)}`]), 22));
   }
   return lines;
 }

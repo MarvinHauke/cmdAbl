@@ -836,3 +836,17 @@ test("cmdabl setup --simulate exists only when the build asks for it, and is abs
   assert.doesNotMatch((await prod.run("cmdabl setup --help")).result.message ?? "", /simulate/);
   assert.equal(shown.length, 2);
 });
+
+test("help columns keep two spaces after the longest name", () => {
+  const node: CommandNode<any, any> = {
+    name: "history",
+    summary: "h",
+    config: { summary: "open the settings of history" } as any,
+    children: [{ name: "a-very-long-subcommand", summary: "long one", run: () => {} }, { name: "x", summary: "short", run: () => {} }],
+    run: () => {},
+  } as any;
+  const text = helpText(node, ["history"]);
+  assert.match(text, /^  history config {2}open the settings of history$/m);
+  assert.match(text, /^  a-very-long-subcommand {2}long one$/m);
+  assert.match(text, /^  x {23}short$/m);
+});
