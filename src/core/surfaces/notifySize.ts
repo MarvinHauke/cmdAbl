@@ -102,7 +102,7 @@ export function sectionsSize(sections: ResultSection[], options: { toggle: boole
       body += (k > 0 ? SEC_ROW_GAP : 0) + Math.max(buttonWidth(i) > 0 ? SEC_ROW_BUTTON : SEC_ROW_MIN, lines * NOTIFY_LINE_HEIGHT + SEC_ROW_PAD);
     });
   });
-  const help = options.toggle || sections.some((s) => s.link || s.items.some((i) => typeof i !== "string" && i.action));
+  const help = options.toggle || sections.some((s) => s.items.some((i) => typeof i !== "string" && i.action));
   const height = SEC_PAGE_PADDING + body + (help ? SEC_GAP + NOTIFY_HELP_LINE_HEIGHT : 0) + SEC_GAP + SEC_FOOTER + SEC_SLACK;
   return { width, height: Math.min(Math.max(height, NOTIFY_MIN_HEIGHT), 640) };
 }

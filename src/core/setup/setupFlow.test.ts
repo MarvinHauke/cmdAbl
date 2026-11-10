@@ -227,33 +227,6 @@ test("autoCopy: only with setup.autoScript, only for a missing or older script; 
   assert.match(failing.logs.join("\n"), /boom/);
 });
 
-test("the Keyboard trigger heading carries the Karabiner website link; its answer opens it and the page comes back", async () => {
-  const h = harness({ answers: [{ link: 0 }, null] });
-  await h.flow.show();
-  assert.equal(h.requests.length, 2);
-  assert.deepEqual(h.requests[0]!.sections![0]!.link, { label: "Karabiner-Elements ↗", help: "Open the Karabiner-Elements website in your browser.", url: "https://karabiner-elements.pqrs.org/" });
-  assert.deepEqual(h.opened, ["https://karabiner-elements.pqrs.org/"]);
-  // a link answer for a section without one opens nothing
-  const g = harness({ answers: [{ link: 1 }] });
-  await g.flow.show();
-  assert.deepEqual(g.opened, []);
-  assert.equal(g.requests.length, 1);
-});
-
-test("parseNotifyAnswer: a link answer only for a section that has a link; capSections keeps a usable link", () => {
-  const sections: ResultSection[] = [{ heading: "a", items: [], link: { label: "L", url: "https://x" } }, { heading: "b", items: [] }];
-  assert.deepEqual(parseNotifyAnswer('{"link":0}', { sections }), { link: 0 });
-  assert.deepEqual(parseNotifyAnswer('{"link":0,"toggle":true}', { sections, toggle: { label: "x", setting: "s", on: false } }), { link: 0, toggle: true });
-  assert.equal(parseNotifyAnswer('{"link":1}', { sections }), null);
-  assert.equal(parseNotifyAnswer('{"link":"0"}', { sections }), null);
-  assert.equal(parseNotifyAnswer('{"link":7}', { sections }), null);
-  const out = capSections([...sections, { heading: "c", items: [], link: { label: " ", url: "https://x" } }, { heading: "d", items: [], link: { label: "L", url: "" } }]);
-  assert.deepEqual(out[0]!.link, { label: "L", url: "https://x" });
-  assert.equal(out[1]!.link, undefined);
-  assert.equal(out[2]!.link, undefined);
-  assert.equal(out[3]!.link, undefined);
-});
-
 test("--simulate: only the facts change; the state file is not written; the page keeps simulating after a button; openIfNeeded never simulates", async () => {
   const { simulateFacts, SIMULATE_STATES } = await import("./simulate.js");
   const { buildSetupRows } = await import("./setupRows.js");
