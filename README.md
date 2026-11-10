@@ -9,7 +9,7 @@
 
 📖 [Read the documentation](https://marvinhauke.github.io/cmdAbl/) · 🚀 [Get started](https://marvinhauke.github.io/cmdAbl/getting-started/)
 
-![Screen recording of the palette: mute drums mutes the drum tracks, solo !#drums solos the other tracks, and mute --pick #drums opens a pick list where rows are marked and Enter applies](docs/assets/images/hero.gif)
+![Screen recording of the palette: mute drums mutes the drum tracks, solo !#drums solos the other tracks, and mute --pick #drums opens a pick list where a row is marked and Enter applies; a help line at the bottom of the palette names the command and its arguments](docs/assets/images/hero.gif)
 
 ## What it does for you
 
@@ -18,9 +18,9 @@
 - **Asks instead of guessing.** If a name fits several tracks, cmdAbl shows a pick list. Live changes only when you press `Enter`.
 - **Installs community extensions.** The `pakabl` command lists extensions from a curated list and installs them for you.
 
-![Screen recording of the tag board (tag -l): "analog" is typed into the add field of #drums, → steps into the suggestions and Enter adds three matching tracks while the text stays; "vermona drm" and Enter add one more; Apply shows 4 changes](docs/assets/images/tags.gif)
+![Screen recording of the tag board (tag -l): "ba" is typed into the add field of #drums, the suggestion /Bass appears and Enter adds it as a chip with a dashed ring; the text stays, "syn" is typed in its place and Enter adds /Synth; the Apply button reads "Apply (2 changes)"](docs/assets/images/tags.gif)
 
-![The pick list for tag --edit #drums: all regular tracks; Synth and Lead (tagged drums) and Kick, Snare and Perc are marked, and the boxes show the result of Enter: drums off for Synth and Lead, on for Kick, Snare and Perc](docs/assets/images/tag-pick.png)
+![The pick list for tag --edit #drums: the five regular tracks Kick, Bass, Lead, Percs and Synth, each with its tags; Kick and Bass are marked with a dashed ring, and the boxes show the result of Enter: drums off for Kick, on for Bass](docs/assets/images/tag-pick.png)
 
 ## Before you start
 

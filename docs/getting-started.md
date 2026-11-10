@@ -113,7 +113,7 @@ from step 2 works too.
 | `↑` / `↓` | moves through the list |
 | `Esc` | closes the palette without running anything |
 
-![The palette open with the text sn typed: the track Snare and the devices below it appear as rows, with their path in grey](assets/images/palette.png)
+![The palette open with the text perc typed: the track Percs and the devices below it appear as rows, with their path in grey, followed by a device on the track Lead, and the footer lists the keys Tab, ↑↓, Enter and Esc](assets/images/palette.png)
 
 *Type part of a name: tracks, devices and chains appear as rows. Enter selects the highlighted one.*
 
@@ -126,14 +126,14 @@ Type each one in the palette and press `Enter`.
 - `goto /Lead` selects the track Lead in Live. Partial names work too: `goto lead`.
 - `mute /Bass` mutes the track Bass, and again unmutes it. `mute --set 1 /Bass` mutes it whatever its state;
   `mute --set 0 /Bass` unmutes it.
-- Tag two of your tracks, for example `tag /Kick drums` and `tag /Snare drums`. Then `mute drums` mutes both at once.
+- Tag two of your tracks, for example `tag /Kick drums` and `tag /Percs drums`. Then `mute drums` mutes both at once.
 - `tag -l` opens the tag board, where you see every tag and its tracks and change them.
 
 When a name matches more than one object, cmdAbl shows a **pick list** instead of guessing. Type to filter, press
 `↑` and `↓` to move, `Enter` to choose and `Esc` to cancel. Commands that take several tracks, such as `mute`, let
 you mark more than one row with `Tab`.
 
-![The pick list for mute --pick #drums, with six tracks: Bass, Lead, Guitar, Kick, Snare and Perc, each with its tags; the speaker buttons of Bass, Guitar and Kick are marked with a dashed ring](assets/images/pick-list.png)
+![The pick list for mute --pick #drums, with two tracks, Kick and Percs, each with its tag; the speaker button of Kick is marked with a dashed ring](assets/images/pick-list.png)
 
 *A name that matches several tracks opens the pick list. The line above the filter shows the command that Enter
 will run, and the buttons show the state that Enter would set.*

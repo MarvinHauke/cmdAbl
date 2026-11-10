@@ -49,7 +49,7 @@ only where nothing is typed yet.
 
 A name with spaces is quoted for you.
 
-![The palette after `tag --rename `: the five tags of the Set with their track counts, and the grey hint `<old>`.](assets/images/complete-rename.png)
+![The palette after `tag --rename `: the three tags of the Set, bass, drums and synth, with their track counts, and the grey hint `<old>`.](assets/images/complete-rename.png)
 
 ### The footer: what the line means
 
@@ -96,7 +96,7 @@ A command takes objects as text. cmdAbl reads that text as follows:
 
 When a name matches more than one object, cmdAbl asks. It never picks one for you.
 
-![The palette with kic typed: the track Kick and the devices below it, each with its path in grey, then the Magic Mid devices of the main track and the command goto](assets/images/palette-objects.png)
+![The palette with kic typed: the track Kick and its device Hihat Open 909, then the Magic Mid devices of the main track with their path in grey, and the commands goto, find and lom](assets/images/palette-objects.png)
 
 *Type part of a name, and the palette lists the objects that match.*
 
@@ -153,7 +153,7 @@ Racks can sit inside a chain of another rack. An Instrument Rack whose chain hol
 
 ![The find pick list headed find: "kick" — 16 matches: the Kick track and its devices, and the chains and devices of a Drum Rack nested in an Instrument Rack, each row with its path and its kind](assets/images/find-nested.png)
 
-*`find kick` reaches the pads of a Drum Rack nested in an Instrument Rack.*
+*`find kick` reaches the pads of a Drum Rack nested in an Instrument Rack. The picture comes from a Set with more tracks than the other examples on this page.*
 
 Selecting a pad or a chain does not change how the track is shown. Add `--unfold` to `goto` or `find` to show the
 track's chains as columns in the Session mixer. Live stores this view state with the Set, so the Set counts as
@@ -180,7 +180,7 @@ Without a pattern, `find` needs `-L` or one of `-t`, `-d` and `-c`; a bare `find
 `-L` takes a whole number from 0 to 12 with a pattern, and from 1 without one. For finding tracks by tag, see
 [Tags](#use-tags-as-targets).
 
-![The find pick list headed find: — 11 matches: every track of the Set with its tags, such as #synth on Synth and #bass #drums on Bass, the three return tracks, and the main track last](assets/images/find-top.png)
+![The find pick list headed find: — 6 matches: every track of the Set with its tags, such as #drums on Kick and #bass on Bass, and the main track last](assets/images/find-top.png)
 
 *`find -L 1` lists the top-level tracks, each with its tags.*
 
@@ -201,7 +201,7 @@ want explicitly, like Cmd-clicking the buttons in Live.
 
 `vol` moves track faders in dB (decibels). It needs no Remote Script.
 
-- `vol <dB> <target>…` moves each fader by `<dB>` from where it is. With Kick at -6 dB and Perc at -3 dB,
+- `vol <dB> <target>…` moves each fader by `<dB>` from where it is. With Kick at -6 dB and Percs at -3 dB,
   `vol -6 #drums` gives -12 and -9, so the balance between them stays.
 - `vol --set <dB> <target>…` (short `-s`) puts every fader at that level. `vol --set -inf /Lead` silences the Lead
   track.
@@ -224,7 +224,7 @@ want explicitly, like Cmd-clicking the buttons in Live.
   /Lead, …". It names at most five tracks, then "+N more"; the log has them all. A fader already at -inf is left
   out.
 
-  ![A message window: limit reached at +6 dB (the maximum): /Bass, /Lead, /Guitar, /Kick, /Snare, +1 more](assets/images/vol-clip.png)
+  ![A message window, from a Set with more tracks: limit reached at +6 dB (the maximum): /Bass, /Lead, /Guitar, /Kick, /Snare, +1 more](assets/images/vol-clip.png)
 - A fader at -inf stays there with a relative step. Only `--set` brings it back.
 - `--clip` together with `--set` is a usage error, and so is a relative `-inf`; use `vol --set -inf`.
 
@@ -291,14 +291,14 @@ tracks.
   chains and pads of the tagged tracks.
 - Without the Remote Script, `#` answers that the Remote Script is not running. Plain words work as before.
 
-![The find pick list for find #drums: six tracks, Bass, Lead, Guitar, Kick, Snare and Perc, each with the tag drums](assets/images/find-tags.png)
+![The find pick list for find #drums: two tracks, Kick and Percs, each with the tag drums](assets/images/find-tags.png)
 
 ### The tag board
 
 `tag -l` (or `tag --list`) opens the tag board. It shows one section per tag. The board opens with the cursor in the
 **New tag** row.
 
-![Screen recording of the tag board (tag -l): "analog" is typed into the add field of #drums, → steps into the suggestions and Enter adds three matching tracks while the text stays; "vermona drm" and Enter add one more; Apply shows 4 changes](assets/images/tags.gif)
+![Screen recording of the tag board (tag -l): "ba" is typed into the add field of #drums, the suggestion /Bass appears and Enter adds it as a chip with a dashed ring; the text stays, "syn" is typed in its place and Enter adds /Synth; the Apply button reads "Apply (2 changes)"](assets/images/tags.gif)
 
 *`tag -l`: add several tracks to #drums by typing and Enter. Nothing changes in Live until you press Apply.*
 
@@ -351,7 +351,7 @@ empty **add…** input. The section is struck through, and the footer says what 
 unmarks it. When you press **Apply**, a bar in the footer asks "Remove #fx from N tracks?". **Cancel** is the
 default (`Esc` too) and returns you to editing; **Remove and apply** goes on. A single chip's **×** asks nothing.
 
-![The tag board: one section per tag, with its tracks as chips and an add field; the untagged tracks are listed at the bottom](assets/images/tag-board.png)
+![The tag board: one section per tag, bass, drums and synth, with its tracks as chips and an add field, and the key help line, Settings, Apply and Close at the bottom](assets/images/tag-board.png)
 
 Live does not change until you press **Apply (N changes)**. Then the board closes. **Close** with nothing applied
 changes nothing and shows no message.
@@ -409,9 +409,9 @@ any click except Close, cancels the warning. The footer shows the main keys.
 
 The pair to remember: `tag /Lead` picks the tags of one track, and `tag -e fx` picks the tracks of one tag.
 
-![The pick list for tag --edit #drums: all regular tracks; Synth and Lead (tagged drums) and Kick, Snare and Perc are marked, and the boxes show the result of Enter: drums off for Synth and Lead, on for Kick, Snare and Perc](assets/images/tag-pick.png)
+![The pick list for tag --edit #drums: the five regular tracks Kick, Bass, Lead, Percs and Synth, each with its tags; Kick and Bass are marked with a dashed ring, and the boxes show the result of Enter: drums off for Kick, on for Bass](assets/images/tag-pick.png)
 
-![The tag list for tag -e: the tags bass, drums, fx, lead and synth, each with its track count](assets/images/tag-list.png)
+![The tag list for tag -e: the tags bass, drums and synth, each with its track count](assets/images/tag-list.png)
 
 *`tag -e #drums` and the tag list of a bare `tag -e`.*
 
@@ -470,7 +470,7 @@ shows how cmdAbl's ports and Remote Script operations map to the Live Object Mod
 - The web manuals need an internet connection. The command page does not.
 - An unknown command answers with close matches under "Did you mean".
 
-![The man page for mute inside Live: the summary, usage, arguments and options, with Close and Open in browser buttons](assets/images/man-page.png)
+![The man page for mute inside Live: the summary, usage, the settings line `mute config`, arguments and options, with Close and Open in browser buttons](assets/images/man-page.png)
 
 ## A note per Set: `note`
 
@@ -740,7 +740,7 @@ A remembered line keeps:
 
 The history is kept in memory. It is gone when cmdAbl restarts.
 
-![The empty palette: the commands help, cmdabl, history, goto, find, next, prev and mute, with no rows of recent commands](assets/images/palette-empty.png)
+![The empty palette: the commands cmdabl, history, goto, find, next, prev, mute and solo, each with its summary, and the key help line at the bottom, with no rows of recent commands](assets/images/palette-empty.png)
 
 *With no history, the empty palette lists only the commands.*
 
@@ -758,6 +758,6 @@ The `history` command manages the list:
 
 The [command reference](reference/commands.md) has the full usage.
 
-![The man page of history inside Live: the summary, usage, the subcommands clear, forget and restore, the web address, and the Close and Open in browser buttons](assets/images/man-history.png)
+![The man page of history inside Live: the summary, usage, the subcommands clear, forget and restore, the settings line `history config`, the web address, and the Close and Open in browser buttons](assets/images/man-history.png)
 
 *`man history` shows the page of the history command.*
