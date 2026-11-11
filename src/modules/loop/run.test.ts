@@ -8,7 +8,7 @@ import { parse } from "../../core/command/parse.js";
 import { activate } from "./index.js";
 
 type Result = { code: number; message?: string; log?: string[] } | undefined;
-const PLAYING = { playing: true, session: false, pos: "12.3.1.1", time: 44, barStart: 44, barLen: 4, loop: { on: false, start: 0, length: 16 } };
+const PLAYING = { playing: true, session: false, pos: "12.3.1.1", time: 44, barStart: 44, barLen: 4, songLength: 200, loop: { on: false, start: 0, length: 16 } };
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 function setup(transport: object | null = PLAYING, settings: Record<string, unknown> = {}) {
@@ -72,16 +72,36 @@ test("show reports the loop; nothing runs without the Remote Script (exit 5)", a
   const none = setup(null);
   for (const n of ["show", "here", "on", "off"]) assert.equal((await none.run(n))!.code, ExitCode.UNAVAILABLE, n);
   const failing = setup();
-  failing.fake.api.set.setLoop = async () => null;
+  failing.fake.api.set.setLoop = async () => ({ ok: false, code: 5, text: "no script" });
   for (const n of ["here", "on"]) assert.equal((await failing.run(n))!.code, ExitCode.UNAVAILABLE, n);
 });
 
 test("a failed restore is exit 5 with a warning", async () => {
   const s = setup();
   await s.run("here");
-  s.fake.api.set.setLoop = async () => null;
+  s.fake.api.set.setLoop = async () => ({ ok: false, code: 5, text: "no script" });
   assert.equal((await s.run("back"))!.code, ExitCode.UNAVAILABLE);
   assert.ok(s.fake.logged.some((l) => l.level === "warn" && /not restored/.test(l.text)));
+});
+
+test("loop back when Live refuses the old loop: exit 1 with Live's reason", async () => {
+  const s = setup();
+  await s.run("here");
+  s.fake.api.set.setLoop = async () => ({ ok: false, code: 1, text: "Live said no" });
+  const r = (await s.run("back"))!;
+  assert.equal(r.code, ExitCode.FAILURE);
+  assert.match(r.message ?? "", /Live said no/);
+  // the old loop is still remembered: a second try works once Live accepts
+  s.fake.api.set.setLoop = async (l) => ({ ok: true, loop: l });
+  assert.equal((await s.run("back"))!.code, ExitCode.OK);
+});
+
+test("a refused loop here shows Live's text with exit 1", async () => {
+  const s = setup();
+  s.fake.api.set.setLoop = async () => ({ ok: false, code: 1, text: "Cannot set the Loopstart" });
+  const r = (await s.run("here"))!;
+  assert.equal(r.code, ExitCode.FAILURE);
+  assert.match(r.message ?? "", /Cannot set the Loopstart/);
 });
 
 test("loop declares loop.bars; the tree is valid and documented; bare loop runs show", () => {

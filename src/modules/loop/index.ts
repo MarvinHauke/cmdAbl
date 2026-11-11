@@ -16,6 +16,10 @@ export function activate(api: ModuleApi): void {
 
   const unavailable = (what: string): CommandResult => fail(ExitCode.UNAVAILABLE, `loop ${what}: ${NO_SCRIPT}`);
 
+  /** A setLoop failure: its own code (1 Live refused, 5 no script) and text. */
+  const failed = (what: string, r: { code: 1 | 5; text: string }): CommandResult =>
+    fail(r.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `loop ${what}: ${r.text}`);
+
   api.commands.add({
     name: "loop",
     topic: "Look things up",
@@ -65,12 +69,17 @@ export function activate(api: ModuleApi): void {
           if (transport === null) return unavailable("here");
           const wanted = loopHere(transport, bars);
           if (wanted === null) return fail(ExitCode.FAILURE, "loop here: no usable bar length from Live");
-          const set = await api.set.setLoop(wanted);
-          if (set === null) return unavailable("here");
+          const barNumber = Math.round(transport.barStart / transport.barLen) + 1;
+          // songLength 0: an older script that doesn't report it; Live then answers for itself.
+          if (transport.songLength > 0 && transport.barStart >= transport.songLength)
+            return fail(ExitCode.FAILURE, `loop here: the playhead is past the end of the song (bar ${barNumber})`);
+          const result = await api.set.setLoop(wanted);
+          if (!result.ok) return failed("here", result);
+          const set = result.loop;
           // Still ours and untouched: keep the first old loop.
           if (ours === null || !sameLoop(transport.loop, ours.set)) ours = { old: transport.loop, set };
           else ours = { old: ours.old, set };
-          return { ...ok(), log: [`loop here: ${bars} bar${bars === 1 ? "" : "s"} from bar ${Math.round(transport.barStart / transport.barLen) + 1}`] };
+          return { ...ok(), log: [`loop here: ${bars} bar${bars === 1 ? "" : "s"} from bar ${barNumber}`] };
         },
       },
       {
@@ -100,13 +109,17 @@ export function activate(api: ModuleApi): void {
         run: async (): Promise<CommandResult> => {
           if (ours === null) return { ...ok(), log: ["loop back: nothing to restore"] };
           const mine = ours;
-          ours = null;
           const current = (await api.set.transport())?.loop ?? null;
-          if (!shouldRestoreLoop(current, mine.set)) return { ...ok(), log: ["loop back: loop left alone (it was moved meanwhile)"] };
-          if ((await api.set.setLoop(mine.old)) === null) {
-            api.logger.warn("loop back: loop not restored: the Remote Script did not answer");
-            return unavailable("back");
+          if (!shouldRestoreLoop(current, mine.set)) {
+            ours = null;
+            return { ...ok(), log: ["loop back: loop left alone (it was moved meanwhile)"] };
           }
+          const restored = await api.set.setLoop(mine.old);
+          if (!restored.ok) {
+            api.logger.warn(`loop back: loop not restored: ${restored.text}`);
+            return failed("back", restored); // `ours` is kept: loop back can be tried again
+          }
+          ours = null;
           return { ...ok(), log: ["loop back: loop put back"] };
         },
       },
@@ -133,7 +146,8 @@ export function activate(api: ModuleApi): void {
     const transport = await api.set.transport();
     if (transport === null) return unavailable(word);
     if (transport.loop.on === on) return { ...ok(), log: [`loop ${word}: already ${word}`] };
-    if ((await api.set.setLoop({ ...transport.loop, on })) === null) return unavailable(word);
+    const result = await api.set.setLoop({ ...transport.loop, on });
+    if (!result.ok) return failed(word, result);
     return { ...ok(), log: [`loop ${word}: done`] };
   }
 }

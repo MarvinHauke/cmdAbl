@@ -179,7 +179,7 @@ test("the retry after a failed save: the page answers the kept text unchanged (i
 
 // --- stamps ---------------------------------------------------------------------------------------------
 
-const PLAYING = { playing: true, session: false, pos: "12.3.1.1", time: 44, barStart: 44, barLen: 4, loop: { on: false, start: 0, length: 16 } };
+const PLAYING = { playing: true, session: false, pos: "12.3.1.1", time: 44, barStart: 44, barLen: 4, songLength: 200, loop: { on: false, start: 0, length: 16 } };
 const FIXED = new Date(2026, 10, 11, 14, 5);
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
