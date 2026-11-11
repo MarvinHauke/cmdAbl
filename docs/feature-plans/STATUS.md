@@ -43,6 +43,14 @@ All releases were tested in Live, including the installed `.ablx`.
     typing drops it, Discard asks once; `mute` multi pick: ↓ then Space marks, Tab nothing, Esc → filter;
     "Bass 2" typed in the filter stays text; `tag`/`find` pick with fill: Tab fills; palette Tab, ↑/↓,
     Ctrl+n/p.
+  - **Live test through MCP (2026-11-11, Live 13.0b25, script 0.1.15): passed.** transport stopped/playing/
+    session; loop_set incl. snapped values rolled back and bad input refused; `note -m` while playing →
+    `@16.3.1` heading, loop 60–76, "loop put back" on close; `m` from view reopens in 312 ms; loop moved →
+    "left alone"; session clip → loop untouched; empty stamp dropped; pick: Space in the filter types,
+    ↓ Space marks, Esc → filter, Esc closes (cancelled); palette Tab completes. Open for the user: settings
+    page (stampLoop off, loopBars 8), Discard confirm, Ctrl+n/p, "save changes?" after a stamp.
+  - Found (from 0.1.6, not 0.1.7): the palette footer's argument help wraps to a third row for `mute `
+    (UX #10: one row, ends in …). Small ui fix, can go into 0.1.7.
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
 - **Live 13 check (2026-11-11, Live 13.0b25):** the installed 0.1.6 and the dev build run (same Extension
