@@ -145,7 +145,7 @@ will run, and the buttons show the state that Enter would set.*
 The palette, `help`, `man`, `lom`, `cmdabl log` and the history work without the Remote Script. So do `mute`, `solo`
 and `arm` on tracks. These need it:
 
-- Track selection: `goto`, `find`, `next`, `prev`, and picking an object row in the palette. They report that the
+- Track selection: `goto`, `find` (also `find next` and `find prev`), and picking an object row in the palette. They report that the
   Remote Script is not running and select nothing.
 - Tags: `tag`, and targets such as `#fx`.
 - `mute` and `solo` on rack chains and Drum Rack pads. These also need macOS.

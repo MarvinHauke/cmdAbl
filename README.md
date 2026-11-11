@@ -55,7 +55,7 @@ Open the palette (`:`), type a line and press `Enter`.
 
 | Command | What it does |
 | --- | --- |
-| `find`, `goto`, `next`, `prev` | find tracks, devices and chains; select one; step through the matches |
+| `find`, `goto` | find tracks, devices and chains; select one; step through the matches with `find next` and `find prev` |
 | `mute`, `solo`, `arm` | toggle mute, solo or record arm |
 | `vol` | change the fader level in dB |
 | `tag` | tag tracks; `tag -l` opens the tag board |

@@ -172,7 +172,8 @@ and chain whose path contains `808`: the 808 track and everything below it. `fin
 - `find 808 -L 1` also lists what sits one level below those objects, such as the pads of the Drum Rack.
 - `find -c snare` lists only chains and pads. `-t` lists only tracks and `-d` only devices; the flags add up.
 - `find kick` also finds pads inside nested racks, and `find` lists the devices inside chains.
-- `next` and `prev` step through the last `find` list.
+- `find -t next` finds a track named `next`. A flag first, or another word first (`find kick next`), keeps the word a
+  pattern; `find next` alone is the step command below.
 
 Without a pattern, `find` needs `-L` or one of `-t`, `-d` and `-c`; a bare `find` is an error.
 
@@ -186,6 +187,17 @@ Without a pattern, `find` needs `-L` or one of `-t`, `-d` and `-c`; a bare `find
 ![The find pick list headed find: — 6 matches: every track of the Set with its tags, such as #drums on Kick and #bass on Bass, and the main track last](assets/images/find-top.png)
 
 *`find -L 1` lists the top-level tracks, each with its tags.*
+
+### Step through the matches: `find next` and `find prev`
+
+`find next` selects the next object of the last `find`, and `find prev` the one before. At the end of the list they
+wrap around to the other end. They step only through the last `find`; a pick list from another command does not
+replace it. They need no open palette, so you can put them on a [MIDI button](#midi-mapping).
+
+- `find --first #drums` selects the first match without a pick list, and `find --last #drums` the last. The list is
+  kept, so `find next` and `find prev` go on from there.
+- Example for a controller: button A runs `find --first #drums`, button B runs `find next`. A press of A starts at
+  the first drums track and each press of B moves on.
 
 ## Toggles, and what they do not do
 
@@ -287,7 +299,7 @@ tracks.
 
 `find` understands tags too:
 
-- `find #drums` lists the tracks tagged `drums`. `next` and `prev` step through them.
+- `find #drums` lists the tracks tagged `drums`. `find next` and `find prev` step through them.
 - `find !#drums` lists the regular tracks without the tag.
 - `find drums` lists what the path matches and also the tracks tagged `drums`. Their rows show their tags.
 - `find #drums kick` searches inside the tagged tracks. The kind flags and `-L` apply: `find #drums -c` lists the
@@ -775,7 +787,7 @@ A remembered line keeps:
 
 The history is kept in memory. It is gone when cmdAbl restarts.
 
-![The empty palette: the commands cmdabl, history, goto, find, next, prev, mute and solo, each with its summary, and the key help line at the bottom, with no rows of recent commands](assets/images/palette-empty.png)
+![The empty palette: the commands cmdabl, history, goto, find, mute, solo, arm and vol, each with its summary, and the key help line at the bottom, with no rows of recent commands](assets/images/palette-empty.png)
 
 *With no history, the empty palette lists only the commands.*
 

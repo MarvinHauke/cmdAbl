@@ -8,7 +8,7 @@ does, how to install, update and check it, and what its messages mean.
 
 The Extensions SDK cannot do some things that cmdAbl needs. The Remote Script does them:
 
-- **Select.** The SDK cannot change the selection. `goto`, `find`, `next` and `prev` use the script to select a
+- **Select.** The SDK cannot change the selection. `goto` and `find` (with `find next` and `find prev`) use the script to select a
   track, a device, a rack chain or a Drum Rack pad. This includes racks nested inside a chain.
 - **Chains and pads.** The SDK cannot mute or solo a rack chain or a Drum Rack pad. `mute` and `solo` use the
   script for them.
@@ -31,7 +31,7 @@ Without the Remote Script the palette still opens and most commands run:
 
 - `mute`, `solo`, `arm` and `vol` work on tracks. `arm` cannot warn about tracks that Live refuses to arm.
 - `lom`, `man`, `help`, `cmdabl log` and the history work.
-- These need the script: `goto`, `find`, `next`, `prev`, picking an object row in the palette, `tag`, targets such
+- These need the script: `goto`, `find` (with `find next` and `find prev`), picking an object row in the palette, `tag`, targets such
   as `#fx`, `note`, and `mute` and `solo` on rack chains and Drum Rack pads.
 - Those commands answer that the Remote Script is not running. This is the usual answer for a missing script, an old
   copy that Live has not loaded and one that is not chosen as Control Surface, because cmdAbl cannot look into the User
