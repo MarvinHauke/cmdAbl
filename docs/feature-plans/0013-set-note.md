@@ -210,11 +210,20 @@ live page that may run `stamp --loop` and `stamp --unloop` (see "Spelling" below
 - The text is still saved when the page closes (Cmd+S or Esc in view). Without the server the page
   falls back to `then` and close/reopen (above).
 
-**Spelling (architect, 2026-11-11, from review):** the tree forbids a command that runs and has
-subcommands, so the page runs **`stamp --loop`** and **`stamp --unloop`** (options), with the allowlist
-`["stamp"]` (a plain `stamp` from the page would ask and gets exit 4: harmless). When `stamp next`/`prev`/`-l`
-come, decide then whether a group's fallback child may run bare (a tree change: ask the user).
-A page opened by the `stamp` command also ends a stamp in place (Esc runs `stamp --unloop`).
+**Spelling (user, 2026-11-11; replaces `stamp --loop` and the top-level `stamp`):** stamps belong to the
+note, so everything starts with `note`, and actions are subcommands (plan 0005, POSIX style), using the
+new runnable groups (0005 "the `git stash` rule"):
+
+| Line | What it does |
+|---|---|
+| `note` | opens the note (bare-runnable fallback, as before; `note -e` edits) |
+| `note stamp` | adds a stamp (bare-runnable fallback of the `stamp` group) |
+| `note stamp loop` / `note stamp unloop` | the stamp loop on / back (by hand or from the page) |
+| later: `note stamp next`, `note stamp prev`, `note stamp list` | jump between stamps, pick one |
+
+The page's allowlist is `["note stamp loop", "note stamp unloop"]`. A page opened by `note stamp` also ends
+a stamp in place. A short `stamp` comes back later only as a user alias (plan 0020). Read `stamp --loop` /
+`stamp --unloop` / `stamp` above as these lines.
 
 **Key `s` (user, 2026-11-11):** a stamp is added with **`s`** in view (was `m`; read `m` as `s` above).
 

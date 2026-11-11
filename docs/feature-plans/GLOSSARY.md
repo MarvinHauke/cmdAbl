@@ -58,7 +58,7 @@ _Avoid_: search (when the list itself changes)
 ## Note
 
 **Stamp**:
-A timestamped entry at the end of the Set's note (key `s`, command `stamp`), with the song position when the song is running. During Session playback it is linked to the playing scene (later).
+A timestamped entry at the end of the Set's note (key `s`, command `note stamp`), with the song position when the song is running. During Session playback it is linked to the playing scene (later).
 _Avoid_: mark (that is picking rows in a pick list), timestamp, log entry
 
 **Song position**:

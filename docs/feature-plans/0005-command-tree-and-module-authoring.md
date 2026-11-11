@@ -49,6 +49,13 @@ mute -d /vermona/kick /vermona/snare   command → option → positional (variad
   usage line, subcommands/arguments/options one line each, and `more: man <path>` (user,
   2026-10-20, `e56fa9c`). `man <path>` shows the full page (description, examples, link).
 
+**Runnable groups, the `git stash` rule (user, 2026-11-11):** a group may run on its own. Its fallback
+child (`fallback: true`, already used by `find` and `map` when words follow) may also be marked
+**`bare: true`**: then the group typed alone runs that child, as `git stash` runs `git stash push`. It's
+an opt-in exception and stays one; without `bare` a bare group prints its help (as `find` does). The
+standard is extended, not broken: actions are still subcommands, never flags. First users: `note` (bare
+opens the note) and `note stamp` (bare adds a stamp), plan 0013.
+
 ### 2. Node format (serializable data)
 
 ```ts
