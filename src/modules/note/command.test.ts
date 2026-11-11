@@ -8,11 +8,19 @@ const ans = (text: string | null, then: "stamp" | "view" | null = null): string 
 const TEMPLATE = "<script>const NOTE = /*NOTE_PLACEHOLDER*/null;</script>";
 type Result = { code: number; message?: string; log?: string[] } | undefined;
 
+/** A runnable node of the note tree by its words: leaf(fake, "stamp", "loop"); no words = the `open` fallback. */
+function leaf(fake: { commands: Array<{ name: string; children?: unknown[] }> }, ...words: string[]) {
+  let node = fake.commands.find((c) => c.name === "note") as { name: string; children?: unknown[]; run?: unknown };
+  for (const w of words.length === 0 ? ["open"] : words) node = (node.children as typeof node[]).find((c) => c.name === w)!;
+  return node as unknown as { run: (inv: never, ports: never) => Promise<Result>; fallback?: boolean; bare?: boolean };
+}
+const inv = (path: string[], options: Record<string, string | true> = {}) => ({ path, options, args: [] }) as never;
+
 function setup(options: Parameters<typeof createFakeApi>[0] = {}) {
   const fake = createFakeApi(options);
   registerNote(fake.api, TEMPLATE);
   const run = (opts: Record<string, string | true> = {}) =>
-    fake.commands[0]!.run!({ path: ["note"], options: opts, args: [] } as never, undefined as never) as Promise<Result>;
+    leaf(fake).run(inv(["note"], opts), undefined as never);
   /** What the page was given. */
   const given = () => JSON.parse(/const NOTE = (.*);<\/script>/.exec(fake.livePages.at(-1)!.html)![1]!);
   return { fake, run, given };
@@ -131,16 +139,19 @@ test("a note that is really missing (or an empty one) is written after the secon
   assert.equal(fake.fileStore.get("abc.md"), "first note");
 });
 
-test("the command needs the Remote Script (exit 5 comes from the platform) and sits in Look things up", () => {
+test("the note tree: open and add are bare fallbacks, every leaf needs the Remote Script (exit 5 from the platform), no top-level stamp", () => {
   const { fake } = setup();
   const note = fake.commands[0]!;
-  assert.deepEqual(note.requires, ["bridge"]);
+  assert.equal(note.name, "note");
   assert.equal(note.topic, "Look things up");
-  assert.deepEqual((note.options ?? []).map((o) => [o.name, o.short]), [["edit", "e"]]);
-  const stamp = fake.commands[1]!;
-  assert.equal(stamp.name, "stamp");
-  assert.deepEqual(stamp.requires, ["bridge"]);
-  assert.ok(stamp.summary && (stamp.examples ?? []).length > 0);
+  assert.equal(fake.commands.length, 1, "no top-level stamp");
+  const open = leaf(fake) as never as { requires: string[]; options: Array<{ name: string; short?: string }>; fallback: boolean; bare: boolean };
+  assert.deepEqual(open.requires, ["bridge"]);
+  assert.deepEqual(open.options.map((o) => [o.name, o.short]), [["edit", "e"]]);
+  assert.deepEqual([open.fallback, open.bare], [true, true]);
+  const add = leaf(fake, "stamp", "add") as never as { requires: string[]; fallback: boolean; bare: boolean };
+  assert.deepEqual([add.requires, add.fallback, add.bare], [["bridge"], true, true]);
+  for (const w of ["loop", "unloop"]) assert.deepEqual((leaf(fake, "stamp", w) as never as { requires: string[] }).requires, ["bridge"]);
 });
 
 test("a note text with </script> or a placeholder-like text reaches the page escaped, once", async () => {
@@ -184,8 +195,9 @@ function stampSetup(options: Parameters<typeof createFakeApi>[0] = {}, answers: 
     return answers.shift() ?? null;
   }) as never;
   const run = (opts: Record<string, string | true> = {}) => {
-    const stamp = opts.stamp === true;
-    return fake.commands[stamp ? 1 : 0]!.run!({ path: [stamp ? "stamp" : "note"], options: {}, args: [] } as never, undefined as never) as Promise<Result>;
+    return opts.stamp === true
+      ? leaf(fake, "stamp", "add").run(inv(["note", "stamp"]), undefined as never)
+      : leaf(fake).run(inv(["note"]), undefined as never);
   };
   return { fake, run, given, loops };
 }
@@ -315,17 +327,19 @@ test("a failed save in the loop stops it with exit 1 and restores the loop", asy
   assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
 });
 
-// --- stamp --loop / unloop and the live page -----------------------------------------------------------------
+// --- note stamp loop / unloop and the live page -----------------------------------------------------------------
 
 function loopSetup(transport: object | null = PLAYING, settings: Record<string, unknown> = {}) {
   const fake = createFakeApi({ setId: "abc", transport: transport === null ? null : clone(transport as never), settings } as never);
   registerNote(fake.api, TEMPLATE, () => FIXED);
-  const stamp = fake.commands.find((c) => c.name === "stamp")!;
-  const sub = (opts: Record<string, true>) => stamp.run!({ path: ["stamp"], options: opts, args: [] } as never, undefined as never) as Promise<Result>;
-  return { fake, loop: () => sub({ loop: true }), unloop: () => sub({ unloop: true }), both: () => sub({ loop: true, unloop: true }) };
+  return {
+    fake,
+    loop: () => leaf(fake, "stamp", "loop").run(inv(["note", "stamp", "loop"]), undefined as never),
+    unloop: () => leaf(fake, "stamp", "unloop").run(inv(["note", "stamp", "unloop"]), undefined as never),
+  };
 }
 
-test("stamp --loop sets the loop and unloop puts the old one back", async () => {
+test("note stamp loop sets the loop and unloop puts the old one back", async () => {
   const s = loopSetup();
   assert.equal(((await s.loop())!).code, ExitCode.OK);
   assert.deepEqual(s.fake.transport!.loop, { on: true, start: 44, length: 16 });
@@ -333,7 +347,7 @@ test("stamp --loop sets the loop and unloop puts the old one back", async () => 
   assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
 });
 
-test("a second stamp --loop keeps the first old loop", async () => {
+test("a second note stamp loop keeps the first old loop", async () => {
   const s = loopSetup();
   await s.loop();
   await s.loop();
@@ -363,36 +377,50 @@ test("unloop leaves a loop the user moved; --unloop without --loop, and loop wit
   assert.deepEqual(off.fake.transport!.loop, PLAYING.loop);
 });
 
-test("the note page is a live page that may run stamp --loop/unloop and serves the heading", async () => {
+test("the note page is a live page that may run note stamp loop/unloop and serves the heading", async () => {
   const fake = createFakeApi({ setId: "abc", transport: clone(PLAYING), dialogAnswer: ans(null) });
   registerNote(fake.api, TEMPLATE, () => FIXED);
-  await fake.commands[0]!.run!({ path: ["note"], options: {}, args: [] } as never, undefined as never);
+  await leaf(fake).run(inv(["note"]), undefined as never);
   const page = fake.livePages[0]!;
-  assert.deepEqual(page.run, ["stamp"]);
+  assert.deepEqual(page.run, ["note stamp loop", "note stamp unloop"]);
   const heading = page.routes.heading as (q: never) => Promise<unknown>;
   assert.deepEqual(await heading({} as never), { heading: "### @12.3.1 · 2026-11-11 14:05" });
 });
 
-test("safety net: a loop the page set (stamp --loop) is put back when the page closes", async () => {
+test("safety net: a loop the page set (note stamp loop) is put back when the page closes", async () => {
   const s = loopSetup();
   const pages = s.fake.api.ui.livePage;
   s.fake.api.ui.livePage = (async (...a: Parameters<typeof pages>) => {
     await s.loop(); // what the page's run does
     return pages(...a);
   }) as never;
-  await s.fake.commands.find((c) => c.name === "note")!.run!({ path: ["note"], options: {}, args: [] } as never, undefined as never);
+  await leaf(s.fake).run(inv(["note"]), undefined as never);
   assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
 });
 
-test("--loop with --unloop is a usage error; a failing script gives exit 5", async () => {
+test("a failing script gives exit 5", async () => {
   const s = loopSetup();
-  assert.equal(((await s.both())!).code, ExitCode.USAGE);
   s.fake.api.set.setLoop = async () => null;
   assert.equal(((await s.loop())!).code, ExitCode.UNAVAILABLE);
 });
 
-test("the note module registers through the real registry (tree rules hold) with stamp --loop/--unloop parsing", async () => {
+test("the note module registers through the real registry: a valid tree, documented, and the lines parse to the right leaf", async () => {
   const { assertDocumented, declaredBy } = await import("../shared/docs.testkit.js");
+  const { validateTree } = await import("../../core/command/commandTree.js");
+  const { parse } = await import("../../core/command/parse.js");
   const activate = (api: Parameters<typeof registerNote>[0]): void => registerNote(api, TEMPLATE);
-  assertDocumented(declaredBy(activate), ["note", "stamp"]);
+  const roots = declaredBy(activate);
+  assert.deepEqual(validateTree(roots as never), []);
+  assertDocumented(roots, ["note open", "note stamp add", "note stamp loop", "note stamp unloop"]);
+  const ran = (line: string) => {
+    const o = parse(line, roots);
+    return o.kind === "run" ? [o.invocation.path.join(" "), o.invocation.options] : o.kind;
+  };
+  assert.deepEqual(ran("note"), ["note", {}]);
+  assert.deepEqual(ran("note -e"), ["note", { edit: true }]);
+  assert.deepEqual(ran("note stamp"), ["note stamp", {}]);
+  assert.deepEqual(ran("note stamp loop"), ["note stamp loop", {}]);
+  assert.deepEqual(ran("note stamp unloop"), ["note stamp unloop", {}]);
+  assert.equal(parse("stamp", roots).kind, "error"); // the old top-level spelling is gone
+  assert.equal(parse("note stamp --loop", roots).kind, "error");
 });
