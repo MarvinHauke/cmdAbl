@@ -8,11 +8,11 @@ shows as help. Type a command in the palette; `<command> --help` prints the same
 
 **Contents**
 
-- Find and select: `goto`, `find`, `next`, `prev`
+- Find and select: `goto`, `find`
 - Mix: `mute`, `solo`, `arm`, `vol`
 - Control: `map`, `midi`
 - Tags: `tag`
-- Look things up: `help`, `man`, `lom`, `note`
+- Look things up: `help`, `man`, `lom`, `note`, `stamp`
 - Recent commands: `history`
 - Extensions: `pakabl`
 - cmdAbl itself: `cmdabl`
@@ -66,11 +66,21 @@ select a track and show its chains in the Session mixer
 
 ### `find`
 
+find tracks, devices and chains whose path contains a pattern, and step through them
+
+find &lt;pattern> searches the Live Set; find next and find prev step through the matches of the last find. Only the last find is remembered (an ambiguous goto or a numbered pick doesn't replace it). A subcommand word wins over a pattern word: to search for an object named next or prev, put a flag first (find -t next). find search -h shows the options of the search (-L, -t, -d, -c, --unfold, --first, --last).
+
+**Usage:** `find <command>`
+
+**Subcommands:** `search`, `next`, `prev`
+
+#### `find search`
+
 find tracks, devices and chains whose path contains a pattern
 
-Looks through the Live Set for tracks, devices, rack chains and Drum Rack pads whose path contains every word of the pattern, in any order and ignoring case. One match is selected; several are shown in a pick list. next and prev then step through the matches. Needs the cmdAbl Remote Script. Unlike commands that act on a target, which need at least one word in the object's own name, find is a search: it lists everything whose path contains the words, including what sits below a matching parent. A word that is a tag name also finds the tracks tagged with it, and #drums restricts the search to the tracks tagged drums (find #drums lists them, find #drums kick searches inside them); !#drums means the regular tracks without that tag. -L limits that: with -L n, an object is listed only if it, or an object at most n levels above it, has one of the words in its own name — so -L 0 lists only the objects named like the pattern, -L 1 adds their direct children, -L 2 their grandchildren. Without a pattern, find needs -L or one of -t, -d, -c and lists from the top of the Set: with -L n, n levels below the Set (1 = top-level tracks, 2 = tracks and their devices, and the tracks inside groups). The kind flags add up and narrow what is listed. find remembers its last list until the extension restarts.
+Looks through the Live Set for tracks, devices, rack chains and Drum Rack pads whose path contains every word of the pattern, in any order and ignoring case. One match is selected; several are shown in a pick list; --first or --last selects the first or last match without the pick list. find next and find prev then step through the matches of the last find. Needs the cmdAbl Remote Script. Unlike commands that act on a target, which need at least one word in the object's own name, find is a search: it lists everything whose path contains the words, including what sits below a matching parent. A word that is a tag name also finds the tracks tagged with it, and #drums restricts the search to the tracks tagged drums (find #drums lists them, find #drums kick searches inside them); !#drums means the regular tracks without that tag. -L limits that: with -L n, an object is listed only if it, or an object at most n levels above it, has one of the words in its own name — so -L 0 lists only the objects named like the pattern, -L 1 adds their direct children, -L 2 their grandchildren. Without a pattern, find needs -L or one of -t, -d, -c and lists from the top of the Set: with -L n, n levels below the Set (1 = top-level tracks, 2 = tracks and their devices, and the tracks inside groups). The kind flags add up and narrow what is listed. find remembers its last list until the extension restarts. The words next and prev at the start are the subcommands find next and find prev; to search for an object named like that, put a flag first (find -t next) or another word before it (find kick next).
 
-**Usage:** `find [--level <n>] [--tracks] [--devices] [--chains] [--unfold] [<pattern>]`
+**Usage:** `find search [--level <n>] [--tracks] [--devices] [--chains] [--unfold] [--first] [--last] [<pattern>]`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
@@ -83,6 +93,8 @@ Looks through the Live Set for tracks, devices, rack chains and Drum Rack pads w
 | `-d, --devices` | only devices |
 | `-c, --chains` | only chains and drum pads |
 | `--unfold` | also show the track's chains in the Session mixer when selecting (never folds anything) |
+| `--first` | select the first match without the pick list; find next / find prev continue from it |
+| `--last` | select the last match without the pick list; find next / find prev continue from it |
 
 - Needs the Remote Script (reports "not running" / "outdated" otherwise).
 
@@ -148,38 +160,56 @@ find --unfold snare
 
 also show the track's chains in the Session mixer
 
-### `next`
+```
+find --first #drums
+```
+
+select the first drums track, no pick list; find next steps on from there
+
+```
+find --last #drums
+```
+
+select the last drums track; find prev steps back
+
+```
+find -t next
+```
+
+a track named next (a flag first keeps the word a pattern)
+
+#### `find next`
 
 go to the next match of the last find
 
-Selects the next object of the last find (or of the last pick list), wrapping around at the end. Keeps the find's --unfold choice (a list from another pick steps without it). Needs the cmdAbl Remote Script. Without an earlier find there is nothing to step through.
+Selects the next object of the last find, wrapping around at the end. After find --first or --last it continues from that match. Keeps the find's --unfold choice. Needs the cmdAbl Remote Script. Without an earlier find there is nothing to step through.
 
-**Usage:** `next`
+**Usage:** `find next`
 
 - Needs the Remote Script (reports "not running" / "outdated" otherwise).
 
 **Examples**
 
 ```
-next
+find next
 ```
 
 go to the next match of the last find
 
-### `prev`
+#### `find prev`
 
 go to the previous match of the last find
 
-Selects the previous object of the last find (or of the last pick list), wrapping around at the start. Keeps the find's --unfold choice (a list from another pick steps without it). Needs the cmdAbl Remote Script. Without an earlier find there is nothing to step through.
+Selects the previous object of the last find, wrapping around at the start. After find --first or --last it continues from that match. Keeps the find's --unfold choice. Needs the cmdAbl Remote Script. Without an earlier find there is nothing to step through.
 
-**Usage:** `prev`
+**Usage:** `find prev`
 
 - Needs the Remote Script (reports "not running" / "outdated" otherwise).
 
 **Examples**
 
 ```
-prev
+find prev
 ```
 
 go to the previous match of the last find
@@ -691,7 +721,7 @@ the object with "snare" in its name
 
 open the note of this Live Set
 
-Opens the Markdown note that belongs to this Live Set, for reminders: headings, lists, checkboxes, tables and code are drawn, links are shown as text. note opens it to read; note -e opens it to edit, and so does a Set that has no note yet. In the page, e switches to editing, Cmd+S saves and closes, and Esc closes (with unsaved changes it warns first). The note is a plain Markdown file in cmdAbl's data folder, linked to the Set by an id stored inside the Set, so it follows the Set when it is renamed or saved under another name (both copies then share one note). The Set gets its id the first time a note is saved, which marks the Set as changed: save it so the link is kept. Needs the cmdAbl Remote Script. A saved note shows nothing; the log has one line.
+Opens the Markdown note that belongs to this Live Set, for reminders: headings, lists, checkboxes, tables and code are drawn, links are shown as text. note opens it to read; note -e opens it to edit, and so does a Set that has no note yet. The stamp command adds a stamp (a new entry with the song position and the time). In the page, e switches to editing, s adds a stamp, Cmd+S saves and closes; Esc in edit goes back to reading and keeps the text, and Esc while reading saves and closes (Discard asks once). The note is a plain Markdown file in cmdAbl's data folder, linked to the Set by an id stored inside the Set, so it follows the Set when it is renamed or saved under another name (both copies then share one note). The Set gets its id the first time a note is saved, which marks the Set as changed: save it so the link is kept. Needs the cmdAbl Remote Script. A saved note shows nothing; the log has one line.
 
 **Usage:** `note [--edit]`
 
@@ -714,6 +744,35 @@ note -e
 ```
 
 open the note to edit
+
+### `stamp`
+
+add a stamp to the note: song position and time, then write below it
+
+Adds a stamp to the note of this Live Set: a new entry at the end with a heading that holds the song position (while the song plays) and the date and time; you write below it. The page opens in edit. While Arrangement playback runs, the next bars loop so the music repeats while you write (settings note.stampLoop and note.loopBars). Esc saves and goes to reading the note, where s adds the next stamp; closing the page puts the loop back as it was, unless you moved it meanwhile. Cmd+S saves and closes. --loop only loops the current bars and --unloop puts the old loop back, only if the loop is still the one --loop set; both do nothing (exit 0) when there is nothing to do, and the note page runs them as you press s and Esc. A loop set by --loop is also put back when a note page closes. Needs the cmdAbl Remote Script; see note for where the text is kept.
+
+**Usage:** `stamp [--loop] [--unloop]`
+
+| Option | Description |
+| --- | --- |
+| `--loop` | only loop the current bars (no page); the note page uses this |
+| `--unloop` | only put the loop back as it was before --loop (no page) |
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+stamp
+```
+
+add a stamp at the song position and write below it
+
+```
+stamp --loop
+```
+
+loop the next bars without a page
 
 ## Recent commands
 

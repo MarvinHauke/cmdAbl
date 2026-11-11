@@ -7,7 +7,7 @@ The companion Remote Script (Python, runs inside Live) does what the Extensions 
 selection, reads facts only the Live Object Model knows, stores and reads track tags in the Set, and mutes or solos rack chains
 and pads, also inside nested racks. cmdAbl talks to it over a local socket with request/reply messages. `cmdabl setup` installs it, `cmdabl bridge` shows its status.
 
-Script version **0.1.14**, protocol **v1**.
+Script version **0.1.15**, protocol **v1**.
 
 | Operation | What it does | Parameters | Changes the Live Set |
 | --- | --- | --- | --- |
@@ -19,6 +19,8 @@ Script version **0.1.14**, protocol **v1**.
 | `param_display` | Reads Live's own display text ("-6.0 dB", "-inf dB") for values of a track's volume, without moving the fader; at most 64 values per call. | `{ scope, route, param: "volume", values: number[], expectName? }` | no |
 | `midi_listen` | Chooses which MIDI controls (CC, notes, pitch bend) the script forwards from its input port and pushes (default none), asks Live to rebuild the MIDI map, and registers the caller as the target of pushed events; monitor forwards everything for a short window (learn) and shows the messages in Live's status bar (status: false turns that off). The reply lists `blocked` controls Live refused to forward (mapped with Cmd+M), and the script pushes a midi_blocked event when that set changes. | <code>{ controls: "all" &#124; "none" &#124; [{ type: "cc"&#124;"note"&#124;"pb", channel?: 1-16, number?: 0-127 }], monitor?: bool, seconds?: 1-120, status?: bool, token }</code> | yes (needs the access token) |
 | `midi_last` | The newest MIDI messages the script received after a sequence number (for learn and diagnostics). | `{ since?: int }` | no |
+| `transport` | Reads the play state, the position, the bar grid (current time signature only) and the arrangement loop, in beats. | – | no |
+| `loop_set` | Sets the arrangement loop (on, start, length in beats) and reads it back. | `{ on: bool, start: number >= 0, length: number > 0, token }` | yes (needs the access token) |
 | `set_id` | Reads the Live Set's own id (null when it has none); with create it stores a new random id in the Set and marks the Set as modified with the invisible colour toggle of tags_set. | `{ create?: bool, token }` | yes (needs the access token) |
 | `tags_all` | Reads the tags of every tagged track (regular, return, main); stored on the track with Track.get_data, so they live in the Set. | `{ offset? }` | no |
 | `tags_set` | Replaces the tags of one track and marks the Set as modified with an invisible colour toggle (one undo step), checked by name and read back. | `{ scope, route, expectName, tags: string[], token }` | yes (needs the access token) |
