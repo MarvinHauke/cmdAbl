@@ -156,7 +156,8 @@ Terms: [GLOSSARY.md](GLOSSARY.md) (stamp, song position). "Stamp" for now (user,
 - **Jump to a stamp:** Enter or a click on an `@12.3.1` heading in view mode moves Live's playhead there
   (Remote Script, a transport change, not the Set's content); with it `stamp next`/`stamp prev`. Locators
   only if the user wants stamps in the Set.
-- **Session stamps with `s`:** an entry linked to a scene, to jump to that scene. Needs a stable scene
+- **Session stamps** (no key of their own, user 2026-11-11): a stamp made during Session playback is
+  linked to the playing scene automatically (Shift+S only if a choice is ever needed); an entry linked to a scene, to jump to that scene. Needs a stable scene
   link that survives rename and move. **Live 13 spike (2026-11-11): `Scene` has no `get_data`/`set_data`**
   (only Song and Track), so the link needs another design (open). Built together with [0017](0017-scripts-and-triggers.md) phase 2,
   which needs the same scene link.
@@ -197,6 +198,8 @@ not only when the page closes. Since a page never writes:
   replaces `note -m` (unreleased, dropped). Later: `stamp next`/`stamp prev` jump the playhead,
   `stamp -l` lists the stamps (a pick list, Enter jumps), with "jump to a stamp" below. A separate
   module can't read the note's file, so `stamp` lives in the note module.
+
+**Key `s` (user, 2026-11-11):** a stamp is added with **`s`** in view (was `m`; read `m` as `s` above).
 
 **Rollout:** cmdabl-bridge (the two ops, tests, script 0.1.15), cmdabl-core (`SetPort`),
 cmdabl-modules (settings, `-m`, the heading, the loop and restore), cmdabl-ui (stamp mode, `m`, the
