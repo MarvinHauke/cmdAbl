@@ -63,6 +63,13 @@ export interface TracksPort {
   setVolume(node: ObjectNode, value: number): Promise<boolean>;
 }
 
+/** One row of a plain list (`ModuleApi.pickRows`). */
+export interface PickRow {
+  label: string;
+  detail?: string;
+  disabled?: boolean;
+}
+
 /** One row of a tag list (`ModuleApi.pickTags`). */
 export interface TagRow {
   /** Lower-case tag name, without the `#`. */
@@ -104,7 +111,16 @@ export interface SetPort {
    * failure with the exit code (1 Live refused the value, 5 no script or an old one) and a text. Never throws.
    */
   setLoop(loop: Loop): Promise<SetLoopResult>;
+  /**
+   * Move the playhead to `time` beats (playing stays playing). Resolves to the position as Live has it afterwards
+   * (`note` words a difference from the target, for the debug log; never an error), or a failure with the exit code
+   * (1 Live refused or did not answer, 5 no script or an old one) and a text. Never throws.
+   */
+  jump(time: number): Promise<JumpResult>;
 }
+
+/** The answer of `SetPort.jump`. */
+export type JumpResult = { ok: true; time: number; note?: string } | { ok: false; code: 1 | 5; text: string };
 
 /** The answer of `SetPort.setLoop`. */
 export type SetLoopResult = { ok: true; loop: Loop } | { ok: false; code: 1 | 5; text: string };
@@ -126,6 +142,9 @@ export interface Transport {
   time: number;
   barStart: number;
   barLen: number;
+  /** The current time signature (0 = unknown: an old script did not say; do not guess a bar length from it). */
+  sigNum: number;
+  sigDen: number;
   /** The length of the Set (Song.song_length), in beats. */
   songLength: number;
   loop: Loop;
@@ -325,6 +344,13 @@ export interface ModuleApi {
    * holds exactly one name.
    */
   pickTags(title: string, rows: TagRow[], options?: { change?: StateChange; preview?: PickPreview; allowNew?: boolean; multi?: boolean }): Promise<string[] | null>;
+  /**
+   * A single-select list of plain rows (plan 0027; not objects, not tags): Enter chooses the cursor row. Resolves with
+   * the chosen row's index, or null when cancelled. `cursor` is the row that has the cursor on opening; a `disabled` row
+   * is shown but cannot be chosen and the cursor skips it. Same dialog queue, list keys and headless rule as `pick`
+   * (headless it would ask, so the run ends with exit 4). Never rejects.
+   */
+  pickRows(title: string, rows: PickRow[], options?: { cursor?: number }): Promise<number | null>;
   /** Track tags (plan 0008). */
   tags: TagsPort;
   /** Notified whenever a pick list was shown, with what was offered and what was chosen. */

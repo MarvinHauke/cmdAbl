@@ -18,13 +18,13 @@ import { registerBuiltins } from "./core/command/builtins.js";
 import { reportBridge } from "./core/host/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { getTagCache } from "./ableton/tagCache.js";
-import { paramDisplay, setId, setLoop, transport } from "./ableton/bridgeOps.js";
+import { jump, paramDisplay, setId, setLoop, transport } from "./ableton/bridgeOps.js";
 import { findRacks, getChainNameCache } from "./ableton/chainNames.js";
 import { presentResult } from "./core/surfaces/present.js";
 import { runLine } from "./core/command/run.js";
 import { objectRowLine } from "./core/command/objectRow.js";
 import { confirm } from "./core/surfaces/confirm.js";
-import { pickNodes, pickTagNames } from "./core/surfaces/pick.js";
+import { pickNodes, pickRowIndex, pickTagNames } from "./core/surfaces/pick.js";
 import { quoteIfNeeded } from "./core/command/tokenize.js";
 import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/surfaces/dialogQueue.js";
@@ -312,6 +312,7 @@ export function activate(activation: ActivationContext) {
       id: (create) => setId(getBridge(), create === true),
       transport: () => transport(getBridge()),
       setLoop: (loop) => setLoop(getBridge(), loop),
+      jump: (time) => jump(getBridge(), time),
     },
     midi: midiRuntime.port,
     onSetChange: (listener) => setWatch.onChange(listener),
@@ -341,6 +342,7 @@ export function activate(activation: ActivationContext) {
       board: (request) => runBoard(ui, { ...request, ...(activeGroup() !== undefined ? { gear: true } : {}) }),
       livePage: (name, html, width, height, routes, options) => ui.livePage(name, html, width, height, routes, options),
     },
+    pickRows: (title, rows, options) => pickRowIndex(ui, { title, rows, ...(options?.cursor !== undefined ? { cursor: options.cursor } : {}) }),
     pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, ...options, multi: options?.multi ?? true }),
     tags: {
       refresh: () => getTagCache().refreshNow(getBridge()),

@@ -113,6 +113,13 @@ export const PORT_MAPPING: readonly PortMapping[] = [
     note: "A writing op (token). Code 5 without the script or with an old one, code 1 when Live refuses the value.",
   },
   {
+    port: "set.jump",
+    via: "script",
+    call: "operation `jump` (moves the playhead to a position in beats; answers the position as Live has it)",
+    lom: ["Song.current_song_time", "Song.is_playing"],
+    note: "A writing op (token). Code 5 without the script or with an old one, code 1 when Live refuses or does not answer.",
+  },
+  {
     port: "files.read",
     via: "platform",
     call: "reads `<Extensions Data>/<extension id>/modules/<module>/<name>` (UTF-8)",
@@ -133,6 +140,7 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "pick", via: "platform", call: "the platform's pick list", lom: [] },
   { port: "confirm", via: "platform", call: "the platform's pick list (Cancel / Confirm rows)", lom: [] },
   { port: "pickTags", via: "platform", call: "the platform's pick list of tags (state buttons)", lom: [] },
+  { port: "pickRows", via: "platform", call: "the platform's pick list of plain rows (single-select, cursor, disabled rows)", lom: [] },
   {
     port: "tags.refresh",
     via: "script",

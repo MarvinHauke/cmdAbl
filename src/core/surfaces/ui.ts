@@ -95,6 +95,11 @@ export interface SelectRequest {
    * Absent: no such row.
    */
   create?: { label: string };
+  /**
+   * Single-select only: the index (into `items`) of the row that has the cursor when the list opens (a disabled or
+   * out-of-range index counts as absent: the cursor starts on the first enabled row).
+   */
+  cursor?: number;
   /** `ui.helpLine` (plan 0019 §3): whether the page's help line follows the hover. Set by the platform. */
   help?: boolean;
   items: {
@@ -105,6 +110,8 @@ export interface SelectRequest {
     value?: string;
     /** The row's current state (see `SelectRequest.state`); absent = unknown. */
     state?: "on" | "off";
+    /** The row is shown (dimmed) but cannot be chosen, and the cursor skips it. */
+    disabled?: boolean;
   }[];
 }
 

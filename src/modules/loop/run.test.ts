@@ -8,7 +8,7 @@ import { parse } from "../../core/command/parse.js";
 import { activate } from "./index.js";
 
 type Result = { code: number; message?: string; log?: string[] } | undefined;
-const PLAYING = { playing: true, session: false, pos: "12.3.1.1", time: 44, barStart: 44, barLen: 4, songLength: 200, loop: { on: false, start: 0, length: 16 } };
+const PLAYING = { playing: true, session: false, pos: "12.3.1.1", time: 44, barStart: 44, barLen: 4, sigNum: 4, sigDen: 4, songLength: 200, loop: { on: false, start: 0, length: 16 } };
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 function setup(transport: object | null = PLAYING, settings: Record<string, unknown> = {}) {
