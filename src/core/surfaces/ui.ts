@@ -352,14 +352,14 @@ export interface Ui {
    * still comes back as with `page`. If the server cannot serve it (port taken), the page opens as a data page with
    * `LIVE = null` and must work without polling.
    * `options.run` (plan 0018 "Page runs") allows the page to run command lines while open: the command paths (command
-   * plus subcommands, e.g. `"stamp loop"`) it may run through `POST <LIVE.base>/run`.
+   * plus subcommands, e.g. `"note stamp loop"`) it may run through `POST <LIVE.base>/run`.
    */
   livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes, options?: LivePageOptions): Promise<string | null>;
 }
 
 /** What a module allows a live page beyond reading. */
 export interface LivePageOptions {
-  /** Command paths the page may run while open, e.g. `["stamp loop", "stamp unloop"]`. Options and arguments are free. */
+  /** Command paths the page may run while open, e.g. `["note stamp loop", "note stamp unloop"]`. Options and arguments are free. */
   run?: string[];
 }
 

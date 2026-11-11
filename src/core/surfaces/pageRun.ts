@@ -6,7 +6,7 @@ import { logger } from "../log.js";
 import type { LiveRun } from "./livePage.js";
 
 // Page runs (plan 0018 "Page runs"): the check behind a live page's `POST /run`. A page may run a line only if every
-// `;` part parses to a command whose path (command plus subcommands: "stamp loop") the module listed when it opened the
+// `;` part parses to a command whose path (command plus subcommands: "note stamp loop") the module listed when it opened the
 // page. A bare `|` is refused (it would hide a raw line from the check). An allowed line goes to `run` (headless, one
 // undo step, logged, not in the history); a refusal answers exit 2 and logs a warn line. Never throws.
 
@@ -17,7 +17,7 @@ export interface PageRunDeps {
   warn?: (text: string) => void;
 }
 
-/** The command path a part addresses ("stamp loop"), or undefined when it does not parse to a runnable command. */
+/** The command path a part addresses ("note stamp loop"), or undefined when it does not parse to a runnable command. */
 function pathOf(part: string, roots: CommandNode<any, any>[]): string | undefined {
   const parsed = parse(part, roots);
   return parsed.kind === "run" ? parsed.invocation.path.join(" ") : undefined;

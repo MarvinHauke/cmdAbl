@@ -284,7 +284,7 @@ export interface ModuleApi {
      * wait ends for any reason (answered, timeout, replaced, client gone, closed): drop your listeners there.
      * Without the server (port taken) the page opens as a data page with `LIVE = null`: it must work without polling.
      * `options.run` (plan 0018 "Page runs") lets the page RUN command lines while open: the command paths it may run
-     * (command plus subcommands, e.g. `["stamp loop", "stamp unloop"]`; options and arguments are free). The page posts
+     * (command plus subcommands, e.g. `["note stamp loop", "note stamp unloop"]`; options and arguments are free). The page posts
      * `POST <LIVE.base>/run` with JSON `{ line }` and the same `Authorization: Bearer <LIVE.token>`, and gets
      * `{ code, text }` (the `CommandResult`'s exit code and message). A line whose command path is not listed (also a `;`
      * chain with any unlisted part, or a bare `|`) is refused with `{ code: 2, text }` and a warn line. An allowed line runs

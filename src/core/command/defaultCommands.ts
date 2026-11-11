@@ -2,7 +2,7 @@ import * as crypto from "node:crypto";
 import * as fsp from "node:fs/promises";
 import * as path from "node:path";
 import type { CommandNode } from "./commandTree.js";
-import { fallbackOf, parse } from "./parse.js";
+import { bareOf, parse } from "./parse.js";
 import { chainSegments, pipeAt, splitChain, tokenize } from "./tokenize.js";
 
 // Default commands (plan 0019 §7): a bare command word runs a line the user chose (`mute` runs `mute #drums`).
@@ -53,7 +53,7 @@ export function checkDefaultLine(command: string, line: unknown, roots: CommandN
 
 /** What a bare top-level command does today, in a few words (shown next to its default; a default replaces it). */
 export function bareBehaviour(node: CommandNode<any, any>): string {
-  if ((node.children?.length ?? 0) > 0 && !fallbackOf(node)) return "shows its subcommands";
+  if ((node.children?.length ?? 0) > 0 && !bareOf(node)) return "shows its subcommands";
   const required = (node.args ?? []).find((a) => a.required !== false && !a.raw);
   if (required) return `needs <${required.name}>`;
   return "runs on its own";
