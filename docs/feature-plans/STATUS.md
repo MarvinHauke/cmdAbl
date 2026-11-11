@@ -5,7 +5,7 @@ known issues. Maintained by the architect. The order of the next features and ho
 each other is in the [plan index](README.md#next-in-dependency-order); design decisions live in the
 numbered plans. Finished work is in the git history, not here.
 
-_Last updated: 2026-11-10 (0.1.6 release prep; Live 13 next)._
+_Last updated: 2026-11-11 (0.1.6 released; Live 13 next)._
 
 ## Released
 
@@ -17,6 +17,7 @@ _Last updated: 2026-11-10 (0.1.6 release prep; Live 13 next)._
 | 0.1.3 | 2026-10-22 | `vol`, `note`, agent test access (dev builds); script 0.1.8 | #17 |
 | 0.1.4 | 2026-10-23 | Argument completion, palette switch Off · Hints · Options, `settings.json` | #21 |
 | 0.1.5 | 2026-11-05 | MIDI mapping (`map`, `midi monitor`), `;` chains, tag board editing, live pages; script 0.1.14 | #27 |
+| 0.1.6 | 2026-11-11 | Setup page, settings and default commands, help line; last Live 12 release (tag `live12-last`) | #29 |
 
 All releases were tested in Live, including the installed `.ablx`.
 
@@ -24,58 +25,16 @@ All releases were tested in Live, including the installed `.ablx`.
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
-- **In work: 0.1.6 on `feat/0.1.6-settings`, [0019](0019-settings-and-help.md).**
-  - **Phase 1a done** (user hand check 2026-11-05): declared settings, the settings page with Apply/Cancel,
-    `cmdabl config`, `<module> config`, the "Settings" button, `tag.foldAfter`, the palette switch moved.
-  - **Phase 1b done** (MCP Live test and user hand check 2026-11-05; follow-ups: shake on an invalid line,
-    Tab/Shift+Tab on the defaults and settings pages, `\<cmd>` offers commands only, a log warning when a
-    MIDI firing's dialog is cancelled): default
-    commands, the defaults page (live check, reopen on an invalid line), the palette row, `map -l` arrow,
-    history `typed`, `config` after every command except man/help, `\<cmd>` in the palette (completes
-    like the command; Enter takes the highlighted command row).
-  - `map -l` shows the arrow only for one-word
-    bindings, not `;` chains (`api.commands.expand(line)` would be the way, undecided).
-  - **Phase 2 done** (MCP Live test 2026-11-05; `34383b2`, `c0a28bc`, `7c3cdfc`, `724931e`; scroll fix `0ca2e8f`, `952c118`): the help
-    line (`ui/help.js`) on the board, settings, defaults and pick list; `ui.helpLine`; key caps; text
-    fields show their help on hover only (0019 §3). User hand check open: the look (key caps, subject in
-    normal weight), hover, the defaults page's red error line. The defaults page opened from `map config` drew its list scrolled with an empty area (a stale WKWebView paint, inferred); a repaint nudge after load fixed it in Live. The hop settings → defaults keeps one window size (640 wide, the settings height; `6981df7`) and places the list before the first paint (`0fb0d57`): about 200 ms, no jump. Merging both pages into one dialog (no hop at all) is a later option.
-  - **[0021](0021-installation-and-setup-page.md) the setup page: built** (MCP Live test 2026-11-05; `93d4b1d`,
-    `12e5d7e`, fixes `2945e79`, `64ca28e`, `6aae291`, `c0c6184`): `cmdabl setup` as a status page, `setup script`,
-    `setup karabiner`, the Setup group (`setup.openOnStart`, `setup.autoScript`), the page opening on the first
-    palette use after start, `GET /karabiner/cmdabl.json` and the Karabiner import link (verified in the spike).
-    User hand check open: Get Karabiner / Add rule (does the page hide behind Karabiner or the browser?), Copy
-    with an older script, `setup.autoScript`, a real first install. Docs (Getting started, README Install)
-    before the release.
-  - **Codebase layout done** ([0023](0023-codebase-layout.md); `106d6f8`, `683c2a3`, `747de60`, `3b9686d`, `82aff66`;
-    MCP smoke test 2026-11-05): `src/core/` in area folders, builtins split per subcommand, `modules/shared/`,
-    `help` in the `man` module, `npm run docs:reference` works again. No `ModuleApi` change.
-  - **Phase 3 done** (MCP Live test 2026-11-05; `9f686f7`, `7ea19e8`, `f2566ed`, `662290d`): the palette's
-    footer help line (0019 §4): command and summary, the argument or option at the caret, keys when idle;
-    `CompletionResult.help`; option alias fix `a16e3c1`; descriptions in the snapshot; the palette taller by the footer (51 px; key caps whole and descriptions wrapping since `9191ea5`, `38306b4`, `69041d4`). User hand check open:
-    the look, `ui.helpLine` off in the palette.
-  - **Area above the prompt removed** (user, 2026-11-05; MCP Live test; `27ac6aa`, `0993bc4`): no Hints/Options,
-    no `palette.above`, no Settings button in the palette; the highlighted row's description scrolls; `config`
-    is a normal row after a command. Docs: `docs/using.md` "Show the options above the prompt" (with
-    screenshots) is stale, for cmdabl-docs before the PR.
-  - **Release prep (2026-11-10):** version bumped to 0.1.6 (user). Tests, build, `docs:reference` and
-    `mkdocs build --strict` pass. User docs done (`abd9a87`, `d6b813c`; reviewer facts check passed).
-    Screenshots done (`03049a3`, `89d14e0`); defaults page placeholders fit and its help line has a sentence
-    break (`46ce180`, checked in Live); setup page docs link follows the renamed heading (`488b4d6`).
-    All hand checks done (2026-11-11): incl. the setup page's Update row (installed 0.1.13 → Update → restart row → Restart Live), `setup.autoScript` (copied at start without asking), and the Control Surface row on a real unselected slot. Open: the PR. Installed `.ablx` tested by the user in Live 12.4.25b1 (2026-11-10).
-  - **Open Karabiner** (user, 2026-11-10): the row "rule added but not enabled" gets a button that opens Karabiner-Elements Settings (`karabiner://karabiner/`, checked by hand: opens the Settings window; exact-match allow in `openUrl`). cmdabl-core; 0021 §3. Built `8026d0f`, clicked in Live. Mock `cmdabl setup --simulate <state>` (dev builds) `a125a9d`; all states captured 2026-11-10.
-  - **Restart Live** (user, 2026-11-10; 0021 §2): a button on the restart row (macOS). Built `8e0fbd0`, cancel message `f2b9894`. Live test 2026-11-10 (user): the button quits Live and Live comes back (also after Don't Save, past the 3 s grace); Cancel keeps Live open, no error page, and quitting Live by hand afterwards does not restart it; headless refused (exit 5); no Automation prompt on this Mac.
-  - **Docs images refreshed** (2026-11-11; `e824ab7`): 16 images and the GIFs (hero, tags, vol-note) retaken from the new demo Set (Kick, Bass, Lead, Percs, Synth; tags #drums, #bass, #synth); captions follow. Kept old: find-nested, vol-clip, vol-stop. Fixes found on the way: the help line is one row (`cc7879a`, UX checklist item 10), help columns keep a gap after long names (`29e84bc`); both seen in Live.
-  - **Quiet saves** (user, 2026-11-11; `e339afd`, `0572987`): Apply on the settings and defaults pages opens no message; the counts go to the log. Checked in Live the same day.
-  - **Live 12 marking** (user, 2026-11-10): 0.1.6 is the last release built for Live 12, tested with
-    the Live 12.4.25 beta (12.4.16, the non-beta release, has no Extensions; corrected by the user the same day). Release notes, the README badge and `docs/limits.md` say so; an extra git tag
-    `live12-last` on the release commit next to `v0.1.6`.
-- **After 0.1.6: development moves to Live 13** (user, 2026-11-10; Live 13.0b25 installed). First step: a
-  Live 13 compatibility check (SDK version and `minimumApiVersion`, the Remote Script under Live 13's
-  Python, the sandbox, `LIVE_MANUAL_VERSION`), then decide what changes for 0.2.x.
-- 0.1.6 = 0019 phases 1–3 and 0021 (contracts 1–3 approved 2026-11-05; the status rows (4) approved with 0021). The
-  palette help view's layout gets agreed with the user before it's built (phase 3). Aliases moved to
-  the [0020](0020-aliases.md) draft. Ideas from `docs/userfindings.md`
-  (local, not in git) that are still open are listed there under "Moved".
+- **Next: Live 13** (user, 2026-11-10; Live 13.0b25 installed). First step: a compatibility check (SDK
+  version and `minimumApiVersion`, the Remote Script under Live 13's Python, the sandbox,
+  `LIVE_MANUAL_VERSION`), then decide what changes for 0.2.x. Undiscussed user findings that fit here:
+  tag-0 (merge `tag -l` and `tag -e`), note-2 (Live 13's side panel), Midi engine-1 (`docs/userfindings.md`, local).
+- **On `docs/after-0.1.6`:** this cleanup, a frame for screenshots on the docs site, and `npm run docs:check`
+  with an optional pre-push hook (cmdabl-docs, user 2026-11-11).
+- **Open from 0.1.6:**
+  - `map -l` shows the expansion arrow only for one-word bindings, not `;` chains (`api.commands.expand(line)` would be the way, undecided).
+  - The pakabl index PR #28 should pick up 0.1.6; merge it (close and reopen to start its checks).
+  - Old docs images from a bigger Set: find-nested, vol-clip, vol-stop (retake when a Set with racks is open).
 - How testing works: the architect runs Live test lists through the `cmdabl_*` MCP tools (plan 0016)
   once the user has said Live is free, and may start and restart `npm start` itself; the user gets a
   short list of the core features to try by hand (`CLAUDE.md`, "Agent team").
@@ -378,8 +337,8 @@ history was scanned locally and on GitHub, no findings.
   workflow's own token does not start workflows, so PR #8 has no checks and shows as blocked. The
   admin can still merge it (bypass), or close and reopen it to start the checks. A proper fix is
   for the crawler to open its pull request with a token that triggers workflows.
-- **Old remote branches** `features` and `feature/path-addressed-objects`: the user has not decided
-  whether to delete them.
+- **Merged branches** (2026-11-11): all old local and remote branches are merged (mostly squash merges); deleting
+  them waits for the user (the agent's deletion was blocked). Keep `pakabl/index-update` (PR #28).
 
 ## Deferred on purpose
 

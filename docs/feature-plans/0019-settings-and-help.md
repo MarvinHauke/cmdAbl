@@ -1,6 +1,6 @@
 # Settings and help pattern
 
-**Status:** In Progress (2026-11-05, phase 1a). The 0.1.6 theme. User findings from 2026-11-04 (tag-1, tag-4, prompt-1,
+**Status:** Released in 0.1.6 (2026-11-11): phases 1–3 and §6 (built as [0021](0021-installation-and-setup-page.md)). Open: phase 4 (`listnav.js`), 6 (with 0013), 7 (shortcuts). The 0.1.6 theme. User findings from 2026-11-04 (tag-1, tag-4, prompt-1,
 prompt-2, note-1's option), the settings page wish (user, 2026-10-22) and the setup status page
 (user, 2026-11-05).
 
@@ -10,9 +10,8 @@ prompt-2, note-1's option), the settings page wish (user, 2026-10-22) and the se
 3. **Argument and option descriptions in the completion snapshot (§4):** approved. The help view's look
    and behaviour in the palette still need refining with the user, because the hints and options modes
    aren't right yet. Build the data first, and agree on the layout with the user before building it out.
-4. **Status rows with buttons in `notify` (§6):** not approved yet. The user likes the style, but it needs
-   refining, especially for the installation process. It stays open and is decided together with the
-   "simpler installation" backlog item.
+4. **Status rows with buttons in `notify` (§6):** approved with [0021](0021-installation-and-setup-page.md) §1
+   (user, 2026-11-05, Q10).
 
 **Phase 1 refined with the user (2026-11-05, grilling round):** phase 1 is split into 1a (declared
 settings) and 1b (default commands); default commands get their own live page instead of rows on the
@@ -355,22 +354,11 @@ see it:
 
 ## Phased rollout
 
-1a. **Declared settings and the settings page:** the `api.settings` part, the `settings` surface
-   (link rows rendered, none sent yet), `cmdabl config [<group>]`, `<module> config`, the gear on the board and the palette.
-   `tag.foldAfter` replaces `FOLD_AFTER`, and the palette switch moves (Off is the clean palette: no gear).
-   Only the four 1a keys. Builders: core (store, surface, commands), ui (page), modules (`tag`
-   declares).
-1b. **Default commands:** first, the gear and the group lookup use the parsed root instead of splitting
-   the raw line (1a splits on whitespace, which breaks with `\mute` and aliases). Then `default_commands.json` and its store, the expansion step, `\<command>`, the
-   defaults page (live, `/check`, fallback check after closing), the link rows, the palette's
-   expansion row with Tab, and the log line `typed ⇒ ran`. Builders: core (store, expansion, route),
-   ui (page, palette row).
-2. **The help line:** `help.js` on the board, the settings page and the pick list, and `ui.helpLine`.
-3. **The palette help view:** descriptions in the snapshot first; the help view and footer line in
-   `interface.html` after the layout is agreed with the user.
+1a–3. **Released in 0.1.6:** declared settings and the settings page (1a), default commands and the defaults page (1b),
+   the help line (2), the palette footer help line (3); the area above the prompt was removed. Saves are quiet: the counts go
+   to the log (user, 2026-11-11). The help line is always one row (2026-11-11).
 4. **`listnav.js`** on the pick list and the palette rows, then the board.
-5. **The setup status page:** waits for approval 4 and the installation refinement. Then status rows and
-   actions in `notify`, and the setup rows.
+5. **The setup status page:** released in 0.1.6 as [0021](0021-installation-and-setup-page.md).
 6. **With 0013:** the note's timestamped entries and `note.editLoop`, gear on the note page.
 7. **Shortcuts** (after 0.1.6, user 2026-11-05): `Cmd+,` opens settings, tested in Live first (Karabiner
    and Live may take it), and the start of 0006's keymap for global keys. The list keys stay in §5.
