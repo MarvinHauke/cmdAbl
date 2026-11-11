@@ -118,3 +118,14 @@ test("loop declares loop.bars; the tree is valid and documented; bare loop runs 
   assert.deepEqual(ran("loop here 8"), ["loop here", [["8"]]]);
   assert.deepEqual(ran("loop back"), ["loop back", []]);
 });
+
+test("loop back without the Remote Script is exit 5 and keeps the remembered loop", async () => {
+  const s = setup();
+  await s.run("here");
+  const saved = s.fake.transport;
+  s.fake.transport = null as never;
+  assert.equal((await s.run("back"))!.code, ExitCode.UNAVAILABLE);
+  s.fake.transport = saved;
+  assert.equal((await s.run("back"))!.code, ExitCode.OK);
+  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
+});

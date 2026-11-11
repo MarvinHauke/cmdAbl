@@ -70,9 +70,6 @@ export function activate(api: ModuleApi): void {
           const wanted = loopHere(transport, bars);
           if (wanted === null) return fail(ExitCode.FAILURE, "loop here: no usable bar length from Live");
           const barNumber = Math.round(transport.barStart / transport.barLen) + 1;
-          // songLength 0: an older script that doesn't report it; Live then answers for itself.
-          if (transport.songLength > 0 && transport.barStart >= transport.songLength)
-            return fail(ExitCode.FAILURE, `loop here: the playhead is past the end of the song (bar ${barNumber})`);
           const result = await api.set.setLoop(wanted);
           if (!result.ok) return failed("here", result);
           const set = result.loop;
@@ -109,8 +106,9 @@ export function activate(api: ModuleApi): void {
         run: async (): Promise<CommandResult> => {
           if (ours === null) return { ...ok(), log: ["loop back: nothing to restore"] };
           const mine = ours;
-          const current = (await api.set.transport())?.loop ?? null;
-          if (!shouldRestoreLoop(current, mine.set)) {
+          const now = await api.set.transport();
+          if (now === null) return unavailable("back"); // `ours` is kept
+          if (!shouldRestoreLoop(now.loop, mine.set)) {
             ours = null;
             return { ...ok(), log: ["loop back: loop left alone (it was moved meanwhile)"] };
           }
