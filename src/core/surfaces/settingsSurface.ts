@@ -165,7 +165,7 @@ export function settingsSize(request: SettingsRequest): { width: number; height:
   return { width: 640, height: Math.min(Math.max(height, 260), 560) };
 }
 
-/** "2 settings saved". */
+/** "2 settings saved" — goes to the log only; a successful save is quiet. */
 const savedText = (count: number): string => `${count} setting${count === 1 ? "" : "s"} saved`;
 
 export interface SettingsFlowDeps {
@@ -182,7 +182,7 @@ export interface SettingsFlowDeps {
 export interface SettingsFlow {
   /**
    * Show the settings. `group` focuses a group; `only` limits the page to that group (`<module> config`). Saves what the
-   * page answers after it closed and answers with one line ("2 settings saved"), or exit 1 when the file could not be
+   * page answers after it closed and answers quietly (the count goes to the log), or exit 1 when the file could not be
    * written; closing without Enter changes nothing and says nothing. `cmdabl config <unknown>` is exit 3. Never throws.
    */
   open(options?: { group?: string; only?: boolean }): Promise<CommandResult>;
@@ -237,12 +237,12 @@ export function createSettingsFlow(deps: SettingsFlowDeps): SettingsFlow {
         let result: CommandResult = ok();
         if (count > 0) {
           const saved = await deps.store.set(answer.changes);
-          result = saved ? { ...ok(savedText(count)), log: Object.entries(answer.changes).map(([k, v]) => `set ${k} = ${JSON.stringify(v)}`) } : fail(ExitCode.FAILURE, "config: the settings could not be saved (they stay in effect until Live restarts)");
+          result = saved ? { ...ok(), log: [savedText(count), ...Object.entries(answer.changes).map(([k, v]) => `set ${k} = ${JSON.stringify(v)}`)] } : fail(ExitCode.FAILURE, "config: the settings could not be saved (they stay in effect until Live restarts)");
         }
         if (answer.open !== undefined && deps.onOpen) {
           const opened = await deps.onOpen(answer.open, { height: settingsSize(request).height });
           if (opened && opened.code !== ExitCode.OK) return opened;
-          // What the opened page saved is told too ("1 setting saved, 2 default commands saved").
+          // What the opened page answers (e.g. "2 default commands saved") is told as it is; our own save only adds log lines.
           if (opened?.message) {
             result = { ...result, message: [result.message, opened.message].filter(Boolean).join(", "), log: [...(result.log ?? []), ...(opened.log ?? [])] };
           }

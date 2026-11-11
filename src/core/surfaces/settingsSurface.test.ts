@@ -59,19 +59,21 @@ test("`only` limits the page to one group and names it; a group focuses; an unkn
   assert.equal(requests.length, 2);
 });
 
-test("an answer is saved after the page closed, with one result line; the file keeps unknown keys", async () => {
+test("an answer is saved after the page closed, quietly (count in the log); the file keeps unknown keys", async () => {
   const { flow, store, dir } = setup(() => JSON.stringify({ changes: { "tag.foldAfter": 3, "map.enabled": false, "nope.key": 1 } }));
   fs.writeFileSync(path.join(dir, SETTINGS_FILE), JSON.stringify({ "future.key": 1 }));
   const result = await flow.open();
   assert.equal(result.code, ExitCode.OK);
-  assert.equal(result.message, "2 settings saved");
-  assert.deepEqual(result.log, ['set tag.foldAfter = 3', 'set map.enabled = false']);
+  assert.equal(result.message, undefined);
+  assert.deepEqual(result.log, ["2 settings saved", 'set tag.foldAfter = 3', 'set map.enabled = false']);
   const values = await store.get();
   assert.equal(values["tag.foldAfter"], 3);
   assert.equal(values["map.enabled"], false);
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, SETTINGS_FILE), "utf8"))["future.key"], 1);
   const one = setup(() => JSON.stringify({ changes: { "tag.foldAfter": 7 } }));
-  assert.equal((await one.flow.open()).message, "1 setting saved");
+  const oneResult = await one.flow.open();
+  assert.equal(oneResult.message, undefined);
+  assert.equal(oneResult.log?.[0], "1 setting saved");
 });
 
 test("closing without Enter, an unreadable answer, and an answer without changes save nothing and say nothing", async () => {
@@ -175,7 +177,7 @@ test("a link row's open target is opened after the changes were saved (phase 1b)
     onOpen: async (target, window) => void order.push(`open ${target} h${window.height}`),
     ui: { settings: async () => ({ changes: { "tag.foldAfter": 4 }, open: "defaults" } satisfies SettingsAnswer) },
   });
-  assert.equal((await flow.open()).message, "1 setting saved");
+  assert.equal((await flow.open()).message, undefined);
   assert.match(order[1]!, /^open defaults h\d+$/);
   assert.equal(order[0], "saved");
 });
@@ -194,7 +196,7 @@ test("link rows core adds reach the page (after the declared rows) and what the 
   const rows = (id: string) => seen[0]!.groups.find((g) => g.id === id)!.items;
   assert.equal(rows("cmdabl").at(-1)!.kind, "link");
   assert.equal((rows("tag").at(-1) as { target: string }).target, "defaults:tag");
-  assert.equal(out.message, "1 setting saved, 1 default command saved");
+  assert.equal(out.message, "1 default command saved");
   assert.deepEqual(out.log?.at(-1), "default tag = tag -l");
   // a throwing link source only means no link rows
   const broken = createSettingsFlow({ registry: t.registry, store: t.store, links: async () => Promise.reject(new Error("x")), ui: { settings: async (request) => (seen.push(request), null) } });

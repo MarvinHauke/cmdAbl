@@ -532,13 +532,16 @@ export function activate(activation: ActivationContext) {
   }
 
   /**
-   * The settings page for a gear. What it saved goes to the log, not to a message (the page we came from opens again at
+   * The settings page for a gear. What it saved (the count and the changed keys, plus any message of an opened page) goes to the log, not to a message (the page we came from opens again at
    * once); a failure to save is shown.
    */
   async function openSettings(options: { group?: string; only?: boolean }): Promise<void> {
     const result = await settingsFlow.open(options);
     if (result.code !== ExitCode.OK) present(result);
-    else if (result.message) logger("settings").info(result.message);
+    else {
+      for (const line of result.log ?? []) logger("settings").info(line);
+      if (result.message) logger("settings").info(result.message);
+    }
   }
 
   /** The single place results become user-visible (see src/core/surfaces/present.ts). */

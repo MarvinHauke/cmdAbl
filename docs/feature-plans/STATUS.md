@@ -33,8 +33,7 @@ All releases were tested in Live, including the installed `.ablx`.
     commands, the defaults page (live check, reopen on an invalid line), the palette row, `map -l` arrow,
     history `typed`, `config` after every command except man/help, `\<cmd>` in the palette (completes
     like the command; Enter takes the highlighted command row).
-  - Deferred: "N settings saved" to Live's status bar (user: yes) with the next Remote Script update
-    (a new additive bridge op `status` → `show_message`). `map -l` shows the arrow only for one-word
+  - `map -l` shows the arrow only for one-word
     bindings, not `;` chains (`api.commands.expand(line)` would be the way, undecided).
   - **Phase 2 done** (MCP Live test 2026-11-05; `34383b2`, `c0a28bc`, `7c3cdfc`, `724931e`; scroll fix `0ca2e8f`, `952c118`): the help
     line (`ui/help.js`) on the board, settings, defaults and pick list; `ui.helpLine`; key caps; text

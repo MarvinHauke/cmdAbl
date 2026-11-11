@@ -139,8 +139,8 @@ interface ModuleApi {
   ones (the defaults page, §7) in 1b.
 - **The help line** (§3) shows the hovered or focused row's `help` text and its default.
 - **The answer** is checked by `parseSettingsAnswer` (never throws). Unknown keys, values that don't fit
-  and no-ops are dropped. Core then calls `store.set()` after the page closes and answers with one line
-  ("2 settings saved"), or exit 1 when the file couldn't be written.
+  and no-ops are dropped. Core then calls `store.set()` after the page closes and answers quietly
+  (the count goes to the log), or exit 1 when the file couldn't be written.
 - Capped like the board: 20 groups × 50 items, and texts up to 300 characters.
 
 **Entry points**
