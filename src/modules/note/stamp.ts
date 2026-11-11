@@ -32,7 +32,7 @@ export const NO_POSITION_HINT = "no song position: Remote Script not running";
 
 const pad = (n: number): string => String(n).padStart(2, "0");
 
-/** Local `YYYY-MM-DD HH:MM`. */
+/** Local `YYYY-MM-DD HH:MM`. Keep in step with dateHeading() in ui/modules/note/note.html. */
 export function formatStampTime(now: Date): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 }
