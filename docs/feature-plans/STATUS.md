@@ -31,6 +31,10 @@ All releases were tested in Live, including the installed `.ablx`.
     stopped/playing/session clip/6-8 (barLen 3); `loop_set` 8/16, odd values 46.5/2.25 read back, length 0
     or start -1 → exit 2. For docs at the end: 0.1.14 → 0.1.15 in README, using.md, remote-script.md,
     getting-started.md alt text.
+  - core done (`2920224`), modules done (`abebefc`): `note -m`, settings. Live test (needs ui's note.html):
+    Arrangement `note -m` → `@pos · date` heading, 4-bar loop, restored on close; loop moved by hand → left
+    alone; session clip → no loop; stopped → date only; script off → hint; stampLoop off / loopBars 8;
+    `m` from view saves first, then reopens in stamp mode. User: undo history, "save changes?".
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
 - **Live 13 check (2026-11-11, Live 13.0b25):** the installed 0.1.6 and the dev build run (same Extension
