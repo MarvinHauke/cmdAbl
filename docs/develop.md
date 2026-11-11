@@ -104,6 +104,19 @@ notification. Turn on Do Not Disturb first, and check every frame before you use
 `delayMs`, a pause after each typed character, so typing in a recording reads well. Before a take, reset the Set the
 way it was.
 
+**Dialog screenshots.** The docs site shows every image on a lighter "stage". A dialog image must therefore end
+exactly at the dialog window's edge, with nothing of Live around it and transparent rounded corners. Run each capture
+of a dialog through `scripts/trim-shot.py` (needs Pillow):
+
+```sh
+python3 scripts/trim-shot.py captures/palette.png docs/assets/images/palette.png
+```
+
+It finds the dialog's border, crops to it and makes the corners transparent, and prints the box it used. For a GIF it
+crops every frame the same way and gives all frames one shared palette, which keeps the file small. Check the edges
+of the result. If detection is wrong (a scrollbar at the edge can confuse it), give the box yourself with
+`--box l,t,r,b`. Do not use it on images of Live itself or on recordings of Live's window.
+
 What needs eyes or hands stays manual: Cmd+Z and moving a control.
 
 ## Build the docs site
