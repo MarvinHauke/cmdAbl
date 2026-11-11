@@ -93,6 +93,37 @@ export interface SetPort {
    * or too old. Never throws.
    */
   id(create?: boolean): Promise<string | null>;
+  /**
+   * The transport (plan 0013, stamps): playing state, whether a session clip plays, the position `pos` ("12.3.1.1"),
+   * the time and the current bar's start and length, and the arrangement loop; all times in beats.
+   * Null: the Remote Script is not running or too old, or the read failed. Never throws.
+   */
+  transport(): Promise<Transport | null>;
+  /**
+   * Set the arrangement loop (on/off, start, length in beats). Resolves to the loop as Live has it afterwards, or null
+   * (no script, an old one, a refused value). Never throws.
+   */
+  setLoop(loop: Loop): Promise<Loop | null>;
+}
+
+/** The arrangement loop, in beats. */
+export interface Loop {
+  on: boolean;
+  start: number;
+  length: number;
+}
+
+/** The transport as the Remote Script reports it (plan 0013). Times are in beats. */
+export interface Transport {
+  playing: boolean;
+  /** Any track plays a session clip. */
+  session: boolean;
+  /** The position as "bar.beat.sixteenth.tick", e.g. "12.3.1.1". */
+  pos: string;
+  time: number;
+  barStart: number;
+  barLen: number;
+  loop: Loop;
 }
 
 /** A module's own small text files in the extension's data folder (plan 0013). */

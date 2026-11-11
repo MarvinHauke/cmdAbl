@@ -11,7 +11,7 @@ import type { MidiMessage as StoredMidiMessage } from "../../ableton/bridgeOps.j
 import type { Provider } from "../../core/types.js";
 import type { BoardAnswer, BoardRequest, StateChange } from "../../core/surfaces/ui.js";
 import { MAX_FILE_BYTES, validFileName } from "../../core/settings/files.js";
-import type { ModuleApi, SettingDef, TagRow, TrackHandle } from "../types.js";
+import type { Loop, ModuleApi, SettingDef, TagRow, TrackHandle, Transport } from "../types.js";
 
 // A ModuleApi made of fakes, so a module's `activate` and its commands' `run`
 // can be tested without Live: an in-memory bridge, a scripted object tree,
@@ -34,6 +34,8 @@ export interface FakeApiOptions {
   tags?: Record<string, string[]>;
   /** The Set's id the fake `api.set.id` starts with (default: none yet; `id(true)` then makes "fake-set-id"). */
   setId?: string | null;
+  /** The transport the fake `api.set.transport` answers (default: null, i.e. no script); `setLoop` writes into its `loop`. */
+  transport?: Transport | null;
   /** Files the fake `api.files` starts with, by name. */
   files?: Record<string, string>;
   /** The messages the fake script has kept (`api.midi.last` returns those after `since`). */
@@ -79,6 +81,8 @@ export interface FakeApi {
   fileStore: Map<string, string>;
   /** The Set's id now (`api.set.id(true)` fills it when empty). */
   setId: string | null;
+  /** The fake transport now (null = no script); `api.set.setLoop` replaces its `loop`. */
+  transport: Transport | null;
   /** The bindings last given to `api.midi.setBindings` (rows with `{}` and press/release are refused, as in the engine). */
   midiBindings: MidiBinding[];
   /** Listeners registered with `api.onSetChange`; call them to simulate a Set change. */
@@ -132,6 +136,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     fileStore: new Map(Object.entries(options.files ?? {})),
     unreadableFiles: new Set(),
     setId: options.setId ?? null,
+    transport: options.transport ?? null,
     midiBindings: [],
     setListeners: [],
     midiBlocked: [],
@@ -174,6 +179,12 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       id: async (create) => {
         if (fake.setId === null && create === true) fake.setId = "fake-set-id";
         return fake.setId;
+      },
+      transport: async () => (fake.transport ? { ...fake.transport, loop: { ...fake.transport.loop } } : null),
+      setLoop: async (loop: Loop) => {
+        if (!fake.transport) return null;
+        fake.transport.loop = { on: loop.on, start: loop.start, length: loop.length };
+        return { ...fake.transport.loop };
       },
     },
     files: {

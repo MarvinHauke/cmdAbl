@@ -18,7 +18,7 @@ import { registerBuiltins } from "./core/command/builtins.js";
 import { reportBridge } from "./core/host/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { getTagCache } from "./ableton/tagCache.js";
-import { paramDisplay, setId } from "./ableton/bridgeOps.js";
+import { paramDisplay, setId, setLoop, transport } from "./ableton/bridgeOps.js";
 import { findRacks, getChainNameCache } from "./ableton/chainNames.js";
 import { presentResult } from "./core/surfaces/present.js";
 import { runLine } from "./core/command/run.js";
@@ -294,7 +294,11 @@ export function activate(activation: ActivationContext) {
       track: (node) => (node.kind === "track" ? trackFor(context, node) : null),
     },
     // The Set's id lives in the Set, written and read by the Remote Script (operation set_id).
-    set: { id: (create) => setId(getBridge(), create === true) },
+    set: {
+      id: (create) => setId(getBridge(), create === true),
+      transport: () => transport(getBridge()),
+      setLoop: (loop) => setLoop(getBridge(), loop),
+    },
     midi: midiRuntime.port,
     onSetChange: (listener) => setWatch.onChange(listener),
     // Replaced per module below (a module sees its own folder only). Before a module's first command names it,

@@ -99,6 +99,20 @@ export const PORT_MAPPING: readonly PortMapping[] = [
     note: "Stored in the Set with Song.set_data (survives save, reload, Save As and Collect All and Save; Live-tested 2026-10-22). Null without the script.",
   },
   {
+    port: "set.transport",
+    via: "script",
+    call: "operation `transport` (read: playing, session playback, position, bar start and length, arrangement loop; beats)",
+    lom: ["Song.is_playing", "Song.current_song_time", "Song.loop", "Song.loop_start", "Song.loop_length", "Song.signature_numerator", "Song.signature_denominator", "Song.get_current_beats_song_time", "Track.playing_slot_index"],
+    note: "Null without the script or with an old one.",
+  },
+  {
+    port: "set.setLoop",
+    via: "script",
+    call: "operation `loop_set` (writes the arrangement loop on/start/length in beats; answers the loop as Live has it)",
+    lom: ["Song.loop", "Song.loop_start", "Song.loop_length"],
+    note: "A writing op (token). Null without the script or with an old one.",
+  },
+  {
     port: "files.read",
     via: "platform",
     call: "reads `<Extensions Data>/<extension id>/modules/<module>/<name>` (UTF-8)",
