@@ -49,7 +49,7 @@ Constraints:
 |---|---|---|
 | Target | one parameter per control | any command line: tags, `!#`, several tracks, mute/solo/arm/goto/next/tag… |
 | Tags | no | resolved when the control moves, so a newly tagged track follows |
-| Buttons | toggle one parameter | run any command (`--set 0`, `next`, `goto /Lead`) |
+| Buttons | toggle one parameter | run any command (`--set 0`, `find next`, `goto /Lead`) |
 | Feedback | Live's own | later: LEDs and motor faders via `send_midi` |
 | Saved | in the Set | bindings in the Set, the controller profile in cmdAbl |
 
@@ -93,7 +93,7 @@ The matrix page later sits on top of `map`.
   - No dialogs: an ambiguous target gives exit 4, errors are logged, and no pick list opens.
   - Each run is one undo step, and runs stay out of the history.
 - **Trigger mode:** a CC runs on the edge from below 64 to 64 or above (press, not release); a note
-  runs on note-on. Covers `mute #drums --set 0`, `next`, `goto`.
+  runs on note-on. Covers `mute #drums --set 0`, `find next`, `goto`.
 - **Value mode:**
   - A command declares which argument a control may feed: an additive `ArgDef.mapValue?: { min,
     max, unit }`.
@@ -402,6 +402,9 @@ So `map` stays thin: a control plus a pipeline of these same commands and steps.
 
 **Takeover:** pickup by default, so a fader does not jump the level when it doesn't match. A
 14-bit or relative control makes pickup rarely noticeable.
+
+- **Idea (user, 2026-11-11): a knob scrolls a list.** `find --at <n>` selects the n-th match; in value mode
+  `map CC12 | find --at {}` turns a knob into a list scroller. Needs value mode and an `--at` option.
 
 ## Open questions
 

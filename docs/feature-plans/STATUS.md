@@ -54,6 +54,9 @@ All releases were tested in Live, including the installed `.ablx`.
   - Docs done (using.md, getting-started, remote-script.md, 0.1.15). Before the PR: `npm run docs:reference`
     (core; docs:check fails until then); `note` man text command.ts:102 still says "Esc … warns first"
     (modules); retake note-view/note-edit screenshots (docs); 0.1.7 notes go in the PR (no changelog).
+  - **`next`/`prev` → `find next`/`find prev`** (user finding, 2026-11-11; 0007): plus `find --first/--last`,
+    list from `find` only. Breaks old bindings/history lines with `next`/`prev`: PR notes. Docs (README:58,
+    using.md 175/290, getting-started.md 148, palette-empty.png) and `docs:reference` go to docs/core at the end.
   - Paused 2026-11-11: then the user's hand checks and userfindings.md
     notes, then PR and release.
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
