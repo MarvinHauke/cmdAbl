@@ -62,7 +62,7 @@ All releases were tested in Live, including the installed `.ablx`.
     `mkdocs build --strict` pass. User docs done (`abd9a87`, `d6b813c`; reviewer facts check passed).
     Screenshots done (`03049a3`, `89d14e0`); defaults page placeholders fit and its help line has a sentence
     break (`46ce180`, checked in Live); setup page docs link follows the renamed heading (`488b4d6`).
-    Open: the setup page's Update row and `setup.autoScript` (last hand check), then the PR. Installed `.ablx` tested by the user in Live 12.4.25b1 (2026-11-10).
+    All hand checks done (2026-11-11): incl. the setup page's Update row (installed 0.1.13 → Update → restart row → Restart Live), `setup.autoScript` (copied at start without asking), and the Control Surface row on a real unselected slot. Open: the PR. Installed `.ablx` tested by the user in Live 12.4.25b1 (2026-11-10).
   - **Open Karabiner** (user, 2026-11-10): the row "rule added but not enabled" gets a button that opens Karabiner-Elements Settings (`karabiner://karabiner/`, checked by hand: opens the Settings window; exact-match allow in `openUrl`). cmdabl-core; 0021 §3. Built `8026d0f`, clicked in Live. Mock `cmdabl setup --simulate <state>` (dev builds) `a125a9d`; all states captured 2026-11-10.
   - **Restart Live** (user, 2026-11-10; 0021 §2): a button on the restart row (macOS). Built `8e0fbd0`, cancel message `f2b9894`. Live test 2026-11-10 (user): the button quits Live and Live comes back (also after Don't Save, past the 3 s grace); Cancel keeps Live open, no error page, and quitting Live by hand afterwards does not restart it; headless refused (exit 5); no Automation prompt on this Mac.
   - **Docs images refreshed** (2026-11-11; `e824ab7`): 16 images and the GIFs (hero, tags, vol-note) retaken from the new demo Set (Kick, Bass, Lead, Percs, Synth; tags #drums, #bass, #synth); captions follow. Kept old: find-nested, vol-clip, vol-stop. Fixes found on the way: the help line is one row (`cc7879a`, UX checklist item 10), help columns keep a gap after long names (`29e84bc`); both seen in Live.
@@ -90,6 +90,7 @@ All releases were tested in Live, including the installed `.ablx`.
 - The first palette open right after a start can miss the tag rows (`tag -e `, `#`): the snapshot is built
   before the tag cache refresh has finished (2026-11-05). A second open has them. Core: wait for the
   running refresh (with a short cap) or refresh the rows when it lands.
+- Dev only: after **Restart Live**, the `npm start` host keeps running and reconnects, but its dialogs then hang (the palette didn't react, 2026-11-11); restarting `npm start` fixes it. An installed `.ablx` gets a new host from Live, so users are not affected.
 - `npm start` sometimes ends with "Failed to connect to Live within 10s" although the extension loaded
   fully (2026-11-05, 3 of 7 restarts); a second try connects. CLI timeout, not cmdAbl.
 - Settings page: an emptied int field counts as "1 change" on Apply, though it falls back to the last
