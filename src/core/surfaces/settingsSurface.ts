@@ -241,10 +241,11 @@ export function createSettingsFlow(deps: SettingsFlowDeps): SettingsFlow {
         }
         if (answer.open !== undefined && deps.onOpen) {
           const opened = await deps.onOpen(answer.open, { height: settingsSize(request).height });
-          if (opened && opened.code !== ExitCode.OK) return opened;
+          if (opened && opened.code !== ExitCode.OK) return result.log?.length ? { ...opened, log: [...result.log, ...(opened.log ?? [])] } : opened;
           // What the opened page answers (e.g. "2 default commands saved") is told as it is; our own save only adds log lines.
-          if (opened?.message) {
-            result = { ...result, message: [result.message, opened.message].filter(Boolean).join(", "), log: [...(result.log ?? []), ...(opened.log ?? [])] };
+          if (opened && (opened.message || opened.log?.length)) {
+            const message = [result.message, opened.message].filter(Boolean).join(", ");
+            result = { ...result, ...(message ? { message } : {}), log: [...(result.log ?? []), ...(opened.log ?? [])] };
           }
         }
         return result;

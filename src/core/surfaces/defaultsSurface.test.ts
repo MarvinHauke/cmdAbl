@@ -135,15 +135,17 @@ function flowFor(answers: Array<(r: DefaultsRequest) => DefaultsAnswer | null>, 
   return { flow, mem, requests, registry };
 }
 
-test("flow: valid lines are saved and told; removal with ''", async () => {
+test("flow: valid lines are saved quietly (count in the log); removal with ''", async () => {
   const t = flowFor([() => ({ changes: { mute: "mute #drums", note: "note -e" } })], { midi: "midi monitor" });
   const out = await t.flow.open();
   assert.equal(out.code, ExitCode.OK);
-  assert.equal(out.message, "2 default commands saved");
+  assert.equal(out.message, undefined);
   assert.deepEqual(t.mem.content, { midi: "midi monitor", mute: "mute #drums", note: "note -e" });
-  assert.deepEqual(out.log, ["default mute = mute #drums", "default note = note -e"]);
+  assert.deepEqual(out.log, ["2 default commands saved", "default mute = mute #drums", "default note = note -e"]);
   const removing = flowFor([() => ({ changes: { mute: "" } })], { mute: "mute #a" });
-  assert.equal((await removing.flow.open()).message, "1 removed");
+  const removed = await removing.flow.open();
+  assert.equal(removed.message, undefined);
+  assert.equal(removed.log?.[0], "1 default command removed");
   assert.deepEqual(removing.mem.content, {});
 });
 
@@ -170,7 +172,8 @@ test("flow: an invalid line reopens the page on its row with the text and the er
   const out = await t.flow.open();
   assert.equal(t.requests.length, 2);
   assert.deepEqual(t.mem.content, { note: "note -e", mute: "mute #fixed" });
-  assert.equal(out.message, "2 default commands saved");
+  assert.equal(out.message, undefined);
+  assert.equal(out.log?.[0], "2 default commands saved");
 });
 
 test("flow: Enter on the reopened page without a fix checks the pending line again; Esc ends it", async () => {
@@ -261,5 +264,5 @@ test("the fixture for the defaults page is a valid request", () => {
 test("flow: lines that stay invalid when the page is closed are told, not dropped", async () => {
   const t = flowFor([() => ({ changes: { mute: "bogus", note: "note -e" } }), () => null]);
   const out = await t.flow.open();
-  assert.equal(out.message, "1 default command saved, 1 not saved (mute)");
+  assert.equal(out.message, "1 not saved (mute)");
 });

@@ -336,7 +336,7 @@ see it:
 - **The completion snapshot** has `defaults?: Record<command, line>` (usable ones of known commands, ≤ 200): the palette shows
   `mute → mute #drums` while the line is exactly that word.
 - **Link rows:** `cmdabl` group → "Default commands" (`target: "defaults"`, summary "N set"); a group named like a top-level command →
-  "Default command" (`target: "defaults:<command>"`, summary = its line or "not set"). The opened page's "saved" line is added to the settings line.
+  "Default command" (`target: "defaults:<command>"`, summary = its line or "not set"). A successful save on the opened page is quiet too (count to the log); only lines that stay invalid are told.
 - `cmdabl config defaults [<command>]` (the second word only after `defaults`); `defaults` completes among the groups.
 - `api.commands.defaults()` (user-approved 2026-11-05, additive, read-only): the same usable defaults for modules;
   `map -l` shows `CC48 | mute → mute #drums`. History stores `typed` and shows `mute #drums ← mute`.

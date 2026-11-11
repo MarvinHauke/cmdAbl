@@ -102,7 +102,7 @@ export function defaultsSize(request: DefaultsRequest): { width: number; height:
 const savedText = (set: number, removed: number): string => {
   const parts: string[] = [];
   if (set > 0) parts.push(`${set} default command${set === 1 ? "" : "s"} saved`);
-  if (removed > 0) parts.push(`${removed} removed`);
+  if (removed > 0) parts.push(`${removed} default command${removed === 1 ? "" : "s"} removed`);
   return parts.join(", ");
 };
 
@@ -118,7 +118,7 @@ export interface DefaultsFlow {
   /**
    * Show the defaults page. `focus` is a top-level command (exit 3 when there is none). What the page answers is checked
    * again; valid lines are saved, and when any is invalid the page opens again on that row with the text and the error
-   * (until it is fixed or the page is closed). Answers with one line ("2 default commands saved"), or exit 1 when the file
+   * (until it is fixed or the page is closed). Answers quietly (the count goes to the log; lines that stay invalid are told), or exit 1 when the file
    * could not be written; closing without Enter changes nothing and says nothing. Never throws.
    */
   open(options?: { focus?: string; height?: number }): Promise<CommandResult>;
@@ -201,8 +201,10 @@ export function createDefaultsFlow(deps: DefaultsFlowDeps): DefaultsFlow {
           warn(`defaults: ${left.length} line(s) not saved (${left.map(([c]) => c).join(", ")})`);
         }
         const notSaved = left.length > 0 ? `${left.length} not saved (${left.map(([c]) => c).join(", ")})` : "";
-        const text = [set + removed > 0 ? savedText(set, removed) : "", notSaved].filter(Boolean).join(", ");
-        return text ? { ...ok(text), log: logLines } : ok();
+        // A successful save is quiet: the count goes to the log. Lines that stay invalid are still told.
+        if (set + removed > 0) logLines.unshift(savedText(set, removed));
+        const result = notSaved ? ok(notSaved) : ok();
+        return logLines.length > 0 ? { ...result, log: logLines } : result;
       } catch (e: unknown) {
         return fail(ExitCode.FAILURE, `config defaults: ${e instanceof Error ? e.message : String(e)}`);
       }

@@ -189,15 +189,15 @@ test("link rows core adds reach the page (after the declared rows) and what the 
     registry: t.registry,
     store: t.store,
     links: async (group) => (group === "cmdabl" ? [{ key: "link:defaults", label: "Default commands", help: "h", kind: "link", target: "defaults", summary: "2 set" }] : group === "tag" ? [{ key: "link:defaults:tag", label: "Default command", help: "h", kind: "link", target: "defaults:tag", summary: "not set" }] : []),
-    onOpen: async () => ({ code: ExitCode.OK, message: "1 default command saved", log: ["default tag = tag -l"] }),
+    onOpen: async () => ({ code: ExitCode.OK, log: ["1 default command saved", "default tag = tag -l"] }),
     ui: { settings: async (request) => (seen.push(request), { changes: { "tag.foldAfter": 4 }, open: "defaults:tag" } satisfies SettingsAnswer) },
   });
   const out = await flow.open();
   const rows = (id: string) => seen[0]!.groups.find((g) => g.id === id)!.items;
   assert.equal(rows("cmdabl").at(-1)!.kind, "link");
   assert.equal((rows("tag").at(-1) as { target: string }).target, "defaults:tag");
-  assert.equal(out.message, "1 default command saved");
-  assert.deepEqual(out.log?.at(-1), "default tag = tag -l");
+  assert.equal(out.message, undefined);
+  assert.deepEqual(out.log?.slice(-2), ["1 default command saved", "default tag = tag -l"]);
   // a throwing link source only means no link rows
   const broken = createSettingsFlow({ registry: t.registry, store: t.store, links: async () => Promise.reject(new Error("x")), ui: { settings: async (request) => (seen.push(request), null) } });
   assert.equal((await broken.open()).code, ExitCode.OK);
@@ -217,4 +217,18 @@ test("a command without declared settings has a page when it gets link rows (`mu
   assert.deepEqual(seen[0]!.groups.map((g) => [g.id, g.items.length]), [["mute", 1]]);
   assert.equal(seen[0]!.title, "mute Settings");
   assert.equal((await flow.open({ group: "nope", only: true })).code, ExitCode.NOT_FOUND);
+});
+
+test("an opened page that fails keeps our save's log lines in its result", async () => {
+  const t = setup();
+  const flow = createSettingsFlow({
+    registry: t.registry,
+    store: t.store,
+    onOpen: async () => ({ code: ExitCode.FAILURE, message: "config defaults: boom" }),
+    ui: { settings: async () => ({ changes: { "tag.foldAfter": 4 }, open: "defaults" } satisfies SettingsAnswer) },
+  });
+  const out = await flow.open();
+  assert.equal(out.code, ExitCode.FAILURE);
+  assert.equal(out.message, "config defaults: boom");
+  assert.equal(out.log?.[0], "1 setting saved");
 });
