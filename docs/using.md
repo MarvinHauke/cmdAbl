@@ -487,6 +487,24 @@ shows how cmdAbl's ports and Remote Script operations map to the Live Object Mod
 
 ![The man page for mute inside Live: the summary, usage, the settings line `mute config`, arguments and options, with Close and Open in browser buttons](assets/images/man-page.png)
 
+## The arrangement loop: `loop`
+
+`loop` controls Live's arrangement loop. It needs the [Remote Script](remote-script.md); without it the command stops
+with exit code 5.
+
+- `loop` shows the loop: on or off, start bar and length in bars.
+- `loop here [bars]` loops from the current bar, `bars` long, and switches the loop on. Without `bars` it uses the
+  setting `loop.bars` (default 4). It remembers the loop from before.
+- `loop on` and `loop off` switch the loop on or off.
+- `loop back` puts back the loop from before the last `loop here`. If someone moved the loop since, it leaves the loop
+  alone.
+
+If the loop would start after the end of the song, Live refuses; cmdAbl shows Live's reason (exit code 1). With nothing
+to restore, `loop back` does nothing.
+
+Bars follow the Set's current time signature. The loop write leaves no undo step, and Live counts the Set as changed, so
+it asks you to save.
+
 ## A note per Set: `note`
 
 `note` opens a note that belongs to the current Live Set, for things like a to-do list or a mix plan. It needs the
@@ -526,33 +544,29 @@ this Set's note. It is not a separate feature.
   for the next section. If you typed nothing below the heading, no entry is added.
 - `Cmd+S` saves and closes the note. **Discard** throws away this edit and asks once first.
 
-*Known:* if you press `Cmd+S` right after `s`, before the song position has arrived, the heading holds only the
-date and time.
+Esc or Cmd+S right after `s` wait up to half a second for the song position. If the Remote Script does not answer,
+the heading holds only the date and time.
 
-**The loop while you write.** During Arrangement playback, a stamp also sets Live's arrangement loop to start at the
-current bar and switches it on, so the music repeats while you type. When the stamp ends with `Esc`, or the note
-closes, the old loop comes back (on or off, start and length), unless you moved the loop yourself in the meantime.
-Then cmdAbl leaves it alone. Two settings control this:
+**The loop while you write.** During Arrangement playback, a stamp also loops the music while you type: the note
+runs [`loop here`](#the-arrangement-loop-loop) when the stamp starts and `loop back` when it ends (`Esc`, **Done**,
+**Discard** or `Cmd+S`). Two settings control this:
 
 | Setting | Default | What it does |
 | ------- | ------- | ------------ |
-| `note.stampLoop` | on | Sets the loop while you write a stamp. |
-| `note.loopBars` | 4 | The length of that loop, in bars. |
+| `note.stampLoop` | on | Decides whether a stamp loops. |
+| `loop.bars` | 4 | How long that loop is, in bars. |
 
-The loop is set only during Arrangement playback, never while a Session clip plays or the song is stopped. Setting
-the loop needs the Remote Script, and it makes Live count the Set as changed, so Live asks you to save it.
+The loop is set only during Arrangement playback, never while a Session clip plays or the song is stopped.
 
-You can also do this by hand, in one line each: `note stamp loop` sets the stamp loop at the current bar, and
-`note stamp unloop` puts the old loop back. `loop` works only during Arrangement playback with `note.stampLoop` on;
-`unloop` puts the old loop back only if you have not moved the loop since. When there is nothing to do, they do
-nothing and say so in the log.
+`note stamp` from a chain or a MIDI mapping loops the same way. To loop even with `note.stampLoop` off, or outside
+Arrangement playback, set the loop yourself: `loop here 8; note stamp; loop back`, with `note.stampLoop` off.
 
 **Where the note lives.** The note is plain Markdown. It is stored as a file in cmdAbl's data folder (the Extensions
 Data folder in Ableton's Application Support) and linked to the Set by an id that is saved inside the Set. Viewing
 never changes the Set. The first save adds the id, so Live asks you to save the Set. Save it, or the link is lost.
 
-**Save As and Collect All and Save.** The note stays with the Set's id. After Save As, both Sets show the same note,
-and editing it in one changes it for both. Collect All and Save keeps the note.
+**Save As and Collect All and Save.** The note stays with the Set's id. Copies of a Set (Save As, or a copied file)
+share one note, because the id lives in the Set: editing the note in one changes it for all. Collect All and Save keeps the note.
 
 **After a save.** A save is quiet; `cmdabl log` shows "note saved". If saving fails, the message says so, and the next
 `note` opens your text again until cmdAbl restarts.
