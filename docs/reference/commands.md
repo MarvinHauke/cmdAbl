@@ -12,7 +12,7 @@ shows as help. Type a command in the palette; `<command> --help` prints the same
 - Mix: `mute`, `solo`, `arm`, `vol`
 - Control: `map`, `midi`
 - Tags: `tag`
-- Look things up: `help`, `man`, `lom`, `note`, `stamp`
+- Look things up: `help`, `man`, `lom`, `note`
 - Recent commands: `history`
 - Extensions: `pakabl`
 - cmdAbl itself: `cmdabl`
@@ -719,11 +719,21 @@ the object with "snare" in its name
 
 ### `note`
 
+the note of this Live Set, and stamps in it
+
+The Markdown note that belongs to this Live Set, for reminders: headings, lists, checkboxes, tables and code are drawn, links are shown as text. note opens it to read, note -e to edit (a Set that has no note yet opens in edit). note stamp adds a stamp (a new entry with the song position and the time); note stamp loop and note stamp unloop loop the next bars by hand. In the page, e switches to editing, s adds a stamp, Cmd+S saves and closes, Esc goes back or closes. The note is a plain Markdown file in cmdAbl's data folder, linked to the Set by an id stored inside the Set, so it follows the Set when it is renamed or saved under another name (both copies then share one note). The Set gets its id the first time a note is saved, which marks the Set as changed: save it so the link is kept. Needs the cmdAbl Remote Script.
+
+**Usage:** `note [<command>]`
+
+**Subcommands:** `open`, `stamp`
+
+#### `note open`
+
 open the note of this Live Set
 
-Opens the Markdown note that belongs to this Live Set, for reminders: headings, lists, checkboxes, tables and code are drawn, links are shown as text. note opens it to read; note -e opens it to edit, and so does a Set that has no note yet. The stamp command adds a stamp (a new entry with the song position and the time). In the page, e switches to editing, s adds a stamp, Cmd+S saves and closes; Esc in edit goes back to reading and keeps the text, and Esc while reading saves and closes (Discard asks once). The note is a plain Markdown file in cmdAbl's data folder, linked to the Set by an id stored inside the Set, so it follows the Set when it is renamed or saved under another name (both copies then share one note). The Set gets its id the first time a note is saved, which marks the Set as changed: save it so the link is kept. Needs the cmdAbl Remote Script. A saved note shows nothing; the log has one line.
+Opens the note to read; -e opens it to edit, and so does a Set that has no note yet. In the page, e switches to editing, s adds a stamp (see note stamp), Cmd+S saves and closes; Esc in edit goes back to reading and keeps the text, and Esc while reading saves and closes (Discard asks once). A saved note shows nothing; the log has one line.
 
-**Usage:** `note [--edit]`
+**Usage:** `note open [--edit]`
 
 | Option | Description |
 | --- | --- |
@@ -745,34 +755,69 @@ note -e
 
 open the note to edit
 
-### `stamp`
+#### `note stamp`
 
 add a stamp to the note: song position and time, then write below it
 
-Adds a stamp to the note of this Live Set: a new entry at the end with a heading that holds the song position (while the song plays) and the date and time; you write below it. The page opens in edit. While Arrangement playback runs, the next bars loop so the music repeats while you write (settings note.stampLoop and note.loopBars). Esc saves and goes to reading the note, where s adds the next stamp; closing the page puts the loop back as it was, unless you moved it meanwhile. Cmd+S saves and closes. --loop only loops the current bars and --unloop puts the old loop back, only if the loop is still the one --loop set; both do nothing (exit 0) when there is nothing to do, and the note page runs them as you press s and Esc. A loop set by --loop is also put back when a note page closes. Needs the cmdAbl Remote Script; see note for where the text is kept.
+note stamp adds a stamp to this Set's note (see note; the stamps live in the note's file): a new entry at the end with a heading that holds the song position (while the song plays) and the date and time; you write below it. The page opens in edit. While Arrangement playback runs, the next bars loop so the music repeats while you write (settings note.stampLoop and note.loopBars). Esc saves and goes to reading the note, where s adds the next stamp; closing the page puts the loop back as it was, unless you moved it meanwhile. Cmd+S saves and closes. note stamp loop and note stamp unloop do the looping alone; the note page runs them as you press s and Esc. Needs the cmdAbl Remote Script.
 
-**Usage:** `stamp [--loop] [--unloop]`
+**Usage:** `note stamp [<command>]`
 
-| Option | Description |
-| --- | --- |
-| `--loop` | only loop the current bars (no page); the note page uses this |
-| `--unloop` | only put the loop back as it was before --loop (no page) |
+**Subcommands:** `add`, `loop`, `unloop`
+
+#### `note stamp add`
+
+add a stamp at the song position and write below it
+
+Opens the note page in edit with a new heading at the end that holds the song position (while the song plays) and the date and time; you write below it. While Arrangement playback runs, the next bars loop until the page closes.
+
+**Usage:** `note stamp add`
 
 - Needs the Remote Script (reports "not running" / "outdated" otherwise).
 
 **Examples**
 
 ```
-stamp
+note stamp
 ```
 
 add a stamp at the song position and write below it
 
+#### `note stamp loop`
+
+loop the current bars (no page)
+
+Loops the next bars of the Arrangement, as a stamp does while you write. Does nothing (exit 0) when the song is not playing in the Arrangement or the setting note.stampLoop is off. A loop set here is also put back when a note page closes.
+
+**Usage:** `note stamp loop`
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
 ```
-stamp --loop
+note stamp loop
 ```
 
 loop the next bars without a page
+
+#### `note stamp unloop`
+
+put the loop back as it was before note stamp loop (no page)
+
+Puts the old loop back, only if the loop is still the one note stamp loop set. Does nothing (exit 0) when there is nothing to restore.
+
+**Usage:** `note stamp unloop`
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+note stamp unloop
+```
+
+put the loop back
 
 ## Recent commands
 
