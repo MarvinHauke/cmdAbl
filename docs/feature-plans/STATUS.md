@@ -62,11 +62,13 @@ All releases were tested in Live, including the installed `.ablx`.
     every character, heading fills in (`@236.4.3`), loop 940/16, Esc unloops in place; `s`+Esc drops the empty
     stamp; `s x` Cmd+S: the in-flight loop finishes, then the safety net restores it (core's wait).
     Known: Cmd+S right after `s` stores a date-only heading (the page didn't get the position yet).
-  - Left before the PR: docs (using.md `note -m` → `stamp`, key `s`, stamps in place; find next/prev;
-    README:58; getting-started:148; remote-script.md; screenshots note-view/note-edit/palette-empty);
-    `npm run docs:reference` (core); a "keep in step with note.html dateHeading()" comment in
-    src/modules/note/stamp.ts (modules). User hand checks: settings page (stampLoop off, loopBars 8),
-    Discard, Ctrl+n/p, "save changes?", undo history.
+  - **Spelling (user, 2026-11-11):** stamps are `note stamp` / `note stamp loop|unloop` (runnable groups,
+    0005 "git stash rule"); top-level `stamp` and `--loop` gone. Live-tested: help, old spellings refused,
+    three stamps through the page while playing, loop set/put back each time, note saved.
+  - Docs done (`9ca33a5` find, `58aefd6` stamps + page runs + note screenshots); reference `a3b2820`.
+    PR notes collected (docs agent). Open: Esc/Cmd+S within ~200 ms of `s` stores a date-only heading
+    (fix: wait up to 0.5 s for the position, asked the user); the test note was emptied at 22:08:33 with
+    no cmdAbl run logged (asked the user whether he cleared it).
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
 - **Live 13 check (2026-11-11, Live 13.0b25):** the installed 0.1.6 and the dev build run (same Extension
