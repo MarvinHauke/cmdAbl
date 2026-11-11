@@ -33,7 +33,6 @@ All releases were tested in Live, including the installed `.ablx`.
   with an optional pre-push hook (cmdabl-docs, user 2026-11-11).
 - **Open from 0.1.6:**
   - `map -l` shows the expansion arrow only for one-word bindings, not `;` chains (`api.commands.expand(line)` would be the way, undecided).
-  - The pakabl index PR #28 should pick up 0.1.6; merge it (close and reopen to start its checks).
   - Old docs images from a bigger Set: find-nested, vol-clip, vol-stop (retake when a Set with racks is open).
 - How testing works: the architect runs Live test lists through the `cmdabl_*` MCP tools (plan 0016)
   once the user has said Live is free, and may start and restart `npm start` itself; the user gets a
@@ -337,8 +336,6 @@ history was scanned locally and on GitHub, no findings.
   workflow's own token does not start workflows, so PR #8 has no checks and shows as blocked. The
   admin can still merge it (bypass), or close and reopen it to start the checks. A proper fix is
   for the crawler to open its pull request with a token that triggers workflows.
-- **Merged branches** (2026-11-11): all old local and remote branches are merged (mostly squash merges); deleting
-  them waits for the user (the agent's deletion was blocked). Keep `pakabl/index-update` (PR #28).
 
 ## Deferred on purpose
 
