@@ -337,6 +337,7 @@ see it:
   `src/core/surfaces/defaultsRequest.fixture.json` is a sample request.
 - **The completion snapshot** has `defaults?: Record<command, line>` (usable ones of known commands, ≤ 200): the palette shows
   `mute → mute #drums` while the line is exactly that word.
+- **Defaults page sizing** (2026-11-12): coming from a settings page it inherits that page's height, but never below its own size (own size vs. inherited, the larger wins, 240–600), so a small `<module> config` window doesn't make it scroll. The settings page ignores a passed height (no mirror rule).
 - **Link rows:** `cmdabl` group → "Default commands" (`target: "defaults"`, summary "N set"); a group named like a top-level command →
   "Default command" (`target: "defaults:<command>"`, summary = its line or "not set"). A successful save on the opened page is quiet too (count to the log); only lines that stay invalid are told.
 - `cmdabl config defaults [<command>]` (the second word only after `defaults`); `defaults` completes among the groups.

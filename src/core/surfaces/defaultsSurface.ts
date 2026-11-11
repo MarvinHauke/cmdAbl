@@ -93,10 +93,10 @@ export function parseDefaultsAnswer(raw: string | null | undefined, request: Def
   return { changes: { ...changes } };
 }
 
-/** Dialog size: a row is about 44 px; the page scrolls beyond the maximum. */
+/** Dialog size: a row is about 44 px; the page scrolls beyond the maximum. A height inherited from the settings page never shrinks it. */
 export function defaultsSize(request: DefaultsRequest): { width: number; height: number } {
   const own = Math.min(Math.max(150 + request.rows.length * 44, 280), 600);
-  return { width: 640, height: request.height === undefined ? own : Math.min(Math.max(request.height, 240), 600) };
+  return { width: 640, height: request.height === undefined ? own : Math.min(Math.max(request.height, own), 600) };
 }
 
 const savedText = (set: number, removed: number): string => {

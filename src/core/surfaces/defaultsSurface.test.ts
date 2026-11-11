@@ -110,9 +110,10 @@ test("defaultsSize: grows with the rows up to a maximum", () => {
   assert.equal(defaultsSize(request(Array.from({ length: 100 }, (_, i) => ({ command: `c${i}` })))).height, 600);
 });
 
-test("defaultsSize: width 640 like the settings page; a height from the settings page wins", () => {
+test("defaultsSize: width 640 like the settings page; a bigger height from the settings page wins, a smaller one does not shrink it", () => {
   assert.equal(defaultsSize(request([{ command: "a" }])).width, 640);
   assert.equal(defaultsSize({ ...request([{ command: "a" }]), height: 333 }).height, 333);
+  assert.equal(defaultsSize({ ...request([{ command: "a" }]), height: 200 }).height, defaultsSize(request([{ command: "a" }])).height);
 });
 
 function flowFor(answers: Array<(r: DefaultsRequest) => DefaultsAnswer | null>, start: Record<string, string> = {}) {
