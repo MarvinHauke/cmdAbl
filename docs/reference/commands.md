@@ -12,7 +12,7 @@ shows as help. Type a command in the palette; `<command> --help` prints the same
 - Mix: `mute`, `solo`, `arm`, `vol`
 - Control: `map`, `midi`
 - Tags: `tag`
-- Look things up: `help`, `man`, `lom`, `note`
+- Look things up: `help`, `man`, `lom`, `note`, `loop`
 - Recent commands: `history`
 - Extensions: `pakabl`
 - cmdAbl itself: `cmdabl`
@@ -721,7 +721,7 @@ the object with "snare" in its name
 
 the note of this Live Set, and stamps in it
 
-The Markdown note that belongs to this Live Set, for reminders: headings, lists, checkboxes, tables and code are drawn, links are shown as text. note opens it to read, note -e to edit (a Set that has no note yet opens in edit). note stamp adds a stamp (a new entry with the song position and the time); note stamp loop and note stamp unloop loop the next bars by hand. In the page, e switches to editing, s adds a stamp, Cmd+S saves and closes, Esc goes back or closes. The note is a plain Markdown file in cmdAbl's data folder, linked to the Set by an id stored inside the Set, so it follows the Set when it is renamed or saved under another name (both copies then share one note). The Set gets its id the first time a note is saved, which marks the Set as changed: save it so the link is kept. Needs the cmdAbl Remote Script.
+The Markdown note that belongs to this Live Set, for reminders: headings, lists, checkboxes, tables and code are drawn, links are shown as text. note opens it to read, note -e to edit (a Set that has no note yet opens in edit). note stamp adds a stamp (a new entry with the song position and the time); while you write it, the page loops the next bars (see loop). In the page, e switches to editing, s adds a stamp, Cmd+S saves and closes, Esc goes back or closes. The note is a plain Markdown file in cmdAbl's data folder, linked to the Set by an id stored inside the Set, so it follows the Set when it is renamed or saved under another name (both copies then share one note). The Set gets its id the first time a note is saved, which marks the Set as changed: save it so the link is kept. Needs the cmdAbl Remote Script.
 
 **Usage:** `note [<command>]`
 
@@ -759,17 +759,17 @@ open the note to edit
 
 add a stamp to the note: song position and time, then write below it
 
-note stamp adds a stamp to this Set's note (see note; the stamps live in the note's file): a new entry at the end with a heading that holds the song position (while the song plays) and the date and time; you write below it. The page opens in edit. While Arrangement playback runs, the next bars loop so the music repeats while you write (settings note.stampLoop and note.loopBars). Esc saves and goes to reading the note, where s adds the next stamp; closing the page puts the loop back as it was, unless you moved it meanwhile. Cmd+S saves and closes. note stamp loop and note stamp unloop do the looping alone; the note page runs them as you press s and Esc. Needs the cmdAbl Remote Script.
+note stamp adds a stamp to this Set's note (see note; the stamps live in the note's file): a new entry at the end with a heading that holds the song position (while the song plays) and the date and time; you write below it. The page opens in edit. While Arrangement playback runs, the page runs loop here so the music repeats while you write (setting note.stampLoop; the length is loop.bars). Esc saves and goes to reading the note, where s adds the next stamp; closing the page runs loop back, which puts the loop back as it was unless you moved it meanwhile. Cmd+S saves and closes. Needs the cmdAbl Remote Script.
 
 **Usage:** `note stamp [<command>]`
 
-**Subcommands:** `add`, `loop`, `unloop`
+**Subcommands:** `add`
 
 #### `note stamp add`
 
 add a stamp at the song position and write below it
 
-Opens the note page in edit with a new heading at the end that holds the song position (while the song plays) and the date and time; you write below it. While Arrangement playback runs, the next bars loop until the page closes.
+Opens the note page in edit with a new heading at the end that holds the song position (while the song plays) and the date and time; you write below it. While Arrangement playback runs, the page loops the next bars (loop here) until it closes (loop back).
 
 **Usage:** `note stamp add`
 
@@ -783,41 +783,115 @@ note stamp
 
 add a stamp at the song position and write below it
 
-#### `note stamp loop`
+### `loop`
 
-loop the current bars (no page)
+the arrangement loop: loop from here, switch it, put it back
 
-Loops the next bars of the Arrangement, as a stamp does while you write. Does nothing (exit 0) when the song is not playing in the Arrangement or the setting note.stampLoop is off. A loop set here is also put back when a note page closes.
+The Arrangement loop of this Live Set. loop shows it, loop here [bars] loops from the current bar (bars long, setting loop.bars, 4 by default), switches it on and remembers the loop before, loop on and loop off switch it, loop back puts the loop from before the last loop here back, but only while it is still the one loop here set. Bars use the Set's current time signature. Needs the cmdAbl Remote Script. The note page uses loop here and loop back while you write a stamp.
 
-**Usage:** `note stamp loop`
+**Usage:** `loop [<command>]`
 
-- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+**Subcommands:** `show`, `here`, `on`, `off`, `back`
 
-**Examples**
+#### `loop show`
 
-```
-note stamp loop
-```
+show the arrangement loop
 
-loop the next bars without a page
+Shows whether the Arrangement loop is on, where it starts (bar) and how long it is (bars). Changes nothing.
 
-#### `note stamp unloop`
-
-put the loop back as it was before note stamp loop (no page)
-
-Puts the old loop back, only if the loop is still the one note stamp loop set. Does nothing (exit 0) when there is nothing to restore.
-
-**Usage:** `note stamp unloop`
+**Usage:** `loop show`
 
 - Needs the Remote Script (reports "not running" / "outdated" otherwise).
 
 **Examples**
 
 ```
-note stamp unloop
+loop
 ```
 
-put the loop back
+show the loop
+
+#### `loop here`
+
+loop from the current bar and switch the loop on
+
+Loops from the start of the current bar, bars long (default: setting loop.bars, 4), switches the loop on and remembers the loop before; loop back puts it back. A second loop here before loop back keeps the first remembered loop. Bars use the Set's time signature.
+
+**Usage:** `loop here [<bars>]`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<bars>` | number | no | How many bars, 1–64 (default: setting loop.bars) |
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+loop here
+```
+
+loop the next 4 bars (or loop.bars)
+
+```
+loop here 8
+```
+
+loop the next 8 bars
+
+#### `loop on`
+
+switch the arrangement loop on
+
+Switches the Arrangement loop on, where it is. Nothing changes if it is already on.
+
+**Usage:** `loop on`
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+loop on
+```
+
+switch the loop on
+
+#### `loop off`
+
+switch the arrangement loop off
+
+Switches the Arrangement loop off, keeping its position. Nothing changes if it is already off.
+
+**Usage:** `loop off`
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+loop off
+```
+
+switch the loop off
+
+#### `loop back`
+
+put back the loop from before the last loop here
+
+Puts back the loop from before the last loop here, only if the loop is still the one loop here set; a loop you moved meanwhile is left alone. Does nothing (exit 0) when there is nothing to restore.
+
+**Usage:** `loop back`
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+loop back
+```
+
+restore the loop from before loop here
 
 ## Recent commands
 
