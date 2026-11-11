@@ -1,25 +1,13 @@
 /**
- * Pure helpers of the note stamp flow (plan 0013, "Stamps"): the heading, the loop to set and when to put the
- * old loop back, and the page's answer. The flow itself is in command.ts.
+ * Pure helpers of the note stamp flow (plan 0013, "Stamps"): the heading and the page's answer. The loop while
+ * writing is the `loop` module (plan 0026). The flow itself is in command.ts.
  */
 
-/** A loop as the Remote Script reports it; times in beats. */
-export interface StampLoop {
-  on: boolean;
-  start: number;
-  length: number;
-}
-
-/** The part of the transport the stamp flow reads (structurally what `api.set.transport()` answers). */
+/** The part of the transport the stamp heading reads (structurally what `api.set.transport()` answers). */
 export interface StampTransport {
   playing: boolean;
-  /** Any track plays a session clip. */
-  session: boolean;
   /** Live's bar.beat.sixteenth.tick, e.g. "12.3.1.1". */
   pos: string;
-  barStart: number;
-  barLen: number;
-  loop: StampLoop;
 }
 
 /** What the page is told in stamp mode. */
@@ -52,25 +40,6 @@ export function buildStamp(transport: StampTransport | null, now: Date): StampIn
   if (transport === null) return { heading: `### ${time}`, hint: NO_POSITION_HINT };
   const pos = transport.playing ? trimPosition(transport.pos) : null;
   return { heading: pos === null ? `### ${time}` : `### @${pos} · ${time}` };
-}
-
-/** The loop to set for a stamp, or null when the loop is left alone (setting off, stopped, or Session playback). */
-export function loopForStamp(transport: StampTransport | null, stampLoop: boolean, loopBars: number): StampLoop | null {
-  if (!stampLoop || transport === null || !transport.playing || transport.session) return null;
-  if (!(transport.barLen > 0) || !(loopBars > 0)) return null;
-  return { on: true, start: transport.barStart, length: loopBars * transport.barLen };
-}
-
-const EPSILON = 1e-3;
-
-/** True when two loops are the same (beats, small tolerance for what Live rounds). */
-export function sameLoop(a: StampLoop, b: StampLoop): boolean {
-  return a.on === b.on && Math.abs(a.start - b.start) < EPSILON && Math.abs(a.length - b.length) < EPSILON;
-}
-
-/** Put the old loop back only if nobody moved the one we set. */
-export function shouldRestoreLoop(current: StampLoop | null, set: StampLoop): boolean {
-  return current !== null && sameLoop(current, set);
 }
 
 /** The page's answer: `text` null = unchanged, "" = cleared; `then` = what follows the save: "stamp" (s), "view" (Esc in stamp edit). */

@@ -1,14 +1,14 @@
-import type { Loop, LiveRoutes, ModuleApi } from "../types.js";
+import type { LiveRoutes, ModuleApi } from "../types.js";
 import { fillTemplate } from "../../core/surfaces/inlineJson.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
-import { buildStamp, loopForStamp, parseAnswer, sameLoop, shouldRestoreLoop, type PageThen, type StampInfo } from "./stamp.js";
+import { buildStamp, parseAnswer, type PageThen, type StampInfo } from "./stamp.js";
 
 const NOTE_WIDTH = 640;
 const NOTE_HEIGHT = 520;
 
 // Why stamps are commands under `note`: the note owns its file (`api.files` is scoped per module, so a separate
 // module could not write into it), and actions are subcommands, never flags (plan 0005): `note` opens, `note stamp`
-// adds a stamp, `note stamp loop` / `unloop` loop by hand. Both groups run on their own through a bare fallback child
+// adds a stamp (the loop while writing is the `loop` module, plan 0026). Both groups run on their own through a bare fallback child
 // (`open`, `add`), as `git stash` runs `git stash push` (plan 0005 "Runnable groups"; plan 0013 "Spelling").
 
 /**
@@ -20,8 +20,8 @@ const NOTE_HEIGHT = 520;
  * save), so Save sends it even when the user did not edit it. A Set only gets its id when there is a text to keep,
  * so looking at the note never changes the Set. `template` is the note page (ui/modules/note/note.html), given by index.ts.
  *
- * Stamp round (`note stamp`, or `then: "stamp"`): read the transport, build the heading, maybe loop the current bars
- * while the user writes, open the page in mode "stamp", save, and put the old loop back (only if nobody moved ours).
+ * Stamp round (`note stamp`, or `then: "stamp"`): read the transport, build the heading, open the page in mode "stamp" and save.
+ * The loop while writing is the page's job through `loop here` / `loop back` (module `loop`, plan 0026).
  */
 export function registerNote(api: ModuleApi, template: string, now: () => Date = () => new Date()): void {
   // Text that could not be saved. It stays in memory (never in the log: a note can hold anything) until the
@@ -65,72 +65,31 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
     return { then, result: { ...ok(), log: [`note saved (${next.length} characters, set ${id})`] } };
   }
 
-  /** The note stamp loop this module set and has not put back yet; `unloop` and the safety net restore `old` only while `set` is still there. */
-  let ours: { old: Loop; set: Loop } | null = null;
-
-  /** `note stamp loop`: loop the current bars. Returns the log line; `failed` when the Remote Script did not answer. */
-  async function setStampLoop(): Promise<{ line: string; failed?: true }> {
-    const transport = await api.set.transport();
-    const wanted = loopForStamp(transport, (await api.settings.get<boolean>("stampLoop")) ?? true, (await api.settings.get<number>("loopBars")) ?? 4);
-    if (wanted === null || transport === null) return { line: "note stamp loop: nothing to do (needs Arrangement playback and the setting note.stampLoop)" };
-    // Already ours and still there: keep the first old loop.
-    if (ours !== null && sameLoop(transport.loop, ours.set)) return { line: "note stamp loop: already set" };
-    const set = await api.set.setLoop(wanted);
-    if (set === null) return { line: "note stamp loop: the Remote Script did not answer", failed: true };
-    ours = { old: transport.loop, set };
-    return { line: "note stamp loop: set" };
-  }
-
-  /** `note stamp unloop`: put the old loop back, only if the loop is still the one set here. */
-  async function restoreStampLoop(): Promise<{ line: string; warn?: true }> {
-    if (ours === null) return { line: "note stamp unloop: nothing to restore" };
-    const mine = ours;
-    ours = null;
-    const current = (await api.set.transport())?.loop ?? null;
-    if (!shouldRestoreLoop(current, mine.set)) return { line: "note stamp unloop: loop left alone (it was moved meanwhile)" };
-    if ((await api.set.setLoop(mine.old)) === null) return { line: "note stamp unloop: loop not restored: the Remote Script did not answer", warn: true };
-    return { line: "note stamp unloop: loop put back" };
-  }
-
   /**
-   * The note page as a live page: it reads the stamp heading from the route `heading` and may run `note stamp loop` and
-   * `note stamp unloop` while open (plan 0013, 0018 "Page runs"). Without the server the platform shows it as a data page
-   * (LIVE = null) and it falls back to `then`.
+   * The note page as a live page: it reads the stamp heading from the route `heading` (`loop` tells whether the page
+   * should loop while the user writes) and may run `loop here` / `loop back` while open (plan 0013, 0026, 0018 "Page runs").
+   * `onClose` is the safety net: `loop back` runs after the page closes whatever the page did. Without the server the
+   * platform shows it as a data page (LIVE = null) and it falls back to `then`.
    */
   function openPage(html: string): Promise<string | null> {
-    const routes: LiveRoutes = { heading: async () => buildStamp(await api.set.transport(), now()) };
-    return api.ui.livePage("note", html, NOTE_WIDTH, NOTE_HEIGHT, routes, { run: ["note stamp loop", "note stamp unloop"] });
+    const routes: LiveRoutes = {
+      heading: async () => {
+        const transport = await api.set.transport();
+        const loop = ((await api.settings.get<boolean>("stampLoop")) ?? true) && transport !== null && transport.playing && !transport.session;
+        return { ...buildStamp(transport, now()), loop };
+      },
+    };
+    return api.ui.livePage("note", html, NOTE_WIDTH, NOTE_HEIGHT, routes, { run: ["loop here", "loop back"], onClose: "loop back" });
   }
 
-  /**
-   * One round of the page loop: for a stamp, read the transport, build the heading and set the loop; open the page;
-   * save; and put the loop back whatever the save did (the safety net: the page may have set it itself).
-   */
+  /** One round of the page loop: for a stamp, build the heading; open the page; save. */
   async function round(mode: "view" | "edit" | "stamp"): Promise<{ then: PageThen; result?: CommandResult; log: string[] }> {
-    const log: string[] = [];
-    let info: StampInfo | undefined;
-    if (mode === "stamp") {
-      info = buildStamp(await api.set.transport(), now());
-      const set = await setStampLoop();
-      if (set.failed) {
-        api.logger.warn(set.line);
-        log.push(set.line);
-      }
-    }
-    try {
-      return { ...(await session(mode, info)), log };
-    } finally {
-      const had = ours !== null;
-      const back = await restoreStampLoop();
-      if (had) {
-        if (back.warn) api.logger.warn(back.line);
-        else log.push(back.line.replace("note stamp unloop", "note"));
-      }
-    }
+    const info = mode === "stamp" ? buildStamp(await api.set.transport(), now()) : undefined;
+    return { ...(await session(mode, info)), log: [] };
   }
 
   /**
-   * The page loop: open the page, and on each answer save the text, restore this round's loop, then act on `then`:
+   * The page loop: open the page, and on each answer save the text, then act on `then`:
    * "stamp" opens the stamp page, "view" reopens the note to read, null ends. A failed save ends the loop with
    * exit 1 (the text stays pending).
    */
@@ -160,7 +119,7 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
     description:
       "The Markdown note that belongs to this Live Set, for reminders: headings, lists, checkboxes, tables and code are drawn, " +
       "links are shown as text. note opens it to read, note -e to edit (a Set that has no note yet opens in edit). " +
-      "note stamp adds a stamp (a new entry with the song position and the time); note stamp loop and note stamp unloop loop the next bars by hand. " +
+      "note stamp adds a stamp (a new entry with the song position and the time); while you write it, the page loops the next bars (see loop). " +
       "In the page, e switches to editing, s adds a stamp, Cmd+S saves and closes, Esc goes back or closes. " +
       "The note is a plain Markdown file in cmdAbl's data folder, linked to the Set by an id stored inside the Set, so it follows the Set " +
       "when it is renamed or saved under another name (both copies then share one note). The Set gets its id the first time a note is saved, " +
@@ -188,10 +147,9 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
         summary: "add a stamp to the note: song position and time, then write below it",
         description:
           "note stamp adds a stamp to this Set's note (see note; the stamps live in the note's file): a new entry at the end with a heading that holds the song position " +
-          "(while the song plays) and the date and time; you write below it. The page opens in edit. While Arrangement playback runs, the next bars loop so the music " +
-          "repeats while you write (settings note.stampLoop and note.loopBars). Esc saves and goes to reading the note, where s adds the next stamp; closing the page " +
-          "puts the loop back as it was, unless you moved it meanwhile. Cmd+S saves and closes. note stamp loop and note stamp unloop do the looping alone; " +
-          "the note page runs them as you press s and Esc. Needs the cmdAbl Remote Script.",
+          "(while the song plays) and the date and time; you write below it. The page opens in edit. While Arrangement playback runs, the page runs loop here so the music " +
+          "repeats while you write (setting note.stampLoop; the length is loop.bars). Esc saves and goes to reading the note, where s adds the next stamp; closing the page " +
+          "runs loop back, which puts the loop back as it was unless you moved it meanwhile. Cmd+S saves and closes. Needs the cmdAbl Remote Script.",
         children: [
           {
             name: "add",
@@ -200,35 +158,10 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
             summary: "add a stamp at the song position and write below it",
             description:
               "Opens the note page in edit with a new heading at the end that holds the song position (while the song plays) and the date and time; " +
-              "you write below it. While Arrangement playback runs, the next bars loop until the page closes.",
+              "you write below it. While Arrangement playback runs, the page loops the next bars (loop here) until it closes (loop back).",
             examples: [{ line: "note stamp", note: "add a stamp at the song position and write below it" }],
             requires: [...needsBridge],
             run: () => pageLoop("stamp"),
-          },
-          {
-            name: "loop",
-            summary: "loop the current bars (no page)",
-            description:
-              "Loops the next bars of the Arrangement, as a stamp does while you write. Does nothing (exit 0) when the song is not playing in the Arrangement or the setting " +
-              "note.stampLoop is off. A loop set here is also put back when a note page closes.",
-            examples: [{ line: "note stamp loop", note: "loop the next bars without a page" }],
-            requires: [...needsBridge],
-            run: async (): Promise<CommandResult> => {
-              const r = await setStampLoop();
-              return r.failed ? { ...fail(ExitCode.UNAVAILABLE, "note stamp loop: the loop was not set: the Remote Script did not answer"), log: [r.line] } : { ...ok(), log: [r.line] };
-            },
-          },
-          {
-            name: "unloop",
-            summary: "put the loop back as it was before note stamp loop (no page)",
-            description: "Puts the old loop back, only if the loop is still the one note stamp loop set. Does nothing (exit 0) when there is nothing to restore.",
-            examples: [{ line: "note stamp unloop", note: "put the loop back" }],
-            requires: [...needsBridge],
-            run: async (): Promise<CommandResult> => {
-              const r = await restoreStampLoop();
-              if (r.warn) return { ...fail(ExitCode.UNAVAILABLE, "note stamp unloop: the loop was not put back: the Remote Script did not answer"), log: [r.line] };
-              return { ...ok(), log: [r.line] };
-            },
           },
         ],
       },
@@ -245,15 +178,6 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
         help: "A stamp during Arrangement playback loops the next bars while you write, and puts the loop back when you close.",
         kind: "bool",
         default: true,
-      },
-      {
-        key: "note.loopBars",
-        label: "Loop length (bars)",
-        help: "How many bars a stamp loops.",
-        kind: "int",
-        default: 4,
-        min: 1,
-        max: 64,
       },
     ],
   });

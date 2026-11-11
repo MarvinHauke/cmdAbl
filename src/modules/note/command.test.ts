@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { ExitCode } from "../../core/types.js";
 import { createFakeApi } from "../shared/testPorts.js";
 import { registerNote } from "./command.js";
+import { NO_POSITION_HINT } from "./stamp.js";
 
 const ans = (text: string | null, then: "stamp" | "view" | null = null): string => JSON.stringify({ text, then });
 const TEMPLATE = "<script>const NOTE = /*NOTE_PLACEHOLDER*/null;</script>";
@@ -151,7 +152,8 @@ test("the note tree: open and add are bare fallbacks, every leaf needs the Remot
   assert.deepEqual([open.fallback, open.bare], [true, true]);
   const add = leaf(fake, "stamp", "add") as never as { requires: string[]; fallback: boolean; bare: boolean };
   assert.deepEqual([add.requires, add.fallback, add.bare], [["bridge"], true, true]);
-  for (const w of ["loop", "unloop"]) assert.deepEqual((leaf(fake, "stamp", w) as never as { requires: string[] }).requires, ["bridge"]);
+  const stamp = (fake.commands[0]!.children as Array<{ name: string; children?: unknown[] }>).find((c) => c.name === "stamp")!;
+  assert.deepEqual((stamp.children as Array<{ name: string }>).map((c) => c.name), ["add"], "the loop lines moved to the loop module");
 });
 
 test("a note text with </script> or a placeholder-like text reaches the page escaped, once", async () => {
@@ -185,13 +187,8 @@ function stampSetup(options: Parameters<typeof createFakeApi>[0] = {}, answers: 
   const fake = createFakeApi(options);
   registerNote(fake.api, TEMPLATE, () => FIXED);
   const given: Array<Record<string, unknown>> = [];
-  const loops: Array<{ on: boolean; start: number; length: number }> = [];
-  const setLoop = fake.api.set.setLoop;
-  fake.api.set.setLoop = async (l) => (loops.push(l), setLoop(l));
   fake.api.ui.livePage = (async (_n: string, html: string) => {
     given.push(JSON.parse(/const NOTE = (.*);<\/script>/.exec(html)![1]!));
-    // Where the loop is while the page is open.
-    given.at(-1)!.loopWhileOpen = fake.transport?.loop;
     return answers.shift() ?? null;
   }) as never;
   const run = (opts: Record<string, string | true> = {}) => {
@@ -199,209 +196,82 @@ function stampSetup(options: Parameters<typeof createFakeApi>[0] = {}, answers: 
       ? leaf(fake, "stamp", "add").run(inv(["note", "stamp"]), undefined as never)
       : leaf(fake).run(inv(["note"]), undefined as never);
   };
-  return { fake, run, given, loops };
+  return { fake, run, given };
 }
 
-test("stamp while playing: stamp page with the heading, the loop set while open and put back after", async () => {
-  const { fake, run, given, loops } = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("### x\ntext")]);
+test("stamp while playing: stamp page with the heading, and the note never touches the loop", async () => {
+  const { fake, run, given } = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("### x\ntext")]);
   const r = (await run({ stamp: true }))!;
   assert.equal(r.code, ExitCode.OK);
   assert.equal(given[0]!.mode, "stamp");
   assert.deepEqual(given[0]!.stamp, { heading: "### @12.3.1 · 2026-11-11 14:05" });
-  assert.deepEqual(given[0]!.loopWhileOpen, { on: true, start: 44, length: 16 });
   assert.deepEqual(fake.transport!.loop, PLAYING.loop);
-  assert.equal(loops.length, 2);
   assert.equal(fake.fileStore.get("abc.md"), "### x\ntext");
 });
 
-test("the loop is put back even when the save fails; a moved loop is left alone", async () => {
-  const failing = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("t")]);
-  failing.fake.api.files.write = async () => false;
-  assert.equal(((await failing.run({ stamp: true }))!).code, ExitCode.FAILURE);
-  assert.deepEqual(failing.fake.transport!.loop, PLAYING.loop);
-
-  const moved = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("t")]);
-  const dialog = moved.fake.api.ui.livePage;
-  moved.fake.api.ui.livePage = (async (...a: Parameters<typeof dialog>) => {
-    const r = await dialog(...a);
-    moved.fake.transport!.loop = { on: true, start: 100, length: 8 }; // the user moved it by hand
-    return r;
-  }) as never;
-  await moved.run({ stamp: true });
-  assert.deepEqual(moved.fake.transport!.loop, { on: true, start: 100, length: 8 });
-});
-
-test("no loop when stopped, in Session playback, with the setting off, or with no script; the hint appears without a script", async () => {
-  for (const t of [{ ...PLAYING, playing: false }, { ...PLAYING, session: true }]) {
-    const s = stampSetup({ setId: "abc", transport: clone(t) });
-    await s.run({ stamp: true });
-    assert.equal(s.loops.length, 0);
-  }
-  const off = stampSetup({ setId: "abc", transport: clone(PLAYING), settings: { "note.stampLoop": false } });
-  await off.run({ stamp: true });
-  assert.equal(off.loops.length, 0);
+test("the hint appears without a script", async () => {
   const none = stampSetup({ setId: "abc" });
   await none.run({ stamp: true });
-  assert.deepEqual(none.given[0]!.stamp, { heading: "### 2026-11-11 14:05", hint: "no song position: Remote Script not running" });
-  assert.equal(none.loops.length, 0);
-});
-
-test("loopBars is used for the length", async () => {
-  const s = stampSetup({ setId: "abc", transport: clone(PLAYING), settings: { "note.loopBars": 8 } });
-  await s.run({ stamp: true });
-  assert.deepEqual(s.loops[0], { on: true, start: 44, length: 32 });
+  assert.equal((none.given[0]!.stamp as { hint?: string }).hint, NO_POSITION_HINT);
 });
 
 test("the page answer then: stamp saves the text, then opens the stamp page", async () => {
-  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("edited", "stamp"), ans("edited\n### s\nmore")]);
+  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("one", "stamp"), ans("one\ntwo")]);
   const r = (await s.run())!;
   assert.equal(r.code, ExitCode.OK);
-  assert.equal(s.given.length, 2);
-  assert.equal(s.given[0]!.mode, "edit");
-  assert.equal(s.given[1]!.mode, "stamp");
-  assert.equal(s.given[1]!.text, "edited"); // the first save is in the note the stamp page starts from
-  assert.equal(s.fake.fileStore.get("abc.md"), "edited\n### s\nmore");
+  assert.deepEqual(s.given.map((g) => g.mode), ["edit", "stamp"]);
+  assert.equal(s.fake.fileStore.get("abc.md"), "one\ntwo");
 });
 
-test("a stamp page that answers nothing writes nothing and still restores the loop", async () => {
-  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans(null)]);
-  assert.equal(((await s.run({ stamp: true }))!).code, ExitCode.OK);
-  assert.equal(s.fake.fileStore.size, 0);
-  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
-});
-
-test("note declares its two settings", () => {
-  const { fake } = setup();
-  const items = fake.settingGroups.flatMap((g) => g.items.map((i) => [i.key, i.kind, i.default]));
-  assert.deepEqual(items, [["note.stampLoop", "bool", true], ["note.loopBars", "int", 4]]);
-});
-
-test("an unreadable page answer writes nothing but leaves a log line", async () => {
-  const { run, fake } = setup({ setId: "abc", dialogAnswer: "not json" });
-  assert.equal(await run(), undefined);
-  assert.ok(fake.logged.some((l) => l.level === "warn" && /unreadable page answer/.test(l.text)));
-  assert.equal(fake.fileStore.size, 0);
-});
-
-test("m from view after a failed save: no stamp starts, exit 1, the text stays pending", async () => {
-  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("first", "stamp"), ans("never")]);
-  s.fake.api.files.write = async () => false;
-  const r = (await s.run())!;
-  assert.equal(r.code, ExitCode.FAILURE);
-  assert.equal(s.given.length, 1);
-  assert.equal(s.loops.length, 0);
-});
-
-test("a failed loop restore is a warn, not an ok line", async () => {
-  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans(null)]);
-  const setLoop = s.fake.api.set.setLoop;
-  let n = 0;
-  s.fake.api.set.setLoop = async (l) => (n++ === 0 ? setLoop(l) : null);
-  const r = await s.run({ stamp: true });
-  assert.doesNotMatch((r?.log ?? []).join("\n"), /put back/);
-  assert.ok(s.fake.logged.some((l) => l.level === "warn" && /loop not restored/.test(l.text)));
-});
-
-test("Esc in stamp edit (then: view): saved, loop put back, the note reopens in view; m there starts the next stamp", async () => {
-  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("### a\none", "view"), ans(null, "stamp"), ans("### a\none\n### b\ntwo")]);
+test("Esc in stamp edit (then: view) saves and reopens the note in view; s there starts the next stamp", async () => {
+  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("### x", "view"), ans(null, "stamp"), ans(null)]);
   const r = (await s.run({ stamp: true }))!;
   assert.equal(r.code, ExitCode.OK);
   assert.deepEqual(s.given.map((g) => g.mode), ["stamp", "view", "stamp"]);
-  assert.equal(s.given[1]!.loopWhileOpen && (s.given[1]!.loopWhileOpen as { on: boolean }).on, false); // loop is back while viewing
-  assert.deepEqual(s.given[2]!.loopWhileOpen, { on: true, start: 44, length: 16 });
-  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
-  assert.equal(s.fake.fileStore.get("abc.md"), "### a\none\n### b\ntwo");
 });
 
-test("a stamp page may answer then: stamp (no longer ignored)", async () => {
-  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("a", "stamp"), ans("b")]);
-  await s.run({ stamp: true });
-  assert.deepEqual(s.given.map((g) => g.mode), ["stamp", "stamp"]);
-});
-
-test("a failed save in the loop stops it with exit 1 and restores the loop", async () => {
-  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("a", "view"), ans("never")]);
+test("a failed save in the loop stops it with exit 1", async () => {
+  const s = stampSetup({ setId: "abc", transport: clone(PLAYING), unreadableFiles: ["abc.md"] } as never, [ans("x", "stamp")]);
   s.fake.api.files.write = async () => false;
-  assert.equal(((await s.run({ stamp: true }))!).code, ExitCode.FAILURE);
+  const r = (await s.run({ stamp: true }))!;
+  assert.equal(r.code, ExitCode.FAILURE);
   assert.equal(s.given.length, 1);
-  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
 });
 
-// --- note stamp loop / unloop and the live page -----------------------------------------------------------------
-
-function loopSetup(transport: object | null = PLAYING, settings: Record<string, unknown> = {}) {
-  const fake = createFakeApi({ setId: "abc", transport: transport === null ? null : clone(transport as never), settings } as never);
-  registerNote(fake.api, TEMPLATE, () => FIXED);
-  return {
-    fake,
-    loop: () => leaf(fake, "stamp", "loop").run(inv(["note", "stamp", "loop"]), undefined as never),
-    unloop: () => leaf(fake, "stamp", "unloop").run(inv(["note", "stamp", "unloop"]), undefined as never),
-  };
-}
-
-test("note stamp loop sets the loop and unloop puts the old one back", async () => {
-  const s = loopSetup();
-  assert.equal(((await s.loop())!).code, ExitCode.OK);
-  assert.deepEqual(s.fake.transport!.loop, { on: true, start: 44, length: 16 });
-  assert.equal(((await s.unloop())!).code, ExitCode.OK);
-  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
+test("an unreadable page answer writes nothing but leaves a log line", async () => {
+  const s = stampSetup({ setId: "abc" }, ["plain text"]);
+  const r = await s.run({ stamp: true });
+  assert.ok(s.fake.logged.some((l) => l.level === "warn" && /unreadable/.test(l.text)));
+  assert.equal(s.fake.fileStore.has("abc.md"), false);
+  void r;
 });
 
-test("a second note stamp loop keeps the first old loop", async () => {
-  const s = loopSetup();
-  await s.loop();
-  await s.loop();
-  await s.unloop();
-  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
+test("note declares one setting, note.stampLoop (the length is loop.bars)", () => {
+  const { fake } = setup();
+  const items = fake.settingGroups.flatMap((g) => g.items).map((i) => [i.key, i.kind, i.default]);
+  assert.deepEqual(items, [["note.stampLoop", "bool", true]]);
 });
 
-test("unloop leaves a loop the user moved; --unloop without --loop, and loop with nothing to do, are quiet no-ops", async () => {
-  const s = loopSetup();
-  const r = (await s.unloop())!;
-  assert.equal(r.code, ExitCode.OK);
-  assert.match(r.log![0]!, /nothing to restore/);
-  await s.loop();
-  s.fake.transport!.loop = { on: true, start: 100, length: 8 };
-  assert.match(((await s.unloop())!).log![0]!, /left alone/);
-  assert.deepEqual(s.fake.transport!.loop, { on: true, start: 100, length: 8 });
-  assert.match(((await s.unloop())!).log![0]!, /nothing to restore/); // forgotten after that
-
-  for (const t of [{ ...PLAYING, playing: false }, { ...PLAYING, session: true }, null]) {
-    const n = loopSetup(t);
-    const q = (await n.loop())!;
-    assert.equal(q.code, ExitCode.OK);
-    assert.match(q.log![0]!, /nothing to do/);
-  }
-  const off = loopSetup(PLAYING, { "note.stampLoop": false });
-  assert.match(((await off.loop())!).log![0]!, /nothing to do/);
-  assert.deepEqual(off.fake.transport!.loop, PLAYING.loop);
-});
-
-test("the note page is a live page that may run note stamp loop/unloop and serves the heading", async () => {
+test("the note page is a live page: runs loop here/back, closes with loop back, and the heading says whether to loop", async () => {
   const fake = createFakeApi({ setId: "abc", transport: clone(PLAYING), dialogAnswer: ans(null) });
   registerNote(fake.api, TEMPLATE, () => FIXED);
   await leaf(fake).run(inv(["note"]), undefined as never);
   const page = fake.livePages[0]!;
-  assert.deepEqual(page.run, ["note stamp loop", "note stamp unloop"]);
+  assert.deepEqual(page.run, ["loop here", "loop back"]);
+  assert.equal(page.onClose, "loop back");
   const heading = page.routes.heading as (q: never) => Promise<unknown>;
-  assert.deepEqual(await heading({} as never), { heading: "### @12.3.1 · 2026-11-11 14:05" });
-});
-
-test("safety net: a loop the page set (note stamp loop) is put back when the page closes", async () => {
-  const s = loopSetup();
-  const pages = s.fake.api.ui.livePage;
-  s.fake.api.ui.livePage = (async (...a: Parameters<typeof pages>) => {
-    await s.loop(); // what the page's run does
-    return pages(...a);
-  }) as never;
-  await leaf(s.fake).run(inv(["note"]), undefined as never);
-  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
-});
-
-test("a failing script gives exit 5", async () => {
-  const s = loopSetup();
-  s.fake.api.set.setLoop = async () => null;
-  assert.equal(((await s.loop())!).code, ExitCode.UNAVAILABLE);
+  assert.deepEqual(await heading({} as never), { heading: "### @12.3.1 · 2026-11-11 14:05", loop: true });
+  fake.transport!.playing = false;
+  assert.deepEqual(await heading({} as never), { heading: "### 2026-11-11 14:05", loop: false });
+  fake.transport!.playing = true;
+  fake.transport!.session = true;
+  assert.equal(((await heading({} as never)) as { loop: boolean }).loop, false);
+  fake.transport!.session = false;
+  fake.settingValues["note.stampLoop"] = false;
+  assert.equal(((await heading({} as never)) as { loop: boolean }).loop, false);
+  fake.transport = null;
+  fake.settingValues["note.stampLoop"] = true;
+  assert.deepEqual(await heading({} as never), { heading: "### 2026-11-11 14:05", hint: NO_POSITION_HINT, loop: false });
 });
 
 test("the note module registers through the real registry: a valid tree, documented, and the lines parse to the right leaf", async () => {
@@ -411,7 +281,7 @@ test("the note module registers through the real registry: a valid tree, documen
   const activate = (api: Parameters<typeof registerNote>[0]): void => registerNote(api, TEMPLATE);
   const roots = declaredBy(activate);
   assert.deepEqual(validateTree(roots as never), []);
-  assertDocumented(roots, ["note open", "note stamp add", "note stamp loop", "note stamp unloop"]);
+  assertDocumented(roots, ["note open", "note stamp add"]);
   const ran = (line: string) => {
     const o = parse(line, roots);
     return o.kind === "run" ? [o.invocation.path.join(" "), o.invocation.options] : o.kind;
@@ -419,8 +289,6 @@ test("the note module registers through the real registry: a valid tree, documen
   assert.deepEqual(ran("note"), ["note", {}]);
   assert.deepEqual(ran("note -e"), ["note", { edit: true }]);
   assert.deepEqual(ran("note stamp"), ["note stamp", {}]);
-  assert.deepEqual(ran("note stamp loop"), ["note stamp loop", {}]);
-  assert.deepEqual(ran("note stamp unloop"), ["note stamp unloop", {}]);
   assert.equal(parse("stamp", roots).kind, "error"); // the old top-level spelling is gone
-  assert.equal(parse("note stamp --loop", roots).kind, "error");
+  assert.equal(parse("note stamp loop", roots).kind, "error"); // moved to the loop module
 });

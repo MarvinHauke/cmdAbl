@@ -68,7 +68,7 @@ export interface FakeApi {
   tagStore: Map<string, string[]>;
   dialogs: Array<{ html: string; width: number; height: number }>;
   /** The live pages `api.ui.livePage` was asked to show, with their route functions (call them to test the data a page would poll). */
-  livePages: Array<{ name: string; html: string; width: number; height: number; routes: LiveRoutes; run?: string[] }>;
+  livePages: Array<{ name: string; html: string; width: number; height: number; routes: LiveRoutes; run?: string[]; onClose?: string }>;
   /** Track state by handle id; writes land here. */
   tracks: Map<string, TrackHandle>;
   /** Volumes (0..1) written through the fake's `tracks.setVolume`, by handle id; unset reads 0.85. */
@@ -270,7 +270,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     },
     ui: {
       livePage: async (name, html, width, height, routes, pageOptions) => {
-        fake.livePages.push({ name, html, width, height, routes, ...(pageOptions?.run ? { run: pageOptions.run } : {}) });
+        fake.livePages.push({ name, html, width, height, routes, ...(pageOptions?.run ? { run: pageOptions.run } : {}), ...(pageOptions?.onClose ? { onClose: pageOptions.onClose } : {}) });
         return options.dialogAnswer || null;
       },
       board: async (request) => {
