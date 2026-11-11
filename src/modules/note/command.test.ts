@@ -4,6 +4,7 @@ import { ExitCode } from "../../core/types.js";
 import { createFakeApi } from "../shared/testPorts.js";
 import { registerNote } from "./command.js";
 
+const ans = (text: string | null, then: "stamp" | null = null): string => JSON.stringify({ text, then });
 const TEMPLATE = "<script>const NOTE = /*NOTE_PLACEHOLDER*/null;</script>";
 type Result = { code: number; message?: string; log?: string[] } | undefined;
 
@@ -37,7 +38,7 @@ test("a Set without an id, or with an empty note, opens in edit on an empty text
 });
 
 test("changed text is written, quietly, with one log line; the id is created only now", async () => {
-  const { run, fake } = setup({ dialogAnswer: "# Hello\nworld" });
+  const { run, fake } = setup({ dialogAnswer: ans("# Hello\nworld") });
   const r = (await run())!;
   assert.equal(r.code, ExitCode.OK);
   assert.equal(r.message, undefined);
@@ -48,27 +49,27 @@ test("changed text is written, quietly, with one log line; the id is created onl
 });
 
 test("an existing id is used as it is and the file is replaced", async () => {
-  const { run, fake } = setup({ setId: "abc", files: { "abc.md": "old" }, dialogAnswer: "new" });
+  const { run, fake } = setup({ setId: "abc", files: { "abc.md": "old" }, dialogAnswer: ans("new") });
   await run({ edit: true });
   assert.equal(fake.fileStore.get("abc.md"), "new");
   assert.equal(fake.setId, "abc");
 });
 
 test("unchanged or dismissed (empty answer) writes nothing and creates no id", async () => {
-  const { run, fake } = setup({ dialogAnswer: "" });
+  const { run, fake } = setup({ dialogAnswer: ans(null) });
   assert.equal(await run(), undefined);
   assert.equal(fake.setId, null);
   assert.equal(fake.fileStore.size, 0);
 });
 
 test("a cleared note (the page sends a newline) writes an empty note", async () => {
-  const { run, fake } = setup({ setId: "abc", files: { "abc.md": "text" }, dialogAnswer: "\n" });
+  const { run, fake } = setup({ setId: "abc", files: { "abc.md": "text" }, dialogAnswer: ans("") });
   assert.equal(((await run())!).code, ExitCode.OK);
   assert.equal(fake.fileStore.get("abc.md"), "");
 });
 
 test("a failed write is exit 1; the text is kept in memory, not in the log, and the next note opens with it", async () => {
-  const { run, fake, given } = setup({ setId: "abc", dialogAnswer: "precious\ntext" });
+  const { run, fake, given } = setup({ setId: "abc", dialogAnswer: ans("precious\ntext") });
   const write = fake.api.files.write;
   fake.api.files.write = async () => false;
   const r = (await run())!;
@@ -86,7 +87,7 @@ test("a failed write is exit 1; the text is kept in memory, not in the log, and 
 });
 
 test("no id possible (create fails) is exit 1, nothing is written, the text is kept and not logged", async () => {
-  const { run, fake, given } = setup({ dialogAnswer: "typed" });
+  const { run, fake, given } = setup({ dialogAnswer: ans("typed") });
   const setId = fake.api.set.id;
   fake.api.set.id = async () => null;
   const r = (await run())!;
@@ -100,7 +101,7 @@ test("no id possible (create fails) is exit 1, nothing is written, the text is k
 });
 
 test("the id could not be read first but the Set has a note: it is not overwritten", async () => {
-  const { run, fake, given } = setup({ setId: "abc", files: { "abc.md": "the real note" }, dialogAnswer: "typed over it" });
+  const { run, fake, given } = setup({ setId: "abc", files: { "abc.md": "the real note" }, dialogAnswer: ans("typed over it") });
   const setId = fake.api.set.id;
   let calls = 0;
   fake.api.set.id = async (create) => (calls++ === 0 ? null : setId(create)); // the first read fails, create finds the existing id
@@ -115,7 +116,7 @@ test("the id could not be read first but the Set has a note: it is not overwritt
 });
 
 test("the file could not be read first but exists: it is not overwritten", async () => {
-  const { run, fake } = setup({ setId: "abc", files: { "abc.md": "the real note" }, dialogAnswer: "typed over it" });
+  const { run, fake } = setup({ setId: "abc", files: { "abc.md": "the real note" }, dialogAnswer: ans("typed over it") });
   const read = fake.api.files.read;
   let calls = 0;
   fake.api.files.read = async (name) => (calls++ === 0 ? null : read(name));
@@ -125,7 +126,7 @@ test("the file could not be read first but exists: it is not overwritten", async
 });
 
 test("a note that is really missing (or an empty one) is written after the second look", async () => {
-  const { run, fake } = setup({ setId: "abc", dialogAnswer: "first note" });
+  const { run, fake } = setup({ setId: "abc", dialogAnswer: ans("first note") });
   assert.equal(((await run())!).code, ExitCode.OK);
   assert.equal(fake.fileStore.get("abc.md"), "first note");
 });
@@ -135,7 +136,7 @@ test("the command needs the Remote Script (exit 5 comes from the platform) and s
   const note = fake.commands[0]!;
   assert.deepEqual(note.requires, ["bridge"]);
   assert.equal(note.topic, "Look things up");
-  assert.deepEqual((note.options ?? []).map((o) => [o.name, o.short]), [["edit", "e"]]);
+  assert.deepEqual((note.options ?? []).map((o) => [o.name, o.short]), [["edit", "e"], ["stamp", "m"]]);
 });
 
 test("a note text with </script> or a placeholder-like text reaches the page escaped, once", async () => {
@@ -147,7 +148,7 @@ test("a note text with </script> or a placeholder-like text reaches the page esc
 });
 
 test("the retry after a failed save: the page answers the kept text unchanged (it was told changed: true) and it is written", async () => {
-  const { run, fake, given } = setup({ setId: "abc", dialogAnswer: "kept text" });
+  const { run, fake, given } = setup({ setId: "abc", dialogAnswer: ans("kept text") });
   const write = fake.api.files.write;
   fake.api.files.write = async () => false;
   assert.equal(((await run())!).code, ExitCode.FAILURE);
@@ -157,4 +158,128 @@ test("the retry after a failed save: the page answers the kept text unchanged (i
   assert.equal(fake.fileStore.get("abc.md"), "kept text");
   await run();
   assert.equal(given().changed, false);
+});
+
+// --- stamps ---------------------------------------------------------------------------------------------
+
+const PLAYING = { playing: true, session: false, pos: "12.3.1.1", time: 44, barStart: 44, barLen: 4, loop: { on: false, start: 0, length: 16 } };
+const FIXED = new Date(2026, 10, 11, 14, 5);
+const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+
+function stampSetup(options: Parameters<typeof createFakeApi>[0] = {}, answers: Array<string | null> = [ans("")]) {
+  const fake = createFakeApi(options);
+  registerNote(fake.api, TEMPLATE, () => FIXED);
+  const given: Array<Record<string, unknown>> = [];
+  const loops: Array<{ on: boolean; start: number; length: number }> = [];
+  const setLoop = fake.api.set.setLoop;
+  fake.api.set.setLoop = async (l) => (loops.push(l), setLoop(l));
+  fake.api.dialog = async (html) => {
+    given.push(JSON.parse(/const NOTE = (.*);<\/script>/.exec(html)![1]!));
+    // Where the loop is while the page is open.
+    given.at(-1)!.loopWhileOpen = fake.transport?.loop;
+    return answers.shift() ?? null;
+  };
+  const run = (opts: Record<string, string | true> = {}) =>
+    fake.commands[0]!.run!({ path: ["note"], options: opts, args: [] } as never, undefined as never) as Promise<Result>;
+  return { fake, run, given, loops };
+}
+
+test("note -m while playing: stamp page with the heading, the loop set while open and put back after", async () => {
+  const { fake, run, given, loops } = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("### x\ntext")]);
+  const r = (await run({ stamp: true }))!;
+  assert.equal(r.code, ExitCode.OK);
+  assert.equal(given[0]!.mode, "stamp");
+  assert.deepEqual(given[0]!.stamp, { heading: "### @12.3.1 · 2026-11-11 14:05" });
+  assert.deepEqual(given[0]!.loopWhileOpen, { on: true, start: 44, length: 16 });
+  assert.deepEqual(fake.transport!.loop, PLAYING.loop);
+  assert.equal(loops.length, 2);
+  assert.equal(fake.fileStore.get("abc.md"), "### x\ntext");
+});
+
+test("the loop is put back even when the save fails; a moved loop is left alone", async () => {
+  const failing = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("t")]);
+  failing.fake.api.files.write = async () => false;
+  assert.equal(((await failing.run({ stamp: true }))!).code, ExitCode.FAILURE);
+  assert.deepEqual(failing.fake.transport!.loop, PLAYING.loop);
+
+  const moved = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("t")]);
+  const dialog = moved.fake.api.dialog;
+  moved.fake.api.dialog = async (...a) => {
+    const r = await dialog(...a);
+    moved.fake.transport!.loop = { on: true, start: 100, length: 8 }; // the user moved it by hand
+    return r;
+  };
+  await moved.run({ stamp: true });
+  assert.deepEqual(moved.fake.transport!.loop, { on: true, start: 100, length: 8 });
+});
+
+test("no loop when stopped, in Session playback, with the setting off, or with no script; the hint appears without a script", async () => {
+  for (const t of [{ ...PLAYING, playing: false }, { ...PLAYING, session: true }]) {
+    const s = stampSetup({ setId: "abc", transport: clone(t) });
+    await s.run({ stamp: true });
+    assert.equal(s.loops.length, 0);
+  }
+  const off = stampSetup({ setId: "abc", transport: clone(PLAYING), settings: { "note.stampLoop": false } });
+  await off.run({ stamp: true });
+  assert.equal(off.loops.length, 0);
+  const none = stampSetup({ setId: "abc" });
+  await none.run({ stamp: true });
+  assert.deepEqual(none.given[0]!.stamp, { heading: "### 2026-11-11 14:05", hint: "no song position: Remote Script not running" });
+  assert.equal(none.loops.length, 0);
+});
+
+test("loopBars is used for the length", async () => {
+  const s = stampSetup({ setId: "abc", transport: clone(PLAYING), settings: { "note.loopBars": 8 } });
+  await s.run({ stamp: true });
+  assert.deepEqual(s.loops[0], { on: true, start: 44, length: 32 });
+});
+
+test("the page answer then: stamp saves the text, then opens the stamp page", async () => {
+  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("edited", "stamp"), ans("edited\n### s\nmore")]);
+  const r = (await s.run())!;
+  assert.equal(r.code, ExitCode.OK);
+  assert.equal(s.given.length, 2);
+  assert.equal(s.given[0]!.mode, "edit");
+  assert.equal(s.given[1]!.mode, "stamp");
+  assert.equal(s.given[1]!.text, "edited"); // the first save is in the note the stamp page starts from
+  assert.equal(s.fake.fileStore.get("abc.md"), "edited\n### s\nmore");
+});
+
+test("a stamp page that answers nothing writes nothing and still restores the loop", async () => {
+  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans(null)]);
+  assert.equal(((await s.run({ stamp: true }))!).code, ExitCode.OK);
+  assert.equal(s.fake.fileStore.size, 0);
+  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
+});
+
+test("note declares its two settings", () => {
+  const { fake } = setup();
+  const items = fake.settingGroups.flatMap((g) => g.items.map((i) => [i.key, i.kind, i.default]));
+  assert.deepEqual(items, [["note.stampLoop", "bool", true], ["note.loopBars", "int", 4]]);
+});
+
+test("an unreadable page answer writes nothing but leaves a log line", async () => {
+  const { run, fake } = setup({ setId: "abc", dialogAnswer: "not json" });
+  assert.equal(await run(), undefined);
+  assert.ok(fake.logged.some((l) => l.level === "warn" && /unreadable page answer/.test(l.text)));
+  assert.equal(fake.fileStore.size, 0);
+});
+
+test("m from view after a failed save: no stamp starts, exit 1, the text stays pending", async () => {
+  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("first", "stamp"), ans("never")]);
+  s.fake.api.files.write = async () => false;
+  const r = (await s.run())!;
+  assert.equal(r.code, ExitCode.FAILURE);
+  assert.equal(s.given.length, 1);
+  assert.equal(s.loops.length, 0);
+});
+
+test("a failed loop restore is a warn, not an ok line", async () => {
+  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans(null)]);
+  const setLoop = s.fake.api.set.setLoop;
+  let n = 0;
+  s.fake.api.set.setLoop = async (l) => (n++ === 0 ? setLoop(l) : null);
+  const r = await s.run({ stamp: true });
+  assert.doesNotMatch((r?.log ?? []).join("\n"), /put back/);
+  assert.ok(s.fake.logged.some((l) => l.level === "warn" && /loop not restored/.test(l.text)));
 });
