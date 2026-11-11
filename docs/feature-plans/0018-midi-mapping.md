@@ -1,7 +1,9 @@
 # `map` and `midi`: MIDI controls run cmdAbl commands, toward a mapping matrix
 
-**Status:** Draft, reworked (2026-10-21); public since 2026-11-03 (it was kept private as 0014 until then).
-The simple version (trigger mode with operators, below) is next; nothing is built yet.
+**Status:** Trigger mode released in 0.1.5 (2026-11-05, PR #27; Remote Script 0.1.14): `map`, `map learn`,
+`midi monitor`, the operators `press`/`release`/`hold`/`toggle`, live pages. Value mode, bindings that
+open a page, per-control thresholds and the matrix are open. Public since 2026-11-03 (kept private as
+0014 until then).
 
 Trigger: the user wants a small mapping tool that binds a controller to **any cmdAbl command line**.
 Later it grows into a matrix like the XOR NerdSEQ mapping editor. Examples:
@@ -126,44 +128,28 @@ Decisions:
 - Bindings are stored per Set first (`modules/map/<setid>.json` via `api.files` and the Set id, like
   `note`). Templates or a global layer come later.
 
-### Spike results (Live test 2026-11-03, Faderfox UC4 as cmdAbl's input)
+### What was measured and decided (spike and v1, 2026-11-03/04, Faderfox UC4)
 
-| Path | Median | Max |
-|---|---|---|
-| **UDP sent from `receive_midi`** | **0.2–0.5 ms** | **2 ms** |
-| UDP held to `update_display` | 53–58 ms | 99 ms |
-| HTTP POST | 950 ms – 34 s | 48 s (the queue backs up under fast knob moves) |
-
-- **Decision: the push goes as an unsolicited UDP datagram, sent straight from `receive_midi`.** HTTP is
-  dropped, and so is holding to the display tick.
-- MIDI arrives on cmdAbl's input port (map built: 4112 controls in 1–11 ms). The encoder (CC 104)
-  delivers the full range. The existing bridge still answers (median 46 ms).
-- **The UC4's buttons send 10 on press and 0 on release (CC 51), not 127.** Both edges arrive. For v1,
-  press means value > 0 and release means 0. **The user wants to set these values per control
-  himself later** (a threshold or value setting on the operator).
-- **Cmd+M still learns a control while cmdAbl forwards it** ("1/51" learned on a clip slot), with
-  "Remote" on for the input port. **Open:** do Live's mapping and cmdAbl both act on the same press?
-  If they do, `map` should warn about controls that are also mapped with Cmd+M. Track input with
-  notes is untested (the UC4 sends CCs).
-
-### v1 channel (bridge `6f63615`, script 0.1.10)
-
-- **Forwarding:** nothing is forwarded by default; `midi_listen {controls}` forwards only the bound
-  controls.
-- **The push:** only an unsolicited UDP datagram from `receive_midi` (spike: median 0.2–0.5 ms, max
-  2 ms). HTTP and the `update_display`-held send are dropped.
-- **Events:** `{seq, type cc|note_on|note_off|pb, channel 1–16, number, value, time}`. A note-on with
-  velocity 0 counts as note_off.
-- **The ring of the last 50 messages is always on.** `midi_listen {controls, monitor: true, seconds}`
-  forwards everything for learn and `midi monitor` (default 30 s, at most 120), then ends by itself.
-  While it is open, track input and Cmd+M on that port pause: Live gives forwarded messages only to
-  the script. So learn and the monitor open the window, read `midi_last`, and close it again.
-- **Robustness:**
-  - every reply carries a `boot` id, and the extension re-sends the last listen after a script
-    restart;
-  - events are accepted only from 127.0.0.1:27185;
-  - listeners survive a recreated bridge client.
-- **Still open:** the map build time measured in Live's Log.txt ("map built: N controls in X ms").
+- **The push is an unsolicited UDP datagram sent straight from `receive_midi`** (median 0.2–0.5 ms,
+  max 2 ms; HTTP took up to 48 s under fast knob moves and was dropped, as was holding to
+  `update_display`). Events `{seq, type cc|note_on|note_off|pb, channel, number, value, time}` are
+  accepted only from 127.0.0.1:27185; a note-on with velocity 0 counts as note_off. A command runs
+  75–110 ms after the press.
+- **Only bound controls are forwarded.** `midi_listen {controls, monitor, seconds}` forwards everything
+  for learn and the monitor (default 30 s, max 120), then ends by itself; while it is open, track
+  input and Cmd+M on that port pause. The last 50 messages are kept in a ring (`midi_last`). Every
+  reply carries a `boot` id, so the extension re-sends the last listen after a script restart.
+- **Press means value > 0, release means 0.** The UC4's buttons send 10 on press (not 127). **The
+  user sets per-control thresholds himself later.**
+- **Cmd+M wins:** a control mapped in Live isn't forwarded to the script. `forward_midi_cc` reports
+  it, so `map` warns, `map -l` shows "⚠ taken in Live", the monitor lists "Taken in Live", and a later
+  Cmd+M mapping logs a warning. After the Cmd+M mapping is removed, cmdAbl gets the control again
+  without a new `map` (Live-tested).
+- **Save the Set after the first `map`:** the first binding creates the Set id; without a save the
+  bindings don't load after a restart (in the docs).
+- **Live's status bar** shows incoming MIDI only with `"midi.statusBar": true` (default false, user
+  2026-11-04); the monitor page is where values show. Its time column is off by default and returns
+  as an option on the 0.1.6 MIDI settings page.
 
 ### Four layers
 
@@ -205,87 +191,18 @@ map --off / map --on                 # settings.json map.enabled
 midi monitor                         # live view of incoming messages
 ```
 
-### Modules built (modules `51356c5`)
+### How the modules behave (built in 0.1.5)
 
-- **`map <control> [press|release|hold|toggle] | <line>`:**
-  - binding the same control and operator again replaces the line;
-  - the first word of the line must be a registered command;
-  - `map | next` gives "missing argument <control>".
-- **`map learn [operator] | <line>`:** a page says "Move a control". Enter binds the newest control
-  that moved, with its channel; Esc does nothing.
-- **`map -l`:** numbered rows, e.g. `1  CC37  toggle  | solo #lead --set {}`.
-- **`map --rm <n>`:** rows complete from the list.
-- **`map --on` / `--off`:** the `map.enabled` setting.
-- **`midi monitor`:** the live list on the page is the output, and closing is quiet (a log line only). Only without a working live view (the fallback page answers "list") does the command show the newest 20 messages as text (user, 2026-11-04).
-- **Storage and loading:** `modules/map/<setid>.json`. The Set id is created on the first save, so Live
-  marks the Set as changed. Bindings load on `api.onSetChange` and before every `map` command.
-- **A damaged bindings file is never overwritten** (exit 1, with a warning).
-- **Open:** `api.files.readResult` must tell "missing" from "read failed" (core is adding it), or a
-  failed read could lead to an overwrite.
-
-### Set changes (core `1399a79`)
-
-- **`api.onSetChange(listener)`** tells `map` when another Set is open, so it can load that Set's
-  bindings.
-- **When the listener fires:**
-  - once when the Remote Script first answers, also if the script comes up after the extension;
-  - at once if the id is already known;
-  - after that, on every change of the Set id.
-  It gets the Set id, or `null` if the Set has none yet.
-- **How core detects it:** it polls the script's `set_id` without `create` (read-only, with the token,
-  nothing written) every 3 s, or every 10 s while the script doesn't answer.
-- **Known limits:** two Sets without an id look the same, and A → B → A within one poll goes unseen.
-  Both are fine for v1.
-- Mapping commands have their own topic, "Control".
-
-### Live test of v1 (2026-11-03, UC4) and the Cmd+M conflict
-
-- **Passed:**
-  - MIDI arrives in 0 ms, and a command runs in 75–110 ms;
-  - `hold` on CC51 mutes and unmutes Lead;
-  - `map learn` with Enter binds CC48/ch1;
-  - adding, replacing, listing and removing work, and the parse errors are clear.
-- **Cmd+M wins:** once a control is mapped in Live (Cmd+M), Live no longer forwards it to the Remote
-  Script, so a `map` binding on it goes silently dead.
-- **Fix:**
-  - the script reports which forwards failed (`forward_midi_cc` returns a result per control);
-  - `map` warns when adding ("CC51 is mapped in Live (Cmd+M), so cmdAbl doesn't receive it");
-  - `map -l` marks such rows (⚠ mapped in Live);
-  - a rebuild after a later Cmd+M mapping logs a warning.
-- **Learn and the monitor can't show live values in the page** (the dialog rule). The interim fix is
-  live values in Live's status bar (`show_message`) while the monitor window is open. A spike checks
-  whether a page can poll the local server while open.
-
-### Second Live test (2026-11-04, script 0.1.12)
-
-- **Status bar:** live values while a monitor window is open (`cmdAbl · CC48 ch1 = 127`). Works.
-- **Cmd+M detection works:** `forward_midi_cc` returns a bool per control.
-  - `map` warns when adding, and `map -l` shows "⚠ taken in Live";
-  - a later Cmd+M mapping logs a warning;
-  - after removing the Cmd+M mapping, cmdAbl receives the control again without a new `map`.
-- **Bindings were lost after a Live restart** because the Set wasn't saved after the first `map` (the
-  first binding creates the Set id). The docs must say: save the Set after the first `map`.
-- **Page spike (bridge `c9912ed`): a dialog page can reach cmdAbl's local server while open.**
-
-  | Variant | Origin | Ping median/max | POST with token | Poll every 100 ms |
-  |---|---|---|---|---|
-  | `data:` page | `"null"` | 1 / 28 ms | 1 ms | 100–102 ms, smooth (frame gap ≤ 21 ms) |
-  | page served from `http://localhost:27184` | `http://localhost:27184` | 0 / 3 ms | 1 ms | 100–101 ms, smooth (≤ 22 ms) |
-
-  Both work without errors. The `http://localhost` variant has a real origin, so the origin check means
-  something (`"null"` is also sent by any sandboxed iframe on any website). This opens live pages:
-  `midi monitor` with live values, a `map learn` page that closes by itself on movement, and the
-  completion server of plan 0006. **It changes the dialog rule** (`CLAUDE.md`: "it cannot call the
-  extension while open"), so it needs the user's decision.
-
-### Third Live test (2026-11-04, user with the UC4)
-
-No bugs: `map learn` on a live page closes by itself, `midi monitor` lists Cmd+M controls as "Taken
-in Live", and bindings survive save and reopen. **Change for 0.1.5 (user):** Live's status bar no
-longer shows incoming MIDI by default. Setting `midi.statusBar` (boolean, default false) in
-`settings.json`; the monitor page is where values show. It moves to a MIDI settings page with the
-settings pattern (0.1.6). The monitor's `+N.Ns` time column goes from the default page too (user);
-it comes back as an option there, as +seconds or as a timestamp.
+- Binding the same control and operator again replaces the line; the first word of the line must be
+  a registered command.
+- `map learn` is a live page that closes about 150 ms after the first control moves; Enter and Esc
+  still work. `map -l` shows numbered rows; `map --rm <n>` completes from them; `map --on/--off` is
+  the `map.enabled` setting.
+- Bindings live in `modules/map/<setid>.json`; a damaged file is never overwritten (exit 1, warning).
+  They load on `api.onSetChange` and before every `map` command.
+- **Set changes:** core polls the script's `set_id` read-only every 3 s (10 s while the script doesn't
+  answer). Known limits: two Sets without an id look the same, and A → B → A within one poll goes
+  unseen.
 
 ### Later: bindings that open a page (user, 2026-11-05)
 
@@ -343,12 +260,7 @@ plain routes keep the 100 ms budget.
   about 150 ms. The page shows the control before closing. Enter and Esc still work.
 - **Later:** the completion server (plan 0006) on the same mechanism.
 
-**Work:**
-1. **core:** `livePage`, the token, the routes and the origin check, release-safe (they exist in release
-   builds, unlike the dev routes). Remove bridge's spike routes.
-2. **ui:** a small `live.js` (poll, fallback, the token in the header) plus the two pages' live parts.
-3. **modules:** `midi monitor` and `map learn` as live pages.
-4. **bridge:** nothing new (`midi_last` already exists).
+Built in 0.1.5 (core `livePage`, ui `live.js`, the monitor and learn pages).
 
 ### Syntax rules (v1)
 
@@ -368,50 +280,16 @@ plain routes keep the 100 ms budget.
   is kept (a newer one replaces it) and runs once when the current line finishes, so a quick tap's
   release is never lost and the end state matches the hardware (reviewer, 2026-11-03).
 
-### Work (v1)
-
-1. **Spike (cmdabl-bridge):**
-   - MIDI in on cmdAbl's input port and whether forwarding blocks Live's own use of the port;
-   - push via UDP datagram vs HTTP POST;
-   - latency;
-   - delivery of note-off and CC release.
-2. **Bridge:** `midi_listen {controls}`, `midi_last {since}`, the event push (script 0.1.9).
-3. **Core:**
-   - event intake with the token;
-   - operators and their state;
-   - binding lookup and the in-flight guard;
-   - `runHeadless`;
-   - a rest-of-line argument after `|` that `;` doesn't split;
-   - `{}` substitution.
-4. **Modules:** `midi monitor`; `map` (add, operators, `learn`, `-l`, `--rm`, `--on`/`--off`);
-   storage; `midi_listen` on activation and on Set change.
-5. **Docs:** "MIDI mapping" in using.md.
-
 ## Phased rollout
 
-1. **Spike** (cmdabl-bridge):
-   - MIDI in through cmdAbl's input port;
-   - sharing that port with track input and with Remote/Cmd+M on the controls cmdAbl doesn't
-     take;
-   - a port a vendor script (Push, Launchpad) already uses;
-   - the push channel, (a) or (b);
-   - latency for 8 tracks;
-   - `Song.set_data` survives save, reload and Save As (shared with 0013).
-2. **Core:** event intake; headless `runLine`; edge detection and coalescing; the rest-of-line
-   argument kind.
-3. **Bridge:** `midi_listen` (the set of controls to forward), `midi_last`, the event push. Script
-   0.1.7.
-4. **`midi` module (small):** `midi monitor`, `midi name`, `midi -l`. The profile lives in
-   cmdAbl's folder.
-5. **`map` module, trigger mode,** with today's commands: add, `learn`, `-l`, `--rm`. Bindings
-   in the Set.
-6. **Value mode:** `ArgDef.mapValue` plus `vol` (0012), so `map learn | vol #synth` works.
-7. **Later:**
-   - relative encoders;
-   - feedback (`send_midi`);
-   - transforms;
-   - a second controller;
-   - the matrix page (`ui/modules/map/matrix.html`) with conflict checks and comments.
+1. ~~Spike, bridge (`midi_listen`, `midi_last`, the UDP push), core (intake, operators, headless runs,
+   the `|` rest-of-line argument), modules (`map`, `midi monitor`), live pages, docs~~ — released in
+   0.1.5.
+2. **Value mode:** `ArgDef.mapValue` plus `vol` (0012), so `map learn | vol #synth` works; operators
+   `value`, `step`, `range`, `curve`, `invert`, `pickup`.
+3. **Bindings that open a page** (user, 2026-11-05) and per-control press thresholds.
+4. **Later:** relative encoders, feedback (`send_midi`), a second controller, a template or global
+   layer, the matrix page with conflict checks and comments.
 
 ## The matrix (later): what to take from the NerdSEQ editor, made friendlier
 

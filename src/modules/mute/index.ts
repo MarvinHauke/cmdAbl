@@ -1,5 +1,5 @@
 import type { ModuleApi } from "../types.js";
-import { registerTrackSetCommand } from "../trackSetCommand.js";
+import { registerTrackSetCommand } from "../shared/trackSetCommand.js";
 
 /** `mute <target>…` toggles; `mute --set 1|0 <target>…` makes every target muted or not — e.g. `mute bass, lead`. */
 export function activate(api: ModuleApi): void {

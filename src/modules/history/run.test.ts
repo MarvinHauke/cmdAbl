@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ExitCode, type CommandResult } from "../../core/types.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { activate } from "./index.js";
 
 function setup(confirmAnswer = false) {

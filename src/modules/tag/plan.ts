@@ -1,4 +1,4 @@
-import { quoteIfNeeded } from "../../core/tokenize.js";
+import { quoteIfNeeded } from "../../core/command/tokenize.js";
 
 /** What `tag` should do with the names: set them, clear them or flip them. */
 export type TagMode = "add" | "remove" | "toggle";

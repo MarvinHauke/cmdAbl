@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ExitCode } from "../../core/types.js";
-import type { BoardAnswer, BoardRequest } from "../../core/ui.js";
+import type { BoardAnswer, BoardRequest } from "../../core/surfaces/ui.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { fail as bridgeFail } from "../../ableton/bridgeProtocol.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { activate } from "./index.js";
 import { buildBoard, groupChanges, UNTAGGED_ID } from "./board.js";
 
@@ -139,4 +139,16 @@ test("tag -l: a created name is lowercased and merges into the existing tag of t
   assert.deepEqual(fake.tagStore.get("Drums"), ["perc"]);
   assert.deepEqual(fake.tagStore.get("Lead"), ["fx"]);
   assert.match(logOf(r), /\/Lead: no change/);
+});
+
+test("tag --list: declares tag.foldAfter and passes its value to the board", async () => {
+  const { fake, run } = setup({ Lead: ["fx"] }, [null]);
+  assert.deepEqual(fake.settingGroups.map((g) => [g.heading, g.items.map((i) => [i.key, i.kind, i.default])]), [
+    ["Tags", [["tag.foldAfter", "int", 20]]],
+  ]);
+  await run({ list: true });
+  assert.equal(fake.boards[0]!.foldAfter, 20);
+  fake.settingValues["tag.foldAfter"] = 3;
+  await run({ list: true });
+  assert.equal(fake.boards[1]!.foldAfter, 3);
 });

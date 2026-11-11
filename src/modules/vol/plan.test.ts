@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { faderMove, formatDb, formatSigned, parseDb, planAbsolute } from "./plan.js";
-import { dbToValue } from "../mixValue.js";
+import { dbToValue } from "../shared/mixValue.js";
 
 test("parseDb takes numbers, signs, a leading dot and -inf; nothing else", () => {
   assert.equal(parseDb("-6"), -6);

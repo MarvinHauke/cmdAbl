@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ObjectNode } from "../../ableton/objectTree.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { activate } from "./index.js";
 
 const track = (name: string, i: number) => ({ name, path: `/${name}`, kind: "track", scope: "regular", route: [i], handleId: name }) as unknown as ObjectNode;

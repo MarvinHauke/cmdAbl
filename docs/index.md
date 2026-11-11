@@ -2,9 +2,9 @@
 
 **A command palette for Ableton Live.** Press `:` while Live is focused, type a command, and it acts on your Set.
 
-![Screen recording of the palette: mute drums mutes the drum tracks, solo !#drums solos the other tracks, and mute --pick #drums opens a pick list where rows are marked and Enter applies](assets/images/hero.gif)
+![Screen recording of the palette: mute drums mutes the drum tracks, solo !#drums solos the other tracks, and mute --pick #drums opens a pick list where a row is marked and Enter applies; a help line at the bottom of the palette names the command and its arguments](assets/images/hero.gif)
 
-![Screen recording: the drum tracks sit at different levels; vol -6 #drums lowers all their faders by 6 dB and vol 4 #drums raises them by 4 dB, so they move like one fader and the balance stays; then note opens the Mix notes of the Set](assets/images/vol-note.gif)
+![Screen recording: the drum tracks Kick and Percs sit at different levels, -9 and -3 dB; vol -6 #drums lowers both faders by 6 dB, to -15 and -9, and vol 4 #drums raises both by 4 dB, to -11 and -5, so they move like one fader and the balance stays](assets/images/vol-note.gif)
 
 ## Why cmdAbl
 
@@ -25,7 +25,7 @@ cmdabl setup                  set up the keyboard key and the Remote Script (onc
 goto /Lead                    select the track Lead
 mute /Bass                    toggle the mute of the track Bass
 mute --set 0 /Bass            make sure Bass is not muted, whatever its state is now
-tag /Kick drums               tag the track Kick as drums (do the same for Snare)
+tag /Kick drums               tag the track Kick as drums (do the same for Percs)
 mute drums                    mute every track tagged drums
 tag -l                        open the tag board
 ```

@@ -170,16 +170,16 @@ notes below describe the state before that.
 
 **Update (2026-10-11, later):** step 2 and the resolver are in. `CommandRegistry.add(node)`
 (validated, rejects instead of throwing) and `ModuleApi.commands.add`; every typed line goes
-through `src/core/run.ts` (`parse` → `resolveArgs` → pick → `run`), with `register()` kept as the
+through `src/core/command/run.ts` (`parse` → `resolveArgs` → pick → `run`), with `register()` kept as the
 legacy path for `pakabl`, `cmdabl` and `help`. The webview now returns the raw line. Two
 `ArgDef` additions came out of real use: `rest` (one value from the remaining words, so
 `goto /Opal Lead` needs no quotes) and `kinds` (which object kinds a path may match).
-Ambiguous addresses open the **pick list** (`src/core/pick.ts`, `ui/pick.html`): single-select
+Ambiguous addresses open the **pick list** (`src/core/surfaces/pick.ts`, `ui/pick.html`): single-select
 by default, multi-select when the argument is `variadic`. Migrated: `goto`, `mute`/`unmute`,
 `solo`/`unsolo`, new `arm`/`unarm`, new `find`/`next`/`prev`. Not done yet: ports (handlers still
 close over `ModuleApi`), `requires` checks, subcommand groups for `pakabl`/`cmdabl`, the guide.
 
-**Where things stand (2026-10-11):** step 1 is implemented and unit-tested (`npm test`): `src/core/tokenize.ts` (shared tokenizer), `src/core/commandTree.ts` (node types, `validateTree`, `usage`/`helpText`, `serializeTree`), `src/core/parse.ts` (walks the tree, parses options/arguments, returns run / help / error with exit codes). Nothing is wired into `dispatch()` yet — existing commands still run through the old `register()` path. The comma form `mute /a, /b` is not handled by the tokenizer; it stays with the legacy adapter until `mute` is migrated.
+**Where things stand (2026-10-11):** step 1 is implemented and unit-tested (`npm test`): `src/core/command/tokenize.ts` (shared tokenizer), `src/core/command/commandTree.ts` (node types, `validateTree`, `usage`/`helpText`, `serializeTree`), `src/core/command/parse.ts` (walks the tree, parses options/arguments, returns run / help / error with exit codes). Nothing is wired into `dispatch()` yet — existing commands still run through the old `register()` path. The comma form `mute /a, /b` is not handled by the tokenizer; it stays with the legacy adapter until `mute` is migrated.
 
 1. Types + validator + tokenizer + parser with unit-level checks (no behavior change).
 2. `api.commands` registration and the `register()` adapter; `dispatch()` runs through the parser.
@@ -304,7 +304,7 @@ nothing; `f113c9a`) through `Ui.select` and the dialog queue; `Esc` or Cancel �
 
 ## Forgiving target resolution (2026-10-12; `461c885`, `46f241a`, `8588a8d`)
 
-How the platform reads the text of a `path` argument (`src/core/resolveArgs.ts`):
+How the platform reads the text of a `path` argument (`src/core/command/resolveArgs.ts`):
 
 - A comma always separates targets; a word starting with `/` and a quoted word are targets of
   their own. Remembered lines consist of those, so they resolve exactly as before.
@@ -348,7 +348,7 @@ A command that works without the Remote Script but gets better with it does not 
 `requires`. It asks the bridge only when the cached state allows it (one `available()` when
 the state is unknown, nothing when it is "unavailable") and falls back to its SDK-only
 behaviour otherwise. `arm` is the first: it reads `track_facts` to refuse tracks Live cannot
-arm. The state check in `src/modules/armFacts.ts` becomes a bridge helper when a second
+arm. The state check in `src/modules/shared/armFacts.ts` becomes a bridge helper when a second
 command needs it.
 
 ## Import boundaries (2026-10-11, enforced by `src/architecture.test.ts`)
@@ -357,8 +357,8 @@ command needs it.
   platform dialog page (`interface`, `pick`, `feedback`). It may import its own page
   `ui/modules/<module>/` (until 2026-10-20: `ui/<module>-*.html`). Only `src/modules/index.ts`, the manifest, imports module folders.
 - `src/core/` does not import modules, `httpTrigger` or `extension`.
-- `src/ableton/` does not import modules, `core/ui` or `extension`.
-- Only `src/core/ui.ts` calls `showModalDialog`.
+- `src/ableton/` does not import modules, `core/surfaces/ui` or `extension`.
+- Only `src/core/surfaces/ui.ts` calls `showModalDialog`.
 - One known exception, listed in the test: `pakabl list` opens its own dialog until the `page`
   surface exists.
 

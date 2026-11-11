@@ -5,21 +5,23 @@
 // A module declares commands as tree nodes (`commands.add`, docs/feature-plans/0005);
 // there is no other registration path.
 
-import type { Command } from "../core/commandRegistry.js";
+import type { Command } from "../core/command/commandRegistry.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
 import type { Provider } from "../core/types.js";
-import type { Completer } from "../core/complete.js";
-import type { LiveRoutes } from "../core/livePage.js";
-export type { LiveRoutes } from "../core/livePage.js";
-import type { ReadResult } from "../core/files.js";
-export type { ReadResult } from "../core/files.js";
-export type { Candidate, Completer, CompleterContext } from "../core/complete.js";
-import type { MidiPort } from "../core/midiPort.js";
-export type { BindingsSet, ListenOptions, MidiPort } from "../core/midiPort.js";
-export type { MidiBinding } from "../core/midiEngine.js";
-export type { MidiControl, MidiMessage, OperatorName } from "../core/midi.js";
-import type { BoardAnswer, BoardRequest, PickPreview, StateChange } from "../core/ui.js";
+import type { Completer } from "../core/complete/complete.js";
+import type { LiveRoutes } from "../core/surfaces/livePage.js";
+export type { LiveRoutes } from "../core/surfaces/livePage.js";
+import type { ReadResult } from "../core/settings/files.js";
+export type { ReadResult } from "../core/settings/files.js";
+export type { Candidate, Completer, CompleterContext } from "../core/complete/complete.js";
+import type { MidiPort } from "../core/midi/midiPort.js";
+export type { BindingsSet, ListenOptions, MidiPort } from "../core/midi/midiPort.js";
+export type { MidiBinding } from "../core/midi/midiEngine.js";
+export type { MidiControl, MidiMessage, OperatorName } from "../core/midi/midi.js";
+import type { BoardAnswer, BoardRequest, PickPreview, StateChange } from "../core/surfaces/ui.js";
+import type { SettingDef } from "../core/settings/settings.js";
+export type { SettingDef } from "../core/settings/settings.js";
 import type { BridgeResult } from "../ableton/bridgeProtocol.js";
 import type { TagsWritten } from "../ableton/bridgeOps.js";
 
@@ -115,6 +117,26 @@ export interface FilesPort {
   write(name: string, text: string): Promise<boolean>;
 }
 
+/** Declared settings (plan 0019): the settings page is generated from what modules declare here. */
+export interface SettingsPort {
+  /**
+   * Declare this module's settings, once, at activation. The group is shown on the Settings page under `heading`, and
+   * `<module> config` (e.g. `tag config`) opens just that group. Every key must be `<module>.<name>` (the module's
+   * `name`, else its first command; declare after `name` is set or after the first `commands.add`); a key outside that
+   * namespace, a bad declaration or a key declared twice is a warning in the log and that item is dropped. Kinds: `bool`,
+   * `enum` (`choices: [{ value, label }]`) and `int` (`min`…`max`); the default must fit its kind. Modules never write
+   * settings: only the Settings page does. Never throws.
+   */
+  declare(group: { heading: string; items: SettingDef[] }): void;
+  /**
+   * The current value of one of this module's settings, `name` being the full key (`tag.foldAfter`) or just the part
+   * after the module's name (`foldAfter`). The declared default when the file has no value or a wrong one; read the
+   * file again whenever it changed, so a new value applies at the next run. `undefined` for a key nobody declared.
+   * Never throws.
+   */
+  get<T = unknown>(name: string): Promise<T>;
+}
+
 export interface LiveSetPort {
   /** The addressable objects of the current Set, flattened (tracks, devices, chains), with unique-able paths. */
   nodes(): ObjectNode[];
@@ -131,6 +153,8 @@ export interface ModuleApi {
   set: SetPort;
   /** The module's own files (plan 0013). */
   files: FilesPort;
+  /** The module's declared settings (plan 0019). */
+  settings: SettingsPort;
   /**
    * Be told when the Live Set is (re)available or has changed: `listener` gets the Set's id (plan 0013; null = the
    * Set has none yet) once the Remote Script answers for the first time (also after it came up later than the
@@ -179,6 +203,13 @@ export interface ModuleApi {
      * warning at activation. Never throws at the caller.
      */
     completer(key: string, source: Completer): void;
+    /**
+     * The usable default commands (plan 0019 §7), `command → line` (what a bare `mute` runs), the same data as
+     * `CompletionData.defaults`. Read-only and synchronous: it reflects the last load of the defaults file, which the
+     * platform refreshes at every run and every palette open (so call it from a handler or completer, not at activation,
+     * when it can still be empty). For display only (e.g. `map -l`); expansion is the platform's.
+     */
+    defaults(): Readonly<Record<string, string>>;
   };
   /**
    * Show the pick list; resolves with the chosen objects, or null if cancelled.
@@ -261,8 +292,11 @@ export interface ModuleApi {
    * Failed runs are not reported, and neither are bare invocations with no
    * arguments. The only window a module gets into *every* command run
    * regardless of who registered it.
+   *
+   * `typed` (additive, plan 0019 §7) is the line as the user typed it, given only when a default command
+   * replaced a bare word: `invocation` is what ran ("mute #drums"), `typed` is "mute".
    */
-  onCommandRun(listener: (invocation: string) => void): void;
+  onCommandRun(listener: (invocation: string, typed?: string) => void): void;
   /** Show a small modal with a message and a "Close" button. */
   showFeedback(message: string): void;
 }

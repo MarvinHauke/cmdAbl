@@ -69,3 +69,15 @@ test("the removed stack holds at most MAX_REMOVED and wipe empties both", () => 
   assert.equal(s.removedSize, 0);
   assert.equal(s.restore(), 0);
 });
+
+test("record keeps typed only when it differs, and a re-run takes the newest", async () => {
+  const { HistoryStore } = await import("./store.js");
+  const s = new HistoryStore();
+  s.record("mute #drums", "mute");
+  s.record("solo a", "solo a");
+  s.record("solo b");
+  assert.deepEqual(s.listTyped(), [{ text: "solo b" }, { text: "solo a" }, { text: "mute #drums", typed: "mute" }]);
+  s.record("mute #drums");
+  assert.deepEqual(s.listTyped()[0], { text: "mute #drums" });
+  assert.deepEqual(s.list(), ["mute #drums", "solo b", "solo a"]);
+});

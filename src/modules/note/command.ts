@@ -1,5 +1,5 @@
 import type { ModuleApi } from "../types.js";
-import { fillTemplate } from "../../core/inlineJson.js";
+import { fillTemplate } from "../../core/surfaces/inlineJson.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
 
 const NOTE_WIDTH = 640;

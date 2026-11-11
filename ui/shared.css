@@ -8,6 +8,11 @@
   --accent:   hsl(31, 100%, 67%);
   --border:   hsl(0, 0%, 8%);
 
+  /* Status marks (notify rows): ok, warn, fail. Warn is yellow, not the orange accent. */
+  --ok:       hsl(135, 45%, 56%);
+  --warn:     hsl(48, 90%, 60%);
+  --fail:     hsl(0, 75%, 62%);
+
   /* Live's own button colours, for the state buttons in the pick list. Values of Live 12's default
      theme ("Default Dark Neutral Medium.ask"); the SDK cannot read the current theme. */
   --live-chosen-default:   #ffad56;  /* ChosenDefault: track activator (mute) */
@@ -44,7 +49,7 @@ button:hover { border-color: var(--text); color: #fff; }
    scrollbar-color/-width properties ignores those pseudo-elements as soon as they are set,
    so the standard ones are only used where ::-webkit-scrollbar does not exist. */
 ::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }  /* 8px: the host keeps this
-   much free in the message width (NOTIFY_WIDTH_MARGIN, src/core/notifySize.ts); change both. */
+   much free in the message width (NOTIFY_WIDTH_MARGIN, src/core/surfaces/notifySize.ts); change both. */
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-corner { background: transparent; }
 ::-webkit-scrollbar-thumb {
@@ -58,3 +63,41 @@ button:hover { border-color: var(--text); color: #fff; }
 @supports not selector(::-webkit-scrollbar) {
   * { scrollbar-width: thin; scrollbar-color: var(--dim) transparent; }
 }
+
+/* a refused input: remove the class, force a reflow, add it again to replay */
+.shake { animation: shake 0.25s; }
+@keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+/* Help line (ui/help.js, plan 0019 §3): dim text, the subject of a help text in normal weight, key names as small key caps. */
+.helpline .subj { color: var(--text); font-weight: 400; white-space: nowrap; }
+.helpline.warn { color: var(--accent); }
+.helpline.bad { color: hsl(0, 75%, 62%); }
+kbd {
+  display: inline-block;
+  min-width: 15px;
+  padding: 0 4px;
+  margin-right: 1px;
+  border: 1px solid var(--dim);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: var(--bg-row);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  line-height: 14px;
+  text-align: center;
+  vertical-align: 1px;
+}
+.kp { white-space: nowrap; }
+.helpline.keys { -webkit-line-clamp: none !important; }   /* !important: the page rules set the clamp by id */
+
+.helpline.one { -webkit-line-clamp: 1 !important; }   /* oneRow (ui/help.js): exactly one row, never wraps */
+.helpline.one { display: flex !important; align-items: center; }   /* centred in the footer's fixed height */
+.helpline.one > div { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.helpline.one.keys > div { text-overflow: clip; }
+#help.one { align-items: flex-start; }   /* settings, defaults: the key line stays top-aligned like their help text */   /* key groups are dropped whole, never cut */
+
+.helpline.two .l { line-height: 14px; }   /* { lines } override (the palette's footer): line 1 is one clipped line, line 2 wraps to at most two */
+.helpline.two .l:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.helpline.two .l:not(:first-child) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.helpline.two .l.caps { display: block; line-height: 18px; height: 18px; overflow: visible; }   /* a key-cap line: the caps (13px + 3px border) fit whole */

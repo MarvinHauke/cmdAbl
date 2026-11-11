@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createFakeApi } from "./testPorts.js";
+import { createFakeApi } from "./shared/testPorts.js";
 import { PORT_MAPPING, lomUrl } from "./portMapping.js";
 
 // The port methods of the ModuleApi, found on the fake. A sound source: the fake is typed as ModuleApi,

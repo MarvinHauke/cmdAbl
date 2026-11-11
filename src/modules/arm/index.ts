@@ -1,5 +1,5 @@
 import type { ModuleApi } from "../types.js";
-import { registerTrackSetCommand } from "../trackSetCommand.js";
+import { registerTrackSetCommand } from "../shared/trackSetCommand.js";
 
 /** `arm <track>…` toggles record arm; `arm --set 1|0 <track>…` makes every track armed or not. */
 export function activate(api: ModuleApi): void {

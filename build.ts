@@ -9,13 +9,13 @@ const outfile = process.argv.find((a) => a.startsWith("--outfile="))?.slice("--o
 // The dialog pages are standalone data: URLs with no module loader, so nothing
 // can be `import`ed there.
 //
-// The one name matcher (src/core/match.ts) and the argument completion (src/core/complete.ts),
+// The one name matcher (src/core/complete/match.ts) and the argument completion (src/core/complete/complete.ts),
 // bundled together to one browser IIFE that exposes the `CmdMatch` global (matches, ranker,
 // filterer, …) and the `CmdComplete` global (complete, locate, …), inlined into the pages at build
 // time. It contains Fuse.js.
 const matchBundle = await esbuild.build({
   stdin: {
-    contents: `import * as m from "./src/core/match.ts"; import * as c from "./src/core/complete.ts"; window.CmdMatch = m; window.CmdComplete = c;`,
+    contents: `import * as m from "./src/core/complete/match.ts"; import * as c from "./src/core/complete/complete.ts"; window.CmdMatch = m; window.CmdComplete = c;`,
     resolveDir: process.cwd(),
     loader: "ts",
   },
@@ -32,15 +32,24 @@ if (/<\/script/i.test(matchSource)) throw new Error('the matcher bundle contains
 // Shared CSS injected into every HTML template (same pattern as the matcher bundle above).
 const sharedCss = fs.readFileSync("ui/shared.css", "utf8");
 
+// The help line (plan 0019 §3): ui/help.js defines the global `help`, inlined where a page has
+// `/*HELP_JS_PLACEHOLDER*/` (inside a <script> block, like the matcher). Read when a page needs it.
+const helpSource = (): string => {
+  const source = fs.readFileSync("ui/help.js", "utf8");
+  if (/<\/script/i.test(source)) throw new Error('ui/help.js contains "</script": cannot be inlined into a page');
+  return source;
+};
+
 // esbuild inlines all ui/*.html files as strings (the `text` loader). Hook the
 // load so build-time placeholders are replaced before bundling:
-//   every .html     — shared CSS, and the matcher where /*MATCH_PLACEHOLDER*/ stands
+//   every .html     — shared CSS, the matcher where /*MATCH_PLACEHOLDER*/ stands, ui/help.js at /*HELP_JS_PLACEHOLDER*/
 const htmlInlinePlugin: esbuild.Plugin = {
   name: "html-inline",
   setup(build) {
     build.onLoad({ filter: /\.html$/ }, (args) => {
       let html = fs.readFileSync(args.path, "utf8");
       html = html.replace("/*MATCH_PLACEHOLDER*/", () => matchSource);
+      if (html.includes("/*HELP_JS_PLACEHOLDER*/")) html = html.replace("/*HELP_JS_PLACEHOLDER*/", () => helpSource());
       html = html.replace("/*SHARED_CSS_PLACEHOLDER*/", () => sharedCss);
       return { contents: html, loader: "text" };
     });
@@ -60,5 +69,5 @@ await esbuild.build({
   plugins: [htmlInlinePlugin],
   // The development-only routes (plan 0016: POST /run, GET /log) exist only without --production;
   // the code behind the constant is removed from a production bundle.
-  define: { CMDABL_DEV_ROUTES: String(!production) },
+  define: { CMDABL_DEV_ROUTES: String(!production), CMDABL_VERSION: JSON.stringify(String(manifest.version)) },
 });

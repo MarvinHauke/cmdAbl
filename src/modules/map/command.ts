@@ -1,9 +1,9 @@
 import type { ModuleApi } from "../types.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
-import { OPERATORS, controlOf, formatControl, isBlocked, isOperator, parseControl, validateBinding, type MessageType, type OperatorName } from "../../core/midi.js";
-import type { MidiControl } from "../../core/midi.js";
-import type { MidiBinding } from "../../core/midiEngine.js";
-import { captureMessages, isCaptured } from "../midiCapture.js";
+import { OPERATORS, controlOf, formatControl, isBlocked, isOperator, parseControl, validateBinding, type MessageType, type OperatorName } from "../../core/midi/midi.js";
+import type { MidiControl } from "../../core/midi/midi.js";
+import type { MidiBinding } from "../../core/midi/midiEngine.js";
+import { captureMessages, isCaptured } from "../shared/midiCapture.js";
 import { bindingRow, parseBindings, sameSlot, serializeBindings } from "./store.js";
 
 /** How long an add waits for the script's report of blocked controls. */
@@ -243,7 +243,7 @@ export function registerMap(api: ModuleApi, template: string): { sync(): Promise
               const off = (await api.midi.enabled()) ? "" : "map is off (map --on)\n";
               return bindings.length === 0
                 ? ok(`${off}map: no bindings in this Set. Add one: ${SYNTAX}`)
-                : ok(off + bindings.map((b, i) => bindingRow(i + 1, b, isBlocked(b.control, api.midi.blocked()))).join("\n"));
+                : ok(off + bindings.map((b, i) => bindingRow(i + 1, b, isBlocked(b.control, api.midi.blocked()), api.commands.defaults())).join("\n"));
             }
             const n = Number(o.rm);
             if (!Number.isInteger(n) || n < 1) return usageFail(`--rm takes a number from map -l, not "${String(o.rm)}"`);

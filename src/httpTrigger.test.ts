@@ -87,3 +87,31 @@ test("a taken 127.0.0.1 port means no live pages either; without a live handler 
     plain.close();
   }
 });
+
+test("GET /karabiner/cmdabl.json serves the rule text read-only; 404 without a file; other methods are 405", async () => {
+  const port = await freePort();
+  let rule: string | null = '{"title":"cmdAbl"}';
+  const server = startTriggerServer(port, () => {}, () => false, undefined, undefined, undefined, undefined, () => rule);
+  await new Promise((r) => setTimeout(r, 150));
+  const get = (method: string) =>
+    new Promise<{ status: number; text: string; type?: string }>((resolve, reject) => {
+      const req = http.request({ host: "127.0.0.1", port, path: "/karabiner/cmdabl.json", method }, (res) => {
+        let text = "";
+        res.on("data", (c) => (text += c));
+        res.on("end", () => resolve({ status: res.statusCode ?? 0, text, type: res.headers["content-type"] }));
+      });
+      req.on("error", reject);
+      req.end();
+    });
+  try {
+    const ok = await get("GET");
+    assert.equal(ok.status, 200);
+    assert.equal(ok.text, '{"title":"cmdAbl"}');
+    assert.match(ok.type ?? "", /application\/json/);
+    assert.equal((await get("POST")).status, 405);
+    rule = null;
+    assert.equal((await get("GET")).status, 404);
+  } finally {
+    server.close();
+  }
+});

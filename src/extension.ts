@@ -1,44 +1,55 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
-import { CommandRegistry } from "./core/commandRegistry.js";
+import { CommandRegistry } from "./core/command/commandRegistry.js";
 import { appLog, logger } from "./core/log.js";
-import { runBoard } from "./core/board.js";
-import { helpForPath, usageForPath } from "./core/commandTree.js";
-import { createCommandProvider } from "./core/commandProvider.js";
-import { buildCompletionData } from "./core/completeSnapshot.js";
-import type { CompletionData } from "./core/complete.js";
-import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail } from "./core/types.js";
+import { runBoard } from "./core/surfaces/board.js";
+import { helpForPath, usageForPath } from "./core/command/commandTree.js";
+import { createCommandProvider } from "./core/command/commandProvider.js";
+import { buildCompletionData } from "./core/complete/completeSnapshot.js";
+import type { CompletionData } from "./core/complete/complete.js";
+import { type Provider, type PaletteItem, type PaletteResult, type CommandResult, ExitCode, fail, ok } from "./core/types.js";
 import type { Module, ModuleApi } from "./modules/types.js";
 import { startTriggerServer } from "./httpTrigger.js";
-import { isSetupDone, setKarabinerPaletteOpen } from "./core/setup.js";
-import { registerBuiltins } from "./core/builtins.js";
-import { reportBridge } from "./core/bridgeStatus.js";
+import { isAhkInstalled, isAhkSetupDone, isKarabinerInstalled, isKarabinerSetupDone, karabinerSourcePath, readKarabinerConfig, runRemoteScriptSetup, setKarabinerPaletteOpen, isSetupDone, REMOTE_SCRIPT_DOCS_URL } from "./core/setup/setup.js";
+import { createSetupFlow } from "./core/setup/setupFlow.js";
+import { gatherFacts } from "./core/setup/setupFacts.js";
+import { openUrl } from "./core/setup/openUrl.js";
+import * as fs from "node:fs";
+import { registerBuiltins } from "./core/command/builtins.js";
+import { reportBridge } from "./core/host/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { getTagCache } from "./ableton/tagCache.js";
 import { paramDisplay, setId } from "./ableton/bridgeOps.js";
 import { findRacks, getChainNameCache } from "./ableton/chainNames.js";
-import { presentResult } from "./core/present.js";
-import { runLine } from "./core/run.js";
-import { objectRowLine } from "./core/objectRow.js";
-import { confirm } from "./core/confirm.js";
-import { pickNodes, pickTagNames } from "./core/pick.js";
-import { quoteIfNeeded } from "./core/tokenize.js";
+import { presentResult } from "./core/surfaces/present.js";
+import { runLine } from "./core/command/run.js";
+import { objectRowLine } from "./core/command/objectRow.js";
+import { confirm } from "./core/surfaces/confirm.js";
+import { pickNodes, pickTagNames } from "./core/surfaces/pick.js";
+import { quoteIfNeeded } from "./core/command/tokenize.js";
 import { uniquePath } from "./ableton/resolvePath.js";
-import { createDialogQueue } from "./core/dialogQueue.js";
-import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/ui.js";
-import { createModuleFiles } from "./core/files.js";
-import { createSettingsStore, toPaletteSettings } from "./core/settings.js";
+import { createDialogQueue } from "./core/surfaces/dialogQueue.js";
+import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/surfaces/ui.js";
+import { createModuleFiles } from "./core/settings/files.js";
+import { createSettingsRegistry, createSettingsStore } from "./core/settings/settings.js";
+import { createSettingsFlow } from "./core/surfaces/settingsSurface.js";
+import { createDefaultsStore } from "./core/command/defaultCommands.js";
+import { attachConfigs } from "./core/command/configAttach.js";
+import { createDefaultsFlow } from "./core/surfaces/defaultsSurface.js";
+import { rootCommandOf } from "./core/command/parse.js";
+import { bareBehaviour } from "./core/command/defaultCommands.js";
 import { tokenFilePath } from "./ableton/bridgeToken.js";
 import * as path from "node:path";
-import { createUiGate, runHeadless } from "./core/headless.js";
+import { createUiGate, runHeadless } from "./core/host/headless.js";
+import { withHelpLine } from "./core/surfaces/helpLine.js";
 import { createDevRoutes, runTokenFilePath, type DevRoutes, writeRunToken } from "./devRoutes.js";
 import { midiBlocked, midiLast, midiListen, onBlocked, onMidiEvent } from "./ableton/bridgeOps.js";
-import { createMidiEngine } from "./core/midiEngine.js";
-import { createSetWatch } from "./core/setWatch.js";
-import { createLivePages } from "./core/livePage.js";
-import { createMidiPort } from "./core/midiPort.js";
+import { createMidiEngine } from "./core/midi/midiEngine.js";
+import { createSetWatch } from "./core/host/setWatch.js";
+import { createLivePages } from "./core/surfaces/livePage.js";
+import { createMidiPort } from "./core/midi/midiPort.js";
 import { createMidiListenRoute, logMidiEvent } from "./ableton/midiEvents.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
-import { readVolume, writeVolume, type VolumeTrack } from "./core/volume.js";
+import { readVolume, writeVolume, type VolumeTrack } from "./core/host/volume.js";
 import { trackFor } from "./ableton/trackLookup.js";
 import { MODULES } from "./modules/index.js";
 
@@ -46,6 +57,8 @@ const TRIGGER_PORT = 27184;
 
 /** Set by build.ts: true in development builds, false in `--production` (the code behind it is removed). */
 declare const CMDABL_DEV_ROUTES: boolean;
+/** The extension's version (manifest.json), defined at build time. */
+declare const CMDABL_VERSION: string;
 
 export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");
@@ -59,23 +72,62 @@ export function activate(activation: ActivationContext) {
   const dataFolder = context.environment.storageDirectory ?? path.dirname(tokenFilePath());
   const registry = new CommandRegistry();
   // Every dialog goes through this — the platform never opens an HTML page itself.
-  // One queue: a dialog never opens while another is open (see core/dialogQueue.ts).
+  // One queue: a dialog never opens while another is open (see core/surfaces/dialogQueue.ts).
   const dialogs = createDialogQueue();
   // The gate passes everything through to the real dialogs, except during a headless run (plan 0016).
   // cmdAbl's own settings (settings.json in the data folder); the palette page returns changes with its result.
-  const settingsStore = createSettingsStore({ base: dataFolder, warn: (text) => logger("settings").warn(text) });
+  // Declared settings (plan 0019): core's groups are in the registry from the start, the modules declare theirs at activation.
+  const settingsRegistry = createSettingsRegistry((text) => logger("settings").warn(text));
+  const settingsStore = createSettingsStore({ base: dataFolder, registry: settingsRegistry, warn: (text) => logger("settings").warn(text) });
+  // A page's gear (plan 0019): remembered here, taken by the run right after the board closed.
+  let pendingGear: { surface: "board" } | undefined;
   // Live pages (plan 0018): a module's dialog may read from it through token-guarded routes of the trigger server.
   // Registered in release builds too; unavailable (data-page fallback) when the port is taken.
   let trigger: { listening(): boolean } | undefined;
   const livePages = createLivePages({ port: TRIGGER_PORT, available: () => trigger?.listening() === true });
   const gate = createUiGate(
-    createDefaultUi(context, dialogs, (settings) => void settingsStore.set({ "palette.above": settings.above }), livePages),
+    withHelpLine(
+      createDefaultUi(context, dialogs, livePages, (gear) => {
+        pendingGear = gear;
+      }),
+      async () => (await settingsStore.get())["ui.helpLine"],
+    ),
   );
   const ui: Ui = gate.ui;
+  // Default commands (plan 0019 §7): default_commands.json next to settings.json; a bare command word runs the line chosen for it.
+  const defaultsStore = createDefaultsStore({ base: dataFolder, roots: () => registry.roots(), warn: (text) => logger("defaults").warn(text) });
+  const defaultsFlow = createDefaultsFlow({ store: defaultsStore, ui, roots: () => registry.roots() });
+  const settingsFlow = createSettingsFlow({
+    registry: settingsRegistry,
+    store: settingsStore,
+    ui,
+    log: (line) => logger("settings").warn(line),
+    // A link row closed the settings page: the defaults page opens after the changes were saved.
+    onOpen: (target, window) => defaultsFlow.openTarget(target, window),
+    // The default-command rows the platform adds: one in cmdAbl's group (how many are set), one in a module's group (its command).
+    links: async (group) => {
+      const { count, lines } = await defaultsFlow.summary();
+      if (group === "cmdabl") {
+        return [{ key: "link:defaults", label: "Default commands", help: "A bare command word runs a line you choose: mute can run mute #drums. Opens its own page; \\mute still runs the plain command.", kind: "link", target: "defaults", summary: `${count} set` }];
+      }
+      const node = registry.roots().find((n) => n.name === group);
+      if (!node) return [];
+      return [
+        {
+          key: `link:defaults:${group}`,
+          label: "Default command",
+          help: `The line a bare ${group} runs (bare, it ${bareBehaviour(node)}; a default replaces that, and \\${group} brings it back).`,
+          kind: "link",
+          target: `defaults:${group}`,
+          summary: lines[group] ?? "not set",
+        },
+      ];
+    },
+  });
   const providers: { provider: Provider; priority: number }[] = [];
   // The items of the palette that is open (or was opened last): a picked object row is found here.
   let paletteItems: PaletteItem[] = [];
-  const commandRunListeners: Array<(invocation: string) => void> = [];
+  const commandRunListeners: Array<(invocation: string, typed?: string) => void> = [];
   const pickListeners: Array<(candidates: ObjectNode[], chosen: ObjectNode[] | null) => void> = [];
 
   const liveNodes = () => flattenObjectTree(buildObjectTree(context));
@@ -123,15 +175,59 @@ export function activate(activation: ActivationContext) {
     return answer;
   }
   let isOpen = false;
+  /** The line the palette (or /show) is running now; the board's gear belongs to its command (plan 0019). */
+  let activeLine: string | undefined;
+  /** The settings group of the running command: its first word, when that module declared settings. Not for `;` chains. */
+  function activeGroup(): string | undefined {
+    if (activeLine === undefined) return undefined;
+    const root = rootCommandOf(activeLine, registry.roots());
+    return root !== undefined && settingsFlow.has(root) ? root : undefined;
+  }
 
   function showFeedback(message: string): void {
     ui.notify({ text: message, code: ExitCode.OK });
   }
 
-  // ── core: the only commands baked in (see src/core/builtins.ts) ───────────
+  // ── core: the only commands baked in (see src/core/command/builtins.ts) ───────────
   // `cmdabl curve` measures the first regular track (plan 0012): no fader moves, nothing is written.
   const firstTrack = () => liveNodes().find((n) => n.kind === "track" && n.scope === "regular");
+  // The setup page (plan 0021): rows from facts, buttons run `cmdabl setup script` or open a link, then the page comes again.
+  const hostStart = Date.now();
+  const setupFlow = createSetupFlow({
+    notifyAnswer: (request) => ui.notifyAnswer(request),
+    headless: () => gate.active(),
+    facts: (copyFailed) =>
+      gatherFacts({
+        port: TRIGGER_PORT,
+        controlSurfaceUrl: REMOTE_SCRIPT_DOCS_URL,
+        triggerInstalled: process.platform === "win32" ? isAhkInstalled : isKarabinerInstalled,
+        triggerRuleThere: process.platform === "win32" ? isAhkSetupDone : isKarabinerSetupDone,
+        karabinerConfig: readKarabinerConfig,
+        ping: () => getBridge().ping(),
+        hostStart,
+        dataFolder,
+        copyFailed,
+      }),
+    // The page's own commands only (the flow looks them up in the page it sent): run through the normal path, without a screen.
+    runCommand: async (line) =>
+      (await runLine(line, { ...runBase, takeFill: () => undefined, pick: async () => null, pickTags: async () => null })).result,
+    openUrl,
+    settings: settingsStore,
+    files: createModuleFiles({ base: dataFolder, module: () => "setup", warn: (text) => logger("setup").warn(text) }),
+    version: CMDABL_VERSION,
+    warn: (text) => logger("setup").warn(text),
+    note: (text) => logger("setup").info(text),
+    copyScript: () => {
+      const step = runRemoteScriptSetup();
+      return step.ok ? ok(step.text) : fail(ExitCode.FAILURE, step.text);
+    },
+  });
   registerBuiltins(registry, {
+    setup: setupFlow,
+    headless: () => gate.active(),
+    simulate: CMDABL_DEV_ROUTES, // the hidden `cmdabl setup --simulate <state>` (development builds only)
+    settings: settingsFlow,
+    defaults: defaultsFlow,
     bridge: () => getBridge(),
     curve: {
       hasTrack: () => firstTrack() !== undefined,
@@ -213,10 +309,20 @@ export function activate(activation: ActivationContext) {
       help: (path) => helpForPath(registry.roots(), path),
       usage: (path) => usageForPath(registry.roots(), path),
       completer: (key, source) => registry.completer(key, source),
+      defaults: () => defaultsStore.peek(),
     },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
-    ui: { board: (request) => runBoard(ui, request), livePage: (name, html, width, height, routes) => ui.livePage(name, html, width, height, routes) },
+    // Declared settings; a module sees its own namespace (replaced per module below).
+    settings: {
+      declare: () => void logger("settings").warn("a module declared settings before it was named; dropped"),
+      get: async () => undefined as never,
+    },
+    ui: {
+      // The gear (plan 0019) is drawn only for a command that has settings: `tag --list` → the group `tag`.
+      board: (request) => runBoard(ui, { ...request, ...(activeGroup() !== undefined ? { gear: true } : {}) }),
+      livePage: (name, html, width, height, routes) => ui.livePage(name, html, width, height, routes),
+    },
     pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, ...options, multi: options?.multi ?? true }),
     tags: {
       refresh: () => getTagCache().refreshNow(getBridge()),
@@ -237,6 +343,21 @@ export function activate(activation: ActivationContext) {
     let named = mod.name !== undefined;
     const tagged = () => logger(source);
     return Object.assign(Object.create(moduleApi) as ModuleApi, {
+      settings: {
+        declare: (group: Parameters<ModuleApi["settings"]["declare"]>[0]) => {
+          if (!named) return void tagged().warn("settings: declare after the module has a name (Module.name or a first commands.add); dropped");
+          settingsRegistry.declare(source, group); // problems are warnings, logged by the registry
+        },
+        get: async <T = unknown>(name: string): Promise<T> => {
+          try {
+            const key = typeof name === "string" && name.includes(".") ? name : `${source}.${name}`;
+            if (!key.startsWith(`${source}.`)) return undefined as T;
+            return (await settingsStore.get())[key] as T;
+          } catch {
+            return undefined as T;
+          }
+        },
+      },
       files: createModuleFiles({ base: dataFolder, module: () => source, warn: (text) => tagged().warn(text) }),
       log: (line: string) => tagged().info(line),
       logger: {
@@ -260,6 +381,13 @@ export function activate(activation: ActivationContext) {
   // The command list itself is a provider (priority 0); modules add theirs.
   moduleApi.registerProvider(createCommandProvider(registry));
   for (const mod of MODULES) mod.activate(moduleApiFor(mod));
+  // `<command> config` for every top-level command but man/help (plan 0019): its settings group, or just its default-command row.
+  attachConfigs(registry, {
+    make: (name) => ({ name: "config", summary: `open the settings of ${name}`, run: () => settingsFlow.open({ group: name, only: true }) }),
+    groups: () => settingsRegistry.groups().map((g) => g.id),
+    warn: (text) => logger("settings").warn(text),
+  });
+  void defaultsStore.get().catch(() => {}); // primes `api.commands.defaults()`
   // A command that names a completer nobody registered would complete nothing: say so once, at startup.
   for (const problem of registry.unknownCompleters()) logger("host").warn(problem);
 
@@ -309,7 +437,13 @@ export function activate(activation: ActivationContext) {
     if (was) return `dialog queue reset (was: ${was.name})${note}`;
     if (gateReleased) return "run gate released";
     return isOpen ? "no dialog open; a command is still running" : "no dialog was open";
-  }, async () => (await reportBridge(getBridge())).line, (req, res) => midiRoute?.(req, res) === true || devRoutes?.(req, res) === true, (req, res) => livePages.handle(req, res));
+  }, async () => (await reportBridge(getBridge())).line, (req, res) => midiRoute?.(req, res) === true || devRoutes?.(req, res) === true, (req, res) => livePages.handle(req, res), () => {
+    try {
+      return fs.readFileSync(karabinerSourcePath(), "utf8");
+    } catch {
+      return null;
+    }
+  });
 
   // The Karabiner rule only fires while `cmdabl_open` is 0. If a previous host
   // was stopped with the palette open, the flag would stay at 1 and ":" would
@@ -320,10 +454,14 @@ export function activate(activation: ActivationContext) {
   if (!isSetupDone()) {
     logger("host").info("keyboard trigger not configured. Open the palette and run: cmdabl setup");
   }
+  // setup.autoScript: copy a newer Remote Script now, without a dialog (the page then says "restart Live once").
+  setupFlow.warmUp();
+  void setupFlow.autoCopy();
 
   // What a run needs besides its two pick surfaces: the palette and the headless run share it.
   const runBase = {
     registry,
+    defaults: () => defaultsStore.get(),
     liveNodes,
     bridge: () => getBridge(),
     refreshTags: async () => {
@@ -357,14 +495,30 @@ export function activate(activation: ActivationContext) {
       }
       line = mapped;
     }
-    const outcome = await runLine(line, {
-      ...runBase,
-      takeFill,
-      // The platform's own lists: Tab may put a single-select row into the prompt.
-      pick: ({ title, candidates, multi, nodes, preview, details, state }) =>
-        pick(title, candidates, multi, { nodes, preview, details, state, fill: true }),
-      pickTags: (request) => pickTagNames(ui, request),
-    });
+    // The board's gear (plan 0019): the page closed with {settings: true}; the settings open, then the same line runs again
+    // (also after Esc on the settings). The module only saw a closed board.
+    let outcome: Awaited<ReturnType<typeof runLine>>;
+    for (let round = 0; ; round++) {
+      pendingGear = undefined;
+      activeLine = line;
+      try {
+        outcome = await runLine(line, {
+          ...runBase,
+          takeFill,
+          // The platform's own lists: Tab may put a single-select row into the prompt.
+          pick: ({ title, candidates, multi, nodes, preview, details, state }) =>
+            pick(title, candidates, multi, { nodes, preview, details, state, fill: true }),
+          pickTags: (request) => pickTagNames(ui, request),
+        });
+      } finally {
+        activeLine = undefined;
+      }
+      const gear = pendingGear as { surface: "board" } | undefined;
+      pendingGear = undefined;
+      const group = gear?.surface === "board" ? rootCommandOf(line, registry.roots()) : undefined;
+      if (group === undefined || round >= 20 || !settingsFlow.has(group)) break;
+      await openSettings({ group, only: true });
+    }
     if (outcome.fill !== undefined) return outcome.fill;
     if (outcome.cancelled) return;
     present(outcome.result);
@@ -372,12 +526,25 @@ export function activate(activation: ActivationContext) {
     // resolved form ("mute /Bass"), so a re-run is never ambiguous.
     const invocation = outcome.line ?? line;
     if (remember && outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
-      for (const listener of commandRunListeners) listener(invocation);
+      for (const listener of commandRunListeners) listener(invocation, outcome.typed);
     }
     return undefined;
   }
 
-  /** The single place results become user-visible (see src/core/present.ts). */
+  /**
+   * The settings page for a gear. What it saved (the count and the changed keys, plus any message of an opened page) goes to the log, not to a message (the page we came from opens again at
+   * once); a failure to save is shown.
+   */
+  async function openSettings(options: { group?: string; only?: boolean }): Promise<void> {
+    const result = await settingsFlow.open(options);
+    if (result.code !== ExitCode.OK) present(result);
+    else {
+      for (const line of result.log ?? []) logger("settings").info(line);
+      if (result.message) logger("settings").info(result.message);
+    }
+  }
+
+  /** The single place results become user-visible (see src/core/surfaces/present.ts). */
   function present(outcome: CommandResult): void {
     presentResult(outcome, (text, link, sections) =>
       ui.notify({ text, code: outcome.code, ...(link ? { link } : {}), ...(sections ? { sections } : {}) }),
@@ -413,6 +580,7 @@ export function activate(activation: ActivationContext) {
     try {
       const data = await buildCompletionData({
         roots: registry.roots(),
+        defaults: () => defaultsStore.get(),
         completers: registry.completers(),
         nodes: liveNodes,
         // Stale-while-revalidate, like the tree build: building the tree (liveNodes) already schedules a
@@ -449,6 +617,7 @@ export function activate(activation: ActivationContext) {
     }
   }
 
+  let setupChecked = false;
   async function openPalette(initial?: string): Promise<void> {
     const shown = dialogs.describe();
     if (gate.active()) {
@@ -463,6 +632,12 @@ export function activate(activation: ActivationContext) {
     isOpen = true;
     setKarabinerPaletteOpen(true);
     try {
+      // The setup page opens by itself once per start, on the first use (plan 0021 §4): a dialog during activate() is not
+      // known to be safe, and a use is when the user is here. The palette follows when it closes.
+      if (!setupChecked) {
+        setupChecked = true;
+        await setupFlow.openIfNeeded();
+      }
       // Snapshot every provider's items, then let the webview search them.
       // Stable sort by priority (lower first); ties keep registration order.
       const ordered = [...providers].sort((a, b) => a.priority - b.priority);
@@ -472,7 +647,7 @@ export function activate(activation: ActivationContext) {
       paletteItems = items;
       // Tab on a pick list puts an object into the prompt: reopen with it (same queue, same guard).
       for (;;) {
-        const result = await ui.prompt({ items, completion, settings: toPaletteSettings(await settingsStore.get()), ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
+        const result = await ui.prompt({ items, completion, ...(initial !== undefined ? { initial: { text: initial, cursor: 0 } } : {}) });
         initial = result ? await dispatch(result) : undefined;
         if (initial === undefined) break;
       }

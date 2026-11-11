@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validateTree } from "../../core/commandTree.js";
-import { parse } from "../../core/parse.js";
+import { validateTree } from "../../core/command/commandTree.js";
+import { parse } from "../../core/command/parse.js";
 import { ExitCode } from "../../core/types.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { activate } from "./index.js";
 
 function setup() {
@@ -63,4 +63,17 @@ test("a quoted name stays one word", async () => {
   const r = await run('man "history clear"');
   assert.equal(r.code, ExitCode.NOT_FOUND);
   assert.match(r.message ?? "", /Did you mean: history clear/);
+});
+
+test("help lists the commands by topic, itself first under Look things up, with man after it", async () => {
+  const { fake } = setup();
+  const help = fake.commands.find((c) => c.name === "help")!;
+  assert.deepEqual(validateTree([help]), []);
+  const outcome = parse("help", fake.commands);
+  assert.equal(outcome.kind, "run");
+  if (outcome.kind !== "run") return;
+  const out = (await help.run!(outcome.invocation, undefined as never)) as { code: number; message?: string };
+  assert.equal(out.code, ExitCode.OK);
+  assert.match(out.message ?? "", /^Look things up\n  help .*\n  man /); // grouped by topic, the topic as a heading
+  assert.match(out.message ?? "", /history\s+the command history/);
 });

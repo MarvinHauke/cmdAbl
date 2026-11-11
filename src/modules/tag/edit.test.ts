@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { ExitCode } from "../../core/types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { fail as bridgeFail } from "../../ableton/bridgeProtocol.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { activate } from "./index.js";
 
 const track = (name: string, i: number, scope = "regular") =>

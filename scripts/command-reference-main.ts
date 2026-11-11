@@ -9,15 +9,15 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import * as path from "node:path";
-import { CommandRegistry } from "../src/core/commandRegistry.js";
-import { registerBuiltins } from "../src/core/builtins.js";
+import { CommandRegistry } from "../src/core/command/commandRegistry.js";
+import { registerBuiltins } from "../src/core/command/builtins.js";
 import {
   checkExamples,
   checkTopics,
   renderCommandReference,
   renderLiveApiReference,
   renderRemoteScriptReference,
-} from "../src/core/referenceDoc.js";
+} from "../src/core/command/referenceDoc.js";
 import { lomPath, lomReferenceUrl } from "../src/ableton/lomPath.js";
 import { PORT_MAPPING, lomUrl } from "../src/modules/portMapping.js";
 import { REMOTE_SCRIPT_OPS, REMOTE_SCRIPT_ROUTE_LOM } from "../src/ableton/remoteScriptOps.js";
@@ -51,6 +51,8 @@ const stub: ModuleApi = {
   dialog: async () => {
     throw new Error("a module opened a dialog while being activated; declare commands only");
   },
+  // Declaring settings is allowed at activation (the settings page is built later); the generator only needs the commands.
+  settings: { declare: () => {}, get: async () => undefined as never },
   commands: { add: (command) => void registry.add(command), completer: () => {} },
   pick: async () => null,
   onPick: () => {},

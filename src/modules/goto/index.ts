@@ -1,7 +1,7 @@
 import type { ModuleApi } from "../types.js";
 import { snapshotObjectTree } from "./snapshot.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
-import { selectNodeResult } from "../selectNode.js";
+import { selectNodeResult } from "../shared/selectNode.js";
 
 /**
  * Surfaces the Set's addressable objects (tracks, group tracks, devices, chains) in

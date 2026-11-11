@@ -49,24 +49,26 @@ only where nothing is typed yet.
 
 A name with spaces is quoted for you.
 
-![The palette after `tag --rename `: the five tags of the Set with their track counts, and the grey hint `<old>`.](assets/images/complete-rename.png)
+![The palette after `tag --rename `: the three tags of the Set, bass, drums and synth, with their track counts, and the grey hint `<old>`.](assets/images/complete-rename.png)
 
-#### Show the options above the prompt
+### The footer: what the line means
 
-The footer of the palette has a switch, **Above the prompt: Off · Hints · Options**. Click it with the mouse. The
-choice is saved in [`settings.json`](#settings) and used the next time you open the palette. The palette opens taller for **Hints** and **Options**.
-If you switch while the palette is open, the layout changes fully at the next open.
+The palette has a footer under the rows. It explains the line you are typing, and the prompt never moves:
 
-- **Off** (the default): one list below the prompt. Options appear in it after you type `-`.
-- **Hints**: a reference panel above the prompt, headed `Hints · <command>`, lists the command's options in
-  columns: the long flag, the short flag with its values, and the description. You cannot select in it. After
-  `-`, the option highlighted in the list is marked with `▸` in the panel, and a long description scrolls after a
-  short moment.
-- **Options**: the options sit above the prompt and you can select them. `↑` goes up into them, and `Tab` takes one.
+- **Line 1** names the command (or subcommand) you have typed and what it does, such as
+  `tag -e: edit a tag's tracks on the board`.
+- **Line 2** describes the argument at the cursor, such as `<tag|#>`, or the option you are typing (or the value it
+  waits for). The text follows the cursor. Moving the highlight over a row does not change it, because the row
+  already says what it is.
+- With an empty prompt, or before you have typed a known command, the footer shows the palette's keys.
 
-![The palette in Hints mode after `tag -`: the panel above the prompt lists the options of tag in columns, and the list below the prompt shows the same options. The footer switch is set to Hints.](assets/images/above-hints.png)
+![The palette with `vol -` typed: the rows --set, --clip, --pick and --help; the footer shows "vol: change the fader level of tracks, in dB" and "--set (-s): treat the number as the level to set, not a step from where the fader is"](assets/images/palette-footer.png)
 
-![The palette in Options mode after `tag `: the six options of tag above the prompt, the grey hint `[<target>]` after it, the tracks below, and the footer switch set to Options.](assets/images/above-options.png)
+The footer is part of the [help line](#the-help-line). With `ui.helpLine` switched off, it shows the keys only.
+
+If a row's description is longer than the row, the highlighted row scrolls it slowly. The other rows end in `…`.
+
+After a command name, the list also offers a `config` row, which opens that command's settings. See [Settings](#settings).
 
 ## Name the objects
 
@@ -94,7 +96,7 @@ A command takes objects as text. cmdAbl reads that text as follows:
 
 When a name matches more than one object, cmdAbl asks. It never picks one for you.
 
-![The palette with kic typed: the track Kick and the devices below it, each with its path in grey, then the Magic Mid devices of the main track and the command goto](assets/images/palette-objects.png)
+![The palette with kic typed: the track Kick and its device Hihat Open 909, then the Magic Mid devices of the main track with their path in grey, and the commands goto, find and lom](assets/images/palette-objects.png)
 
 *Type part of a name, and the palette lists the objects that match.*
 
@@ -151,7 +153,7 @@ Racks can sit inside a chain of another rack. An Instrument Rack whose chain hol
 
 ![The find pick list headed find: "kick" — 16 matches: the Kick track and its devices, and the chains and devices of a Drum Rack nested in an Instrument Rack, each row with its path and its kind](assets/images/find-nested.png)
 
-*`find kick` reaches the pads of a Drum Rack nested in an Instrument Rack.*
+*`find kick` reaches the pads of a Drum Rack nested in an Instrument Rack. The picture comes from a Set with more tracks than the other examples on this page.*
 
 Selecting a pad or a chain does not change how the track is shown. Add `--unfold` to `goto` or `find` to show the
 track's chains as columns in the Session mixer. Live stores this view state with the Set, so the Set counts as
@@ -178,7 +180,7 @@ Without a pattern, `find` needs `-L` or one of `-t`, `-d` and `-c`; a bare `find
 `-L` takes a whole number from 0 to 12 with a pattern, and from 1 without one. For finding tracks by tag, see
 [Tags](#use-tags-as-targets).
 
-![The find pick list headed find: — 11 matches: every track of the Set with its tags, such as #synth on Synth and #bass #drums on Bass, the three return tracks, and the main track last](assets/images/find-top.png)
+![The find pick list headed find: — 6 matches: every track of the Set with its tags, such as #drums on Kick and #bass on Bass, and the main track last](assets/images/find-top.png)
 
 *`find -L 1` lists the top-level tracks, each with its tags.*
 
@@ -199,7 +201,7 @@ want explicitly, like Cmd-clicking the buttons in Live.
 
 `vol` moves track faders in dB (decibels). It needs no Remote Script.
 
-- `vol <dB> <target>…` moves each fader by `<dB>` from where it is. With Kick at -6 dB and Perc at -3 dB,
+- `vol <dB> <target>…` moves each fader by `<dB>` from where it is. With Kick at -6 dB and Percs at -3 dB,
   `vol -6 #drums` gives -12 and -9, so the balance between them stays.
 - `vol --set <dB> <target>…` (short `-s`) puts every fader at that level. `vol --set -inf /Lead` silences the Lead
   track.
@@ -222,7 +224,7 @@ want explicitly, like Cmd-clicking the buttons in Live.
   /Lead, …". It names at most five tracks, then "+N more"; the log has them all. A fader already at -inf is left
   out.
 
-  ![A message window: limit reached at +6 dB (the maximum): /Bass, /Lead, /Guitar, /Kick, /Snare, +1 more](assets/images/vol-clip.png)
+  ![A message window, from a Set with more tracks: limit reached at +6 dB (the maximum): /Bass, /Lead, /Guitar, /Kick, /Snare, +1 more](assets/images/vol-clip.png)
 - A fader at -inf stays there with a relative step. Only `--set` brings it back.
 - `--clip` together with `--set` is a usage error, and so is a relative `-inf`; use `vol --set -inf`.
 
@@ -289,14 +291,14 @@ tracks.
   chains and pads of the tagged tracks.
 - Without the Remote Script, `#` answers that the Remote Script is not running. Plain words work as before.
 
-![The find pick list for find #drums: six tracks, Bass, Lead, Guitar, Kick, Snare and Perc, each with the tag drums](assets/images/find-tags.png)
+![The find pick list for find #drums: two tracks, Kick and Percs, each with the tag drums](assets/images/find-tags.png)
 
 ### The tag board
 
 `tag -l` (or `tag --list`) opens the tag board. It shows one section per tag. The board opens with the cursor in the
 **New tag** row.
 
-![Screen recording of the tag board (tag -l): "analog" is typed into the add field of #drums, → steps into the suggestions and Enter adds three matching tracks while the text stays; "vermona drm" and Enter add one more; Apply shows 4 changes](assets/images/tags.gif)
+![Screen recording of the tag board (tag -l): "ba" is typed into the add field of #drums, the suggestion /Bass appears and Enter adds it as a chip with a dashed ring; the text stays, "syn" is typed in its place and Enter adds /Synth; the Apply button reads "Apply (2 changes)"](assets/images/tags.gif)
 
 *`tag -l`: add several tracks to #drums by typing and Enter. Nothing changes in Live until you press Apply.*
 
@@ -349,7 +351,7 @@ empty **add…** input. The section is struck through, and the footer says what 
 unmarks it. When you press **Apply**, a bar in the footer asks "Remove #fx from N tracks?". **Cancel** is the
 default (`Esc` too) and returns you to editing; **Remove and apply** goes on. A single chip's **×** asks nothing.
 
-![The tag board: one section per tag, with its tracks as chips and an add field; the untagged tracks are listed at the bottom](assets/images/tag-board.png)
+![The tag board: one section per tag, bass, drums and synth, with its tracks as chips and an add field, and the key help line, Settings, Apply and Close at the bottom](assets/images/tag-board.png)
 
 Live does not change until you press **Apply (N changes)**. Then the board closes. **Close** with nothing applied
 changes nothing and shows no message.
@@ -407,9 +409,9 @@ any click except Close, cancels the warning. The footer shows the main keys.
 
 The pair to remember: `tag /Lead` picks the tags of one track, and `tag -e fx` picks the tracks of one tag.
 
-![The pick list for tag --edit #drums: all regular tracks; Synth and Lead (tagged drums) and Kick, Snare and Perc are marked, and the boxes show the result of Enter: drums off for Synth and Lead, on for Kick, Snare and Perc](assets/images/tag-pick.png)
+![The pick list for tag --edit #drums: the five regular tracks Kick, Bass, Lead, Percs and Synth, each with its tags; Kick and Bass are marked with a dashed ring, and the boxes show the result of Enter: drums off for Kick, on for Bass](assets/images/tag-pick.png)
 
-![The tag list for tag -e: the tags bass, drums, fx, lead and synth, each with its track count](assets/images/tag-list.png)
+![The tag list for tag -e: the tags bass, drums and synth, each with its track count](assets/images/tag-list.png)
 
 *`tag -e #drums` and the tag list of a bare `tag -e`.*
 
@@ -468,7 +470,7 @@ shows how cmdAbl's ports and Remote Script operations map to the Live Object Mod
 - The web manuals need an internet connection. The command page does not.
 - An unknown command answers with close matches under "Did you mean".
 
-![The man page for mute inside Live: the summary, usage, arguments and options, with Close and Open in browser buttons](assets/images/man-page.png)
+![The man page for mute inside Live: the summary, usage, the settings line `mute config`, arguments and options, with Close and Open in browser buttons](assets/images/man-page.png)
 
 ## A note per Set: `note`
 
@@ -591,15 +593,99 @@ If the page cannot show live values, it shows the newest messages as a list when
 
 ## Settings
 
-cmdAbl keeps a few settings in `settings.json`, in cmdAbl's data folder (the Extensions Data folder in Ableton's
-Application Support). A missing file means the defaults. A broken file, or a value of the wrong
-type, means the default for that setting and a warning in the log.
+The settings page is where you change how cmdAbl behaves. Open it from the palette:
+
+- `cmdabl config` opens the page with every group of settings.
+- `cmdabl config tag` opens it on one group. You can also type `<command> config`, such as `tag config` or
+  `map config`, which opens the page on that command's group. This works after every command except `man` and
+  `help`. The palette offers `config` as a row after a command name. To use the word `config` as a name (a track
+  called config), quote it: `tag "config"`.
+- The **Settings** button in the footer of the tag board (`tag -l`) opens the page on the tag group. When you close
+  the page, the board comes back.
+
+The page has one group per area, with the core settings first. Each row has a name, a switch, a choice or a number,
+and a short explanation in the [help line](#the-help-line) when you point at it or move to it. A value that differs
+from its default shows a dim **reset** button.
+
+| Key | `↑` `↓` | `←` `→` | `Space` | `Enter` | `Esc` |
+| --- | --- | --- | --- | --- | --- |
+| Does | move between rows | change a choice or a number | flip a switch | save and close | close without saving |
+
+![The settings page from `cmdabl config`: groups cmdAbl, Setup, MIDI mapping, MIDI monitor and Tags with their switches and numbers; the footer shows the help line for the Help line row, with Apply (disabled) and Cancel](assets/images/settings-page.png)
+
+The footer has **Apply** (the same as `Enter`; it shows how many changes it will save) and **Cancel** (the same as
+`Esc`). If you changed something, `Esc` asks "Discard N changes?" first. After you save, cmdAbl says how many
+settings it saved.
+
+Some rows open another page instead of holding a value. **Default commands…** opens the [default
+commands](#default-commands). When you open it, cmdAbl first saves the changes you made.
+
+The settings are kept in `settings.json`, in cmdAbl's data folder (the Extensions Data folder in Ableton's
+Application Support). You can edit it by hand too. A missing file means the defaults. A broken file, or a value of
+the wrong type, means the default for that setting and a warning in the log.
 
 | Key | Values | What it does |
 | --- | --- | --- |
-| `"palette.above"` | `"off"` (default), `"hints"`, `"options"` | The footer switch of the palette, [above](#show-the-options-above-the-prompt). |
+| `"ui.helpLine"` | `true` (default), `false` | Shows what the control under the mouse, or with focus, does in the footer of the pages. `false` shows the keys only. See [the help line](#the-help-line). |
+| `"tag.foldAfter"` | 1 to 500, default 20 | On the tag board, tags with more tracks than this start folded. |
 | `"map.enabled"` | `true` (default), `false` | `false` drops every incoming MIDI message. `map --off` and `map --on` set it. |
 | `"midi.statusBar"` | `true`, `false` (default) | `true` also shows incoming MIDI in Live's status bar while `midi monitor` or `map learn` is open. |
+| `"setup.openOnStart"` | `true` (default), `false` | Opens the [setup page](getting-started.md#2-check-the-setup-page) by itself. |
+| `"setup.autoScript"` | `true`, `false` (default) | Copies a newer Remote Script at start without asking. Live still needs one restart to load it. |
+
+## Default commands
+
+A default command gives a bare command word a line to run. If `mute` has the default `mute #drums`, typing only
+`mute` runs `mute #drums`. Anything you add changes nothing: `mute bass` runs `mute bass`. Each part of a line with
+`;` expands on its own.
+
+A default has to start with its own command. `mute` can run `mute #drums`, but not `solo #drums`. Only top-level
+commands have defaults, not subcommands such as `midi monitor`. A command that already does something bare, such
+as `note`, `tag` or `history`, does that no more once it has a default.
+
+To run the command without its default, put a backslash before it: `\mute`. Quoting works too: `"mute"`.
+
+**Set a default.** Open the defaults page with `cmdabl config defaults`. `cmdabl config defaults mute`, or `mute config`
+and its **Default command** row, opens it on one command. The page lists every command with a text field for its
+line. What the bare word does without a default is the grey text in the field.
+
+![The default commands page: rows for cmdabl, goto, mute, solo and lom; the cmdabl row holds an invalid line with a red error next to it and in the footer, and the footer shows Apply (1 change)](assets/images/defaults-invalid.png)
+
+- While you type, cmdAbl checks the line and shows ✓ or the reason it does not work next to it. It checks the
+  syntax only; it does not look for the objects, so a tag that does not exist yet is fine.
+- `Enter` saves, and `Esc` closes. `↑` and `↓` move between rows. As on the settings page, the footer has **Apply**
+  and **Cancel**, and `Esc` asks first if you changed something.
+- If a line is invalid when you save, the page opens again on that row with your text and the reason. The same check
+  runs if cmdAbl could not check while you typed, and the page still works then.
+
+The defaults are in `default_commands.json`, next to `settings.json`, and you can edit the file by hand:
+
+```json
+{ "mute": "mute #drums", "note": "note -e" }
+```
+
+A hand edit applies the next time you open the palette. An entry that does not work is skipped with a warning in
+the log, and the defaults page shows it as invalid with the text you wrote, so you can fix it there.
+
+**In the palette.** When the line is exactly a command word with a default, a dim row shows `mute → mute #drums`.
+`Enter` runs it. `Tab` writes the line into the prompt so you can change it.
+
+**In the log and the history.** The log shows what you typed and what ran, as `mute ⇒ mute #drums (default)`. The
+history keeps what ran and shows what you typed after it.
+
+**With MIDI.** A [MIDI binding](#midi-mapping) to a bare command word expands the default every time the control
+fires, so changing the default changes what the control does. `map -l` shows it with an arrow, such as
+`1  CC48  press  | mute → mute #drums`, for bindings of one word. A binding with `;` is shown as written.
+
+## The help line
+
+Pages have a quiet line in the footer that explains what the control under the mouse does, like Live's Info View.
+It shows the help of the element under the mouse, otherwise of the element with focus, otherwise the page's keys. A
+text field explains itself when you hover it, not when it has focus, so the keys stay visible while you type.
+
+The line is on the tag board, the settings page, the defaults page, the pick list, the setup page and other message pages with buttons. The palette's
+footer is the same line; see [the footer](#the-footer-what-the-line-means). Switch it off with `ui.helpLine` on the
+[settings page](#settings): the footers then show the keys only.
 
 ## What the palette tells you
 
@@ -654,7 +740,7 @@ A remembered line keeps:
 
 The history is kept in memory. It is gone when cmdAbl restarts.
 
-![The empty palette: the commands help, cmdabl, history, goto, find, next, prev and mute, with no rows of recent commands](assets/images/palette-empty.png)
+![The empty palette: the commands cmdabl, history, goto, find, next, prev, mute and solo, each with its summary, and the key help line at the bottom, with no rows of recent commands](assets/images/palette-empty.png)
 
 *With no history, the empty palette lists only the commands.*
 
@@ -672,6 +758,6 @@ The `history` command manages the list:
 
 The [command reference](reference/commands.md) has the full usage.
 
-![The man page of history inside Live: the summary, usage, the subcommands clear, forget and restore, the web address, and the Close and Open in browser buttons](assets/images/man-history.png)
+![The man page of history inside Live: the summary, usage, the subcommands clear, forget and restore, the settings line `history config`, the web address, and the Close and Open in browser buttons](assets/images/man-history.png)
 
 *`man history` shows the page of the history command.*

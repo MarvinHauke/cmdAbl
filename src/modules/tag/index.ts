@@ -76,7 +76,11 @@ export function activate(api: ModuleApi): void {
     if (!fresh.ok) return fail(fresh.code === ExitCode.UNAVAILABLE ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `tag: ${fresh.text}`);
     const nodes = api.liveSet.nodes().filter((n) => n.kind === "track" && n.scope !== "master");
     const byId = new Map(nodes.map((n) => [n.handleId, n]));
-    const shown = await api.ui.board(buildBoard(nodes.map((n) => ({ id: n.handleId, label: n.path, tags: api.tags.of(n) }))));
+    const foldAfter = await api.settings.get<number>("foldAfter");
+    const shown = await api.ui.board({
+      ...buildBoard(nodes.map((n) => ({ id: n.handleId, label: n.path, tags: api.tags.of(n) }))),
+      foldAfter,
+    });
     const answer = shown.answer;
     if (!answer || (answer.changes.length === 0 && !answer.renamed?.length && !answer.removed?.length)) return;
 
@@ -328,5 +332,20 @@ export function activate(api: ModuleApi): void {
         unchanged,
       );
     },
+  });
+  // Declared after the first commands.add so the key's namespace is the module's name (`tag`).
+  api.settings.declare({
+    heading: "Tags",
+    items: [
+      {
+        key: "tag.foldAfter",
+        label: "Fold after",
+        help: "Tags with more tracks than this start folded on the board.",
+        kind: "int",
+        default: 20,
+        min: 1,
+        max: 500,
+      },
+    ],
   });
 }

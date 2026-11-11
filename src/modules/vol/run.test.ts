@@ -2,9 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ExitCode } from "../../core/types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
-import { createFakeApi } from "../testPorts.js";
-import { dbToValue, valueToDb } from "../mixValue.js";
-import { parse } from "../../core/parse.js";
+import { createFakeApi } from "../shared/testPorts.js";
+import { dbToValue, valueToDb } from "../shared/mixValue.js";
+import { parse } from "../../core/command/parse.js";
 import { activate } from "./index.js";
 
 const track = (name: string, i: number, kind = "track") =>

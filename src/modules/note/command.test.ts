@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ExitCode } from "../../core/types.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { registerNote } from "./command.js";
 
 const TEMPLATE = "<script>const NOTE = /*NOTE_PLACEHOLDER*/null;</script>";

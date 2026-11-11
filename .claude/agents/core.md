@@ -13,7 +13,7 @@ You build the platform of cmdAbl, a command palette for Ableton Live. You work a
 
 ## Your area
 
-`src/core/` (including `types.ts`, `commandRegistry.ts`, `setup.ts`), `src/extension.ts`,
+`src/core/` (folders `command/`, `complete/`, `surfaces/`, `settings/`, `midi/`, `setup/`, `host/`, plus `types.ts` and `log.ts`), `src/extension.ts`,
 `src/httpTrigger.ts`, `src/architecture.test.ts`, the reference generator under `scripts/`,
 `src/modules/types.ts` and `src/modules/portMapping.ts`
 (the module interface — you are the only one who edits it; announce changes to cmdabl-modules and
@@ -35,7 +35,7 @@ cmdabl-bridge).
   `CommandResult`. Nothing in the core throws at a user action — failures become results.
 - Everything sent to a webview is plain JSON; a dialog returns one string on close and cannot call
   the host while open (`docs/sdk-tree.md`).
-- Keep logic pure and injectable (see `src/core/run.ts`) and cover it with `node:test` tests next
+- Keep logic pure and injectable (see `src/core/command/run.ts`) and cover it with `node:test` tests next
   to the code. No new dependencies without asking the architect.
 - Never push. Don't edit `src/modules/*/`, `remote-script/` or `ui/` — send the owner a message.
 

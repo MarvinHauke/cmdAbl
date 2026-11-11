@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { TEXT_STALE, fail as bridgeFail } from "../../ableton/bridgeProtocol.js";
 import { ExitCode } from "../../core/types.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { activate } from "./index.js";
 
 const node = (handleId: string, kind: ObjectNode["kind"], route: number[], path: string, name: string): ObjectNode =>

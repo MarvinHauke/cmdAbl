@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<!-- defaults surface (see src/core/surfaces/ui.ts DefaultsRequest, plan 0019 §7), a LIVE page (plan 0018). In: DEFAULTS_PLACEHOLDER = { title, help?: boolean (false: the help line shows the key line only), focus?: command, rows: [{ command, line, summary, bareBehaviour, error?, saved? }] } (one row per top-level command; `line` is the text for the field ('' = none); `saved` = the stored line when it differs from `line` (after a failed save `line` is the typed text): changes are counted against `saved ?? line`; `bareBehaviour` is what the bare word does without one, shown as the field's placeholder; `error` = why `line` is not usable, shown at once) and LIVE_PLACEHOLDER = null | { base, token }: with it, while typing (debounced) GET `${base}/check?command=<c>&line=<l>` (Authorization: Bearer token) answers { ok: true } | { ok: false, error } (read-only; if it can't be reached the page says nothing and doesn't block: core checks again after closing). Rows: name, a text field for the line, a "reset" (clears the line) and the check result (✓ or the error) beside the field. `focus` puts the cursor in that row's field. Keys (plan 0019 §5): ↑/↓ rows, → or typing goes into the field, ↑/↓ in the field change row, ← at the start of the field and Esc return to the row; Enter saves (a changed row with a known error from the check shakes its field and nothing closes; pending/unknown rows go through); Esc closes. Footer as on the settings page, the help line (ui/help.js, plan 0019 §3): the hovered or cursor row's summary (a row with a known error shows the error instead), else the key line; and mouse buttons "Apply (N changes)" (= Enter) and "Cancel" (= Esc); with changes Esc asks "Discard N changes?" in the footer first, and that bar owns the keys. Out (close_and_send): JSON { changes: { [command]: line } } on save (only rows whose line changed; '' removes the default), '' when closed. Text goes in with textContent / value only. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark" />
+  <title>Default commands</title>
+  <style>
+    /*SHARED_CSS_PLACEHOLDER*/
+    html, body { height: 100%; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    #scroll { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 8px 0; }
+    #scroll:focus { outline: none; }
+    .row { position: relative; box-sizing: border-box; width: 100%; min-width: 0; display: grid; grid-template-columns: 96px minmax(0, 1fr) 40px minmax(0, 0.7fr); gap: 8px; align-items: center; min-height: 36px; padding: 4px 16px 4px 22px; }
+    .row.cur { background: var(--bg-row); }
+    .row.cur::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+    .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row.changed .name::after { content: ' •'; color: var(--accent); }   /* differs from what was saved */
+    .row input { width: 100%; min-height: 24px; padding: 2px 6px; background: var(--bg); color: var(--text); border: 1px solid var(--dim); border-radius: 2px; font: inherit; }
+    .row input::placeholder { color: var(--dim); }
+    .row input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+    .reset { visibility: hidden; min-width: 40px; min-height: 24px; padding: 0; border: 0; color: var(--dim); font-size: 11px; }   /* reserved space, so nothing jumps when it appears */
+    .reset.show { visibility: visible; }
+    .reset:hover { color: var(--text); }
+    .status { min-width: 0; font-size: 11px; line-height: 13px; max-height: 26px; overflow: hidden; overflow-wrap: anywhere; }   /* an error may take two lines; the footer shows it in full */
+    .status.ok { color: var(--accent); font-size: 13px; }
+    .status.bad { color: hsl(0, 75%, 62%); }
+
+    /* footer: the row's summary, then the keys (same frame as the settings page) */
+    #foot { flex: none; box-sizing: border-box; height: 86px; border-top: 1px solid var(--border); padding: 6px 16px 8px; font-size: 11px; line-height: 15px; color: var(--dim); }
+    #normal { display: block; }
+    #help { height: 45px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* three lines at most: the "Default: X" end must not be cut */
+    #foot.confirming { background: hsla(31, 100%, 67%, 0.12); border-top-color: var(--accent); }
+    #confirm { display: flex; align-items: center; gap: 8px; }
+    #confirm[hidden], #normal[hidden] { display: none; }
+    #foot.confirming #confirm { height: 100%; }
+    #confirmText { flex: 1; color: var(--accent); font-weight: 700; }
+    #keep { border-color: var(--accent); color: var(--accent); }
+    #discard { border-color: hsl(0, 75%, 62%); color: hsl(0, 75%, 62%); }
+    #confirm button { min-height: 24px; }
+    #btns { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 2px; height: 24px; }
+    #btns button { min-height: 24px; font-size: 12px; }
+    #apply { min-width: 19ch; border-color: var(--accent); color: var(--accent); }
+    #apply:disabled { border-color: var(--dim); color: var(--dim); opacity: 0.5; cursor: default; }
+    #empty { padding: 16px; color: var(--dim); }
+  </style>
+</head>
+<body>
+  <div id="scroll" tabindex="-1"></div>
+  <div id="foot">
+    <div id="normal"><div id="help"></div><div id="btns"><button id="apply" type="button" tabindex="-1" disabled data-help="Apply: save the changed defaults and close (Enter)">Apply</button><button id="cancel" type="button" tabindex="-1" data-help="Cancel: close without saving (Esc)">Cancel</button></div></div>
+    <div id="confirm" hidden><span id="confirmText"></span><button id="keep" type="button" data-help="Keep editing: go back to the defaults">Keep editing</button><button id="discard" type="button" data-help="Discard: close and drop the changes">Discard</button></div>
+  </div>
+
+  <script>/*HELP_JS_PLACEHOLDER*/</script>
+
+  <script>
+    // Injected by the extension: see the contract at the top.
+    const DEFAULTS = /*DEFAULTS_PLACEHOLDER*/null;
+    const LIVE = /*LIVE_PLACEHOLDER*/null;   // { base, token } when the check route is reachable, else null
+
+    function send(value) {
+      const m = { method: 'close_and_send', params: [value] };
+      if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
+      else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
+      else window.__sent = value;   // in a plain browser: for checking with sample data
+    }
+
+    if (typeof DEFAULTS?.title === 'string' && DEFAULTS.title) document.title = DEFAULTS.title;
+    const scrollEl = document.getElementById('scroll');
+    const helpEl = document.getElementById('help');
+    const normalEl = document.getElementById('normal');
+    const footEl = document.getElementById('foot');
+    const confirmEl = document.getElementById('confirm');
+    const applyEl = document.getElementById('apply');
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+    // Rows in display order: { r, el, input, orig, status, ... }
+    const R = [];
+    let cur = 0, confirming = false;
+    const changedRows = () => R.filter(x => x.input.value.trim() !== x.orig);
+
+    function build() {
+      const rows = Array.isArray(DEFAULTS?.rows) ? DEFAULTS.rows : [];
+      if (!rows.length) { scrollEl.appendChild(mk('div', null, 'No commands to set a default for.')).id = 'empty'; return; }
+      for (const r of rows) scrollEl.appendChild(buildRow(r));
+    }
+
+    function buildRow(r) {
+      const idx = R.length;
+      const el = mk('div', 'row');
+      const input = mk('input'); input.type = 'text'; input.autocomplete = 'off'; input.spellcheck = false;
+      input.value = r.line || ''; input.placeholder = 'bare: ' + (r.bareBehaviour || ''); input.title = 'Bare word: ' + (r.bareBehaviour || ''); input.setAttribute('aria-label', 'Default for ' + r.command);
+      const reset = mk('button', 'reset', 'reset'); reset.type = 'button'; reset.tabIndex = -1; reset.title = 'Clear the line: the bare word does what it does without a default'; reset.dataset.help = 'Reset: clear the line, the bare word does what it does without a default';
+      const status = mk('span', 'status');
+      const x = { r, el, input, orig: (r.saved ?? r.line ?? '').trim(), status, seq: 0, timer: 0 };
+
+      const setStatus = (kind, text) => {
+        status.className = 'status' + (kind ? ' ' + kind : '');
+        status.textContent = text || '';
+        if (typeof updateFooter === 'function' && R.includes(x)) updateFooter();
+        status.title = kind === 'bad' ? text : '';
+      };
+      x.refresh = () => {
+        reset.classList.toggle('show', input.value.trim() !== '');
+        el.dataset.help = r.command + ': ' + (r.summary ? r.summary.replace(/[.\s]+$/, '') + '.' : '') + (input.value.trim() ? ' \\' + r.command + ' skips the default.' : '');
+        el.classList.toggle('changed', input.value.trim() !== x.orig);
+      };
+      // Check while typing, debounced. Out of date answers are dropped; an unreachable route says nothing (core checks after closing).
+      x.check = () => {
+        clearTimeout(x.timer); x.seq++;
+        setStatus('', '');
+        if (!LIVE?.base || input.value.trim() === '') return;
+        const my = x.seq, line = input.value;
+        x.timer = setTimeout(async () => {
+          try {
+            const res = await fetch(LIVE.base + '/check?command=' + encodeURIComponent(r.command) + '&line=' + encodeURIComponent(line), { headers: { Authorization: 'Bearer ' + LIVE.token }, cache: 'no-store' });
+            const a = await res.json();
+            if (my !== x.seq) return;
+            if (a.ok === true) setStatus('ok', '✓');
+            else if (a.ok === false) setStatus('bad', String(a.error || 'not usable'));
+          } catch (e) { /* the check after closing is the fallback */ }
+        }, 200);
+      };
+      // A hand edit or the last save: the error is shown at once, until the line is edited. Other lines get their ✓ from a check on load.
+      if (r.error) setStatus('bad', r.error);
+      else if (LIVE?.base && input.value.trim()) x.check();
+
+      input.addEventListener('input', () => { x.refresh(); x.check(); updateFooter(); });
+      input.addEventListener('focus', () => { if (cur !== idx) moveTo(idx, true, false); });
+      input.addEventListener('keydown', e => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); save(); }
+        else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); e.stopPropagation(); input.blur(); moveTo(idx + (e.key === 'ArrowUp' ? -1 : 1)); }
+        else if (e.key === 'ArrowLeft' && input.selectionStart === 0 && input.selectionEnd === 0) { e.preventDefault(); e.stopPropagation(); input.blur(); scrollEl.focus({ preventScroll: true }); }
+        else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); input.blur(); scrollEl.focus({ preventScroll: true }); }
+        else if (e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); tabFrom(idx, e.shiftKey); }
+        else e.stopPropagation();   // caret keys and typing stay with the field
+      });
+      reset.addEventListener('click', () => { input.value = ''; x.refresh(); x.check(); moveTo(idx, true, false); input.focus({ preventScroll: true }); updateFooter(); });
+
+      el.append(mk('span', 'name', r.command), input, reset, status);
+      el.addEventListener('click', e => { if (e.target === el || e.target.classList?.contains('name')) { moveTo(idx); scrollEl.focus({ preventScroll: true }); } });
+      x.refresh();
+      R.push(x);
+      return el;
+    }
+
+    // Scroll only inside the list, and only when it doesn't fit: the row "nearest" in view with a row of context.
+    // The document itself never scrolls (html/body are overflow: hidden; a webview may still scroll them programmatically).
+    function revealRow(el) {
+      const max = scrollEl.scrollHeight - scrollEl.clientHeight;
+      if (max <= 0) scrollEl.scrollTop = 0;
+      else {
+        const pad = el.offsetHeight, top = el.offsetTop, bottom = top + el.offsetHeight;
+        if (top - pad < scrollEl.scrollTop) scrollEl.scrollTop = Math.min(max, Math.max(0, top - pad));
+        else if (bottom + pad > scrollEl.scrollTop + scrollEl.clientHeight) scrollEl.scrollTop = Math.min(max, bottom + pad - scrollEl.clientHeight);
+        else if (scrollEl.scrollTop > max) scrollEl.scrollTop = max;
+      }
+      scrollEl.scrollLeft = 0;
+      if (document.scrollingElement) { document.scrollingElement.scrollTop = 0; document.scrollingElement.scrollLeft = 0; }
+    }
+    scrollEl.addEventListener('scroll', () => { if (scrollEl.scrollLeft) scrollEl.scrollLeft = 0; });
+
+    function moveTo(i, scroll = true, takeFocus = true) {
+      if (!R.length) return;
+      cur = Math.max(0, Math.min(R.length - 1, i));
+      R.forEach((x, k) => x.el.classList.toggle('cur', k === cur));
+      if (scroll) revealRow(R[cur].el);
+      if (takeFocus && document.activeElement !== R[cur].input && document.activeElement?.tagName === 'INPUT') scrollEl.focus({ preventScroll: true });
+      updateFooter();
+    }
+
+    // Tab never uses the browser's order (it would jump to the topmost field): rows ↔ fields ↔ footer buttons, all by hand.
+    function enterField(i) {
+      moveTo(i, true, false);
+      const f = R[cur].input;
+      f.focus({ preventScroll: true }); f.setSelectionRange(f.value.length, f.value.length);
+      revealRow(R[cur].el);
+      updateFooter();
+    }
+    function tabFrom(idx, back) {
+      const next = idx + (back ? -1 : 1);
+      if (next >= 0 && next < R.length) { enterField(next); return; }
+      if (back) { R[idx].input.blur(); scrollEl.focus({ preventScroll: true }); moveTo(idx); return; }   // above the first row: back to the rows
+      R[idx].input.blur();
+      (applyEl.disabled ? document.getElementById('cancel') : applyEl).focus({ preventScroll: true });
+    }
+    function tabFromFooter(el, back) {
+      const cancel = document.getElementById('cancel');
+      if (el === applyEl && back) enterField(R.length - 1);
+      else if (el === applyEl) cancel.focus();
+      else if (back) (applyEl.disabled ? enterField(R.length - 1) : applyEl.focus());
+      else enterField(0);
+    }
+
+    function updateFooter() {
+      const n = changedRows().length;
+      applyEl.textContent = n ? 'Apply (' + n + ' change' + (n === 1 ? '' : 's') + ')' : 'Apply';
+      applyEl.disabled = n === 0;
+      if (confirming) return;
+      help.update();
+    }
+
+    const KEYS_ROWS = [['↑↓', 'row'], ['→', 'edit'], ['Enter', 'apply'], ['Esc', 'close']];
+    const KEYS_FIELD = [['↑↓', 'row'], ['←', 'back to rows'], ['Enter', 'apply']];
+
+    // A changed row whose live check said no: nothing closes. Shake its field, focus the first one, keep the error in the footer.
+    // Pending or unknown (no server) rows don't count: core checks after closing.
+    function save() {
+      const bad = changedRows().filter(x => x.status.classList.contains('bad'));
+      if (bad.length) {
+        for (const x of bad) { x.input.classList.remove('shake'); void x.input.offsetWidth; x.input.classList.add('shake'); }
+        const f = bad[0], i = R.indexOf(f);
+        moveTo(i, true, false);
+        f.input.focus({ preventScroll: true });
+        updateFooter();
+        return;
+      }
+      const changes = {};
+      for (const x of changedRows()) changes[x.r.command] = x.input.value.trim();
+      send(Object.keys(changes).length ? JSON.stringify({ changes }) : '');
+    }
+
+    function showConfirm() {
+      const n = changedRows().length;
+      document.getElementById('confirmText').textContent = 'Discard ' + n + ' change' + (n === 1 ? '' : 's') + '?';
+      confirming = true;
+      footEl.classList.add('confirming');
+      normalEl.hidden = true; confirmEl.hidden = false;
+      document.getElementById('keep').focus();
+    }
+    function cancelConfirm() {
+      if (!confirming) return;
+      confirming = false;
+      footEl.classList.remove('confirming');
+      normalEl.hidden = false; confirmEl.hidden = true;
+      scrollEl.focus({ preventScroll: true });
+      updateFooter();
+    }
+    function requestClose() { if (changedRows().length) showConfirm(); else send(''); }
+
+    // While the discard bar is up, keys go to its two buttons only (Esc keeps editing, ←→/Tab between, Enter = the focused button).
+    document.addEventListener('keydown', e => {
+      if (!confirming) return;
+      e.stopPropagation();
+      if (e.key === 'Escape') { e.preventDefault(); cancelConfirm(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const b = [document.getElementById('keep'), document.getElementById('discard')];
+        b[document.activeElement === b[0] ? 1 : 0].focus();
+      }
+      else if (e.key !== 'Tab' && e.key !== 'Enter' && e.key !== ' ') e.preventDefault();
+    }, true);
+
+    document.addEventListener('keydown', e => {
+      if (confirming) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const x = R[cur];
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const a = document.activeElement;
+        if (!x) return;
+        if (a === applyEl || a === document.getElementById('cancel')) tabFromFooter(a, e.shiftKey);
+        else if (!e.shiftKey) enterField(cur);   // on a row: Tab = →
+        else if (cur > 0) enterField(cur - 1);
+        return;
+      }
+      { const a = document.activeElement;
+        if (a === applyEl || a === document.getElementById('cancel')) {   // a footer button has focus: Enter/Space press it, Esc closes, nothing reaches the rows
+          if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
+          return;
+        } }
+      if (e.key === 'ArrowDown') { e.preventDefault(); moveTo(cur + 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); moveTo(cur - 1); }
+      else if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
+      else if (!x) return;
+      else if (e.key === 'Enter') { e.preventDefault(); save(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); x.input.focus({ preventScroll: true }); x.input.setSelectionRange(x.input.value.length, x.input.value.length); updateFooter(); }
+      else if (e.key === 'Backspace' || (e.key.length === 1 && e.key !== ' ' )) {   // typing in the rows goes to the field (no select-all: the text is appended to)
+        x.input.focus({ preventScroll: true }); x.input.setSelectionRange(x.input.value.length, x.input.value.length); updateFooter();
+        // the key itself still reaches the field: focus moved before the default action
+      }
+    });
+    // Whatever moved focus (Tab, typing, the webview's own caret scrolling): the current row stays in view, now and after layout settles.
+    const keepInView = () => { if (R[cur]) revealRow(R[cur].el); };
+    document.addEventListener('focusin', () => { updateFooter(); keepInView(); requestAnimationFrame(keepInView); });
+    document.addEventListener('input', () => { keepInView(); requestAnimationFrame(keepInView); });
+    document.addEventListener('focusout', () => setTimeout(updateFooter, 0));
+    window.addEventListener('resize', keepInView);   // the dialog may get its size after the first layout
+
+    // Runs now, at the end of body (the DOM above exists): the list is placed on the focused row before the first paint.
+    {
+      help.init(helpEl, {
+        oneRow: 'keys',
+        idle: () => (document.activeElement?.tagName === 'INPUT' ? KEYS_FIELD : KEYS_ROWS),
+        enabled: DEFAULTS?.help !== false,
+        current: () => R[cur]?.el,
+        // A row with a known error shows it instead of its summary (also with help off: the page's own state).
+        override: el => { const x = R.find(r => r.el === (el && el.closest('.row'))) || (!el ? R[cur] : null); return x && x.status.classList.contains('bad') ? { text: x.status.textContent, bad: true } : null; },
+      });
+      build();
+      applyEl.addEventListener('click', () => { if (!applyEl.disabled) save(); });
+      document.getElementById('cancel').addEventListener('click', requestClose);
+      document.getElementById('keep').addEventListener('click', cancelConfirm);
+      document.getElementById('discard').addEventListener('click', () => send(''));
+      let start = 0;
+      if (DEFAULTS?.focus) { const i = R.findIndex(x => x.r.command === DEFAULTS.focus); if (i >= 0) start = i; }
+      moveTo(start, true, false);
+      if (DEFAULTS?.focus && R[start]) R[start].input.focus({ preventScroll: true }); else scrollEl.focus({ preventScroll: true });
+      updateFooter();
+      // The webview may paint stale: once the dialog has settled, nudge the scroll by one pixel and back so the list is repainted
+      // where scrollTop says it is. The position set above is kept (a real size change is handled by the resize listener).
+      for (const ms of [0, 60, 200, 500]) setTimeout(() => {
+        if (!R[cur]) return;
+        const t = scrollEl.scrollTop;
+        if (scrollEl.scrollHeight > scrollEl.clientHeight) { scrollEl.scrollTop = t + (t > 0 ? -1 : 1); void scrollEl.offsetHeight; scrollEl.scrollTop = t; }
+      }, ms);
+    }
+  </script>
+</body>
+</html>

@@ -1,9 +1,8 @@
 # Scripts and triggers: `.cmdabl` files, run from clips and scenes
 
-**Status:** Draft (2026-10-23). First in the order after 0.1.4 (user): `;` chains built and Live-tested through MCP
-(core `cfe1e4f`, `2de2b27`; ui `9afa466`; branch `feat/chain`). The bridge protocol addition
-(phase 2) is not decided yet: the user decides after reading this plan. Trigger: run command scripts from
-clips and scenes, so Live's Session grid works as a grid of commands.
+**Status:** `;` chains released in 0.1.5 (2026-11-05, PR #27). Phase 1 (script files, `run`) is next;
+the push channel phase 2 needs exists since 0018 (UDP from the Remote Script). Trigger: run command
+scripts from clips and scenes, so Live's Session grid works as a grid of commands.
 
 **Parent:** [0004](0004-command-platform.md)
 **Related:**
@@ -27,7 +26,7 @@ clips and scenes, so Live's Session grid works as a grid of commands.
 - `drop.cmdabl` in cmdAbl's scripts folder runs from the palette;
 - a clip or scene whose name names the script runs it when it launches.
 
-## First: `;` chains (user, 2026-10-23)
+## `;` chains (user, 2026-10-23; released in 0.1.5)
 
 `mute #drums; vol -6 #bass` runs both commands in one line. This comes before script files, which reuse
 it.
@@ -119,7 +118,7 @@ it.
 
 | Piece | What it is | State |
 |---|---|---|
-| `;` chains | several commands in one line, run in order | **next, first** (user, 2026-10-23) |
+| `;` chains | several commands in one line, run in order | released in 0.1.5 |
 | Script files | `.cmdabl`, `run <name>` | phase 1 |
 | Triggers | clips and scenes run scripts on launch | phase 2, bridge addition undecided |
 | Aliases | saved lines under a name | [0008](0008-tags-and-aliases.md); the store exists |

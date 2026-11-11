@@ -1,5 +1,5 @@
-import { formatControl, isOperator, parseControl } from "../../core/midi.js";
-import type { MidiBinding } from "../../core/midiEngine.js";
+import { formatControl, isOperator, parseControl } from "../../core/midi/midi.js";
+import type { MidiBinding } from "../../core/midi/midiEngine.js";
 
 // The bindings of one Set as a JSON file (`modules/map/<setid>.json`, plan 0018). Pure.
 
@@ -49,6 +49,9 @@ export function parseBindings(text: string | null): { bindings: MidiBinding[]; d
 export const sameSlot = (a: MidiBinding, b: MidiBinding): boolean => formatControl(a.control) === formatControl(b.control) && a.operator === b.operator;
 
 /** One numbered row for `map -l`. */
-export function bindingRow(n: number, b: MidiBinding, blocked = false): string {
-  return `${n}  ${formatControl(b.control)}  ${b.operator}  | ${b.line}${blocked ? "   ⚠ taken in Live" : ""}`;
+export function bindingRow(n: number, b: MidiBinding, blocked = false, defaults: Readonly<Record<string, string>> = {}): string {
+  // A line that is one bare command word with a default runs that default (0019 §7): show what it expands to.
+  const word = b.line.trim();
+  const ran = /^[^\s\\"']+$/.test(word) && Object.prototype.hasOwnProperty.call(defaults, word) ? ` → ${defaults[word]}` : "";
+  return `${n}  ${formatControl(b.control)}  ${b.operator}  | ${b.line}${ran}${blocked ? "   ⚠ taken in Live" : ""}`;
 }

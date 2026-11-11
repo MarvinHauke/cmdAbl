@@ -1,6 +1,6 @@
 import type { ModuleApi } from "../types.js";
 import { resolveStructural, uniquePath } from "../../ableton/resolvePath.js";
-import { selectNodeResult } from "../selectNode.js";
+import { selectNodeResult } from "../shared/selectNode.js";
 import { ExitCode, fail, type CommandResult } from "../../core/types.js";
 import { MatchList } from "./matches.js";
 import { findKinds } from "./kinds.js";

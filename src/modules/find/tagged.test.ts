@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { fail as bridgeFail } from "../../ableton/bridgeProtocol.js";
 import { ExitCode, type CommandResult } from "../../core/types.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { activate } from "./index.js";
 import { splitPattern } from "./tagged.js";
 

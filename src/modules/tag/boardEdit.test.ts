@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ExitCode } from "../../core/types.js";
-import type { BoardAnswer } from "../../core/ui.js";
+import type { BoardAnswer } from "../../core/surfaces/ui.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
-import { createFakeApi } from "../testPorts.js";
+import { createFakeApi } from "../shared/testPorts.js";
 import { activate } from "./index.js";
 import { boardTagEdits, buildBoard, finalTags } from "./board.js";
 

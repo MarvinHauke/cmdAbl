@@ -4,7 +4,7 @@
 **Depends on:** [0005](0005-command-tree-and-module-authoring.md) (the tree and candidate snapshots).
 
 **Status:** Steps 1–2 released in 0.1.4 (2026-10-23, PR #21): argument completion, completers, the palette
-switch Off · Hints · Options. Open: step 3 (paths level by level), step 4 (ghost text), the server
+switch Off · Hints · Options. 0.1.5 added the silent-tag row (`mute drums` shows `#drums`). Open: step 3 (paths level by level), step 4 (ghost text), the server
 variant (spike). Drafted 2026-10-08 — replaces the palette's flat fuzzy search with hierarchical,
 shell-style completion driven by the command tree.
 
@@ -193,7 +193,7 @@ Steps 1–2 of the rollout: completion at every position, not only for command n
 
 - **Tab** takes the highlighted row and descends one level (adds a space after a word).
 - **Enter runs the typed line** unless the user moved the selection (the existing `chosen` flag in
-  `ui/interface.html`). It never takes the top row on its own: "never pick the first match silently".
+  `ui/interface.html`). It never takes the top row on its own ("never pick the first match silently"), with one exception: a highlighted tool-zone command row (`config`, a subcommand) that the non-empty word at the caret is a prefix of (`goto con` + Enter runs `goto config`; `play ` + Enter and `goto on` run as typed). It does not apply when the command's first argument is free text (kind `text` without completer or choices): `find con` + Enter searches for "con"; Tab still completes to `config` (leaf commands only; `vol` counts as free text too, its dB argument is kind `text`).
 
 ### Work
 
@@ -278,7 +278,7 @@ self-explanation. The user also wants recent commands first.
 
 **Layout without jumping (user, 2026-10-22):**
 - The prompt keeps one position for the whole time the palette is open (ui `05ff390`).
-- In "hints" and "options" mode the palette opens **taller** (core, `src/core/ui.ts`), so the area above
+- In "hints" and "options" mode the palette opens **taller** (core, `src/core/surfaces/ui.ts`), so the area above
   the prompt is bigger and at least 5 target rows stay visible below it.
 - That area has **no frame, background or divider while it is empty**, so it looks absent until there is
   content. The prompt still doesn't move.
@@ -296,7 +296,7 @@ server variant is therefore feasible; the design and security rules above apply,
 
 ## User findings (2026-11-04)
 
-- **0.1.5 (core):** when a bare word silently resolves to a tag (`mute drums` → `mute #drums`), the
+- **Released in 0.1.5 (core `4e8520a`):** when a bare word silently resolves to a tag (`mute drums` → `mute #drums`), the
   suggestions show the expanded form. Built once in the engine, so every module with target
   arguments gets it.
 - **0.1.6, with the settings page:** the Off/Hints/Options switch moves to the settings; the hint panel

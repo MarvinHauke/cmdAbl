@@ -14,7 +14,7 @@ and messages (`ui/feedback.html`). Each is an SDK modal webview that receives it
 into the page and can return exactly one string when it closes.
 
 That constraint is also what makes them replaceable: a dialog is fully described by *data in,
-one value out*. Since 2026-10-11 the platform only talks to that contract — `src/core/ui.ts`
+one value out*. Since 2026-10-11 the platform only talks to that contract — `src/core/surfaces/ui.ts`
 defines `Ui { prompt, select, notify }`, and `createDefaultUi()` implements it with the pages
 under `ui/`. `src/extension.ts`, the resolver and the modules never open an HTML page themselves.
 
@@ -35,7 +35,7 @@ own page, without touching the core or any module.
 
 ## Architecture
 
-### 1. The contract (`src/core/ui.ts`)
+### 1. The contract (`src/core/surfaces/ui.ts`)
 
 | Surface | In | Out |
 |---|---|---|
@@ -200,9 +200,9 @@ multi-select.
 - **Dialog size.** The user cannot resize a dialog: `showModalDialog(url, width, height)` fixes
   the size when it opens, the SDK has no resize call, and a page cannot resize its native window
   (a resize handle was requested in the Live test). Instead the host sizes each dialog before
-  opening it. Built: `notify` from its text (`src/core/notifySize.ts`, `b6b208a`: width 500…760
+  opening it. Built: `notify` from its text (`src/core/surfaces/notifySize.ts`, `b6b208a`: width 500…760
   from the longest line, height 110…420 from the wrapped line count, the page scrolls beyond
-  that) and the pick list from its rows (`src/core/pickSize.ts`). The numbers were measured in
+  that) and the pick list from its rows (`src/core/surfaces/pickSize.ts`). The numbers were measured in
   headless Chrome, not in Live's webview. Still open: a larger maximum for the pick list, and
   sizes overridable with the settings of phase 2. Candidate for a feature request to Ableton.
   A replacement page may also need to declare its preferred size (a `<meta>` tag read before

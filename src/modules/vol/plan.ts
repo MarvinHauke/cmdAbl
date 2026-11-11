@@ -1,4 +1,4 @@
-import { dbToValue, valueToDb } from "../mixValue.js";
+import { dbToValue, valueToDb } from "../shared/mixValue.js";
 
 /**
  * A level or step in dB as the user types it: a number (`-6`, `+2`, `-0.5`, `.5`) or `-inf`. Null for anything

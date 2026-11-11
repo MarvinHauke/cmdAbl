@@ -11,7 +11,7 @@ comes up:
 - **cmdabl-architect** gives you tasks and gets your short overviews. Ask it before changing what a
   page receives or returns.
 - **cmdabl-reviewer** reviews every change before you commit.
-- **cmdabl-core** owns the `Ui` contract (`src/core/ui.ts`) and how pages are opened; a page needing
+- **cmdabl-core** owns the `Ui` contract (`src/core/surfaces/ui.ts`) and how pages are opened; a page needing
   new data or a different size is a request to it.
 
 ## Your area
@@ -50,6 +50,8 @@ site theme (`docs/stylesheets/`), and the UI guide when one is written.
   7. Text is at least 11 px, readable in light and dark.
   8. A destructive action is confirmed in the same page, not in a second window.
   9. After an action, its result is in view and focused (scroll there, focus the next input).
+  10. Nothing is cut off at the window's edge: a one-row line (help line, footer) stays one row and
+      drops parts or ends in `…`. Check at the smallest window size.
 
   Keep the list short. When a review finds a new kind of problem, propose an item to the architect
   instead of adding it yourself.

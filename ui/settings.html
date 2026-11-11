@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<!-- settings surface (see src/core/surfaces/ui.ts SettingsRequest, plan 0019 §2). In: SETTINGS_PLACEHOLDER = { title, focus?: groupId, help?: boolean, groups: [{ id, heading, items: [row] }] } with row = { key, label, help, kind: "bool", value, default } | { …, kind: "enum", value, default, choices: [{ value, label }] } | { …, kind: "int", value, default, min, max } | { key, label, help, kind: "link", target, summary }. Rows: a bool is a switch, an enum a segmented switch, an int a number field with − / +, a link a button row. A dim "reset" shows while a value differs from its default. `focus` scrolls to that group and puts the cursor on its first row. Keys: ↑/↓ rows, ←/→ change an enum/int, Space toggles a bool, Enter saves (on a link row it opens the target), Esc closes; the footer also has mouse buttons "Apply (N changes)" (disabled at 0, = Enter) and "Cancel" (= Esc); with changes it asks "Discard N changes?" in the footer first. The footer is the help line (ui/help.js, plan 0019 §3): the hovered row's help and default, else the cursor row's, else the key line (help === false: the key line only). Out (close_and_send): JSON { changes: { [key]: value } } on Enter (only real differences against the request), { changes, open: target } when a link row opened its page, '' when closed. Text goes in with textContent only. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark" />
+  <title>cmdAbl Settings</title>
+  <style>
+    /*SHARED_CSS_PLACEHOLDER*/
+    html, body { height: 100%; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    #scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 0; }
+    #scroll:focus { outline: none; }
+    .group h3 { font-size: 11px; font-weight: 700; color: var(--text); padding: 10px 16px 4px; text-transform: none; user-select: none; }
+    .row { position: relative; display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 4px 16px 4px 22px; cursor: default; }
+    .row.cur { background: var(--bg-row); }
+    .row.cur::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+    .row .label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .row.changed .label::after { content: ' •'; color: var(--accent); }   /* differs from what was saved */
+
+    .ctl { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+    .reset { visibility: hidden; min-width: 24px; min-height: 24px; color: var(--dim); font-size: 11px; }
+    .reset.show { visibility: visible; }   /* reserved space, so nothing jumps when it appears */
+    .reset:hover { color: var(--text); }
+
+    /* switch */
+    .sw { min-width: 44px; min-height: 24px; padding: 0; position: relative; border: 1px solid var(--dim); border-radius: 12px; background: var(--bg); }
+    .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--dim); }
+    .sw[aria-checked="true"] { border-color: var(--accent); }
+    .sw[aria-checked="true"]::after { left: 23px; background: var(--accent); }
+
+    /* segmented */
+    .seg { display: inline-flex; border: 1px solid var(--dim); border-radius: 3px; overflow: hidden; }
+    .seg button { border: 0; border-radius: 0; min-height: 24px; padding: 2px 10px; }
+    .seg button + button { border-left: 1px solid var(--dim); }
+    .seg button.on { background: var(--bg); color: var(--accent); }
+
+    /* number field */
+    .num { display: inline-flex; align-items: center; gap: 4px; }
+    .num button { min-width: 24px; min-height: 24px; padding: 0; font-size: 14px; line-height: 1; }
+    .num input { width: 7ch; min-height: 24px; text-align: center; background: var(--bg); color: var(--text); border: 1px solid var(--dim); border-radius: 2px; font: inherit; }
+    .num input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+    .link-btn { min-height: 24px; font-size: 12px; }
+    .link-btn .sum { color: var(--dim); margin-left: 6px; }
+
+    /* footer: the help line (ui/help.js) and the buttons on one row; fixed height, so nothing jumps */
+    #foot { flex: none; box-sizing: border-box; height: 86px; border-top: 1px solid var(--border); padding: 6px 16px 8px; font-size: 11px; line-height: 15px; color: var(--dim); }
+    #normal { display: block; }
+    #help { height: 45px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* three lines at most: the "Default: X" end must not be cut */
+    #foot.confirming { background: hsla(31, 100%, 67%, 0.12); border-top-color: var(--accent); }
+    #confirm { display: flex; align-items: center; gap: 8px; }
+    #confirm[hidden] { display: none; }
+    #confirmText { flex: 1; color: var(--accent); font-weight: 700; }
+    #keep { border-color: var(--accent); color: var(--accent); }
+    #discard { border-color: hsl(0, 75%, 62%); color: hsl(0, 75%, 62%); }
+    #confirm button { min-height: 24px; }
+    #foot.confirming #confirm { height: 100%; }
+    #normal[hidden] { display: none; }
+    #btns { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 2px; height: 24px; }
+    #btns button { min-height: 24px; font-size: 12px; }
+    #apply { min-width: 19ch; border-color: var(--accent); color: var(--accent); }   /* "Apply (99 changes)": the label's width stays fixed */
+    #apply:disabled { border-color: var(--dim); color: var(--dim); opacity: 0.5; cursor: default; }
+    #apply:focus-visible, #cancel:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    #empty { padding: 16px; color: var(--dim); }
+  </style>
+</head>
+<body>
+  <div id="scroll" tabindex="-1"></div>
+  <div id="foot">
+    <div id="normal"><div id="help"></div><div id="btns"><button id="apply" type="button" tabindex="-1" disabled data-help="Apply: save the changes and close (Enter)">Apply</button><button id="cancel" type="button" tabindex="-1" data-help="Cancel: close without saving (Esc)">Cancel</button></div></div>
+    <div id="confirm" hidden><span id="confirmText"></span><button id="keep" type="button" data-help="Keep editing: go back to the settings">Keep editing</button><button id="discard" type="button" data-help="Discard: close and drop the changes">Discard</button></div>
+  </div>
+
+  <script>/*HELP_JS_PLACEHOLDER*/</script>
+
+  <script>
+    // Injected by the extension: see the contract at the top.
+    const SETTINGS = /*SETTINGS_PLACEHOLDER*/null;
+
+    function send(value) {
+      const m = { method: 'close_and_send', params: [value] };
+      if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
+      else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
+      else window.__sent = value;   // in a plain browser: for checking with sample data
+    }
+
+    if (typeof SETTINGS?.title === 'string' && SETTINGS.title) document.title = SETTINGS.title;
+    const helpOn = SETTINGS?.help !== false;
+    const scrollEl = document.getElementById('scroll');
+    const helpEl = document.getElementById('help');
+    const normalEl = document.getElementById('normal');
+    const footEl = document.getElementById('foot');
+    const confirmEl = document.getElementById('confirm');
+
+    // Rows in display order: { row, el, orig, value, set(), refresh() }
+    const R = [];
+    const applyEl = document.getElementById('apply');
+    let cur = 0, confirming = false;
+
+    const same = (a, b) => a === b;
+    const isLink = r => r.row.kind === 'link';
+    const changedRows = () => R.filter(r => !isLink(r) && !same(r.value, r.orig));
+    function fmt(row, v) {
+      if (row.kind === 'bool') return v ? 'On' : 'Off';
+      if (row.kind === 'enum') return row.choices.find(c => c.value === v)?.label ?? String(v);
+      return String(v);
+    }
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+    function build() {
+      const groups = Array.isArray(SETTINGS?.groups) ? SETTINGS.groups : [];
+      if (!groups.some(g => g.items?.length)) { scrollEl.appendChild(mk('div', null, 'No settings to show.')).id = 'empty'; return; }
+      for (const g of groups) {
+        if (!g.items?.length) continue;
+        const box = mk('section', 'group');
+        box.dataset.group = g.id;
+        box.appendChild(mk('h3', null, g.heading));
+        for (const row of g.items) box.appendChild(buildRow(row));
+        scrollEl.appendChild(box);
+      }
+    }
+
+    function buildRow(row) {
+      const idx = R.length;
+      const el = mk('div', 'row');
+      const label = mk('span', 'label', row.label);
+      el.appendChild(label);
+      const ctl = mk('span', 'ctl');
+      const reset = mk('button', 'reset', 'reset'); reset.type = 'button'; reset.tabIndex = -1; reset.title = 'Back to the default'; reset.dataset.help = 'Reset: back to the default';
+      const r = { row, el, orig: row.value, value: row.value, refresh() {} };
+      r.set = v => { r.value = v; r.refresh(); updateFooter(); };
+
+      if (row.kind === 'bool') {
+        const sw = mk('button', 'sw'); sw.type = 'button'; sw.tabIndex = -1; sw.setAttribute('role', 'switch'); sw.setAttribute('aria-label', row.label);
+        sw.addEventListener('click', () => { moveTo(idx); r.set(!r.value); });
+        r.refresh = () => sw.setAttribute('aria-checked', String(r.value));
+        ctl.appendChild(sw);
+      } else if (row.kind === 'enum') {
+        const seg = mk('span', 'seg'); seg.setAttribute('role', 'radiogroup'); seg.setAttribute('aria-label', row.label);
+        const btns = row.choices.map(c => {
+          const b = mk('button', null, c.label); b.type = 'button'; b.tabIndex = -1; b.setAttribute('role', 'radio');
+          b.addEventListener('click', () => { moveTo(idx); r.set(c.value); });
+          seg.appendChild(b); return b;
+        });
+        r.refresh = () => row.choices.forEach((c, i) => { btns[i].classList.toggle('on', c.value === r.value); btns[i].setAttribute('aria-checked', String(c.value === r.value)); });
+        ctl.appendChild(seg);
+      } else if (row.kind === 'int') {
+        const num = mk('span', 'num');
+        const minus = mk('button', null, '−'); minus.type = 'button'; minus.tabIndex = -1; minus.setAttribute('aria-label', 'less');
+        const plus = mk('button', null, '+'); plus.type = 'button'; plus.tabIndex = -1; plus.setAttribute('aria-label', 'more');
+        const inp = mk('input'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.autocomplete = 'off'; inp.spellcheck = false; inp.setAttribute('aria-label', row.label);
+        inp.placeholder = '–';   // an empty field shows a dim dash; the default is in the footer
+        const clamp = n => Math.min(row.max, Math.max(row.min, Math.round(n)));
+        r.input = inp;
+        r.step = d => r.set(clamp(r.value + d));
+        minus.addEventListener('click', () => { moveTo(idx); r.step(-1); });
+        plus.addEventListener('click', () => { moveTo(idx); r.step(1); });
+        const commit = () => { const n = Number(inp.value.trim()); r.set(inp.value.trim() !== '' && Number.isFinite(n) ? clamp(n) : r.value); inp.value = String(r.value); };
+        inp.addEventListener('focus', () => moveTo(idx));
+        inp.addEventListener('blur', commit);
+        // While typing: a value that fits counts at once (reset and the change count follow); the text itself is left alone until blur.
+        inp.addEventListener('input', () => { const t = inp.value.trim(); const n = Number(t); if (t !== '' && Number.isInteger(n) && n >= row.min && n <= row.max) r.set(n); });
+        inp.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commit(); save(); }
+          else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); e.stopPropagation(); commit(); inp.blur(); moveTo(idx + (e.key === 'ArrowUp' ? -1 : 1)); }
+          else if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); inp.value = String(r.value); inp.blur(); requestClose(); }
+          else if (e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); commit(); tabFrom(idx, e.shiftKey, true); }
+          else if (e.key.length > 1 || e.ctrlKey || e.metaKey) e.stopPropagation();   // caret keys and shortcuts stay with the field
+        });
+        r.refresh = () => { if (document.activeElement !== inp) inp.value = String(r.value); minus.disabled = r.value <= row.min; plus.disabled = r.value >= row.max; };
+        num.append(minus, inp, plus); ctl.appendChild(num);
+      } else if (row.kind === 'link') {
+        const b = mk('button', 'link-btn'); b.type = 'button'; b.tabIndex = -1;
+        b.appendChild(document.createTextNode(row.label + '…'));
+        if (row.summary) b.appendChild(mk('span', 'sum', '(' + row.summary + ')'));
+        b.addEventListener('click', () => { moveTo(idx); openLink(r); });
+        label.textContent = '';   // the button carries the name
+        ctl.style.marginLeft = '0'; el.replaceChild(b, label); b.style.flex = '1'; b.style.textAlign = 'left';
+        r.refresh = () => {};
+      }
+
+      if (!isLink(r)) {
+        reset.addEventListener('click', () => { moveTo(idx); r.set(row.default); });
+        ctl.appendChild(reset);
+        const base = r.refresh;
+        r.refresh = () => {
+          base();
+          reset.classList.toggle('show', !same(r.value, row.default));
+          el.classList.toggle('changed', !same(r.value, r.orig));
+        };
+      }
+      el.appendChild(ctl);
+      el.dataset.help = row.label + ': ' + (row.help || '') + (isLink(r) ? (row.help ? '' : 'opens its page (Enter)') : (row.help ? ' ' : '') + 'Default: ' + fmt(row, row.default) + '.');
+      el.addEventListener('mousedown', e => { if (!(e.target instanceof Element && e.target.closest('input'))) e.preventDefault(); });
+      el.addEventListener('click', e => { if (e.target === el || e.target.classList?.contains('label')) moveTo(idx); });
+      r.refresh();
+      R.push(r);
+      return el;
+    }
+
+    // Scroll only inside the list, 'nearest'; the document itself never scrolls (scrollIntoView may scroll it in a webview).
+    function revealRow(el) {
+      const max = scrollEl.scrollHeight - scrollEl.clientHeight;
+      if (max <= 0) scrollEl.scrollTop = 0;
+      else {
+        const sr = scrollEl.getBoundingClientRect(), r = el.getBoundingClientRect();
+        if (r.top < sr.top) scrollEl.scrollTop = Math.max(0, scrollEl.scrollTop - (sr.top - r.top));
+        else if (r.bottom > sr.bottom) scrollEl.scrollTop = Math.min(max, scrollEl.scrollTop + (r.bottom - sr.bottom));
+      }
+      if (document.scrollingElement) { document.scrollingElement.scrollTop = 0; document.scrollingElement.scrollLeft = 0; }
+    }
+    window.addEventListener('resize', () => { if (R[cur]) revealRow(R[cur].el); });
+
+    function moveTo(i, scroll = true) {
+      if (!R.length) return;
+      cur = Math.max(0, Math.min(R.length - 1, i));
+      R.forEach((r, k) => r.el.classList.toggle('cur', k === cur));
+      if (scroll) revealRow(R[cur].el);
+      updateFooter();
+    }
+
+    // Tab never uses the browser's order (it would jump to the topmost number field): rows, number fields and footer buttons by hand.
+    function enterRow(i, fromField) {
+      moveTo(i);
+      const r = R[cur];
+      if (r.input && fromField) { r.input.focus({ preventScroll: true }); r.input.select(); }
+      else { if (document.activeElement && document.activeElement !== scrollEl) document.activeElement.blur(); scrollEl.focus({ preventScroll: true }); }
+    }
+    function tabFrom(idx, back, fromField) {
+      const next = idx + (back ? -1 : 1);
+      if (next >= 0 && next < R.length) { enterRow(next, fromField); return; }
+      if (back) { enterRow(idx, false); return; }
+      R[idx].input?.blur();
+      (applyEl.disabled ? document.getElementById('cancel') : applyEl).focus({ preventScroll: true });
+    }
+    function tabFromFooter(el, back) {
+      const cancel = document.getElementById('cancel');
+      if (el === applyEl && back) enterRow(R.length - 1, true);
+      else if (el === applyEl) cancel.focus();
+      else if (back) (applyEl.disabled ? enterRow(R.length - 1, true) : applyEl.focus());
+      else enterRow(0, true);
+    }
+
+    const KEYS = [['↑↓', 'row'], ['←→', 'change'], ['⇧', '×10'], ['Space', 'toggle'], ['Enter', 'apply'], ['Esc', 'close']];
+    const LINK_KEYS = [['↑↓', 'row'], ['Enter', 'open'], ['Esc', 'close']];
+    function updateFooter() {
+      const n = changedRows().length;
+      applyEl.textContent = n ? 'Apply (' + n + ' change' + (n === 1 ? '' : 's') + ')' : 'Apply';
+      applyEl.disabled = n === 0;
+      if (!confirming) help.update();
+    }
+
+    function changesObj() {
+      const out = {};
+      for (const r of changedRows()) out[r.row.key] = r.value;
+      return out;
+    }
+    function save() { send(JSON.stringify({ changes: changesObj() })); }
+    function openLink(r) { send(JSON.stringify({ changes: changesObj(), open: r.row.target })); }
+
+    function showConfirm() {
+      const n = changedRows().length;
+      document.getElementById('confirmText').textContent = 'Discard ' + n + ' change' + (n === 1 ? '' : 's') + '?';
+      confirming = true;
+      footEl.classList.add('confirming');
+      normalEl.hidden = true; confirmEl.hidden = false;
+      document.getElementById('keep').focus();
+    }
+    function cancelConfirm() {
+      if (!confirming) return;
+      confirming = false;
+      footEl.classList.remove('confirming');
+      normalEl.hidden = false; confirmEl.hidden = true;
+      scrollEl.focus({ preventScroll: true });
+      updateFooter();
+    }
+    function requestClose() {
+      if (changedRows().length) showConfirm(); else send('');
+    }
+
+    // While the discard bar is up, keys go to its two buttons only (Esc keep editing, Tab/←→ between, Enter = focused button).
+    document.addEventListener('keydown', e => {
+      if (!confirming) return;
+      e.stopPropagation();
+      if (e.key === 'Escape') { e.preventDefault(); cancelConfirm(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const b = [document.getElementById('keep'), document.getElementById('discard')];
+        b[document.activeElement === b[0] ? 1 : 0].focus();
+      }
+      else if (e.key !== 'Tab' && e.key !== 'Enter' && e.key !== ' ') e.preventDefault();   // nothing reaches the fields behind the bar
+    }, true);
+
+    document.addEventListener('keydown', e => {
+      if (confirming) return;   // handled in the capture listener above
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const r = R[cur];
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const a = document.activeElement;
+        if (!r) return;
+        if (a === applyEl || a === document.getElementById('cancel')) tabFromFooter(a, e.shiftKey);
+        else if (r.input && !e.shiftKey && a !== r.input) { r.input.focus({ preventScroll: true }); r.input.select(); }   // on an int row: Tab enters its field
+        else tabFrom(cur, e.shiftKey, false);
+        return;
+      }
+      { const a = document.activeElement;
+        if (a === applyEl || a === document.getElementById('cancel')) {   // a footer button has focus: Enter/Space press it, Esc closes, nothing reaches the rows
+          if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
+          return;
+        } }
+      if (e.key === 'ArrowDown') { e.preventDefault(); moveTo(cur + 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); moveTo(cur - 1); }
+      else if (!r) { if (e.key === 'Escape') send(''); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const d = e.key === 'ArrowLeft' ? -1 : 1;
+        if (r.row.kind === 'enum') { e.preventDefault(); const i = r.row.choices.findIndex(c => c.value === r.value); const c = r.row.choices[Math.max(0, Math.min(r.row.choices.length - 1, i + d))]; r.set(c.value); }
+        else if (r.row.kind === 'int') { e.preventDefault(); r.step(d * (e.shiftKey ? 10 : 1)); }
+        else if (r.row.kind === 'bool') { e.preventDefault(); r.set(d > 0); }
+      }
+      else if (/^[0-9]$/.test(e.key) && r.row.kind === 'int') { if (document.activeElement !== r.input) { r.input.focus(); r.input.select(); } }   // first digit from the row replaces the value; with the field focused it types normally
+      else if (e.key === ' ' && r.row.kind === 'bool') { e.preventDefault(); r.set(!r.value); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (isLink(r)) openLink(r); else save(); }
+      else if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
+    });
+
+    // Runs now, at the end of body (the DOM above exists): the list is placed on the focused row before the first paint.
+    {
+      build();
+      applyEl.addEventListener('click', () => { document.activeElement?.blur(); if (!applyEl.disabled) save(); });
+      document.getElementById('cancel').addEventListener('click', requestClose);
+      document.getElementById('keep').addEventListener('click', cancelConfirm);
+      document.getElementById('discard').addEventListener('click', () => send(''));
+      let start = 0;
+      if (SETTINGS?.focus) { const i = R.findIndex(r => r.el.parentElement?.dataset.group === SETTINGS.focus); if (i >= 0) start = i; }
+      moveTo(start, false);
+      scrollEl.focus({ preventScroll: true });
+      if (start > 0) { const h = R[start].el.parentElement; scrollEl.scrollTop = h.offsetTop - scrollEl.offsetTop; }
+      help.init(helpEl, { oneRow: 'keys', idle: () => (R[cur] && isLink(R[cur]) ? LINK_KEYS : KEYS), enabled: helpOn, current: () => R[cur]?.el });
+      updateFooter();
+    }
+  </script>
+</body>
+</html>

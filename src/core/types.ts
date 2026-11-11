@@ -48,15 +48,9 @@ export interface PaletteResult {
   /**
    * Commands: the raw typed line, parsed by the host (quotes intact). A Live
    * object row carries only `type` and `id`; the platform turns it into
-   * `goto <unique path>` (core/objectRow.ts).
+   * `goto <unique path>` (core/command/objectRow.ts).
    */
   line?: string;
-  /**
-   * The palette's settings as the page has them now (additive, plan 0006). Core saves them. A
-   * normal result carries them along; the page also returns them ALONE (no `type`/`id`) when the
-   * user changed a setting and then dismissed: that runs nothing and opens nothing.
-   */
-  settings?: { above: "off" | "hints" | "options" };
 }
 
 export interface Provider {
@@ -121,12 +115,32 @@ export interface CommandResult {
   log?: string[];
 }
 
+/** A status mark before a row's text (plan 0021 §1): ✓ ok, ! warn, ✗ fail. */
+export type ItemStatus = "ok" | "warn" | "fail";
+
+/**
+ * A button at the end of a row. Clicking it closes the page with `{ action: [section, item] }`; the flow that
+ * showed the page looks the action up in the result it sent and runs the `command` line or opens the `url`.
+ * The page never sends a command or a URL. `help` is the line the help line shows for the button.
+ */
+export type ItemAction = { label: string; help?: string; command: string } | { label: string; help?: string; url: string };
+
+/** A row with a status mark and/or a button instead of a plain string. */
+export interface StatusItem {
+  text: string;
+  status?: ItemStatus;
+  action?: ItemAction;
+}
+
 export interface ResultSection {
   heading: string;
   /** Short text next to the heading, e.g. a count. */
   meta?: string;
-  items: string[];
+  items: Array<string | StatusItem>;
 }
+
+/** The text of a section item, whether it is a string or a status row. */
+export const itemText = (item: string | StatusItem): string => (typeof item === "string" ? item : item.text);
 
 export interface ResultLink {
   label: string;

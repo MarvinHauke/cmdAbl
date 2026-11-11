@@ -36,8 +36,10 @@ Without the Remote Script the palette still opens and most commands run:
 
 ## Install it
 
-Run `cmdabl setup` from the palette. It copies the Remote Script into Live's User Library, at
-`~/Music/Ableton/User Library/Remote Scripts/cmdAbl`, and tells you what to do next.
+Open the setup page: it opens by itself the first time, or type `cmdabl setup` in the palette. Click **Copy** in the
+Remote Script row. That copies the Remote Script into Live's User Library, at
+`~/Music/Ableton/User Library/Remote Scripts/cmdAbl`, and the page tells you what to do next. `cmdabl setup script`
+does the same copy without the page.
 
 Then restart Live, and choose **cmdAbl** under **Control Surface** in **Settings → Tempo & MIDI → MIDI**. Choosing it
 starts the script; you do not need to restart Live again. [Getting started](getting-started.md) has the steps with
@@ -45,12 +47,12 @@ screenshots.
 
 ## Update it
 
-After you update cmdAbl, run `cmdabl setup` again, then **restart Live**. Live keeps the script it loaded when it
+After you update cmdAbl, open `cmdabl setup` and click **Update** in the Remote Script row (or run
+`cmdabl setup script`), then **restart Live**. Live keeps the script it loaded when it
 started, so a new copy in the User Library does nothing until Live restarts.
 
-The script of this release is version 0.1.14. `cmdabl setup` compares that version with the one that is running and
-says whether a restart is needed. For example: "Remote Script 0.1.14 is shipped, but Live still runs 0.1.5. Restart
-Live to load Remote Script 0.1.14."
+The script of this release is version 0.1.14. The setup page compares that version with the one that is running and
+says whether a restart is needed. For example: "Restart Live once to load Remote Script 0.1.14."
 
 ## Check it
 
@@ -71,12 +73,12 @@ These are the messages you can get. Each is shown in the palette:
 
 | Message | What it means | What to do |
 | ------- | ------------- | ---------- |
-| *Remote Script not running (install it with `cmdabl setup`, restart Live, then enable cmdAbl as a Control Surface in Live's Settings → Tempo & MIDI)* | The script is not answering in Live. cmdAbl cannot tell "not installed" from "not enabled", so the message lists the full order. | Run `cmdabl setup` if it is not installed, restart Live, then choose cmdAbl as the Control Surface (Settings → Tempo & MIDI → MIDI). |
-| *installed Remote Script is outdated; run `cmdabl setup` and restart Live* | The running script does not know an operation this cmdAbl needs, or it speaks another protocol version. | Run `cmdabl setup`, then restart Live. |
+| *Remote Script not running (install it with `cmdabl setup`, restart Live, then enable cmdAbl as a Control Surface in Live's Settings → Tempo & MIDI)* | The script is not answering in Live. cmdAbl cannot tell "not installed" from "not enabled", so the message lists the full order. | Open `cmdabl setup` and click **Copy** if it is not installed, restart Live, then choose cmdAbl as the Control Surface (Settings → Tempo & MIDI → MIDI). |
+| *installed Remote Script is outdated; run `cmdabl setup` and restart Live* | The running script does not know an operation this cmdAbl needs, or it speaks another protocol version. | Open `cmdabl setup`, click **Update**, then restart Live. |
 | *the Live Set changed; run the command again* | The track or pad moved or was renamed after you typed the command. | Run the command again. |
 | *the Remote Script did not answer; check Live* | Live did not reply in time. | Check that Live is running and not busy, then run the command again. A change may or may not have happened, so look at the Set. |
-| *the Remote Script refused the change (access token); restart Live (after `cmdabl setup` if the script was updated)* | The script refused a change, because its access token did not match. | Restart Live. After an update, run `cmdabl setup` first. |
-| *cannot read the bridge access token (CODE); restart Live (after `cmdabl setup` if the script was updated)* | The extension cannot read the token file. CODE says why: `ERR_ACCESS_DENIED` (the sandbox refused the path), `ENOENT` (no file: the script has not written one) or `wrong shape` (the file does not hold a valid token). | Restart Live. After an update, run `cmdabl setup` first. |
+| *the Remote Script refused the change (access token); restart Live (after `cmdabl setup` if the script was updated)* | The script refused a change, because its access token did not match. | Restart Live. After an update, copy the script from `cmdabl setup` first. |
+| *cannot read the bridge access token (CODE); restart Live (after `cmdabl setup` if the script was updated)* | The extension cannot read the token file. CODE says why: `ERR_ACCESS_DENIED` (the sandbox refused the path), `ENOENT` (no file: the script has not written one) or `wrong shape` (the file does not hold a valid token). | Restart Live. After an update, copy the script from `cmdabl setup` first. |
 | *changing chains is available on macOS only (no access token on this platform)* | Chain and pad changes need macOS. | Nothing to do on this platform. |
 
 ## The Log.txt lines
@@ -108,7 +110,7 @@ operation, it checks a token that the extension sends with the request.
 - **When it changes.** Every time Live starts, the token is replaced. If a change is refused, the extension reads the
   file again and tries once more, so a restart of Live is usually all it takes.
 - **What to do.** Never share the token file, and never paste its contents anywhere. You do not need to read it. If a
-  change is refused, restart Live. After an update, run `cmdabl setup` first.
+  change is refused, restart Live. After an update, copy the script from `cmdabl setup` first.
 
 The token guards against other users on the Mac and against stray messages. It does not guard against programs you
 run yourself, which can change your Set in other ways anyway. Reads and selection need no token, except `set_id`, which can create the Set's id.

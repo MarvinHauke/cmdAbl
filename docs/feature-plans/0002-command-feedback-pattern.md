@@ -6,7 +6,7 @@
 `dispatch()` plus the realization that 0001's Phase 3 multi-target commands (`mute /a /b /c`)
 make *partial* success the normal case, not an edge case.
 
-**Where things stand (2026-10-11):** Phase A is implemented — `CommandResult`/`ExitCode`/`ok()`/`fail()` in `src/types.ts`, `CommandRegistry.run()` always resolves with a result (unknown command → code 3, throwing handler → code 1), and `src/core/present.ts` is the single rendering point called from `dispatch()`. Modules still call `api.showFeedback` directly and migrate in the rework's step 2; Phase B/C are open. Historical note on the original state:
+**Where things stand (2026-10-11):** Phase A is implemented — `CommandResult`/`ExitCode`/`ok()`/`fail()` in `src/types.ts`, `CommandRegistry.run()` always resolves with a result (unknown command → code 3, throwing handler → code 1), and `src/core/surfaces/present.ts` is the single rendering point called from `dispatch()`. Modules still call `api.showFeedback` directly and migrate in the rework's step 2; Phase B/C are open. Historical note on the original state:
 
 Untouched — `extension.ts`'s `showFeedback`/`console.*`/`throw` mix
 described below is still exactly the current state; no `CommandResult`/`presentResult()` exists

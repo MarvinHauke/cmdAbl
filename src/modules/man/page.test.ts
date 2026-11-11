@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { helpText, type CommandNode } from "../../core/commandTree.js";
+import { helpText, type CommandNode } from "../../core/command/commandTree.js";
 import { allPaths, anchorOf, closeMatches, findNode, manPage, webUrl } from "./page.js";
 
 const tree: CommandNode[] = [
@@ -56,4 +56,11 @@ test("close matches: prefix, substring and typos, best first", () => {
 
 test("allPaths lists every command and subcommand", () => {
   assert.equal(allPaths(tree).length, 6);
+});
+
+test("findNode finds the platform's `<command> config` subcommand", () => {
+  const cfg = { name: "config", summary: "open the settings of history", run: () => {} };
+  const withConfig = [{ ...tree[0]!, config: cfg }, ...tree.slice(1)] as typeof tree;
+  assert.deepEqual(findNode(withConfig, ["history", "config"])?.path, ["history", "config"]);
+  assert.equal(findNode(tree, ["history", "config"]), undefined);
 });

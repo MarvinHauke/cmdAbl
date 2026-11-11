@@ -6,7 +6,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createDevRoutes, queryValue, splitUrl, runTokenFilePath, writeRunToken, type DevRouteDeps } from "./devRoutes.js";
-import type { HeadlessOutcome } from "./core/headless.js";
+import type { HeadlessOutcome } from "./core/host/headless.js";
 
 const TOKEN = "fake-token";
 let lastRoutes: ReturnType<typeof createDevRoutes> | undefined;

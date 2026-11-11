@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- notify surface (see src/core/ui.ts). In: MESSAGE_PLACEHOLDER = the message string; SECTIONS_PLACEHOLDER = null or [{ heading, meta?, items: [string] }] (drawn instead of the message: accent heading, dim meta right-aligned, items as wrapping chips, a rule between sections; an item "…" means the list was cut); LINK_PLACEHOLDER = null or { label, url } (an accent button with the label next to Close, the url as its tooltip; the page never opens or returns the url). Out: '' (Close, Esc, Enter), or '{"open":true}' when the link button is clicked (core opens its own copy of the url). -->
+<!-- notify surface (see src/core/surfaces/ui.ts). SIZE: src/core/surfaces/notifySize.ts (sectionsSize) mirrors this page's CSS heights: heading 18, plain row 24, row with a button 32, wrapped row lines×18+6, help line 36, footer 24, section separator 21, plus the gaps (page padding 16, block gap 12, items margin 5, row gap 4). Change a height here and notifySize together. In: MESSAGE_PLACEHOLDER = the message string; SECTIONS_PLACEHOLDER = null or [{ heading, meta?, items: [string] }] (drawn instead of the message: accent heading, dim meta right-aligned, items as wrapping chips, a rule between sections; an item "…" means the list was cut); LINK_PLACEHOLDER = null or { label, url } (an accent button with the label next to Close, the url as its tooltip; the page never opens or returns the url); an item may also be { text, status?: 'ok'|'warn'|'fail', action?: { label, help? } } (a full-width row: mark ✓ ! ✗ in theme colours, the text, the action's label as a button at the row end; command/url of an action are core's, the page never reads them); TOGGLE_PLACEHOLDER = null or { label, setting, on } (a checkbox in the footer, initially checked when on is true; setting is core's); HELP_PLACEHOLDER = null or false (false: no help line text follows hover/focus). A help line and the footer checkbox show only when an action or the toggle exists; otherwise the page is as before. Out: '' (Close, Esc, Enter with no button focused), '{"open":true}' when the link button is clicked (core opens its own copy of the url), '{"action":[sectionIndex,itemIndex]}' when a row button is used. With a toggle, every answer except an unchanged plain close carries "toggle":boolean (the checkbox's state); an unchanged close answers ''. Keys: Tab through the buttons and the checkbox, Enter or Space activates. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -33,7 +33,22 @@
     .sec-items { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 5px; padding-left: 2ch; }
     .chip { background: var(--bg-row); border: 1px solid var(--border); border-radius: 2px; padding: 0 6px; line-height: 18px; overflow-wrap: anywhere; min-width: 0; }
     .chip.cut { background: transparent; border-color: transparent; color: var(--dim); }
-    #footer { flex-shrink: 0; display: flex; gap: 8px; }
+    /* Status rows: one full-width chip per item with a mark, the text and an optional button. */
+    .srow { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; min-height: 24px; padding: 2px 6px; }
+    .srow .mark { flex: none; width: 2ch; text-align: center; font-weight: 700; }
+    .srow .mark.ok { color: var(--ok); }
+    .srow .mark.warn { color: var(--warn); }
+    .srow .mark.fail { color: var(--fail); }
+    .srow .stext { flex: 1; min-width: 0; line-height: 18px; }
+    .srow button { flex: none; min-height: 24px; }
+    button:focus-visible, #tgl input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    /* The help line has a fixed height (two lines) so the page never jumps when the text changes. */
+    #help { flex-shrink: 0; height: 36px; color: var(--dim); font-size: 11px; line-height: 18px; overflow: hidden; }
+    #help[hidden], #tgl[hidden] { display: none; }
+    #footer { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+    #tgl { display: flex; align-items: center; gap: 5px; min-height: 24px; margin-right: auto; cursor: pointer; color: var(--dim); font-size: 11px; }
+    #tgl input { width: 12px; height: 12px; accent-color: var(--accent); cursor: pointer; }
+    #footer button { min-height: 24px; }
     #link { border-color: var(--accent); color: var(--accent); }
     #link[hidden] { display: none; }
   </style>
@@ -41,8 +56,10 @@
 <body>
 
   <div id="msg" tabindex="-1"></div>
-  <div id="footer"><button id="close">Close</button><button id="link" hidden></button></div>
+  <div id="help" hidden></div>
+  <div id="footer"><label id="tgl" hidden><input type="checkbox" id="tglbox" /><span id="tgltxt"></span></label><button id="close" data-help="Close: close this page (Esc)">Close</button><button id="link" hidden></button></div>
 
+  <script>/*HELP_JS_PLACEHOLDER*/</script>
   <script>
     // Injected at runtime — the raw feedback message string.
     const MESSAGE = /*MESSAGE_PLACEHOLDER*/null;
@@ -53,6 +70,12 @@
     // Injected at runtime — null or [{ heading, meta?, items }].
     const SECTIONS = /*SECTIONS_PLACEHOLDER*/null;
 
+    // Injected at runtime — null or { label, setting, on } (on = the checkbox's initial state).
+    const TOGGLE = /*TOGGLE_PLACEHOLDER*/null;
+
+    // Injected at runtime — false turns the help line's hover text off.
+    const HELP = /*HELP_PLACEHOLDER*/null;
+
     function send(value) {
       const m = { method: 'close_and_send', params: [value] };
       if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
@@ -61,7 +84,7 @@
 
     // Each line becomes its own block: padding-left = the line's leading spaces (in ch), and the
     // "✓ "/"× " marker hangs (negative text-indent), so a wrapped part stays under the text.
-    // The markers are the presenter's (src/core/present.ts): add one on both sides or neither.
+    // The markers are the presenter's (src/core/surfaces/present.ts): add one on both sides or neither.
     // Text goes in with textContent (paths and reasons are user data).
     function renderMessage(box, text) {
       let seenFail = false, prevFail = false;
@@ -84,7 +107,7 @@
 
     // All text through textContent (headings and items are track names, user data).
     function renderSections(box, sections) {
-      for (const s of sections) {
+      sections.forEach((s, si) => {
         const sec = document.createElement('div');
         sec.className = 'sec';
         const head = document.createElement('div');
@@ -104,36 +127,109 @@
         if (items.length) {
           const wrap = document.createElement('div');
           wrap.className = 'sec-items';
-          for (const item of items) {
+          items.forEach((item, ii) => {
+            if (item && typeof item === 'object') { wrap.appendChild(statusRow(si, ii, item)); return; }
             const chip = document.createElement('span');
             chip.className = 'chip' + (item === '…' ? ' cut' : '');
             chip.textContent = String(item);
             wrap.appendChild(chip);
-          }
+          });
           sec.appendChild(wrap);
         }
         box.appendChild(sec);
+      });
+    }
+
+    const MARKS = { ok: '✓', warn: '!', fail: '✗' };
+    const MARK_NAMES = { ok: 'ok', warn: 'warning', fail: 'failed' };
+    let hasActions = false;
+
+    // A status row: mark, text, optional button. Text and labels through textContent.
+    function statusRow(si, ii, item) {
+      const row = document.createElement('div');
+      row.className = 'chip srow';
+      const mark = document.createElement('span');
+      mark.className = 'mark';
+      if (MARKS[item.status]) {
+        mark.classList.add(item.status);
+        mark.textContent = MARKS[item.status];
+        mark.title = MARK_NAMES[item.status];
       }
+      const text = document.createElement('span');
+      text.className = 'stext';
+      text.textContent = String(item.text ?? '');
+      row.append(mark, text);
+      const a = item.action;
+      if (a && typeof a.label === 'string' && a.label) {
+        hasActions = true;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = a.label;
+        b.dataset.help = typeof a.help === 'string' && a.help ? a.help : a.label + ': run this step (Enter)';
+        b.addEventListener('click', () => send(answer({ action: [si, ii] })));
+        row.appendChild(b);
+      }
+      return row;
+    }
+
+    // The answer string: extra fields plus the toggle state when a toggle exists.
+    function answer(extra) {
+      const o = { ...extra };
+      if (TOGGLE) o.toggle = document.getElementById('tglbox').checked;
+      return JSON.stringify(o);
+    }
+    // Close, Esc, Enter: '' unless the toggle changed.
+    function closeAnswer() {
+      if (TOGGLE && document.getElementById('tglbox').checked !== !!TOGGLE.on) return answer({});
+      return '';
     }
 
     document.addEventListener('DOMContentLoaded', () => {
       if (Array.isArray(SECTIONS)) renderSections(document.getElementById('msg'), SECTIONS);
       else renderMessage(document.getElementById('msg'), MESSAGE ?? '');
       const close = document.getElementById('close');
-      close.addEventListener('click', () => send(''));
+      close.addEventListener('click', () => send(closeAnswer()));
+      const box = document.getElementById('tglbox');
+      if (TOGGLE && typeof TOGGLE.label === 'string') {
+        box.checked = !!TOGGLE.on;
+        document.getElementById('tgltxt').textContent = TOGGLE.label;
+        const tgl = document.getElementById('tgl');
+        tgl.hidden = false;
+        tgl.dataset.help = TOGGLE.label + ': remembered when the page closes (Space)';
+      }
+      if (hasActions || (TOGGLE && !document.getElementById('tgl').hidden)) {
+        const helpEl = document.getElementById('help');
+        helpEl.hidden = false;
+        help.init(helpEl, {
+          // Only keys that do something here: Tab needs a row button or the checkbox.
+          idle: () => {
+            const k = [];
+            const hasTgl = !!(TOGGLE && typeof TOGGLE.label === 'string');
+            if (hasActions || hasTgl) k.push(['Tab', hasActions ? 'next button' : 'checkbox']);
+            if (hasActions) k.push(['Enter', 'activate']);
+            if (hasTgl) k.push(['Space', 'toggle']);
+            k.push(['Esc', 'close']);
+            return k;
+          },
+          enabled: HELP !== false,
+        });
+      }
       // The link button answers {"open":true}; core opens its own copy of the url. Text via textContent.
       if (LINK && typeof LINK.label === 'string' && LINK.label) {
         const link = document.getElementById('link');
         link.textContent = LINK.label;
         if (typeof LINK.url === 'string') link.title = LINK.url;
         link.hidden = false;
-        link.addEventListener('click', () => send('{"open":true}'));
+        link.addEventListener('click', () => send(answer({ open: true })));
       }
       document.addEventListener('keydown', e => {
         if (e.repeat) return;   // a held Enter from the dialog before must not close this one
-        // Tab reaches the link button; Enter on it activates it (a click), everywhere else Enter closes.
-        if (e.key === 'Enter' && document.activeElement === document.getElementById('link')) return;
-        if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); send(''); }
+        // Tab reaches the buttons and the checkbox; Enter on a button activates it (a click), on the
+        // checkbox it toggles; everywhere else Enter closes.
+        const a = document.activeElement;
+        if (e.key === 'Enter' && a instanceof HTMLButtonElement) return;
+        if (e.key === 'Enter' && a && a.id === 'tglbox') { e.preventDefault(); a.click(); return; }
+        if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); send(closeAnswer()); }
       });
       // Focus the text, not the button: arrows and Page Up/Down then scroll it natively.
       document.getElementById('msg').focus();
