@@ -11,10 +11,13 @@
        view draws the Markdown (own small renderer below: headings, paragraphs, nested lists, checkboxes (read-only),
        tables, quotes, inline and fenced code, bold, italic, strike, links (drawn as text, never followed), rules; no raw
        HTML, all text goes in with textContent); edit is a plain textarea. An empty text opens in edit.
-       Out (close_and_send): always JSON `{"text": string | null, "then": "stamp" | null}`. text null = unchanged, "" = cleared;
-       then "stamp" = the module adds a stamp and opens the page again (a page cannot write or set the loop itself).
+       Out (close_and_send): always JSON `{"text": string | null, "then": "stamp" | "view" | null}`. text null = unchanged, "" = cleared;
+       then "stamp" = the module adds a stamp and opens the page again; then "view" = the module saves, ends the stamp's loop restore
+       and opens the page again in view (a page cannot write or set the loop itself); null = done.
        Keys: e (view) edit · m (view) stamp: close and ask for a stamp · Esc in view closes and saves · Esc in edit returns
-       to view and keeps the text · Cmd/Ctrl+S (or Save) saves and closes · Discard throws the changes of this edit away. -->
+       to view and keeps the text · Cmd/Ctrl+S (or Save) saves and closes (then null) · Discard throws the changes of this edit away.
+       In a stamp page (mode "stamp") there is no view: Esc / Done closes with then "view" (saves the stamp, the module restores the loop
+       and reopens in view); Discard (after its confirm, or at once when nothing was typed) closes with then "view" and the text as it opened (the pending text when NOTE.changed: the module retries that save). -->
   <style>
     /*SHARED_CSS_PLACEHOLDER*/
 
@@ -203,11 +206,10 @@
     const stampHead = stamp ? (orig.trim() ? orig.replace(/\s+$/, '') + '\n\n' : '') + stamp.heading : '';
     const dropEmptyStamp = v => (stamp && v.startsWith(stampHead) && !v.slice(stampHead.length).trim() ? orig : v);   // nothing typed below the heading: no entry
 
-    const canStamp = () => !stamp;   // a stamp page does not start another stamp (the module ignores it)
     function setHint() {
       hint.replaceChildren();
       if (mode === 'edit' && stamp?.hint && edit.value.startsWith(stampHead)) hint.append(mk('span', 'stamp', stamp.hint), document.createTextNode(' · '));
-      hint.append(document.createTextNode(mode === 'view' ? (canStamp() ? 'e edit · m stamp · Esc close' : 'e edit · Esc close') : '⌘S save and close · Esc back to view · Discard drops this edit'));
+      hint.append(document.createTextNode(mode === 'view' ? 'e edit · m stamp · Esc close' : '⌘S save and close · Esc ' + (stamp ? 'done' : 'back to view') + ' · Discard drops this edit'));
     }
 
     function show(next) {
@@ -218,7 +220,7 @@
         view.replaceChildren();
         if (saved.trim()) render(saved, view); else view.append(mk('p', 'empty', 'empty note — press e to write, m to stamp'));
         b1.textContent = 'Edit'; b1.style.cssText = '';
-        b3.textContent = 'Stamp'; b3.hidden = !canStamp();
+        b3.textContent = 'Stamp'; b3.hidden = false;
         b2.textContent = 'Close';
         view.scrollTop = 0; view.focus();
       } else {
@@ -226,7 +228,7 @@
         if (startStamp) { edit.value = stampHead + '\n\n'; startStamp = null; } else edit.value = saved;
         b1.textContent = 'Save'; b1.style.borderColor = 'var(--accent)'; b1.style.color = 'var(--accent)';
         b3.textContent = 'Discard'; b3.hidden = false;
-        b2.textContent = 'View';
+        b2.textContent = stamp ? 'Done' : 'View';
         edit.focus(); edit.setSelectionRange(edit.value.length, edit.value.length);
         edit.scrollTop = edit.scrollHeight;
       }
@@ -238,7 +240,7 @@
     }
     function keep() { saved = dropEmptyStamp(edit.value); }   // takes the text of the box over; an empty stamp is dropped
     function save() { keep(); finish(); }   // saves and closes: no text is held only in the page
-    function back() { keep(); show('view'); }   // Esc / View in edit: keeps the text
+    function back() { keep(); if (stamp) finish('view'); else show('view'); }   // Esc / View in edit: keeps the text; a stamp page has no view of its own: it closes and the module reopens it in view
     let sure = false;   // Discard asks once, here on the page: a second click does it
     let sureTimer = 0;
     function ask(on) {
@@ -249,10 +251,10 @@
       if (on) { hint.replaceChildren(mk('span', 'stamp', 'click Discard again to throw this edit away · any key keeps it')); } else setHint();
     }
     function discard() {
-      if (dropEmptyStamp(edit.value) === base && !sure) { back(); return; }   // nothing changed: nothing to ask
+      if (dropEmptyStamp(edit.value) === base && !sure) { if (stamp) { saved = base; finish('view'); } else back(); return; }   // nothing changed: nothing to ask
       if (!sure) { ask(true); return; }
       ask(false);
-      saved = base; if (saved.trim()) show('view'); else finish();   // an empty note has no view to return to
+      saved = base; if (stamp) finish('view'); else if (saved.trim()) show('view'); else finish();   // an empty note has no view to return to
     }
     function esc() { if (mode === 'view') finish(); else back(); }
 
@@ -268,7 +270,7 @@
       if (e.key === 'Escape') { e.preventDefault(); esc(); }
       else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (mode === 'edit') save(); }
       else if (mode === 'view' && e.key === 'e' && bare) { e.preventDefault(); show('edit'); }
-      else if (mode === 'view' && e.key === 'm' && bare && canStamp()) { e.preventDefault(); finish('stamp'); }
+      else if (mode === 'view' && e.key === 'm' && bare) { e.preventDefault(); finish('stamp'); }
       else if (mode === 'edit' && e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); document.execCommand('insertText', false, '  '); }   // nested lists need an indent
     });
 
