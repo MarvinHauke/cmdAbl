@@ -200,7 +200,7 @@ not only when the page closes. Since a page never writes:
   module can't read the note's file, so `stamp` lives in the note module.
 
 **Without close and reopen (user, 2026-11-11; plan 0018 "Page runs"):** the note page opens as a
-live page that may run `stamp loop` and `stamp unloop`:
+live page that may run `stamp --loop` and `stamp --unloop` (see "Spelling" below):
 - `s` in view: the page reads the heading from a route `heading` (transport + format, built by the module),
   runs `stamp loop` and switches to stamp edit in place. Esc in stamp edit runs `stamp unloop` and
   returns to view in place. No flicker, no lost keys.
@@ -209,6 +209,12 @@ live page that may run `stamp loop` and `stamp unloop`:
   When the page closes, the module still restores a loop it set (safety net).
 - The text is still saved when the page closes (Cmd+S or Esc in view). Without the server the page
   falls back to `then` and close/reopen (above).
+
+**Spelling (architect, 2026-11-11, from review):** the tree forbids a command that runs and has
+subcommands, so the page runs **`stamp --loop`** and **`stamp --unloop`** (options), with the allowlist
+`["stamp"]` (a plain `stamp` from the page would ask and gets exit 4: harmless). When `stamp next`/`prev`/`-l`
+come, decide then whether a group's fallback child may run bare (a tree change: ask the user).
+A page opened by the `stamp` command also ends a stamp in place (Esc runs `stamp --unloop`).
 
 **Key `s` (user, 2026-11-11):** a stamp is added with **`s`** in view (was `m`; read `m` as `s` above).
 

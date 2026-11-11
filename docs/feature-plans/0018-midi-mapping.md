@@ -266,8 +266,7 @@ Built in 0.1.5 (core `livePage`, ui `live.js`, the monitor and learn pages).
 
 From the note's stamps (0013): closing and reopening a page around every write flickers and loses
 the keys typed in between. The exception is widened, without a second write path:
-- **The module allows command lines when it opens the page:** `livePage(…, routes, { run: ["stamp
-  loop", "stamp unloop"] })`. An entry is a command path (command plus subcommands); the page may run a line
+- **The module allows command lines when it opens the page:** `livePage(…, routes, { run: ["stamp"] })`. An entry is a command path (command plus subcommands); the page may run a line
   only if its parsed command path is in the list. Options and arguments are free.
 - **The page posts** `POST <base>/run` with `{ line }`, using the same route token, origin check and
   the dialog's lifetime as the read routes. The answer is `{ code, text }` (the `CommandResult`).
