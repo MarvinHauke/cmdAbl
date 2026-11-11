@@ -262,6 +262,23 @@ plain routes keep the 100 ms budget.
 
 Built in 0.1.5 (core `livePage`, ui `live.js`, the monitor and learn pages).
 
+### Page runs: a live page may run allowed command lines (user, 2026-11-11)
+
+From the note's stamps (0013): closing and reopening a page around every write flickers and loses
+the keys typed in between. The exception is widened, without a second write path:
+- **The module allows command lines when it opens the page:** `livePage(…, routes, { run: ["stamp
+  loop", "stamp unloop"] })`. An entry is a command path (command plus subcommands); the page may run a line
+  only if its parsed command path is in the list. Options and arguments are free.
+- **The page posts** `POST <base>/run` with `{ line }`, using the same route token, origin check and
+  the dialog's lifetime as the read routes. The answer is `{ code, text }` (the `CommandResult`).
+- **It runs through the normal command path:** parse, resolve, one undo step, the log, errors caught,
+  headless (no dialogs; a part that would ask gives exit 4). Not added to the history. It runs as a
+  nested run while the opening command still waits for its dialog, so it must not wait on that run.
+- **A page without the server** (`LIVE = null`) falls back to what it did before (for the note: close
+  with `then` and reopen).
+- What stays: the dialog still answers one string when it closes; anything not in the list is refused
+  (exit 2 to the page, a warn line in the log).
+
 ### Syntax rules (v1)
 
 - `|` outside quotes is reserved. In `map` it starts the raw binding line, which `;` doesn't split.

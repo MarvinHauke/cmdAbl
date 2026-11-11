@@ -28,8 +28,10 @@ Live's Extension Host) with a small companion Remote Script (Python) for what th
 - A dialog gets JSON in and returns one string when it closes. Everything that changes Live happens
   through a command after it closes. **Exception: a live page** (user, 2026-11-04; plan 0018). It is
   served from `http://localhost:27184` with a one-time token per dialog, and may only **read** from
-  cmdAbl while open, through routes that exist only for that dialog. It never writes, and it still
-  works when the server can't be reached. Extensions cannot call each other.
+  cmdAbl while open, through routes that exist only for that dialog, and it still works when the server
+  can't be reached. **It may also run command lines while open, but only those its module allows when
+  opening it** (user, 2026-11-11; plan 0018 "Page runs"): they go through the normal command path (undo,
+  log, errors caught). Nothing else writes. Extensions cannot call each other.
 - Keep plans, README and code in sync in the same change.
 
 ## Agent team

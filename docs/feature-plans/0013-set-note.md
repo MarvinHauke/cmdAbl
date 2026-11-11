@@ -199,6 +199,17 @@ not only when the page closes. Since a page never writes:
   `stamp -l` lists the stamps (a pick list, Enter jumps), with "jump to a stamp" below. A separate
   module can't read the note's file, so `stamp` lives in the note module.
 
+**Without close and reopen (user, 2026-11-11; plan 0018 "Page runs"):** the note page opens as a
+live page that may run `stamp loop` and `stamp unloop`:
+- `s` in view: the page reads the heading from a route `heading` (transport + format, built by the module),
+  runs `stamp loop` and switches to stamp edit in place. Esc in stamp edit runs `stamp unloop` and
+  returns to view in place. No flicker, no lost keys.
+- `stamp loop` sets the stamp loop at the current bar (`note.loopBars`, Arrangement only, `note.stampLoop`)
+  and remembers the old loop; `stamp unloop` restores it if it is still the one set. Both also work by hand.
+  When the page closes, the module still restores a loop it set (safety net).
+- The text is still saved when the page closes (Cmd+S or Esc in view). Without the server the page
+  falls back to `then` and close/reopen (above).
+
 **Key `s` (user, 2026-11-11):** a stamp is added with **`s`** in view (was `m`; read `m` as `s` above).
 
 **Rollout:** cmdabl-bridge (the two ops, tests, script 0.1.15), cmdabl-core (`SetPort`),
