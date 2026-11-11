@@ -40,9 +40,16 @@ const helpSource = (): string => {
   return source;
 };
 
+// The list keys (plan 0019 §5): ui/listnav.js defines the global `CmdListNav`, inlined at `/*LISTNAV_JS_PLACEHOLDER*/`.
+const listnavSource = (): string => {
+  const source = fs.readFileSync("ui/listnav.js", "utf8");
+  if (/<\/script/i.test(source)) throw new Error('ui/listnav.js contains "</script": cannot be inlined into a page');
+  return source;
+};
+
 // esbuild inlines all ui/*.html files as strings (the `text` loader). Hook the
 // load so build-time placeholders are replaced before bundling:
-//   every .html     — shared CSS, the matcher where /*MATCH_PLACEHOLDER*/ stands, ui/help.js at /*HELP_JS_PLACEHOLDER*/
+//   every .html     — shared CSS, the matcher where /*MATCH_PLACEHOLDER*/ stands, ui/help.js at /*HELP_JS_PLACEHOLDER*/, ui/listnav.js at /*LISTNAV_JS_PLACEHOLDER*/
 const htmlInlinePlugin: esbuild.Plugin = {
   name: "html-inline",
   setup(build) {
@@ -50,6 +57,7 @@ const htmlInlinePlugin: esbuild.Plugin = {
       let html = fs.readFileSync(args.path, "utf8");
       html = html.replace("/*MATCH_PLACEHOLDER*/", () => matchSource);
       if (html.includes("/*HELP_JS_PLACEHOLDER*/")) html = html.replace("/*HELP_JS_PLACEHOLDER*/", () => helpSource());
+      if (html.includes("/*LISTNAV_JS_PLACEHOLDER*/")) html = html.replace("/*LISTNAV_JS_PLACEHOLDER*/", () => listnavSource());
       html = html.replace("/*SHARED_CSS_PLACEHOLDER*/", () => sharedCss);
       return { contents: html, loader: "text" };
     });
