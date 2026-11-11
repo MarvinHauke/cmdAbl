@@ -27,6 +27,10 @@ All releases were tested in Live, including the installed `.ablx`.
   0019 phase 4 `listnav.js` (cmdabl-ui) and 0013 stamps (bridge: `transport`/`loop_set`, script 0.1.15;
   core: `SetPort.transport/setLoop`; modules: `note -m`, settings; ui: stamp mode). Needs a Live restart
   for script 0.1.15 before the Live test.
+  - bridge done (`22cae33`). Live test after the restart: `cmdabl bridge` shows 0.1.15; `transport`
+    stopped/playing/session clip/6-8 (barLen 3); `loop_set` 8/16, odd values 46.5/2.25 read back, length 0
+    or start -1 → exit 2. For docs at the end: 0.1.14 → 0.1.15 in README, using.md, remote-script.md,
+    getting-started.md alt text.
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
 - **Live 13 check (2026-11-11, Live 13.0b25):** the installed 0.1.6 and the dev build run (same Extension
