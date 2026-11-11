@@ -206,5 +206,5 @@ Esc change, Discard, the hint; browser-checked), cmdabl-docs (using.md). Gear on
   - `note` in a new Set opens edit mode. Write a table and save: the view renders it.
   - Save the Set, close it and reopen it: `note` shows the same text.
   - Save As under a new name: `note` shows the same note.
-  - `e` switches to edit; Esc with changes warns first.
+  - `e` switches to edit; Esc returns to view and keeps the text; Discard with changes asks once.
   - With the script off, `note` gives exit 5.

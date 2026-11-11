@@ -51,7 +51,10 @@ All releases were tested in Live, including the installed `.ablx`.
     page (stampLoop off, loopBars 8), Discard confirm, Ctrl+n/p, "save changes?" after a stamp.
   - Found (from 0.1.6, not 0.1.7): the palette footer's argument help wraps to a third row for `mute `
     (UX #10: one row, ends in …). Small ui fix, can go into 0.1.7 (asked the user; paused 2026-11-11).
-  - Paused 2026-11-11: docs agent writing using.md etc.; then the user's hand checks and userfindings.md
+  - Docs done (using.md, getting-started, remote-script.md, 0.1.15). Before the PR: `npm run docs:reference`
+    (core; docs:check fails until then); `note` man text command.ts:102 still says "Esc … warns first"
+    (modules); retake note-view/note-edit screenshots (docs); 0.1.7 notes go in the PR (no changelog).
+  - Paused 2026-11-11: then the user's hand checks and userfindings.md
     notes, then PR and release.
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
