@@ -117,6 +117,17 @@ mkdocs build --strict
 
 `--strict` fails on a broken link. Run it before you commit a docs change.
 
+`npm run docs:check` runs the same docs checks as CI: it checks that the committed command
+reference pages match the code (it prints the fix when one is stale), then runs
+`mkdocs build --strict`. It needs `mkdocs` installed (the `pip install` line above).
+
+To run it automatically before every `git push` that touches `docs/`, `mkdocs.yml` or `src/`,
+turn on the optional hook once per clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
 ## Pull requests
 
 Use one branch per topic and open a pull request into `main`. These checks run on a pull request:

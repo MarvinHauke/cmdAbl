@@ -69,3 +69,27 @@
 
 .md-nav__item .md-nav__link--active { color: var(--md-accent-fg-color); }
 .md-search__input { border-radius: 2px; }
+
+/* Screenshots and recordings of the dialogs sit on a stage, so their grey does not blend into
+   the page. Dark: the code-block grey, darker than the page. Light: a light grey. */
+.md-typeset img[src*="assets/images/"] {
+  box-sizing: border-box;
+  background: var(--cmdabl-stage-bg);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 4px;
+  padding: 12px;
+}
+[data-md-color-scheme="slate"]  { --cmdabl-stage-bg: hsl(0, 0%, 9%); }
+[data-md-color-scheme="default"] {
+  --cmdabl-stage-bg: hsl(0, 0%, 94%);
+}
+[data-md-color-scheme="default"] .md-typeset img[src*="assets/images/"] {
+  border-color: hsl(0, 0%, 80%);
+}
+
+/* setup-page.png is a narrower dialog (1080 px) than setup-no-karabiner.png (1642 px) at the same
+   text size. Draw it at 1080/1642 of that width so both show the text at the same scale
+   (the 26px is the stage's padding and border). */
+.md-typeset img[src$="assets/images/setup-page.png"] {
+  width: calc((100% - 26px) * 0.6578 + 26px);
+}

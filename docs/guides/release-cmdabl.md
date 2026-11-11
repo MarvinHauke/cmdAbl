@@ -11,8 +11,8 @@ yet. Nothing bumps the version for you.
 2. **Regenerate the reference pages.** Run `npm run docs:reference` and commit the result. CI fails
    when a committed page differs from the code.
 3. **Docs review pass.** Before the release PR, read the pages the release touched as a whole, not
-   only the lines that changed. The reviewer checks the facts against the code. `mkdocs build --strict`
-   must pass.
+   only the lines that changed. The reviewer checks the facts against the code. `npm run docs:check`
+   must pass (it checks that the committed reference pages match the code and runs `mkdocs build --strict`).
 4. **Test the installed `.ablx`.** See [Building and installing the `.ablx` locally](#building-and-installing-the-ablx-locally).
 5. Commit on a branch and open a PR into `main`. [CI](ci.md) builds it and attaches the `.ablx`.
 6. **Merge the PR.**
