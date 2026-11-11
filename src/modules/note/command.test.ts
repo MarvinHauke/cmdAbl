@@ -153,7 +153,7 @@ test("the note tree: open and add are bare fallbacks, every leaf needs the Remot
   const add = leaf(fake, "stamp", "add") as never as { requires: string[]; fallback: boolean; bare: boolean };
   assert.deepEqual([add.requires, add.fallback, add.bare], [["bridge"], true, true]);
   const stamp = (fake.commands[0]!.children as Array<{ name: string; children?: unknown[] }>).find((c) => c.name === "stamp")!;
-  assert.deepEqual((stamp.children as Array<{ name: string }>).map((c) => c.name), ["add"], "the loop lines moved to the loop module");
+  assert.deepEqual((stamp.children as Array<{ name: string }>).map((c) => c.name), ["add", "list", "next", "prev"], "the loop lines moved to the loop module");
 });
 
 test("a note text with </script> or a placeholder-like text reaches the page escaped, once", async () => {
@@ -179,7 +179,7 @@ test("the retry after a failed save: the page answers the kept text unchanged (i
 
 // --- stamps ---------------------------------------------------------------------------------------------
 
-const PLAYING = { playing: true, session: false, pos: "12.3.1.1", time: 44, barStart: 44, barLen: 4, songLength: 200, loop: { on: false, start: 0, length: 16 } };
+const PLAYING = { playing: true, session: false, pos: "12.3.1.1", time: 44, barStart: 44, barLen: 4, sigNum: 4, sigDen: 4, songLength: 200, loop: { on: false, start: 0, length: 16 } };
 const FIXED = new Date(2026, 10, 11, 14, 5);
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -246,10 +246,10 @@ test("an unreadable page answer writes nothing but leaves a log line", async () 
   void r;
 });
 
-test("note declares one setting, note.stampLoop (the length is loop.bars)", () => {
+test("note declares its settings, note.stampLoop (the length is loop.bars) and note.stampWrap", () => {
   const { fake } = setup();
   const items = fake.settingGroups.flatMap((g) => g.items).map((i) => [i.key, i.kind, i.default]);
-  assert.deepEqual(items, [["note.stampLoop", "bool", true]]);
+  assert.deepEqual(items, [["note.stampLoop", "bool", true], ["note.stampWrap", "bool", false]]);
 });
 
 test("the note page is a live page: runs loop here/back, closes with loop back, and the heading says whether to loop", async () => {
@@ -257,7 +257,7 @@ test("the note page is a live page: runs loop here/back, closes with loop back, 
   registerNote(fake.api, TEMPLATE, () => FIXED);
   await leaf(fake).run(inv(["note"]), undefined as never);
   const page = fake.livePages[0]!;
-  assert.deepEqual(page.run, ["loop here", "loop back"]);
+  assert.deepEqual(page.run, ["loop here", "loop back", "jump"]);
   assert.equal(page.onClose, "loop back");
   const heading = page.routes.heading as (q: never) => Promise<unknown>;
   assert.deepEqual(await heading({} as never), { heading: "### @12.3.1 · 2026-11-11 14:05", loop: true });
@@ -281,7 +281,7 @@ test("the note module registers through the real registry: a valid tree, documen
   const activate = (api: Parameters<typeof registerNote>[0]): void => registerNote(api, TEMPLATE);
   const roots = declaredBy(activate);
   assert.deepEqual(validateTree(roots as never), []);
-  assertDocumented(roots, ["note open", "note stamp add"]);
+  assertDocumented(roots, ["note open", "note stamp add", "note stamp list", "note stamp next", "note stamp prev"]);
   const ran = (line: string) => {
     const o = parse(line, roots);
     return o.kind === "run" ? [o.invocation.path.join(" "), o.invocation.options] : o.kind;
@@ -291,4 +291,90 @@ test("the note module registers through the real registry: a valid tree, documen
   assert.deepEqual(ran("note stamp"), ["note stamp", {}]);
   assert.equal(parse("stamp", roots).kind, "error"); // the old top-level spelling is gone
   assert.equal(parse("note stamp loop", roots).kind, "error"); // moved to the loop module
+});
+
+// --- reading stamps back (plan 0027) ----------------------------------------------------------------------
+const STAMPED = [
+  "### @4.1.1 · 2026-11-11 15:00",
+  "kick too loud",
+  "### 2026-11-10 09:00",
+  "idea while stopped",
+  "### @12.3.1 · 2026-11-11 14:32",
+  "snare",
+  "### @20.2.3 · 2026-11-12 08:00",
+].join("\n");
+const AT_BAR = (pos: string, over: object = {}) => ({ playing: true, session: false, pos, time: 0, barStart: 0, barLen: 4, sigNum: 4, sigDen: 4, songLength: 200, loop: { on: false, start: 0, length: 16 }, ...over });
+
+function readSetup(pos: string, settings: Record<string, unknown> = {}, extra: Parameters<typeof createFakeApi>[0] = {}) {
+  const fake = createFakeApi({ setId: "abc", files: { "abc.md": STAMPED }, transport: AT_BAR(pos) as never, settings, ...extra } as never);
+  registerNote(fake.api, TEMPLATE);
+  const go = (word: string) => leaf(fake, "stamp", word).run(inv(["note", "stamp", word]), undefined as never) as Promise<Result>;
+  return { fake, go };
+}
+
+test("stamp next / prev jump by position from the playhead", async () => {
+  const s = readSetup("5.1.1.1");
+  assert.equal((await s.go("next"))!.code, ExitCode.OK);
+  assert.equal((await s.go("prev"))!.code, ExitCode.OK);
+  assert.deepEqual(s.fake.jumps, [44 + 2, 12]); // 12.3.1 in 4/4 = 11*4+2; 4.1.1 = 12
+});
+
+test("stamp next uses the signature: 6/8", async () => {
+  const s = readSetup("5.1.1.1", {}, { transport: AT_BAR("5.1.1.1", { sigNum: 6, sigDen: 8 }) as never });
+  await s.go("next");
+  assert.deepEqual(s.fake.jumps, [11 * 3 + 2 * 0.5]);
+});
+
+test("at the ends: exit 3 with the bar; with note.stampWrap it wraps", async () => {
+  const end = readSetup("21.1.1.1");
+  const r = (await end.go("next"))!;
+  assert.equal(r.code, ExitCode.NOT_FOUND);
+  assert.match(r.message ?? "", /no stamp after bar 21/);
+  assert.match(((await readSetup("1.1.1.1").go("prev"))!).message ?? "", /no stamp before bar 1/);
+  const wrap = readSetup("21.1.1.1", { "note.stampWrap": true });
+  assert.equal((await wrap.go("next"))!.code, ExitCode.OK);
+  assert.deepEqual(wrap.fake.jumps, [12]);
+  assert.equal((await readSetup("1.1.1.1", { "note.stampWrap": true }).go("prev"))!.code, ExitCode.OK);
+});
+
+test("no note, no stamps, no script, an old script, Live's refusal", async () => {
+  assert.equal((await readSetup("5.1.1.1", {}, { files: {} }).go("next"))!.code, ExitCode.NOT_FOUND);
+  assert.equal((await readSetup("5.1.1.1", {}, { transport: null }).go("next"))!.code, ExitCode.UNAVAILABLE);
+  assert.equal((await readSetup("5.1.1.1", {}, { transport: AT_BAR("5.1.1.1", { sigNum: 0, sigDen: 0 }) as never }).go("next"))!.code, ExitCode.UNAVAILABLE);
+  const refused = readSetup("5.1.1.1", {}, { jumpFails: { code: 1, text: "Live refused the jump" } });
+  assert.equal((await refused.go("next"))!.code, ExitCode.FAILURE);
+});
+
+test("stamp list: rows with the date-only one disabled, the cursor on the next stamp, Enter jumps", async () => {
+  const s = readSetup("5.1.1.1", {}, { pickRowsAnswer: (_rows: unknown, cursor: number | undefined) => cursor ?? null } as never);
+  const r = (await s.go("list"))!;
+  assert.equal(r.code, ExitCode.OK);
+  const list = s.fake.rowLists[0]!;
+  assert.deepEqual(list.rows.map((x) => !!x.disabled), [false, true, false, false]);
+  assert.equal(list.rows[0]!.label, "@4.1.1 · 2026-11-11 15:00");
+  assert.equal(list.rows[0]!.detail, "kick too loud");
+  assert.equal(list.cursor, 2); // 12.3.1 is the next stamp after bar 5
+  assert.deepEqual(s.fake.jumps, [46]);
+});
+
+test("stamp list cancelled or on a disabled row jumps nowhere", async () => {
+  const s = readSetup("5.1.1.1");
+  assert.equal((await s.go("list"))!.code, ExitCode.OK);
+  const d = readSetup("5.1.1.1", {}, { pickRowsAnswer: () => 1 } as never);
+  await d.go("list");
+  assert.deepEqual([...s.fake.jumps, ...d.fake.jumps], []);
+});
+
+test("the note page may run jump", async () => {
+  const { run, fake } = setup({ setId: "abc", files: { "abc.md": "x" } });
+  await run();
+  assert.deepEqual(fake.livePages[0]!.run, ["loop here", "loop back", "jump"]);
+});
+
+test("stamp list with only date-only stamps is exit 3 and shows no list", async () => {
+  const fake = createFakeApi({ setId: "abc", files: { "abc.md": "### 2026-11-10 09:00\nidea" }, transport: AT_BAR("5.1.1.1") as never } as never);
+  registerNote(fake.api, TEMPLATE);
+  const r = (await leaf(fake, "stamp", "list").run(inv(["note", "stamp", "list"]), undefined as never))!;
+  assert.equal(r.code, ExitCode.NOT_FOUND);
+  assert.equal(fake.rowLists.length, 0);
 });

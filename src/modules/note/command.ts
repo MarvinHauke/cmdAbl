@@ -1,6 +1,8 @@
 import type { LiveRoutes, ModuleApi } from "../types.js";
 import { fillTemplate } from "../../core/surfaces/inlineJson.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
+import { barLength, parsePos, positionToBeats, type BarPosition } from "../shared/position.js";
+import { formatPos, listCursor, nextStamp, parseStamps, prevStamp, type ParsedStamp } from "./stamps.js";
 import { buildStamp, parseAnswer, type PageThen, type StampInfo } from "./stamp.js";
 
 const NOTE_WIDTH = 640;
@@ -67,7 +69,7 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
 
   /**
    * The note page as a live page: it reads the stamp heading from the route `heading` (`loop` tells whether the page
-   * should loop while the user writes) and may run `loop here` / `loop back` while open (plan 0013, 0026, 0018 "Page runs").
+   * should loop while the user writes) and may run `loop here` / `loop back` / `jump` (a click on a stamp heading) while open (plan 0013, 0026, 0018 "Page runs").
    * `onClose` is the safety net: `loop back` runs after the page closes whatever the page did. Without the server the
    * platform shows it as a data page (LIVE = null) and it falls back to `then`.
    */
@@ -79,7 +81,7 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
         return { ...buildStamp(transport, now()), loop };
       },
     };
-    return api.ui.livePage("note", html, NOTE_WIDTH, NOTE_HEIGHT, routes, { run: ["loop here", "loop back"], onClose: "loop back" });
+    return api.ui.livePage("note", html, NOTE_WIDTH, NOTE_HEIGHT, routes, { run: ["loop here", "loop back", "jump"], onClose: "loop back" });
   }
 
   /** One round of the page loop: for a stamp, build the heading; open the page; save. */
@@ -163,6 +165,36 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
             requires: [...needsBridge],
             run: () => pageLoop("stamp"),
           },
+          {
+            name: "list",
+            summary: "pick a stamp from the note and jump to it",
+            description:
+              "Shows the stamps of this Set's note as a list (heading and the first words below it); the cursor starts on the next stamp after the playhead. " +
+              "Enter moves the playhead there (playing stays playing). Stamps made while stopped have no position: they are shown but cannot be chosen.",
+            examples: [{ line: "note stamp list", note: "choose a stamp to jump to" }],
+            requires: [...needsBridge],
+            run: () => stampList(),
+          },
+          {
+            name: "next",
+            summary: "jump to the next stamp after the playhead",
+            description:
+              "Moves the playhead to the next stamp (by song position) after it. Stamps without a position are skipped. At the end it is exit 3 " +
+              "\"no stamp after bar N\", or with setting note.stampWrap it wraps to the first stamp.",
+            examples: [{ line: "note stamp next", note: "jump to the next stamp" }],
+            requires: [...needsBridge],
+            run: () => stampStep("next"),
+          },
+          {
+            name: "prev",
+            summary: "jump to the previous stamp before the playhead",
+            description:
+              "Moves the playhead to the previous stamp (by song position) before it. Stamps without a position are skipped. At the start it is exit 3 " +
+              "\"no stamp before bar N\", or with setting note.stampWrap it wraps to the last stamp.",
+            examples: [{ line: "note stamp prev", note: "jump to the previous stamp" }],
+            requires: [...needsBridge],
+            run: () => stampStep("prev"),
+          },
         ],
       },
     ],
@@ -179,8 +211,69 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
         kind: "bool",
         default: true,
       },
+      {
+        key: "note.stampWrap",
+        label: "Wrap at the last stamp",
+        help: "note stamp next after the last stamp goes to the first one (and prev before the first goes to the last), instead of stopping.",
+        kind: "bool",
+        default: false,
+      },
     ],
   });
+
+  /** The stamps of this Set's note, or a failure result. */
+  async function readStamps(what: string): Promise<{ stamps: ParsedStamp[] } | { result: CommandResult }> {
+    const id = await api.set.id(false);
+    const text = id === null ? null : await api.files.read(`${id}.md`);
+    const stamps = text === null ? [] : parseStamps(text);
+    if (stamps.length === 0) return { result: fail(ExitCode.NOT_FOUND, `note stamp ${what}: this Set's note has no stamps`) };
+    return { stamps };
+  }
+
+  /** Jump to a stamp's position with the Set's signature. */
+  async function jumpTo(what: string, position: BarPosition, t: { sigNum: number; sigDen: number }): Promise<CommandResult> {
+    const sig = { num: t.sigNum, den: t.sigDen };
+    const beats = barLength(sig) === null ? null : positionToBeats(position, sig);
+    if (beats === null) return fail(ExitCode.UNAVAILABLE, `note stamp ${what}: bar positions need the time signature: update the Remote Script`);
+    const moved = await api.set.jump(beats);
+    if (!moved.ok) return fail(moved.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `note stamp ${what}: ${moved.text}`);
+    if (moved.note) api.logger.debug(`note stamp ${what}: ${moved.note}`);
+    return { ...ok(), log: [`note stamp ${what}: jumped to ${formatPos(position)}`] };
+  }
+
+  async function stampStep(dir: "next" | "prev"): Promise<CommandResult> {
+    const read = await readStamps(dir);
+    if ("result" in read) return read.result;
+    const t = await api.set.transport();
+    if (t === null) return fail(ExitCode.UNAVAILABLE, `note stamp ${dir}: the Remote Script did not answer (is it running, and up to date?)`);
+    const from = parsePos(t.pos);
+    if (from === null) return fail(ExitCode.FAILURE, `note stamp ${dir}: no song position from Live`);
+    const wrap = (await api.settings.get<boolean>("stampWrap")) === true;
+    const found = (dir === "next" ? nextStamp : prevStamp)(read.stamps, from, wrap);
+    if (found === null || found.position === null) {
+      return fail(ExitCode.NOT_FOUND, `note stamp ${dir}: no stamp ${dir === "next" ? "after" : "before"} bar ${from.bar}`);
+    }
+    return jumpTo(dir, found.position, t);
+  }
+
+  async function stampList(): Promise<CommandResult> {
+    const read = await readStamps("list");
+    if ("result" in read) return read.result;
+    const t = await api.set.transport();
+    if (t === null) return fail(ExitCode.UNAVAILABLE, "note stamp list: the Remote Script did not answer (is it running, and up to date?)");
+    const stamps = read.stamps;
+    if (!stamps.some((s) => s.position !== null)) return fail(ExitCode.NOT_FOUND, "note stamp list: no stamp has a song position");
+    const rows = stamps.map((s) => ({
+      label: s.heading.replace(/^###\s+/, ""),
+      ...(s.preview ? { detail: s.preview } : {}),
+      ...(s.position === null ? { disabled: true } : {}),
+    }));
+    const index = await api.pickRows("Stamps", rows, { cursor: listCursor(stamps, parsePos(t.pos)) });
+    if (index === null) return ok();
+    const chosen = stamps[index];
+    if (!chosen || chosen.position === null) return ok();
+    return jumpTo("list", chosen.position, t);
+  }
 
   /** A save that failed: say so and keep the text in memory (not in the log) for the next `note`. */
   function keep(text: string, why: string): CommandResult {
