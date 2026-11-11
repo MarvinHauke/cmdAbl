@@ -27,7 +27,7 @@ function setup(extra: Parameters<typeof createFakeApi>[0] = {}) {
     return null;
   };
   activate(fake.api);
-  const find = fake.commands.find((c) => c.name === "find")!;
+  const find = fake.commands.find((c) => c.name === "find")!.children!.find((c) => c.fallback)!;
   const run = async (pattern: string, options: Record<string, string | true> = {}) =>
     (await find.run!({ path: ["find"], options, args: [[pattern]] } as never, undefined as never)) as CommandResult | undefined;
   return { fake, run, picked };
@@ -98,7 +98,7 @@ test("script down: #tag is exit 5; plain words still work", async () => {
   const fake = createFakeApi({ nodes: all, tags, bridge: { ops: { select: () => ({ ok: true as const, value: { name: "x" } }) } } });
   fake.api.tags.refresh = async () => bridgeFail(5, "Remote Script not running");
   activate(fake.api);
-  const find = fake.commands.find((c) => c.name === "find")!;
+  const find = fake.commands.find((c) => c.name === "find")!.children!.find((c) => c.fallback)!;
   const r = (await find.run!({ path: ["find"], options: {}, args: [["#drums"]] } as never, undefined as never)) as CommandResult;
   assert.equal(r.code, ExitCode.UNAVAILABLE);
   fake.api.pick = async () => null;

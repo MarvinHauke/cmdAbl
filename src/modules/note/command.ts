@@ -99,7 +99,7 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
       "note -m (--stamp) adds a stamp: a new entry at the end with a heading that holds the song position (while the song plays) " +
       "and the date and time, and you write below it (a stamp always opens in edit, so -e -m is the same as -m). While Arrangement playback runs, the next bars loop so the music repeats while you write " +
       "(settings note.stampLoop and note.loopBars); closing puts the loop back as it was, unless you moved it meanwhile. " +
-      "In the page, e switches to editing, m adds a stamp, Cmd+S saves and closes, and Esc closes (with unsaved changes it warns first). " +
+      "In the page, e switches to editing, m adds a stamp, Cmd+S saves and closes; Esc in edit goes back to reading and keeps the text, and Esc while reading saves and closes (Discard asks once). " +
       "The note is a plain Markdown file in cmdAbl's data folder, linked to the Set by an id stored inside the Set, so it follows the Set " +
       "when it is renamed or saved under another name (both copies then share one note). The Set gets its id the first time a note is saved, " +
       "which marks the Set as changed: save it so the link is kept. Needs the cmdAbl Remote Script. A saved note shows nothing; the log has one line.",
