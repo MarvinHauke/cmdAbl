@@ -12,6 +12,7 @@
     "test": "tsx --test --test-timeout=30000 \"src/**/*.test.ts\" \"tools/**/*.test.ts\"",
     "mcp": "tsx tools/mcp/main.ts",
     "docs:reference": "tsx scripts/gen-command-reference.ts",
+    "docs:check": "bash scripts/docs-check.sh",
     "start": "npm run build:dev && extensions-cli run",
     "package": "npm run build && extensions-cli package --include karabiner --include windows --include remote-script"
   },

@@ -1,6 +1,6 @@
 # Codebase layout
 
-**Status:** Implemented (2026-11-05; Live smoke test passed) — study by cmdabl-core (user, 2026-11-05: "a structured and organized codebase"),
+**Status:** Released in 0.1.6 (implemented 2026-11-05; Live smoke test passed) — study by cmdabl-core (user, 2026-11-05: "a structured and organized codebase"),
 decided with the user the same day (below); the move is done in three commits.
 
 ## Decisions (user, 2026-11-05)

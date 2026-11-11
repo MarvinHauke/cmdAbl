@@ -1,6 +1,6 @@
 # Installation and setup page
 
-**Status:** In Progress (2026-11-05; phase 1 built, user hand check and docs open). Planned with the user in two question rounds (Q1–Q12) on 2026-11-05;
+**Status:** Released in 0.1.6 (2026-11-11). Later in 0.1.6: **Open Karabiner** and **Restart Live** (macOS); `--simulate <state>` in dev builds. Planned with the user in two question rounds (Q1–Q12) on 2026-11-05;
 part of 0.1.6, built before 0019 phase 3. Takes over [0019](0019-settings-and-help.md) §6.
 
 **Parent:** [0004](0004-command-platform.md)
@@ -150,12 +150,10 @@ install still goes through the page's **Copy** button unless the setting is on.
 
 ## Phased rollout
 
-0. **Spike (architect, in Live):** a page opening during activation; Karabiner's import link with a
-   `127.0.0.1` URL. Record the results here.
-1. **Core:** the status-row and toggle contract in `ui.ts`, the action lookup, `cmdabl setup` rows and
-   subcommands, `setup.*` settings, the opening rule, `GET /karabiner/cmdabl.json`. **UI:** the status
-   marks, buttons and checkbox in the notify page (`ui/feedback.html`), with the help line.
-2. **Docs:** Getting started and README Install around the page (cmdabl-docs).
+0–2. **Released in 0.1.6:** the spike (an `http://127.0.0.1` import URL works), the status rows and `cmdabl setup`
+   with its subcommands, the `setup.*` settings and the opening rule, then Getting started and README Install.
+   Hand-checked 2026-11-10/11: every row, Update and `setup.autoScript` with an older script, Restart Live
+   (save, Don't Save, Cancel), and the Control Surface row on an empty slot.
 
 ## Verification
 
