@@ -50,7 +50,9 @@ All releases were tested in Live, including the installed `.ablx`.
     ↓ Space marks, Esc → filter, Esc closes (cancelled); palette Tab completes. Open for the user: settings
     page (stampLoop off, loopBars 8), Discard confirm, Ctrl+n/p, "save changes?" after a stamp.
   - Found (from 0.1.6, not 0.1.7): the palette footer's argument help wraps to a third row for `mute `
-    (UX #10: one row, ends in …). Small ui fix, can go into 0.1.7.
+    (UX #10: one row, ends in …). Small ui fix, can go into 0.1.7 (asked the user; paused 2026-11-11).
+  - Paused 2026-11-11: docs agent writing using.md etc.; then the user's hand checks and userfindings.md
+    notes, then PR and release.
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
 - **Live 13 check (2026-11-11, Live 13.0b25):** the installed 0.1.6 and the dev build run (same Extension
