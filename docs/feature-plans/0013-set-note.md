@@ -218,10 +218,12 @@ new runnable groups (0005 "the `git stash` rule"):
 |---|---|
 | `note` | opens the note (bare-runnable fallback, as before; `note -e` edits) |
 | `note stamp` | adds a stamp (bare-runnable fallback of the `stamp` group) |
-| `note stamp loop` / `note stamp unloop` | the stamp loop on / back (by hand or from the page) |
 | later: `note stamp next`, `note stamp prev`, `note stamp list` | jump between stamps, pick one |
 
-The page's allowlist is `["note stamp loop", "note stamp unloop"]`. A page opened by `note stamp` also ends
+**The loop moved to its own module** ([0026](0026-loop.md), user 2026-11-11): the page runs `loop here` /
+`loop back` (allowlist `["loop here", "loop back"]`, `onClose: "loop back"`); `note.loopBars` became
+`loop.bars`; `note.stampLoop` stays (whether the note page loops). Esc and Cmd+S right after `s` wait up to
+0.5 s for the heading (user, 2026-11-11). A page opened by `note stamp` also ends
 a stamp in place. A short `stamp` comes back later only as a user alias (plan 0020). Read `stamp --loop` /
 `stamp --unloop` / `stamp` above as these lines.
 

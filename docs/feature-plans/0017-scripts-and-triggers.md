@@ -114,7 +114,9 @@ it.
 - `&&` and `||` on exit codes; `$1` and `$@` parameters for scripts and aliases.
 - **Idea (user, 2026-11-11): command substitution and a `math` module.** One command's output inside
   another (`find --at $(math random 1 8)`), for every command, in the platform; `math` is one source of
-  values. Later, with the rest of phase 3.
+  values. Later, with the rest of phase 3. Example with a real output → input: `loop at $(note stamp prev)`
+  loops the section of the previous stamp (0026). Not for "while" cases (loop while writing): those are
+  page runs and `;` chains.
 - Named values, conditions on Live state, waiting in musical time: each with its own plan.
 
 ## What a complete scripting engine still needs (2026-10-23)
