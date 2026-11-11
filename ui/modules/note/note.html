@@ -5,9 +5,9 @@
   <meta name="color-scheme" content="dark" />
   <title>note</title>
   <!-- Module page of `note` (plan 0013), a LIVE page (plan 0018 "Page runs"). In: LIVE_PLACEHOLDER = null | { base, token }: with it `s` in view
-       GETs `${base}/heading` (Authorization: Bearer token; answer { heading, hint? } = the stamp's heading as below), POSTs `${base}/run` { line: "stamp --loop" }
+       GETs `${base}/heading` (Authorization: Bearer token; answer { heading, hint? } = the stamp's heading as below), POSTs `${base}/run` { line: "note stamp loop" }
        (answer { code, text }; a run error shows in the footer, writing goes on). `s` switches to stamp edit at once with a placeholder heading, both requests run in parallel, the real heading replaces the placeholder when it arrives (typed text and caret stay; if the read fails, or Esc / ⌘S come first: a date-only heading dated at `s`, hint "no song position"); Esc / Done / Discard in that stamp
-       POSTs { line: "stamp --unloop" } and return to view in place. The text still leaves only when the page closes. If LIVE is null,
+       POSTs { line: "note stamp unloop" } and return to view in place. The text still leaves only when the page closes. If LIVE is null,
        `s` closes with then "stamp" as before (the module reopens the page). NOTE_PLACEHOLDER = { text: string, mode: "view" | "edit" | "stamp", setName?: string, changed?: boolean, stamp?: { heading: string, hint?: string } }
        (changed: the text is not saved yet, e.g. after a failed save, so Cmd+S / Save / Esc send it even when unedited.
        mode "stamp": opens in edit with `stamp.heading` appended as a new last entry (after a blank line) and the caret below it;
@@ -20,7 +20,7 @@
        and opens the page again in view (without LIVE a page cannot write or set the loop itself); null = done.
        Keys: e (view) edit · s (view) stamp: in place with LIVE, else close and ask for a stamp · Esc in view closes and saves · Esc in edit returns
        to view and keeps the text · Cmd/Ctrl+S (or Save) saves and closes (then null) · Discard throws the changes of this edit away.
-       In a stamp page (mode "stamp") with LIVE, Esc / Done / Discard run `stamp --unloop` and go to view in place; without LIVE there is no view: Esc / Done closes with then "view" (saves the stamp, the module restores the loop
+       In a stamp page (mode "stamp") with LIVE, Esc / Done / Discard run `note stamp unloop` and go to view in place; without LIVE there is no view: Esc / Done closes with then "view" (saves the stamp, the module restores the loop
        and reopens in view); Discard (after its confirm, or at once when nothing was typed) closes with then "view" and the text as it opened (the pending text when NOTE.changed: the module retries that save). -->
   <style>
     /*SHARED_CSS_PLACEHOLDER*/
@@ -245,7 +245,7 @@
       const mine = st = newStamp(saved, { heading: PLACEHOLDER }, true); mine.pending = true; mine.fallback = dateHeading(); startStamp = true;   // fallback: dated when `s` was pressed
       show('edit');
       busy = false;
-      runLine('stamp --loop');
+      runLine('note stamp loop');
       api('/heading').then(r => { if (typeof r?.heading !== 'string') throw new Error('no heading'); return r; }, () => mine.fallback).then(r => {
         if (st !== mine || mode !== 'edit') return;   // left the stamp meanwhile
         if (!swapHeading(mine, r)) mine.hint = r.hint;   // the heading line was edited: keep the text
@@ -253,7 +253,7 @@
       });
     }
     function startStampKey() { if (LIVE?.base && LIVE?.token) liveStamp(); else finish('stamp'); }
-    function leaveStamp() { if (st?.live) runLine('stamp --unloop'); st = null; show('view'); }   // back to view in place
+    function leaveStamp() { if (st?.live) runLine('note stamp unloop'); st = null; show('view'); }   // back to view in place
 
     function setHint() {
       hint.replaceChildren();
