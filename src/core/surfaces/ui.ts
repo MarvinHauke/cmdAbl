@@ -3,6 +3,7 @@ import type { PaletteItem, PaletteResult, ResultSection } from "../types.js";
 import type { CompletionData } from "../complete/complete.js";
 import { PALETTE_WIDTH, PALETTE_HEIGHT } from "./paletteSize.js";
 import type { LivePages, LiveRoutes, LiveRun } from "./livePage.js";
+import { trackRuns } from "./pageRun.js";
 import { takePaletteAnswer } from "../settings/settings.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsSize, sectionsText, usesStatusLayout } from "./notifySize.js";
@@ -484,7 +485,9 @@ export function createDefaultUi(
 
     async livePage(name, html, width, height, routes, options) {
       const allow = options?.run?.filter((p) => typeof p === "string" && p.trim() !== "");
-      const session = live?.open(name, html, routes, allow && allow.length > 0 && pageRun ? pageRun(allow) : undefined) ?? null;
+      // The dialog's result waits for page runs in flight (plan 0018 "Page runs").
+      const runs = trackRuns(allow && allow.length > 0 && pageRun ? pageRun(allow) : undefined);
+      const session = live?.open(name, html, routes, runs.run) ?? null;
       // No server (port taken) or a bad name: the same page as a data page, `LIVE = null`.
       if (!session) return (await show(name, html, width, height)) || null;
       try {
@@ -492,7 +495,8 @@ export function createDefaultUi(
         const raw = await queue.run(name, () => context.ui.showModalDialog(session.url, width, height)).catch(() => null);
         return raw || null;
       } finally {
-        session.close(); // the token and the routes end with the dialog
+        session.close(); // the token and the routes end with the dialog: no new run can start
+        if (!(await runs.idle())) logger("ui").warn(`live page "${name}": a page run was still running 3 s after the close`); // runs already started finish first
       }
     },
   };

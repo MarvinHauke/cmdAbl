@@ -275,6 +275,7 @@ the keys typed in between. The exception is widened, without a second write path
   nested run while the opening command still waits for its dialog, so it must not wait on that run.
   While a page run is in flight the surfaces are shut like in any headless run, so a palette opened in that
   short window is dismissed (known).
+- **`livePage` resolves only after the page runs in flight for that dialog have finished** (reviewer, 2026-11-11): a quick `s` then Cmd+S must not let the module's safety net run before the stamp is done. Runs that arrive after the close get 404.
 - **A page without the server** (`LIVE = null`) falls back to what it did before (for the note: close
   with `then` and reopen).
 - What stays: the dialog still answers one string when it closes; anything not in the list is refused

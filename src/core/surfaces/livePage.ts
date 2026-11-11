@@ -203,6 +203,8 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
     if (!session.run) return send(res, 404, "not found");
     const body = await readBody(req);
     if (body === null) return send(res, 413, "too large");
+    // The dialog may have closed while the body arrived: such a run must not start after the opener stopped waiting.
+    if (sessions.get(session.name) !== session) return send(res, 404, "not found");
     let line: unknown;
     try {
       line = (JSON.parse(body) as { line?: unknown } | null)?.line;

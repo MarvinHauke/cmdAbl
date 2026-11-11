@@ -53,3 +53,37 @@ export function createPageRun(deps: PageRunDeps): (allow: string[]) => LiveRun {
     }
   };
 }
+
+/**
+ * Wraps a page-run handler so the opener can wait for runs in flight: `idle()` resolves once every run started so far
+ * (and any started while waiting) has finished, or `maxMs` has passed (then false). Without a handler `run` is undefined and `idle()` resolves at once.
+ */
+export function trackRuns(handler: LiveRun | undefined): { run: LiveRun | undefined; idle: (maxMs?: number) => Promise<boolean> } {
+  const inflight = new Set<Promise<unknown>>();
+  const run: LiveRun | undefined = handler
+    ? (line) => {
+        const p = handler(line);
+        const settled = p.then(() => undefined, () => undefined);
+        inflight.add(settled);
+        void settled.then(() => inflight.delete(settled));
+        return p;
+      }
+    : undefined;
+  return {
+    run,
+    // Resolves true when nothing is left, false when `maxMs` (default 3 s) passed first: a stuck run must not hold the dialog result forever.
+    idle: async (maxMs = 3000) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<false>((r) => (timer = setTimeout(() => r(false), maxMs)));
+      const drained = (async () => {
+        while (inflight.size > 0) await Promise.all([...inflight]);
+        return true as const;
+      })();
+      try {
+        return await Promise.race([drained, timeout]);
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+  };
+}

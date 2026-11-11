@@ -456,3 +456,22 @@ test("POST /run: only <page>/run takes a POST", async () => {
     assert.equal((await post(port, "/live/note/x/run", "{}", auth)).status, 404);
   });
 });
+
+test("POST /run: a body still arriving when the dialog closes never reaches the handler", async () => {
+  await withServer({}, async ({ pages, port, get }) => {
+    let ran = 0;
+    const s = pages.open("note", HTML, {}, async () => (ran++, { code: 0, text: "" }))!;
+    const token = await routeToken(get, s.url);
+    const result = await new Promise<number>((resolve, reject) => {
+      const req = http.request({ host: "127.0.0.1", port, path: "/live/note/run", method: "POST", headers: { Host: `localhost:${port}`, "Content-Type": "application/json", Authorization: `Bearer ${token}` } }, (res) => {
+        res.resume();
+        res.on("end", () => resolve(res.statusCode ?? 0));
+      });
+      req.on("error", reject);
+      req.write('{"line":');
+      setTimeout(() => { s.close(); req.end('"stamp loop"}'); }, 30);
+    });
+    assert.equal(result, 404);
+    assert.equal(ran, 0);
+  });
+});

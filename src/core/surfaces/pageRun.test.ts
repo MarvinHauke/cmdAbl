@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createPageRun, refusal } from "./pageRun.js";
+import { createPageRun, refusal, trackRuns } from "./pageRun.js";
 import { createUiGate } from "../host/headless.js";
 import type { CommandNode } from "../command/commandTree.js";
 import type { Ui } from "./ui.js";
@@ -94,4 +94,31 @@ test("overlapping headless runs: A starts, B starts, A ends, B ends -> dialogs r
   await b;
   assert.equal(gate.active(), false);
   assert.equal(await gate.ui.prompt({} as never), "real");
+});
+
+test("trackRuns: idle() waits for a run in flight and resolves at once without one", async () => {
+  const events: string[] = [];
+  let finish!: () => void;
+  const tracked = trackRuns(async () => {
+    await new Promise<void>((r) => (finish = r));
+    events.push("run done");
+    return { code: 0, text: "ok" };
+  });
+  await tracked.idle(); // nothing in flight
+  const run = tracked.run!("stamp loop");
+  const idle = tracked.idle().then(() => events.push("idle"));
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(events, []);
+  finish();
+  await run;
+  await idle;
+  assert.deepEqual(events, ["run done", "idle"]);
+  assert.equal(trackRuns(undefined).run, undefined);
+  await trackRuns(undefined).idle();
+});
+
+test("trackRuns: idle() gives up after maxMs on a stuck run", async () => {
+  const tracked = trackRuns(() => new Promise(() => {}));
+  void tracked.run!("stamp");
+  assert.equal(await tracked.idle(20), false);
 });
