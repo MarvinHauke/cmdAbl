@@ -288,3 +288,27 @@ test("setId reads or creates through the writing op with the token, and every pr
   assert.equal(await setId(createFakeBridge({ ops: { set_id: () => ({ ok: true, value: { id: "" } }) } })), null);
   assert.equal(await setId(createFakeBridge({ ops: { set_id: () => fail(1, "x") } }), true), null);
 });
+
+import { transport, setLoop } from "./bridgeOps.js";
+
+const tr = { playing: true, session: false, pos: "12.3.1.1", time: 46.5, barStart: 44, barLen: 4, loop: { on: true, start: 8, length: 16 } };
+
+test("transport returns the checked reply; every problem is null", async () => {
+  const bridge = createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr } }) } });
+  assert.deepEqual(await transport(bridge), tr);
+  assert.deepEqual(bridge.calls, [{ op: "transport", args: {}, changes: false }]);
+  assert.equal(await transport(createFakeBridge({ running: false })), null);
+  assert.equal(await transport(createFakeBridge({})), null);
+  assert.equal(await transport(createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr, loop: null } }) } })), null);
+  assert.equal(await transport(createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr, barLen: 0 } }) } })), null);
+  assert.equal(await transport(createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr, pos: 5 } }) } })), null);
+});
+
+test("setLoop sends the loop with the token and returns the read-back", async () => {
+  const bridge = createFakeBridge({ ops: { loop_set: (a) => ({ ok: true, value: { loop: { on: a.on, start: a.start, length: a.length } } }) } });
+  assert.deepEqual(await setLoop(bridge, { on: true, start: 4, length: 8 }), { on: true, start: 4, length: 8 });
+  assert.deepEqual(bridge.calls, [{ op: "loop_set", args: { on: true, start: 4, length: 8 }, changes: true, token: true }]);
+  assert.equal(await setLoop(createFakeBridge({}), { on: true, start: 4, length: 8 }), null);
+  assert.equal(await setLoop(createFakeBridge({ ops: { loop_set: () => fail(1, "x") } }), { on: true, start: 4, length: 8 }), null);
+  assert.equal(await setLoop(createFakeBridge({ ops: { loop_set: () => ({ ok: true, value: { loop: { on: 1 } } }) } }), { on: true, start: 4, length: 8 }), null);
+});

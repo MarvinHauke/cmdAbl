@@ -146,6 +146,7 @@ class FakeTrack(object):
         self.data = {}
         self.color_index = 5
         self.set_data_raises = False
+        self.playing_slot_index = -2
 
     def get_data(self, key, default):
         return self.data.get(key, default)
@@ -193,6 +194,17 @@ class FakeSong(object):
     undo_steps = None  # set to [] to record begin/end calls
     can_undo = False
     data = None
+    is_playing = False
+    current_song_time = 0.0
+    signature_numerator = 4
+    signature_denominator = 4
+    loop = False
+    loop_start = 0.0
+    loop_length = 4.0
+    beats_song_time = "1.1.1.1"
+
+    def get_current_beats_song_time(self):
+        return self.beats_song_time
 
     def get_data(self, key, default):
         return (self.data or {}).get(key, default)

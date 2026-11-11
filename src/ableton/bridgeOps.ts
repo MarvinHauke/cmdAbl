@@ -528,3 +528,59 @@ export async function midiLast(bridge: Bridge, since = 0): Promise<BridgeResult<
     return fail(1, "midi_last failed");
   }
 }
+
+/** The arrangement loop, in beats (structurally the same as `Loop` in modules/types.ts). */
+export interface LoopState {
+  on: boolean;
+  start: number;
+  length: number;
+}
+
+/** The transport as the script reports it (plan 0013); same shape as `Transport` in modules/types.ts. */
+export interface TransportState {
+  playing: boolean;
+  session: boolean;
+  pos: string;
+  time: number;
+  barStart: number;
+  barLen: number;
+  loop: LoopState;
+}
+
+const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+function readLoop(v: unknown): LoopState | null {
+  if (typeof v !== "object" || v === null) return null;
+  const l = v as Record<string, unknown>;
+  return typeof l.on === "boolean" && isNum(l.start) && isNum(l.length) ? { on: l.on, start: l.start, length: l.length } : null;
+}
+
+/**
+ * Play state, bar grid and arrangement loop (plan 0013). Barstart/barLen use the current time signature
+ * only. Null: the script is not running, too old (no such op), or the reply is malformed. Never throws.
+ */
+export async function transport(bridge: Bridge): Promise<TransportState | null> {
+  try {
+    const reply = await bridge.request("transport", {});
+    if (!reply.ok) return null;
+    const v = reply.value;
+    const loop = readLoop(v.loop);
+    if (!loop || typeof v.playing !== "boolean" || typeof v.session !== "boolean" || typeof v.pos !== "string" || !isNum(v.time) || !isNum(v.barStart) || !isNum(v.barLen) || v.barLen <= 0) return null;
+    return { playing: v.playing, session: v.session, pos: v.pos, time: v.time, barStart: v.barStart, barLen: v.barLen, loop };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Set the arrangement loop (a writing op). Resolves to the loop as Live has it afterwards, or null (no script,
+ * an old one, a refused value, a failed read-back). Never throws.
+ */
+export async function setLoop(bridge: Bridge, loop: LoopState): Promise<LoopState | null> {
+  try {
+    const reply = await bridge.request("loop_set", { on: loop.on, start: loop.start, length: loop.length }, { changes: true, token: true });
+    return reply.ok ? readLoop(reply.value.loop) : null;
+  } catch {
+    return null;
+  }
+}
