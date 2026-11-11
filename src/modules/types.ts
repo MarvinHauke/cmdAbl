@@ -100,11 +100,14 @@ export interface SetPort {
    */
   transport(): Promise<Transport | null>;
   /**
-   * Set the arrangement loop (on/off, start, length in beats). Resolves to the loop as Live has it afterwards, or null
-   * (no script, an old one, a refused value). Never throws.
+   * Set the arrangement loop (on/off, start, length in beats). Resolves to the loop as Live has it afterwards, or a
+   * failure with the exit code (1 Live refused the value, 5 no script or an old one) and a text. Never throws.
    */
-  setLoop(loop: Loop): Promise<Loop | null>;
+  setLoop(loop: Loop): Promise<SetLoopResult>;
 }
+
+/** The answer of `SetPort.setLoop`. */
+export type SetLoopResult = { ok: true; loop: Loop } | { ok: false; code: 1 | 5; text: string };
 
 /** The arrangement loop, in beats. */
 export interface Loop {
@@ -123,6 +126,8 @@ export interface Transport {
   time: number;
   barStart: number;
   barLen: number;
+  /** The length of the Set (Song.song_length), in beats. */
+  songLength: number;
   loop: Loop;
 }
 

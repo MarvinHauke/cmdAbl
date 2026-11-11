@@ -36,6 +36,8 @@ export interface FakeApiOptions {
   setId?: string | null;
   /** The transport the fake `api.set.transport` answers (default: null, i.e. no script); `setLoop` writes into its `loop`. */
   transport?: Transport | null;
+  /** When set, `api.set.setLoop` answers this failure and leaves the loop alone (Live refusing a value: code 1). */
+  setLoopFails?: { code: 1 | 5; text: string } | null;
   /** Files the fake `api.files` starts with, by name. */
   files?: Record<string, string>;
   /** The messages the fake script has kept (`api.midi.last` returns those after `since`). */
@@ -83,6 +85,8 @@ export interface FakeApi {
   setId: string | null;
   /** The fake transport now (null = no script); `api.set.setLoop` replaces its `loop`. */
   transport: Transport | null;
+  /** The failure `api.set.setLoop` answers now (null = none); tests may set it. */
+  setLoopFails: { code: 1 | 5; text: string } | null;
   /** The bindings last given to `api.midi.setBindings` (rows with `{}` and press/release are refused, as in the engine). */
   midiBindings: MidiBinding[];
   /** Listeners registered with `api.onSetChange`; call them to simulate a Set change. */
@@ -137,6 +141,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     unreadableFiles: new Set(),
     setId: options.setId ?? null,
     transport: options.transport ?? null,
+    setLoopFails: options.setLoopFails ?? null,
     midiBindings: [],
     setListeners: [],
     midiBlocked: [],
@@ -182,9 +187,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       },
       transport: async () => (fake.transport ? { ...fake.transport, loop: { ...fake.transport.loop } } : null),
       setLoop: async (loop: Loop) => {
-        if (!fake.transport) return null;
+        if (fake.setLoopFails) return { ok: false, code: fake.setLoopFails.code, text: fake.setLoopFails.text };
+        if (!fake.transport) return { ok: false, code: 5, text: "the Remote Script is not running" };
         fake.transport.loop = { on: loop.on, start: loop.start, length: loop.length };
-        return { ...fake.transport.loop };
+        return { ok: true, loop: { ...fake.transport.loop } };
       },
     },
     files: {
