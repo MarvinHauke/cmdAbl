@@ -35,6 +35,14 @@ All releases were tested in Live, including the installed `.ablx`.
     Arrangement `note -m` → `@pos · date` heading, 4-bar loop, restored on close; loop moved by hand → left
     alone; session clip → no loop; stopped → date only; script off → hint; stampLoop off / loopBars 8;
     `m` from view saves first, then reopens in stamp mode. User: undo history, "save changes?".
+  - Release notes: Discard on the note page asks once (click twice) when there are changes; palette
+    Shift+Enter no longer runs the line; in a pick list Esc goes back to the filter first. Docs: using.md
+    still says "Tab marks" (using.md 118, 405; getting-started.md 134). Shift+Tab in the palette no
+    longer completes.
+  - ui done (note `db1a80e` + footer fix, listnav `51f1705`). Live test: `m` → stamp page, Esc without
+    typing drops it, Discard asks once; `mute` multi pick: ↓ then Space marks, Tab nothing, Esc → filter;
+    "Bass 2" typed in the filter stays text; `tag`/`find` pick with fill: Tab fills; palette Tab, ↑/↓,
+    Ctrl+n/p.
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
 - **Live 13 check (2026-11-11, Live 13.0b25):** the installed 0.1.6 and the dev build run (same Extension
