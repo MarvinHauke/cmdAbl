@@ -34,6 +34,7 @@ test("page answer: text null / empty / text, then stamp, and junk", () => {
   assert.deepEqual(parseAnswer('{"text":null,"then":null}'), { text: null, then: null });
   assert.deepEqual(parseAnswer('{"text":"","then":null}'), { text: "", then: null });
   assert.deepEqual(parseAnswer('{"text":"a\\nb","then":"stamp"}'), { text: "a\nb", then: "stamp" });
+  assert.deepEqual(parseAnswer('{"text":"x","then":"view"}'), { text: "x", then: "view" });
   assert.deepEqual(parseAnswer('{"then":"other"}'), { text: null, then: null });
   assert.deepEqual(parseAnswer(null), { text: null, then: null });
   assert.deepEqual(parseAnswer("plain text"), { text: null, then: null, unreadable: true });

@@ -73,10 +73,12 @@ export function shouldRestoreLoop(current: StampLoop | null, set: StampLoop): bo
   return current !== null && sameLoop(current, set);
 }
 
-/** The page's answer: `text` null = unchanged, "" = cleared; `then` "stamp" = the user pressed m in view. */
+/** The page's answer: `text` null = unchanged, "" = cleared; `then` = what follows the save: "stamp" (m), "view" (Esc in stamp edit). */
+export type PageThen = "stamp" | "view" | null;
+
 export interface PageAnswer {
   text: string | null;
-  then: "stamp" | null;
+  then: PageThen;
   /** The answer was not the expected JSON (a broken page): treated as unchanged, but worth a log line. */
   unreadable?: true;
 }
@@ -88,7 +90,7 @@ export function parseAnswer(raw: string | null): PageAnswer {
   try {
     const v = JSON.parse(raw) as { text?: unknown; then?: unknown } | null;
     if (v === null || typeof v !== "object") return bad;
-    return { text: typeof v.text === "string" ? v.text : null, then: v.then === "stamp" ? "stamp" : null };
+    return { text: typeof v.text === "string" ? v.text : null, then: v.then === "stamp" || v.then === "view" ? v.then : null };
   } catch {
     return bad;
   }

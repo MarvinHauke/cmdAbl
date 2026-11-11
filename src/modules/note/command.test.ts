@@ -4,7 +4,7 @@ import { ExitCode } from "../../core/types.js";
 import { createFakeApi } from "../shared/testPorts.js";
 import { registerNote } from "./command.js";
 
-const ans = (text: string | null, then: "stamp" | null = null): string => JSON.stringify({ text, then });
+const ans = (text: string | null, then: "stamp" | "view" | null = null): string => JSON.stringify({ text, then });
 const TEMPLATE = "<script>const NOTE = /*NOTE_PLACEHOLDER*/null;</script>";
 type Result = { code: number; message?: string; log?: string[] } | undefined;
 
@@ -136,7 +136,11 @@ test("the command needs the Remote Script (exit 5 comes from the platform) and s
   const note = fake.commands[0]!;
   assert.deepEqual(note.requires, ["bridge"]);
   assert.equal(note.topic, "Look things up");
-  assert.deepEqual((note.options ?? []).map((o) => [o.name, o.short]), [["edit", "e"], ["stamp", "m"]]);
+  assert.deepEqual((note.options ?? []).map((o) => [o.name, o.short]), [["edit", "e"]]);
+  const stamp = fake.commands[1]!;
+  assert.equal(stamp.name, "stamp");
+  assert.deepEqual(stamp.requires, ["bridge"]);
+  assert.ok(stamp.summary && (stamp.examples ?? []).length > 0);
 });
 
 test("a note text with </script> or a placeholder-like text reaches the page escaped, once", async () => {
@@ -179,12 +183,14 @@ function stampSetup(options: Parameters<typeof createFakeApi>[0] = {}, answers: 
     given.at(-1)!.loopWhileOpen = fake.transport?.loop;
     return answers.shift() ?? null;
   };
-  const run = (opts: Record<string, string | true> = {}) =>
-    fake.commands[0]!.run!({ path: ["note"], options: opts, args: [] } as never, undefined as never) as Promise<Result>;
+  const run = (opts: Record<string, string | true> = {}) => {
+    const stamp = opts.stamp === true;
+    return fake.commands[stamp ? 1 : 0]!.run!({ path: [stamp ? "stamp" : "note"], options: {}, args: [] } as never, undefined as never) as Promise<Result>;
+  };
   return { fake, run, given, loops };
 }
 
-test("note -m while playing: stamp page with the heading, the loop set while open and put back after", async () => {
+test("stamp while playing: stamp page with the heading, the loop set while open and put back after", async () => {
   const { fake, run, given, loops } = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("### x\ntext")]);
   const r = (await run({ stamp: true }))!;
   assert.equal(r.code, ExitCode.OK);
@@ -282,4 +288,29 @@ test("a failed loop restore is a warn, not an ok line", async () => {
   const r = await s.run({ stamp: true });
   assert.doesNotMatch((r?.log ?? []).join("\n"), /put back/);
   assert.ok(s.fake.logged.some((l) => l.level === "warn" && /loop not restored/.test(l.text)));
+});
+
+test("Esc in stamp edit (then: view): saved, loop put back, the note reopens in view; m there starts the next stamp", async () => {
+  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("### a\none", "view"), ans(null, "stamp"), ans("### a\none\n### b\ntwo")]);
+  const r = (await s.run({ stamp: true }))!;
+  assert.equal(r.code, ExitCode.OK);
+  assert.deepEqual(s.given.map((g) => g.mode), ["stamp", "view", "stamp"]);
+  assert.equal(s.given[1]!.loopWhileOpen && (s.given[1]!.loopWhileOpen as { on: boolean }).on, false); // loop is back while viewing
+  assert.deepEqual(s.given[2]!.loopWhileOpen, { on: true, start: 44, length: 16 });
+  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
+  assert.equal(s.fake.fileStore.get("abc.md"), "### a\none\n### b\ntwo");
+});
+
+test("a stamp page may answer then: stamp (no longer ignored)", async () => {
+  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("a", "stamp"), ans("b")]);
+  await s.run({ stamp: true });
+  assert.deepEqual(s.given.map((g) => g.mode), ["stamp", "stamp"]);
+});
+
+test("a failed save in the loop stops it with exit 1 and restores the loop", async () => {
+  const s = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("a", "view"), ans("never")]);
+  s.fake.api.files.write = async () => false;
+  assert.equal(((await s.run({ stamp: true }))!).code, ExitCode.FAILURE);
+  assert.equal(s.given.length, 1);
+  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
 });
