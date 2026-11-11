@@ -38,7 +38,11 @@ All releases were tested in Live, including the installed `.ablx`.
   - **Loop fixes Live-tested (2026-11-12):** `loop on` from off works (Live applies `loop` deferred; the
     bridge no longer checks `on` in-call), `loop here`/`back`/`on`/`off`, stamps with the loop off at the
     start; `loop here` behind the song end (bar 76, Live extends the song length) and `loop back`.
-    0.1.7 is complete: 1080 tests, build and docs:check green; docs `a0adcfe`.
+    0.1.7 is complete: 1080 tests, build and docs:check green; docs `a0adcfe`. Defaults page from a small
+    settings page no longer shrinks (`224d8d9`, user Q16).
+  - **Next idea (user, 2026-11-12):** jump to stamps → a `jump` module (`jump 12.3.1`, `+4`, `start`;
+    Remote Script op for the song position), used by the note page and `note stamp next/prev`; plan 0027,
+    after 0.1.7 (name and timing asked).
   - **Design question (later):** copies of a Set (Save As, a copied file) share one note, because its id
     lives in the Set (0013, intended). Editing the note in the copy changes the original's note. Idea: a
     copy gets its own note on its first change.
