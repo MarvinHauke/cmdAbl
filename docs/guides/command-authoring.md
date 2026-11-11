@@ -131,8 +131,8 @@ page:
 api.ui.livePage("note", html, width, height, routes, { run: ["loop here", "loop back"], onClose: "loop back" });
 ```
 
-- `onClose` (optional) is one command line the platform runs headless after the page has closed, whatever the page did
-  (a safety net, here `loop back`). It must pass the same allowlist check as `run`.
+- `onClose` (optional) is one command line the platform runs headless after the page has closed, but only if the page ran at
+  least one line meanwhile (a safety net, here `loop back`). It must pass the same allowlist check as `run`.
 - Each entry is a command path: the command and its subcommands, as typed. The page may run a line only if its parsed
   command path is in the list. Options and arguments are free. A line outside the list is refused (exit code 2 to the
   page, a warning in the log).
