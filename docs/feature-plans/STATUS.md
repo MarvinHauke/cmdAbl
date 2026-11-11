@@ -5,7 +5,7 @@ known issues. Maintained by the architect. The order of the next features and ho
 each other is in the [plan index](README.md#next-in-dependency-order); design decisions live in the
 numbered plans. Finished work is in the git history, not here.
 
-_Last updated: 2026-11-11 (0.1.6 released; user findings planned; Live 13 next)._
+_Last updated: 2026-11-11 (0.1.6 released; Live 13 check done; 0.1.7 in work)._
 
 ## Released
 
@@ -23,6 +23,10 @@ All releases were tested in Live, including the installed `.ablx`.
 
 ## Now
 
+- **0.1.7 in work** on `feat/0.1.7-listnav-stamps` (also carries the plans from `docs/findings-live13`):
+  0019 phase 4 `listnav.js` (cmdabl-ui) and 0013 stamps (bridge: `transport`/`loop_set`, script 0.1.15;
+  core: `SetPort.transport/setLoop`; modules: `note -m`, settings; ui: stamp mode). Needs a Live restart
+  for script 0.1.15 before the Live test.
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
 - **Live 13 check (2026-11-11, Live 13.0b25):** the installed 0.1.6 and the dev build run (same Extension

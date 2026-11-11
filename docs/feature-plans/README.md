@@ -58,7 +58,6 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
 ### Next, in dependency order
 
 ```
-Live 13 compatibility check ──> 0.2.x scope
 0019 phase 4 one keyboard model (listnav) ──> 0019 phase 7 shortcuts ──> 0006 keymap
 0017 phase 1 script files (run) ──> 0017 phase 2 clip/scene triggers (uses 0018's UDP push)
 0018 value mode ──┬─> 0015 link ──┬─> pan / send
@@ -69,10 +68,9 @@ Live 13 compatibility check ──> 0.2.x scope
 0006 step 3 paths level by level ──> device on/off (`bypass`)
 ```
 
-1. **Live 13 compatibility** (user, 2026-11-10; 0.1.6 was the last Live 12 release, tag `live12-last`):
-   the SDK version and `minimumApiVersion`, the Remote Script under Live 13's Python, the sandbox,
-   `LIVE_MANUAL_VERSION`. Then decide what changes for 0.2.x.
-   The undo and speed spikes for [0025](0025-morph.md) run here too.
+1. **Live 13 compatibility:** done 2026-11-11 (0.1.6 runs on Live 13; spikes in
+   [research/live13-spikes.md](research/live13-spikes.md)). `minimumApiVersion` and the SDK version move
+   when a release needs them. **Stamps** ([0013](0013-set-note.md)) are built with item 2 as 0.1.7.
 2. **One keyboard model for lists** ([0019](0019-settings-and-help.md) phase 4), then the **tag list and
    tag editor** ([0010](0010-tag-editing.md), tag-0) as its first page, then shortcuts (phase 7).
 3. **Script files** ([0017](0017-scripts-and-triggers.md) phase 1): `.cmdabl` files run with `run`;

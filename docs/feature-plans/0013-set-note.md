@@ -163,9 +163,32 @@ Terms: [GLOSSARY.md](GLOSSARY.md) (stamp, song position). "Stamp" for now (user,
 - The old idea "edit mode opens again for a while" was a loop in this sense (decision 4); it is
   replaced by `note.stampLoop`.
 
-**Rollout:** cmdabl-bridge (song position and loop ops, with tests), cmdabl-ui (`m`, the Esc change,
-Discard, the footer note; browser-checked), cmdabl-modules (the settings, writing the heading,
-calling the ops), cmdabl-docs (using.md). Gear on the note page with 0019 phase 6.
+**How it is built (architect, 2026-11-11; 0.1.7):**
+- **A page never writes**, so `m` can't set the loop itself. `m` in view **closes the page with a stamp
+  request**; the module then reads the song position, sets the loop, and opens the page again in stamp
+  mode. `note -m` (alias `--stamp`) does the same from the palette.
+- **Page answer (note-internal, replaces "" / "\n" / text):** JSON `{"text": string | null, "then":
+  "stamp" | null}`. `text: null` = unchanged, `""` = cleared. Page input gains `mode: "stamp"` and
+  `stamp: {heading, hint?}`. In stamp mode the page opens in edit with `heading` appended as a new
+  last entry and the caret below it. With nothing typed below the heading, the entry is dropped.
+- **The heading is built by the module** (one place for the format): position trimmed to three parts
+  (`12.3.1`), local `YYYY-MM-DD HH:MM`. Stopped: date only, no hint. No script: date only, hint "no
+  song position: Remote Script not running".
+- **The loop is restored when the page closes** (not at the first Esc, which only returns to view),
+  and only if the current loop still equals the one cmdAbl set. It runs whatever the save does.
+- **Session playback** = any track plays a session clip (`playing_slot_index >= 0`): the loop is left
+  alone. The bar start uses the Set's current time signature (a limit with signature changes).
+- **Bridge (additive, script 0.1.15):** `transport {}` (read, no token) → `{playing, session, pos:
+  "12.3.1.1", time, barStart, barLen, loop: {on, start, length}}`, times in beats; `loop_set {on,
+  start, length}` (write, token) → `{loop}`.
+- **`SetPort` (additive):** `transport(): Promise<Transport | null>` and `setLoop(loop): Promise<Loop |
+  null>`; null without the script or on an old one. Never throws.
+- **Settings:** `note.stampLoop` (bool, true), `note.loopBars` (int 1–64, 4).
+
+**Rollout:** cmdabl-bridge (the two ops, tests, script 0.1.15), cmdabl-core (`SetPort`),
+cmdabl-modules (settings, `-m`, the heading, the loop and restore), cmdabl-ui (stamp mode, `m`, the
+Esc change, Discard, the hint; browser-checked), cmdabl-docs (using.md). Gear on the note page with
+0019 phase 6.
 
 ## Phased rollout
 
