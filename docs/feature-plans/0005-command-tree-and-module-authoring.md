@@ -176,7 +176,7 @@ legacy path for `pakabl`, `cmdabl` and `help`. The webview now returns the raw l
 `goto /Opal Lead` needs no quotes) and `kinds` (which object kinds a path may match).
 Ambiguous addresses open the **pick list** (`src/core/surfaces/pick.ts`, `ui/pick.html`): single-select
 by default, multi-select when the argument is `variadic`. Migrated: `goto`, `mute`/`unmute`,
-`solo`/`unsolo`, new `arm`/`unarm`, new `find`/`next`/`prev`. Not done yet: ports (handlers still
+`solo`/`unsolo`, new `arm`/`unarm`, new `find`/`next`/`prev` (since 0.1.7 `find next`/`find prev`, plan 0007). Not done yet: ports (handlers still
 close over `ModuleApi`), `requires` checks, subcommand groups for `pakabl`/`cmdabl`, the guide.
 
 **Where things stand (2026-10-11):** step 1 is implemented and unit-tested (`npm test`): `src/core/command/tokenize.ts` (shared tokenizer), `src/core/command/commandTree.ts` (node types, `validateTree`, `usage`/`helpText`, `serializeTree`), `src/core/command/parse.ts` (walks the tree, parses options/arguments, returns run / help / error with exit codes). Nothing is wired into `dispatch()` yet — existing commands still run through the old `register()` path. The comma form `mute /a, /b` is not handled by the tokenizer; it stays with the legacy adapter until `mute` is migrated.
