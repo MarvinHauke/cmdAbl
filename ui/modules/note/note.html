@@ -216,7 +216,7 @@
     let flash = '', flashTimer = 0, busy = false, runQ = Promise.resolve();
     function say(text) { flash = text; clearTimeout(flashTimer); flashTimer = setTimeout(() => { flash = ''; setHint(); }, 5000); setHint(); }
     async function api(path, init) {
-      const res = await fetch(LIVE.base + path, { ...init, headers: { Authorization: 'Bearer ' + LIVE.token, ...(init?.body ? { 'Content-Type': 'application/json' } : {}) }, cache: 'no-store' });
+      const res = await fetch(LIVE.base + path, { ...init, headers: { Authorization: 'Bearer ' + LIVE.token }, cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
     }
