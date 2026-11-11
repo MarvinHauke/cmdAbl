@@ -41,7 +41,12 @@ All releases were tested in Live, including the installed `.ablx`.
     0.1.7 is complete: 1080 tests, build and docs:check green; docs `a0adcfe`. Defaults page from a small
     settings page no longer shrinks (`224d8d9`, user Q16).
   - **Added to 0.1.7 (user, 2026-11-12):** [0027](0027-jump.md) `jump` and reading stamps back (`note stamp
-    list/next/prev`, Enter on a stamp heading). Bridge op in work; command forms Q17–Q21 asked. 0.1.8 = the
+    list/next/prev`, Enter on a stamp heading). Built: bridge `44e67f6`, core `182afde` (SetPort.jump, api.pickRows), modules `e30b0e6`; ui note page
+    (Enter jumps) in review, ui pick.html cursor/disabled open. Live-tested: jump op (applied next tick; past the
+    song length refused with Live's text), `jump 5.3.2`/`+2`/`end`/`start`, `1.9.1` → exit 2, `note stamp prev`
+    at bar 1 → exit 3, `note stamp next` to a stamp behind the song end → exit 1 with Live's text (correct).
+    Left: ui commits, docs pass (jump, note stamp list/next/prev, note.stampWrap, page arrows), test of
+    next/prev with stamps inside the song, `note stamp list` dialog by hand, then the PR. 0.1.8 = the
     tag list rework (0010, tag-0).
   - **Design question (later):** copies of a Set (Save As, a copied file) share one note, because its id
     lives in the Set (0013, intended). Editing the note in the copy changes the original's note. Idea: a
