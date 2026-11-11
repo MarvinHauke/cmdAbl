@@ -35,6 +35,12 @@ All releases were tested in Live, including the installed `.ablx`.
   - **Still to do:** the `loop` module and the last note page round (modules `a2307ca`, ui `05d6df5`, core
     `onClose` in work): Live test, then docs (using.md: `loop`, `note stamp loop` lines gone, the chain
     `loop here; note stamp; loop back`), `docs:reference`, the PR.
+  - **Loop fixes Live-tested (2026-11-12):** `loop on` from off works (Live applies `loop` deferred; the
+    bridge no longer checks `on` in-call), `loop here`/`back`/`on`/`off`, stamps with the loop off at the
+    start. Open: `loop here` with the playhead behind the song end (needs playback past bar 59).
+  - **Design question (later):** copies of a Set (Save As, a copied file) share one note, because its id
+    lives in the Set (0013, intended). Editing the note in the copy changes the original's note. Idea: a
+    copy gets its own note on its first change.
   - **For the user (by hand):** settings page (`note.stampLoop` off, `loop.bars` 8), Discard confirm,
     Ctrl+n/p, "save changes?" after a stamp, the undo history.
   - **PR notes:** breaking `next`/`prev` → `find next`/`prev` (old bindings stop working); palette
