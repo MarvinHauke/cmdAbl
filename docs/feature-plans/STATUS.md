@@ -57,8 +57,16 @@ All releases were tested in Live, including the installed `.ablx`.
   - **`next`/`prev` → `find next`/`find prev`** (user finding, 2026-11-11; 0007): plus `find --first/--last`,
     list from `find` only. Breaks old bindings/history lines with `next`/`prev`: PR notes. Docs (README:58,
     using.md 175/290, getting-started.md 148, palette-empty.png) and `docs:reference` go to docs/core at the end.
-  - Paused 2026-11-11: then the user's hand checks and userfindings.md
-    notes, then PR and release.
+  - **Page runs + stamps in place (2026-11-11), Live-tested through MCP:** `stamp --loop/--unloop` (set, put
+    back, nothing to restore, stopped → nothing to do, both → exit 2); note page `s` + instant typing keeps
+    every character, heading fills in (`@236.4.3`), loop 940/16, Esc unloops in place; `s`+Esc drops the empty
+    stamp; `s x` Cmd+S: the in-flight loop finishes, then the safety net restores it (core's wait).
+    Known: Cmd+S right after `s` stores a date-only heading (the page didn't get the position yet).
+  - Left before the PR: docs (using.md `note -m` → `stamp`, key `s`, stamps in place; find next/prev;
+    README:58; getting-started:148; remote-script.md; screenshots note-view/note-edit/palette-empty);
+    `npm run docs:reference` (core); a "keep in step with note.html dateHeading()" comment in
+    src/modules/note/stamp.ts (modules). User hand checks: settings page (stampLoop off, loopBars 8),
+    Discard, Ctrl+n/p, "save changes?", undo history.
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
 - **Live 13 check (2026-11-11, Live 13.0b25):** the installed 0.1.6 and the dev build run (same Extension
