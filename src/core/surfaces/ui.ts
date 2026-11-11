@@ -3,7 +3,7 @@ import type { PaletteItem, PaletteResult, ResultSection } from "../types.js";
 import type { CompletionData } from "../complete/complete.js";
 import { PALETTE_WIDTH, PALETTE_HEIGHT } from "./paletteSize.js";
 import type { LivePages, LiveRoutes, LiveRun } from "./livePage.js";
-import { trackRuns } from "./pageRun.js";
+import { runLivePage } from "./pageRun.js";
 import { takePaletteAnswer } from "../settings/settings.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsSize, sectionsText, usesStatusLayout } from "./notifySize.js";
@@ -352,15 +352,21 @@ export interface Ui {
    * still comes back as with `page`. If the server cannot serve it (port taken), the page opens as a data page with
    * `LIVE = null` and must work without polling.
    * `options.run` (plan 0018 "Page runs") allows the page to run command lines while open: the command paths (command
-   * plus subcommands, e.g. `"note stamp loop"`) it may run through `POST <LIVE.base>/run`.
+   * plus subcommands, e.g. `"loop here"`) it may run through `POST <LIVE.base>/run`.
    */
   livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes, options?: LivePageOptions): Promise<string | null>;
 }
 
 /** What a module allows a live page beyond reading. */
 export interface LivePageOptions {
-  /** Command paths the page may run while open, e.g. `["note stamp loop", "note stamp unloop"]`. Options and arguments are free. */
+  /** Command paths the page may run while open, e.g. `["loop here", "loop back"]`. Options and arguments are free. */
   run?: string[];
+  /**
+   * A command line core runs once after the page has closed and its page runs have finished (plan 0026 "Safety net"),
+   * but only if the page made at least one page run (a plain read, a data page or a dismiss without runs runs nothing). Same rules as a page run: its command path must be in `run`
+   * (else it is refused with a warn line), headless, logged, errors caught, not in the history. Its result is only logged.
+   */
+  onClose?: string;
 }
 
 const dataUrl = (html: string) => `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
@@ -483,22 +489,18 @@ export function createDefaultUi(
       return (await show(name, html, width, height)) || null;
     },
 
-    async livePage(name, html, width, height, routes, options) {
-      const allow = options?.run?.filter((p) => typeof p === "string" && p.trim() !== "");
-      // The dialog's result waits for page runs in flight (plan 0018 "Page runs").
-      const runs = trackRuns(allow && allow.length > 0 && pageRun ? pageRun(allow) : undefined);
-      const session = live?.open(name, html, routes, runs.run) ?? null;
-      // No server (port taken) or a bad name: the same page as a data page, `LIVE = null`.
-      if (!session) return (await show(name, html, width, height)) || null;
-      try {
+    livePage: (name, html, width, height, routes, options) =>
+      runLivePage({
+        name,
+        run: options?.run,
+        onClose: options?.onClose,
+        pageRun,
+        open: (handler) => live?.open(name, html, routes, handler) ?? null,
+        // No server (port taken) or a bad name: the same page as a data page, `LIVE = null`.
+        showData: () => show(name, html, width, height),
         // Through the same queue: only one dialog is ever open. A failure is logged by the queue and counts as dismissed.
-        const raw = await queue.run(name, () => context.ui.showModalDialog(session.url, width, height)).catch(() => null);
-        return raw || null;
-      } finally {
-        session.close(); // the token and the routes end with the dialog: no new run can start
-        if (!(await runs.idle())) logger("ui").warn(`live page "${name}": a page run was still running 3 s after the close`); // runs already started finish first
-      }
-    },
+        showLive: (session) => queue.run(name, () => context.ui.showModalDialog(session.url, width, height)).catch(() => null),
+      }),
   };
   return ui;
 }
