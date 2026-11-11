@@ -494,17 +494,16 @@ shows how cmdAbl's ports and Remote Script operations map to the Live Object Mod
 
 - `note` shows the note, rendered: headings, lists, checkboxes, tables, code, bold and italic. Links show as text.
 - `note -e` (long form `--edit`) opens it for editing. A Set without a note opens in edit mode on an empty page.
-- `note -m` (long form `--stamp`) adds a stamp. See [Stamps](#stamps-a-timestamped-entry). `note -e -m` is the same
-  as `note -m`.
+- `note stamp` adds a stamp to the note. See [Stamps](#stamps-a-timestamped-entry).
 
-![The note window in view mode: the heading Mix notes, a table with Track and Todo columns, and a checklist with one open and one done item. The footer says e edit, m stamp, Esc close, with Edit, Close and Stamp buttons](assets/images/note-view.png)
+![The note window in view mode: three stamps, each a heading with the date and time and a line of text below it; two headings also hold the song position, such as @79.3.2. The footer says e edit, s stamp, Esc close, with Edit, Stamp and Close buttons](assets/images/note-view.png)
 
-![The same note in edit mode: the Markdown source with its heading, table and checklist. The footer says Cmd+S save and close, Esc back to view, Discard drops this edit, with Save, View and Discard buttons](assets/images/note-edit.png)
+![The same note in stamp edit: the Markdown source, with the newest stamp heading `### @82.1.2 · 2026-11-11 22:37` and the text typed below it. The footer says Cmd+S save and close, Esc done, Discard drops this edit, with Save, Discard and Done buttons](assets/images/note-edit.png)
 
 Keys in the note window:
 
 - `e` switches from view to edit.
-- `m` in view adds a stamp (see below).
+- `s` in view adds a stamp (see below).
 - `Cmd+S` or **Save** saves and closes.
 - `Esc` in edit goes back to view and keeps your text.
 - `Esc` in view closes the note and saves your changes, if there are any.
@@ -514,29 +513,39 @@ Keys in the note window:
 ### Stamps: a timestamped entry
 
 A **stamp** is a new entry at the end of the note, under a heading that says when you wrote it. Use it to jot down
-an idea while the music plays.
+an idea while the music plays. Stamps belong to the note: `note stamp` is a subcommand of `note` and writes into
+this Set's note. It is not a separate feature.
 
-- Press `m` in view, or run `note -m`. The note opens in edit mode with the heading added and the cursor below it.
-  Type your text below the heading.
+- Press `s` in view, or run `note stamp`. The note switches to edit at once, with the heading added and the cursor
+  below it. Start typing right away; the heading fills in a moment later and your text stays.
 - While the song plays, the heading reads `@bar.beat.sixteenth · date time`, for example `@12.3.1 · 2026-11-11 14:32`.
   `@12.3.1` is the song position. While the song is stopped, the heading is only the date and time.
 - Without the [Remote Script](remote-script.md), cmdAbl cannot read the song position. The heading is then the date
   and time, and a hint says that the Remote Script is not running.
-- If you type nothing below the heading, no entry is added.
-- `Esc` goes back to view and keeps the text. `Esc` in view closes the note and saves your changes. `Cmd+S` saves too.
+- `Esc` ends the stamp and goes back to view. The text is kept and the old loop comes back. Press `s` again
+  for the next section. If you typed nothing below the heading, no entry is added.
+- `Cmd+S` saves and closes the note. **Discard** throws away this edit and asks once first.
 
-**The loop while you write.** During Arrangement playback, `m` also sets Live's arrangement loop to start at the
-current bar and switches it on, so the music repeats while you type. When the note closes, the old loop comes back
-(on or off, start and length), unless you moved the loop yourself in the meantime. Then cmdAbl leaves it alone. Two
-settings control this:
+*Known:* if you press `Cmd+S` right after `s`, before the song position has arrived, the heading holds only the
+date and time.
+
+**The loop while you write.** During Arrangement playback, a stamp also sets Live's arrangement loop to start at the
+current bar and switches it on, so the music repeats while you type. When the stamp ends with `Esc`, or the note
+closes, the old loop comes back (on or off, start and length), unless you moved the loop yourself in the meantime.
+Then cmdAbl leaves it alone. Two settings control this:
 
 | Setting | Default | What it does |
 | ------- | ------- | ------------ |
 | `note.stampLoop` | on | Sets the loop while you write a stamp. |
 | `note.loopBars` | 4 | The length of that loop, in bars. |
 
-The loop is never touched while a Session clip plays. Setting the loop needs the Remote Script, and it makes Live
-count the Set as changed, so Live asks you to save it.
+The loop is set only during Arrangement playback, never while a Session clip plays or the song is stopped. Setting
+the loop needs the Remote Script, and it makes Live count the Set as changed, so Live asks you to save it.
+
+You can also do this by hand, in one line each: `note stamp loop` sets the stamp loop at the current bar, and
+`note stamp unloop` puts the old loop back. `loop` works only during Arrangement playback with `note.stampLoop` on;
+`unloop` puts the old loop back only if you have not moved the loop since. When there is nothing to do, they do
+nothing and say so in the log.
 
 **Where the note lives.** The note is plain Markdown. It is stored as a file in cmdAbl's data folder (the Extensions
 Data folder in Ableton's Application Support) and linked to the Set by an id that is saved inside the Set. Viewing
