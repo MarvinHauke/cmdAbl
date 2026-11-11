@@ -14,6 +14,8 @@ Live's Extension Host) with a small companion Remote Script (Python) for what th
 - `remote-script/cmdAbl/` — the Remote Script (selection and other LOM-only operations).
 - `ui/` — the dialog pages (palette, pick list, messages), inlined into the bundle at build time.
 - `docs/feature-plans/` — design plans; `0004` is the umbrella for the command platform.
+  `docs/feature-plans/GLOSSARY.md` — the shared language (terms to use and to avoid); use its words in
+  plans, docs and code.
   `docs/guides/` — how releasing, the pakabl index and CI work. `docs/sdk-tree.md` — SDK reference.
 
 ## Rules that hold everywhere

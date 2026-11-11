@@ -1,7 +1,7 @@
 # `note`: one Markdown note per Set
 
 **Status:** Released in 0.1.3 (2026-10-22, PR #17). Live-tested, including Save As and Collect All
-and Save.
+and Save. Next: stamps (timestamped entries, note-1), decided 2026-11-11.
 Trigger: the user wants a note per Set for general reminders, written in Markdown.
 
 **Parent:** [0004](0004-command-platform.md)
@@ -126,14 +126,46 @@ full text.
   - a table editor;
   - a reminder when the Set opens.
 
-## Timestamped entries (user, 2026-11-04; planned for 0.1.6)
+## Stamps: timestamped entries (user finding note-1, decided 2026-11-11; for 0.2.x)
 
-- The page opens in view mode. `e` enters edit mode and adds a Markdown timestamp line; Esc goes back
-  to view mode; another `e` adds the next timestamp and entry; Esc in view mode closes the page.
-- Option in the note's settings: after leaving edit mode, edit mode opens again for a while (a loop).
-- Later: tie an entry to an Ableton locator (needs the bridge; no locator writes without a plan,
-  since the decisions above keep the Set clean).
-- Open: the key (`e`, `i`, or `m` for mark), and the timestamp: wall-clock time or song position.
+Terms: [GLOSSARY.md](GLOSSARY.md) (stamp, song position). "Stamp" for now (user, 2026-11-11); "mark" with "pick" for pick lists is to discuss again.
+
+**Decisions:**
+1. **Keys in view mode:** `e` edits the whole note (as today); **`m` adds a stamp**: a new entry at the end
+   of the note, with the text below its heading. `m` then Esc without typing adds nothing.
+2. **Stored heading, one fixed format** so stamps can be found again:
+   - song running: `### @12.3.1 · 2026-11-11 14:32` (`@` + Live's bar.beat.sixteenth, then date and time);
+   - song stopped: `### 2026-11-11 14:32`.
+   The song position comes from the Remote Script (`Song.get_current_beats_song_time()` gives "12.3.1.1" directly; the SDK has none). When the
+   script doesn't answer, the heading falls back to date and time and the footer says "no song position:
+   Remote Script not running". In Session View playback the song position is stamped too.
+   A setting **`note.stampStyle`** may later change how a stamp heading looks in view mode, never the
+   stored text.
+3. **Esc in edit (both `e` and `m`) returns to view and keeps the text;** Esc in view closes and saves. A
+   **Discard** button (or Cmd+Z in the text box) throws changes away. This replaces "a second Esc
+   discards" (user: he'll report how it feels; a vim mode for the note is a later idea).
+4. **Loop while writing:** with **`note.stampLoop`** (default **on**), `m` during Arrangement playback sets
+   the arrangement loop to start at the current bar, **`note.loopBars`** long (default 4), and switches it
+   on, so the music repeats while typing. Esc puts the loop back as it was (on/off, start, length), and
+   playback goes on. If the loop was moved by hand meanwhile, it is left alone. In Session playback the
+   loop isn't touched (it doesn't loop clips). Through the Remote Script (`Song.loop`, `loop_start`,
+   `loop_length`); the SDK has no Set loop. Accepted: the Set counts as changed (Live asks to save). The Live 13 spike showed the loop write leaves no
+   undo step.
+
+**Later:**
+- **Jump to a stamp:** Enter or a click on an `@12.3.1` heading in view mode moves Live's playhead there
+  (Remote Script, a transport change, not the Set's content); with it maybe `note jump 12.3.1`. Locators
+  only if the user wants stamps in the Set.
+- **Session stamps with `s`:** an entry linked to a scene, to jump to that scene. Needs a stable scene
+  link that survives rename and move. **Live 13 spike (2026-11-11): `Scene` has no `get_data`/`set_data`**
+  (only Song and Track), so the link needs another design (open). Built together with [0017](0017-scripts-and-triggers.md) phase 2,
+  which needs the same scene link.
+- The old idea "edit mode opens again for a while" was a loop in this sense (decision 4); it is
+  replaced by `note.stampLoop`.
+
+**Rollout:** cmdabl-bridge (song position and loop ops, with tests), cmdabl-ui (`m`, the Esc change,
+Discard, the footer note; browser-checked), cmdabl-modules (the settings, writing the heading,
+calling the ops), cmdabl-docs (using.md). Gear on the note page with 0019 phase 6.
 
 ## Phased rollout
 

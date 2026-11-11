@@ -5,7 +5,7 @@ known issues. Maintained by the architect. The order of the next features and ho
 each other is in the [plan index](README.md#next-in-dependency-order); design decisions live in the
 numbered plans. Finished work is in the git history, not here.
 
-_Last updated: 2026-11-11 (0.1.6 released; Live 13 next)._
+_Last updated: 2026-11-11 (0.1.6 released; user findings planned; Live 13 next)._
 
 ## Released
 
@@ -25,12 +25,25 @@ All releases were tested in Live, including the installed `.ablx`.
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
-- **Next: Live 13** (user, 2026-11-10; Live 13.0b25 installed). First step: a compatibility check (SDK
-  version and `minimumApiVersion`, the Remote Script under Live 13's Python, the sandbox,
-  `LIVE_MANUAL_VERSION`), then decide what changes for 0.2.x. Undiscussed user findings that fit here:
-  tag-0 (merge `tag -l` and `tag -e`), note-2 (Live 13's side panel), Midi engine-1 (`docs/userfindings.md`, local).
-- **On `docs/after-0.1.6`:** this cleanup, a frame for screenshots on the docs site, and `npm run docs:check`
-  with an optional pre-push hook (cmdabl-docs, user 2026-11-11).
+- **Live 13 check (2026-11-11, Live 13.0b25):** the installed 0.1.6 and the dev build run (same Extension
+  Host 1.0.0); Remote Script 0.1.14 answers (median 49–73 ms); `find`, `mute`, `vol`, `tag` pass through MCP.
+  Dev setup: Live 13 needs Settings → Extensions → Developer Mode, and `.env`'s `EXTENSION_HOST_PATH` must
+  point to the Live 13 app. A Remote Script change needs a Live restart (toggling the control surface
+  keeps the old Python modules). Spikes (branch `spike/live13`, results in
+  [research/live13-spikes.md](research/live13-spikes.md)):
+  - note-2: **not reachable**: only Browser, Arranger, Session, Detail(/Clip, /DeviceChain) views; no side
+    panel, Help View or Lessons.
+  - `Scene` has **no** `get_data`/`set_data` (Song and Track do): session stamps (0013) and 0017 phase 2
+    need another scene link.
+  - Song position: `get_current_beats_song_time()` gives "4.4.1.42"; setting the loop leaves no undo step.
+  - Undo and speed: Python writes at 30 Hz give **1 undo step** per move (plain, gesture, or one undo step
+    around the run) and write 64 parameters in under 1.5 ms; SDK writes give one undo step per tick even
+    in transactions and take 22–53 ms. **Morph writes run in the Remote Script** (0025).
+  - Open: what else changes for 0.2.x (SDK `minimumApiVersion` stays 1.0.0 for now).
+- **User findings discussed 2026-11-11:** tag-0 → [0010](0010-tag-editing.md) "Tag list and tag editor"
+  (after 0019 phase 4); Midi engine-1/-2 → [0024](0024-param.md) `param` and [0025](0025-morph.md) morph
+  (drafts; pickup modes still to discuss). Shared terms: [GLOSSARY.md](GLOSSARY.md). note-1 → [0013](0013-set-note.md) "Stamps". Still open: the option review of
+  all modules (rule in 0010).
 - **Open from 0.1.6:**
   - `map -l` shows the expansion arrow only for one-word bindings, not `;` chains (`api.commands.expand(line)` would be the way, undecided).
   - Old docs images from a bigger Set: find-nested, vol-clip, vol-stop (retake when a Set with racks is open).

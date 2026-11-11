@@ -29,6 +29,9 @@ plan*. Naming them prevents scope creep and signals "deferred", not "forgotten".
 
 ## Architecture
 
+<!-- Draw a Mermaid diagram (```mermaid) where it explains a flow, a state or a dependency; not as decoration.
+GitHub and the docs site both render it. -->
+
 The actual design: new types/modules, how they connect to existing code (name real files and
 functions), and why this shape rather than alternatives you considered. This is the section
 most worth re-reading mid-implementation — keep it concrete enough to code from.
