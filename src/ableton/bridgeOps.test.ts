@@ -291,7 +291,7 @@ test("setId reads or creates through the writing op with the token, and every pr
 
 import { transport, setLoop } from "./bridgeOps.js";
 
-const tr = { playing: true, session: false, pos: "12.3.1.1", time: 46.5, barStart: 44, barLen: 4, loop: { on: true, start: 8, length: 16 } };
+const tr = { playing: true, session: false, pos: "12.3.1.1", time: 46.5, barStart: 44, barLen: 4, songLength: 64, loop: { on: true, start: 8, length: 16 } };
 
 test("transport returns the checked reply; every problem is null", async () => {
   const bridge = createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr } }) } });
@@ -305,10 +305,21 @@ test("transport returns the checked reply; every problem is null", async () => {
 });
 
 test("setLoop sends the loop with the token and returns the read-back", async () => {
+  const want = { on: true, start: 4, length: 8 };
   const bridge = createFakeBridge({ ops: { loop_set: (a) => ({ ok: true, value: { loop: { on: a.on, start: a.start, length: a.length } } }) } });
-  assert.deepEqual(await setLoop(bridge, { on: true, start: 4, length: 8 }), { on: true, start: 4, length: 8 });
-  assert.deepEqual(bridge.calls, [{ op: "loop_set", args: { on: true, start: 4, length: 8 }, changes: true, token: true }]);
-  assert.equal(await setLoop(createFakeBridge({}), { on: true, start: 4, length: 8 }), null);
-  assert.equal(await setLoop(createFakeBridge({ ops: { loop_set: () => fail(1, "x") } }), { on: true, start: 4, length: 8 }), null);
-  assert.equal(await setLoop(createFakeBridge({ ops: { loop_set: () => ({ ok: true, value: { loop: { on: 1 } } }) } }), { on: true, start: 4, length: 8 }), null);
+  assert.deepEqual(await setLoop(bridge, want), { ok: true, loop: want });
+  assert.deepEqual(bridge.calls, [{ op: "loop_set", args: want, changes: true, token: true }]);
+  const none = await setLoop(createFakeBridge({}), want);
+  assert.equal(none.ok, false);
+  assert.equal(none.ok === false && none.code, 5);
+  assert.deepEqual(await setLoop(createFakeBridge({ ops: { loop_set: () => fail(1, "Live refused the loop") } }), want), { ok: false, code: 1, text: "Live refused the loop" });
+  assert.deepEqual(await setLoop(createFakeBridge({ ops: { loop_set: () => fail(5, "old") } }), want), { ok: false, code: 5, text: "old" });
+  const bad = await setLoop(createFakeBridge({ ops: { loop_set: () => ({ ok: true, value: { loop: { on: 1 } } }) } }), want);
+  assert.equal(bad.ok === false && bad.code, 1);
+});
+
+test("transport carries songLength, 0 from an older script", async () => {
+  const withLen = createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr } }) } });
+  assert.equal((await transport(withLen))?.songLength, 64);
+  assert.equal((await transport(createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr, songLength: undefined } }) } })))?.songLength, 0);
 });

@@ -544,6 +544,8 @@ export interface TransportState {
   time: number;
   barStart: number;
   barLen: number;
+  /** Song length in beats (Live counts the loop's end in it); 0 when an older script did not say. */
+  songLength: number;
   loop: LoopState;
 }
 
@@ -566,21 +568,26 @@ export async function transport(bridge: Bridge): Promise<TransportState | null> 
     const v = reply.value;
     const loop = readLoop(v.loop);
     if (!loop || typeof v.playing !== "boolean" || typeof v.session !== "boolean" || typeof v.pos !== "string" || !isNum(v.time) || !isNum(v.barStart) || !isNum(v.barLen) || v.barLen <= 0) return null;
-    return { playing: v.playing, session: v.session, pos: v.pos, time: v.time, barStart: v.barStart, barLen: v.barLen, loop };
+    return { playing: v.playing, session: v.session, pos: v.pos, time: v.time, barStart: v.barStart, barLen: v.barLen, songLength: isNum(v.songLength) ? v.songLength : 0, loop };
   } catch {
     return null;
   }
 }
 
+export type SetLoopResult = { ok: true; loop: LoopState } | { ok: false; code: 1 | 5; text: string };
+
 /**
- * Set the arrangement loop (a writing op). Resolves to the loop as Live has it afterwards, or null (no script,
- * an old one, a refused value, a failed read-back). Never throws.
+ * Set the arrangement loop (a writing op). Resolves to the loop as Live has it afterwards, or a failure that
+ * keeps the reason: code 5 when there is no script or it is too old, code 1 with Live's text when Live
+ * refused, did not keep the value, or did not answer in time. Never throws.
  */
-export async function setLoop(bridge: Bridge, loop: LoopState): Promise<LoopState | null> {
+export async function setLoop(bridge: Bridge, loop: LoopState): Promise<SetLoopResult> {
   try {
     const reply = await bridge.request("loop_set", { on: loop.on, start: loop.start, length: loop.length }, { changes: true, token: true });
-    return reply.ok ? readLoop(reply.value.loop) : null;
-  } catch {
-    return null;
+    if (!reply.ok) return { ok: false, code: reply.code === 5 ? 5 : 1, text: reply.text };
+    const read = readLoop(reply.value.loop);
+    return read ? { ok: true, loop: read } : { ok: false, code: 1, text: "Live's answer to the loop change was not understood" };
+  } catch (e) {
+    return { ok: false, code: 1, text: `the loop change failed: ${e instanceof Error ? e.message : String(e)}` };
   }
 }

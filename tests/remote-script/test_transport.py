@@ -35,7 +35,7 @@ class Transport(unittest.TestCase):
         self.assertTrue(r["ok"])
         self.assertEqual(r["result"], {
             "playing": True, "session": False, "pos": "12.3.1.1", "time": 46.5,
-            "barStart": 44.0, "barLen": 4.0, "loop": {"on": True, "start": 8.0, "length": 16.0},
+            "barStart": 44.0, "barLen": 4.0, "songLength": 0.0, "loop": {"on": True, "start": 8.0, "length": 16.0},
         })
 
     def test_bar_grid_follows_the_signature(self):
@@ -100,6 +100,41 @@ class LoopSet(unittest.TestCase):
         with self.assertRaises(OpError):
             loop_set(s, {"on": True, "start": 8, "length": 4})
         self.assertEqual((s.loop_start, s.loop), (2.0, False))
+
+    def test_start_beyond_the_song_length_is_retried_length_first(self):
+        class Strict(FakeSong):
+            """Refuses loop_start beyond the song length, which includes the loop's end."""
+            @property
+            def song_length(self):
+                return max(32.0, self.loop_start + self.loop_length)
+
+            def __setattr__(self, k, v):
+                if k == "loop_start" and v > self.song_length:
+                    raise RuntimeError("Cannot set the Loopstart behind the Songlength")
+                object.__setattr__(self, k, v)
+        s = Strict()
+        object.__setattr__(s, "loop_start", 0.0)
+        object.__setattr__(s, "loop_length", 4.0)
+        r = loop_set(s, {"on": True, "start": 40, "length": 8})
+        self.assertEqual(r["loop"]["start"], 40.0)
+        self.assertEqual(transport(s, {})["songLength"], 48.0)
+
+    def test_failed_restore_is_named_in_the_error(self):
+        class Locked(FakeSong):
+            def __setattr__(self, k, v):
+                if k in ("loop_start", "loop_length") and getattr(self, "locked", False):
+                    if not getattr(self, "first", False):
+                        self.first = True  # the first write lands, every later one is refused
+                        object.__setattr__(self, k, v)
+                        return
+                    raise RuntimeError("Cannot set the Loopstart behind the Songlength")
+                object.__setattr__(self, k, v)
+        s = Locked()
+        s.loop_start, s.loop_length = 2.0, 4.0
+        s.locked = True
+        with self.assertRaises(OpError) as cm:
+            loop_set(s, {"on": True, "start": 50, "length": 8})
+        self.assertIn("the old loop could not be put back", cm.exception.text)
 
     def test_pos_is_built_from_the_fields(self):
         class BT(object):

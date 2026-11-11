@@ -228,6 +228,7 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
       lom("Song", "song", "loop", "get", "bool"),
       lom("Song", "song", "loop_start", "get", "float"),
       lom("Song", "song", "loop_length", "get", "float"),
+      lom("Song", "song", "song_length", "get", "float", "Live counts the loop end in it; a loop_start beyond it is refused"),
       lom("Song", "song", "return_tracks", "get", "list of Track"),
       lom("Track", "track", "playing_slot_index", "get", "int", "session = any track with a value >= 0"),
     ],
