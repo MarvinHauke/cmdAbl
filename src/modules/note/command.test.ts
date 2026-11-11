@@ -14,7 +14,7 @@ function setup(options: Parameters<typeof createFakeApi>[0] = {}) {
   const run = (opts: Record<string, string | true> = {}) =>
     fake.commands[0]!.run!({ path: ["note"], options: opts, args: [] } as never, undefined as never) as Promise<Result>;
   /** What the page was given. */
-  const given = () => JSON.parse(/const NOTE = (.*);<\/script>/.exec(fake.dialogs.at(-1)!.html)![1]!);
+  const given = () => JSON.parse(/const NOTE = (.*);<\/script>/.exec(fake.livePages.at(-1)!.html)![1]!);
   return { fake, run, given };
 }
 
@@ -148,7 +148,7 @@ test("a note text with </script> or a placeholder-like text reaches the page esc
   const { run, given, fake } = setup({ setId: "abc", files: { "abc.md": text } });
   await run();
   assert.equal(given().text, text);
-  assert.doesNotMatch(fake.dialogs[0]!.html.replace(TEMPLATE.slice(-9), ""), /<\/script><b>/);
+  assert.doesNotMatch(fake.livePages[0]!.html.replace(TEMPLATE.slice(-9), ""), /<\/script><b>/);
 });
 
 test("the retry after a failed save: the page answers the kept text unchanged (it was told changed: true) and it is written", async () => {
@@ -177,12 +177,12 @@ function stampSetup(options: Parameters<typeof createFakeApi>[0] = {}, answers: 
   const loops: Array<{ on: boolean; start: number; length: number }> = [];
   const setLoop = fake.api.set.setLoop;
   fake.api.set.setLoop = async (l) => (loops.push(l), setLoop(l));
-  fake.api.dialog = async (html) => {
+  fake.api.ui.livePage = (async (_n: string, html: string) => {
     given.push(JSON.parse(/const NOTE = (.*);<\/script>/.exec(html)![1]!));
     // Where the loop is while the page is open.
     given.at(-1)!.loopWhileOpen = fake.transport?.loop;
     return answers.shift() ?? null;
-  };
+  }) as never;
   const run = (opts: Record<string, string | true> = {}) => {
     const stamp = opts.stamp === true;
     return fake.commands[stamp ? 1 : 0]!.run!({ path: [stamp ? "stamp" : "note"], options: {}, args: [] } as never, undefined as never) as Promise<Result>;
@@ -209,12 +209,12 @@ test("the loop is put back even when the save fails; a moved loop is left alone"
   assert.deepEqual(failing.fake.transport!.loop, PLAYING.loop);
 
   const moved = stampSetup({ setId: "abc", transport: clone(PLAYING) }, [ans("t")]);
-  const dialog = moved.fake.api.dialog;
-  moved.fake.api.dialog = async (...a) => {
+  const dialog = moved.fake.api.ui.livePage;
+  moved.fake.api.ui.livePage = (async (...a: Parameters<typeof dialog>) => {
     const r = await dialog(...a);
     moved.fake.transport!.loop = { on: true, start: 100, length: 8 }; // the user moved it by hand
     return r;
-  };
+  }) as never;
   await moved.run({ stamp: true });
   assert.deepEqual(moved.fake.transport!.loop, { on: true, start: 100, length: 8 });
 });
@@ -313,4 +313,86 @@ test("a failed save in the loop stops it with exit 1 and restores the loop", asy
   assert.equal(((await s.run({ stamp: true }))!).code, ExitCode.FAILURE);
   assert.equal(s.given.length, 1);
   assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
+});
+
+// --- stamp --loop / unloop and the live page -----------------------------------------------------------------
+
+function loopSetup(transport: object | null = PLAYING, settings: Record<string, unknown> = {}) {
+  const fake = createFakeApi({ setId: "abc", transport: transport === null ? null : clone(transport as never), settings } as never);
+  registerNote(fake.api, TEMPLATE, () => FIXED);
+  const stamp = fake.commands.find((c) => c.name === "stamp")!;
+  const sub = (opts: Record<string, true>) => stamp.run!({ path: ["stamp"], options: opts, args: [] } as never, undefined as never) as Promise<Result>;
+  return { fake, loop: () => sub({ loop: true }), unloop: () => sub({ unloop: true }), both: () => sub({ loop: true, unloop: true }) };
+}
+
+test("stamp --loop sets the loop and unloop puts the old one back", async () => {
+  const s = loopSetup();
+  assert.equal(((await s.loop())!).code, ExitCode.OK);
+  assert.deepEqual(s.fake.transport!.loop, { on: true, start: 44, length: 16 });
+  assert.equal(((await s.unloop())!).code, ExitCode.OK);
+  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
+});
+
+test("a second stamp --loop keeps the first old loop", async () => {
+  const s = loopSetup();
+  await s.loop();
+  await s.loop();
+  await s.unloop();
+  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
+});
+
+test("unloop leaves a loop the user moved; --unloop without --loop, and loop with nothing to do, are quiet no-ops", async () => {
+  const s = loopSetup();
+  const r = (await s.unloop())!;
+  assert.equal(r.code, ExitCode.OK);
+  assert.match(r.log![0]!, /nothing to restore/);
+  await s.loop();
+  s.fake.transport!.loop = { on: true, start: 100, length: 8 };
+  assert.match(((await s.unloop())!).log![0]!, /left alone/);
+  assert.deepEqual(s.fake.transport!.loop, { on: true, start: 100, length: 8 });
+  assert.match(((await s.unloop())!).log![0]!, /nothing to restore/); // forgotten after that
+
+  for (const t of [{ ...PLAYING, playing: false }, { ...PLAYING, session: true }, null]) {
+    const n = loopSetup(t);
+    const q = (await n.loop())!;
+    assert.equal(q.code, ExitCode.OK);
+    assert.match(q.log![0]!, /nothing to do/);
+  }
+  const off = loopSetup(PLAYING, { "note.stampLoop": false });
+  assert.match(((await off.loop())!).log![0]!, /nothing to do/);
+  assert.deepEqual(off.fake.transport!.loop, PLAYING.loop);
+});
+
+test("the note page is a live page that may run stamp --loop/unloop and serves the heading", async () => {
+  const fake = createFakeApi({ setId: "abc", transport: clone(PLAYING), dialogAnswer: ans(null) });
+  registerNote(fake.api, TEMPLATE, () => FIXED);
+  await fake.commands[0]!.run!({ path: ["note"], options: {}, args: [] } as never, undefined as never);
+  const page = fake.livePages[0]!;
+  assert.deepEqual(page.run, ["stamp"]);
+  const heading = page.routes.heading as (q: never) => Promise<unknown>;
+  assert.deepEqual(await heading({} as never), { heading: "### @12.3.1 · 2026-11-11 14:05" });
+});
+
+test("safety net: a loop the page set (stamp --loop) is put back when the page closes", async () => {
+  const s = loopSetup();
+  const pages = s.fake.api.ui.livePage;
+  s.fake.api.ui.livePage = (async (...a: Parameters<typeof pages>) => {
+    await s.loop(); // what the page's run does
+    return pages(...a);
+  }) as never;
+  await s.fake.commands.find((c) => c.name === "note")!.run!({ path: ["note"], options: {}, args: [] } as never, undefined as never);
+  assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
+});
+
+test("--loop with --unloop is a usage error; a failing script gives exit 5", async () => {
+  const s = loopSetup();
+  assert.equal(((await s.both())!).code, ExitCode.USAGE);
+  s.fake.api.set.setLoop = async () => null;
+  assert.equal(((await s.loop())!).code, ExitCode.UNAVAILABLE);
+});
+
+test("the note module registers through the real registry (tree rules hold) with stamp --loop/--unloop parsing", async () => {
+  const { assertDocumented, declaredBy } = await import("../shared/docs.testkit.js");
+  const activate = (api: Parameters<typeof registerNote>[0]): void => registerNote(api, TEMPLATE);
+  assertDocumented(declaredBy(activate), ["note", "stamp"]);
 });

@@ -73,7 +73,7 @@ export function shouldRestoreLoop(current: StampLoop | null, set: StampLoop): bo
   return current !== null && sameLoop(current, set);
 }
 
-/** The page's answer: `text` null = unchanged, "" = cleared; `then` = what follows the save: "stamp" (m), "view" (Esc in stamp edit). */
+/** The page's answer: `text` null = unchanged, "" = cleared; `then` = what follows the save: "stamp" (s), "view" (Esc in stamp edit). */
 export type PageThen = "stamp" | "view" | null;
 
 export interface PageAnswer {
