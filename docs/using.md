@@ -112,16 +112,19 @@ When a name matches more than one object, cmdAbl asks. It never picks one for yo
 The pick list opens when a name matches more than one object, or when nothing matches and cmdAbl has close
 suggestions.
 
-- **Filter.** Type to narrow the rows. `Space` types a space.
-- **Move.** `↑` and `↓` move through the rows. In a list where you can mark rows, the first arrow only enters the
-  list, so `↓` and then `Space` marks the first row.
-- **Mark.** In a list where you can mark rows, such as the lists of `mute`, `solo` and `arm`, `Tab` marks a row, and
-  so does `Space` once you are in the list. Only the marked rows are targets. The row under the cursor is not one
+- **Filter.** Type to narrow the rows. A `Space` typed in the filter is text.
+- **Move.** `↑` and `↓` move through the rows. `↓` enters the list from the filter. In a list where you can mark
+  rows, the first arrow only enters the list, so `↓` and then `Space` marks the first row.
+- **Mark.** In a list where you can mark rows, such as the lists of `mute`, `solo` and `arm`, `Space` marks a row once
+  you are in the list. `Tab` does not mark. Only the marked rows are targets. The row under the cursor is not one
   until you mark it.
+- **Fill the prompt.** In a pick list that offers it, `Tab` writes the row into the prompt. It does nothing in the
+  other lists.
 - **Choose.** In a list where you can mark rows, `Enter` runs the command on the marked rows. With nothing marked,
   `Enter` runs nothing, the list stays open and the hint asks you to mark a row. In a list where you pick one row,
   such as for `goto`, `Enter` takes the row under the cursor.
-- **Cancel.** `Esc` closes the list. Nothing runs and nothing is remembered.
+- **Cancel.** `Esc` in the list goes back to the filter. A second `Esc` closes the list. Nothing runs and nothing
+  is remembered.
 
 The line above the filter shows the command that `Enter` will run, with the exact paths of the objects.
 
@@ -251,7 +254,7 @@ This section goes from tagging a track to the tag board, `tag -e` and `tag -r`, 
 - `tag /Lead fx synth` switches `fx` and `synth` on for Lead, or off where they are on.
 - `tag --set 1 /Bass fx` makes sure Bass has `fx`. `tag --set 0 /Bass fx` removes it.
 - `tag /Lead` opens a list of the Set's tags. Its buttons show which ones Lead has. Mark the tags to switch with
-  `Tab`, then press `Enter`.
+  `Space`, then press `Enter`.
 
 To add a tag that does not exist yet, type its name in that list. The list then shows `+ new tag "<name>"` as its
 last row.
@@ -402,7 +405,7 @@ any click except Close, cancels the warning. The footer shows the main keys.
 
 - `tag -e fx` opens a pick list of all regular and return tracks. A "tagged fx" button is lit where a track has the
   tag.
-- Mark tracks with `Tab` and press `Enter`. `fx` switches on or off for each marked track. `Esc` changes nothing.
+- Mark tracks with `Space` and press `Enter`. `fx` switches on or off for each marked track. `Esc` changes nothing.
 - A bare `tag -e` means `tag -e #`: it opens the tag list first. That list takes one row: `Enter` on a tag opens its
   track list at once, and a new name plus `Enter` creates the tag.
 - `--edit` cannot be combined with a target, names, `--list` or `--set`.
@@ -479,17 +482,49 @@ shows how cmdAbl's ports and Remote Script operations map to the Live Object Mod
 
 - `note` shows the note, rendered: headings, lists, checkboxes, tables, code, bold and italic. Links show as text.
 - `note -e` (long form `--edit`) opens it for editing. A Set without a note opens in edit mode on an empty page.
+- `note -m` (long form `--stamp`) adds a stamp. See [Stamps](#stamps-a-timestamped-entry). `note -e -m` is the same
+  as `note -m`.
 
-![The note window in view mode: the heading Mix notes, a table with Track and Todo columns, and a checklist with one open and one done item. The footer says e edit, Esc close, with Edit and Close buttons](assets/images/note-view.png)
+![The note window in view mode: the heading Mix notes, a table with Track and Todo columns, and a checklist with one open and one done item. The footer says e edit, m stamp, Esc close, with Edit, Close and Stamp buttons](assets/images/note-view.png)
 
-![The same note in edit mode: the Markdown source with its heading, table and checklist. The footer says Cmd+S save and close, Esc close (warns when unsaved), with Save and Cancel buttons](assets/images/note-edit.png)
+![The same note in edit mode: the Markdown source with its heading, table and checklist. The footer says Cmd+S save and close, Esc back to view, Discard drops this edit, with Save, View and Discard buttons](assets/images/note-edit.png)
 
 Keys in the note window:
 
 - `e` switches from view to edit.
+- `m` in view adds a stamp (see below).
 - `Cmd+S` or **Save** saves and closes.
-- `Esc` in view closes the note.
-- `Esc` in edit with unsaved changes warns first. A second `Esc` discards the changes.
+- `Esc` in edit goes back to view and keeps your text.
+- `Esc` in view closes the note and saves your changes, if there are any.
+- **Discard** throws your changes away. When there are changes, it asks first: click **Discard** again to confirm. The question goes away after a few
+  seconds, and any key keeps your edit.
+
+### Stamps: a timestamped entry
+
+A **stamp** is a new entry at the end of the note, under a heading that says when you wrote it. Use it to jot down
+an idea while the music plays.
+
+- Press `m` in view, or run `note -m`. The note opens in edit mode with the heading added and the cursor below it.
+  Type your text below the heading.
+- While the song plays, the heading reads `@bar.beat.sixteenth · date time`, for example `@12.3.1 · 2026-11-11 14:32`.
+  `@12.3.1` is the song position. While the song is stopped, the heading is only the date and time.
+- Without the [Remote Script](remote-script.md), cmdAbl cannot read the song position. The heading is then the date
+  and time, and a hint says that the Remote Script is not running.
+- If you type nothing below the heading, no entry is added.
+- `Esc` goes back to view and keeps the text. `Esc` in view closes the note and saves your changes. `Cmd+S` saves too.
+
+**The loop while you write.** During Arrangement playback, `m` also sets Live's arrangement loop to start at the
+current bar and switches it on, so the music repeats while you type. When the note closes, the old loop comes back
+(on or off, start and length), unless you moved the loop yourself in the meantime. Then cmdAbl leaves it alone. Two
+settings control this:
+
+| Setting | Default | What it does |
+| ------- | ------- | ------------ |
+| `note.stampLoop` | on | Sets the loop while you write a stamp. |
+| `note.loopBars` | 4 | The length of that loop, in bars. |
+
+The loop is never touched while a Session clip plays. Setting the loop needs the Remote Script, and it makes Live
+count the Set as changed, so Live asks you to save it.
 
 **Where the note lives.** The note is plain Markdown. It is stored as a file in cmdAbl's data folder (the Extensions
 Data folder in Ableton's Application Support) and linked to the Set by an id that is saved inside the Set. Viewing
@@ -526,7 +561,7 @@ the button, the line runs. `midi monitor` shows what your controller sends.
 
 **What you need.**
 
-- The [Remote Script](remote-script.md), version 0.1.14 or newer. After an update, run `cmdabl setup`, then restart
+- The [Remote Script](remote-script.md), version 0.1.15 or newer. After an update, run `cmdabl setup`, then restart
   Live.
 - Your controller as the **Input** of the cmdAbl row under **Control Surface** in Live's **Settings → Tempo & MIDI →
   MIDI**. Live has no other way to pass a controller to a Remote Script.

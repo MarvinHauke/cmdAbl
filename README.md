@@ -27,7 +27,7 @@
 - **A Mac.** cmdAbl has been tested on macOS only.
 - **A Live beta with Extensions.** Extensions are Ableton's new way to add features to Live. Extensions are in Live's beta (Live 12.4.16, the current non-beta release, has none). This release is tested with the Live 12.4.25 beta. cmdAbl is built against Extensions SDK 1.0.0-beta.1.
 - **[Karabiner-Elements](https://karabiner-elements.pqrs.org) (optional).** A free keyboard tool that lets the `:` key open cmdAbl. Without it, you open cmdAbl from a right-click menu.
-- **The Remote Script.** A small helper (version 0.1.14) that ships inside cmdAbl. It lets cmdAbl select tracks and keep tags. The setup page copies it for you.
+- **The Remote Script.** A small helper (version 0.1.15) that ships inside cmdAbl. It lets cmdAbl select tracks and keep tags. The setup page copies it for you.
 
 ## Install in 4 steps
 

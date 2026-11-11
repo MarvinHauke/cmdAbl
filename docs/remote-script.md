@@ -16,6 +16,9 @@ The Extensions SDK cannot do some things that cmdAbl needs. The Remote Script do
   with the Set. `tag`, the tag board and targets such as `#fx` use it.
 - **The Set's id.** `note` needs a name for the Set that stays the same when the Set is saved, reopened or saved
   under another name. The script keeps an id inside the Set for this.
+- **Song position and loop.** The stamps of `note` need the song position, and the loop while you write needs to set the
+  arrangement loop. The script reads the position (`transport`, a read) and sets the loop (`loop_set`, a write that
+  needs the token, see [The access token](#the-access-token)).
 - **Facts the SDK does not show.** Live can refuse to arm a track, for example a MIDI track whose input device is
   missing. The SDK reads back "armed" in that case. The script reads the real state, so `arm` can report the track
   as failed.
@@ -51,8 +54,8 @@ After you update cmdAbl, open `cmdabl setup` and click **Update** in the Remote 
 `cmdabl setup script`), then **restart Live**. Live keeps the script it loaded when it
 started, so a new copy in the User Library does nothing until Live restarts.
 
-The script of this release is version 0.1.14. The setup page compares that version with the one that is running and
-says whether a restart is needed. For example: "Restart Live once to load Remote Script 0.1.14."
+The script of this release is version 0.1.15. The setup page compares that version with the one that is running and
+says whether a restart is needed. For example: "Restart Live once to load Remote Script 0.1.15."
 
 ## Check it
 
@@ -60,12 +63,12 @@ Run `cmdabl bridge` in the palette. It sends one request to the Remote Script an
 version, the response time and the operations it supports. A healthy reply means the script is running and
 answering.
 
-![The cmdabl bridge result: Remote Script 0.1.14 is running, with its protocol version, response time and operations](assets/images/bridge.png)
+![The cmdabl bridge result: Remote Script 0.1.15 is running, with its protocol version, response time and operations](assets/images/bridge.png)
 
 *`cmdabl bridge` on a current install.*
 
 If the running script is not the version this cmdAbl ships, the reply names both, for example
-`Remote Script 0.1.5 (this extension ships 0.1.14) is running`. Update the script as above.
+`Remote Script 0.1.5 (this extension ships 0.1.15) is running`. Update the script as above.
 
 ## Messages
 
@@ -100,7 +103,7 @@ These lines are not in `cmdabl log`, which shows the extension's own lines.
 
 ## The access token
 
-Some operations change the Set: they set the mute or solo of a chain, or write tags. Before the script runs such an
+Some operations change the Set: they set the mute or solo of a chain, write tags, or set the arrangement loop. Before the script runs such an
 operation, it checks a token that the extension sends with the request.
 
 - **Where it lives.** When Live starts, the script creates a new random token and writes it to
