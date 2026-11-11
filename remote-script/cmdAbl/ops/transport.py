@@ -9,7 +9,8 @@ transport   Args: {} (a read; no token).
             barLen = signature_numerator * 4 / signature_denominator; barStart = floor(time / barLen) * barLen.
             Limit: only the current time signature is used (no signature changes along the timeline).
 loop_set    Args: {on: bool, start: number >= 0, length: number > 0}. (A writing op: it needs the token.)
-            Result: {loop: {on, start, length}}, read back after the write; `failed` if Live differs.
+            Result: {loop: {on, start, length}}; start and length are read back after the write (`failed` if Live differs),
+            `on` is the requested value (Live may apply song.loop on the next tick, so a same-call read can lag).
 """
 
 import math
@@ -63,7 +64,8 @@ def transport(song, args):
 
 
 def _same(got, want):
-    return got["on"] == want["on"] and abs(got["start"] - want["start"]) <= 1e-6 and abs(got["length"] - want["length"]) <= 1e-6
+    # `on` is not compared: Live may apply song.loop on the next tick, so a read in the same call can lag.
+    return abs(got["start"] - want["start"]) <= 1e-6 and abs(got["length"] - want["length"]) <= 1e-6
 
 
 def _write(song, loop):
@@ -135,4 +137,5 @@ def loop_set(song, args):
         raise _failed(song, prev, "Live refused the loop: %s: %s" % (type(e).__name__, e))
     if not _same(got, want):
         raise _failed(song, prev, "Live did not keep the loop")
+    got["on"] = on
     return {"loop": got}

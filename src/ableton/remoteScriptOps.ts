@@ -236,7 +236,7 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
   },
   {
     name: "loop_set",
-    summary: "Sets the arrangement loop (on, start, length in beats) and reads it back.",
+    summary: "Sets the arrangement loop (on, start, length in beats) and reads start and length back (on = the requested value).",
     params: "{ on: bool, start: number >= 0, length: number > 0, token }",
     changesLive: true,
     via: "script",

@@ -86,6 +86,23 @@ class LoopSet(unittest.TestCase):
                 loop_set(s, bad)
         self.assertFalse(s.loop)
 
+    def test_deferred_loop_on_is_trusted(self):
+        class Deferred(FakeSong):
+            """song.loop applies on the next tick: a read right after the write still shows the old value."""
+            @property
+            def loop(self):
+                return self.__dict__.get("_shown", False)
+
+            @loop.setter
+            def loop(self, v):
+                self.__dict__["_pending"] = v
+        s = Deferred()
+        s.loop_start, s.loop_length = 0.0, 16.0
+        r = loop_set(s, {"on": True, "start": 0, "length": 16})
+        self.assertEqual(r, {"loop": {"on": True, "start": 0.0, "length": 16.0}})
+        self.assertEqual((s.loop_start, s.loop_length), (0.0, 16.0))
+        self.assertTrue(s.__dict__["_pending"])
+
     def test_fails_when_live_does_not_keep_it(self):
         class Stubborn(FakeSong):
             @property
