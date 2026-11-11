@@ -2,7 +2,7 @@ import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { PaletteItem, PaletteResult, ResultSection } from "../types.js";
 import type { CompletionData } from "../complete/complete.js";
 import { PALETTE_WIDTH, PALETTE_HEIGHT } from "./paletteSize.js";
-import type { LivePages, LiveRoutes } from "./livePage.js";
+import type { LivePages, LiveRoutes, LiveRun } from "./livePage.js";
 import { takePaletteAnswer } from "../settings/settings.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsSize, sectionsText, usesStatusLayout } from "./notifySize.js";
@@ -350,8 +350,16 @@ export interface Ui {
    * page gets `{ base, token }` where it has `const LIVE = /*LIVE_PLACEHOLDER*\/null;`. It never writes; the close string
    * still comes back as with `page`. If the server cannot serve it (port taken), the page opens as a data page with
    * `LIVE = null` and must work without polling.
+   * `options.run` (plan 0018 "Page runs") allows the page to run command lines while open: the command paths (command
+   * plus subcommands, e.g. `"stamp loop"`) it may run through `POST <LIVE.base>/run`.
    */
-  livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes): Promise<string | null>;
+  livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes, options?: LivePageOptions): Promise<string | null>;
+}
+
+/** What a module allows a live page beyond reading. */
+export interface LivePageOptions {
+  /** Command paths the page may run while open, e.g. `["stamp loop", "stamp unloop"]`. Options and arguments are free. */
+  run?: string[];
 }
 
 const dataUrl = (html: string) => `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
@@ -371,6 +379,8 @@ export function createDefaultUi(
    * runs the page's command line again. The surface itself answers null (closed) for it.
    */
   onGear?: (gear: { surface: "board" }) => void,
+  /** Builds the page-run handler for an allowlist (`pageRun.ts`); absent: pages cannot run lines. */
+  pageRun?: (allow: string[]) => LiveRun,
 ): Ui {
   const show = (name: string, html: string, width: number, height: number): Promise<string | null> =>
     // A failure is already logged by the queue; here it only counts as dismissed.
@@ -472,8 +482,9 @@ export function createDefaultUi(
       return (await show(name, html, width, height)) || null;
     },
 
-    async livePage(name, html, width, height, routes) {
-      const session = live?.open(name, html, routes) ?? null;
+    async livePage(name, html, width, height, routes, options) {
+      const allow = options?.run?.filter((p) => typeof p === "string" && p.trim() !== "");
+      const session = live?.open(name, html, routes, allow && allow.length > 0 && pageRun ? pageRun(allow) : undefined) ?? null;
       // No server (port taken) or a bad name: the same page as a data page, `LIVE = null`.
       if (!session) return (await show(name, html, width, height)) || null;
       try {

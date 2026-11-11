@@ -375,3 +375,84 @@ test("an object route without a wait function is not a route", async () => {
     assert.equal((await get("/live/monitor/nulled", auth)).status, 404);
   });
 });
+
+// ── page runs (POST /run) ───────────────────────────────────────────────────────────────────────
+
+function post(port: number, path: string, body: string, headers: Record<string, string> = {}): Promise<{ status: number; text: string }> {
+  return new Promise((resolve, reject) => {
+    const req = http.request({ host: "127.0.0.1", port, path, method: "POST", headers: { Host: `localhost:${port}`, "Content-Type": "application/json", ...headers } }, (res) => {
+      let text = "";
+      res.on("data", (c) => (text += c));
+      res.on("end", () => resolve({ status: res.statusCode ?? 0, text }));
+    });
+    req.on("error", reject);
+    req.end(body);
+  });
+}
+
+test("POST /run: the line goes to the page's run handler; the answer is { code, text }", async () => {
+  await withServer({}, async ({ pages, port, get }) => {
+    const lines: string[] = [];
+    const s = pages.open("note", HTML, { rows: () => 1 }, async (line) => (lines.push(line), { code: 0, text: "done" }))!;
+    const auth = { Authorization: `Bearer ${await routeToken(get, s.url)}` };
+    const ok = await post(port, "/live/note/run", JSON.stringify({ line: "stamp loop" }), auth);
+    assert.equal(ok.status, 200);
+    assert.deepEqual(JSON.parse(ok.text), { code: 0, text: "done" });
+    assert.deepEqual(lines, ["stamp loop"]);
+    // other POSTs stay refused; a GET of /run is not a run
+    assert.equal((await post(port, "/live/note/rows", "{}", auth)).status, 405);
+    assert.equal((await get("/live/note/run", auth)).status, 405);
+    // a bad body or line never reaches the handler
+    for (const body of ["not json", "{}", JSON.stringify({ line: 3 }), JSON.stringify({ line: "x".repeat(1001) })]) {
+      assert.equal(JSON.parse((await post(port, "/live/note/run", body, auth)).text).code, 2, body);
+    }
+    assert.equal((await post(port, "/live/note/run", JSON.stringify({ line: "x".repeat(5000) }), auth)).status, 413);
+    assert.deepEqual(lines, ["stamp loop"]);
+  });
+});
+
+test("POST /run: token, Host, Origin, Sec-Fetch-Site and a page without run options", async () => {
+  await withServer({}, async ({ pages, port, get }) => {
+    let ran = 0;
+    const s = pages.open("note", HTML, {}, async () => (ran++, { code: 0, text: "" }))!;
+    const auth = { Authorization: `Bearer ${await routeToken(get, s.url)}` };
+    const body = JSON.stringify({ line: "stamp loop" });
+    assert.equal((await post(port, "/live/note/run", body)).status, 401); // no token
+    assert.equal((await post(port, "/live/note/run", body, { Authorization: `Bearer ${"0".repeat(32)}` })).status, 401);
+    assert.equal((await post(port, "/live/note/run", body, { ...auth, Origin: "http://evil.example" })).status, 403);
+    assert.equal((await post(port, "/live/note/run", body, { ...auth, Origin: "null" })).status, 403);
+    assert.equal((await post(port, "/live/note/run", body, { ...auth, Host: "evil.example:80" })).status, 403);
+    assert.equal((await post(port, "/live/note/run", body, { ...auth, "Sec-Fetch-Site": "cross-site" })).status, 403);
+    assert.equal(ran, 0);
+    assert.equal((await post(port, "/live/note/run", body, { ...auth, Origin: `http://localhost:${port}` })).status, 200);
+    assert.equal(ran, 1);
+    // a page opened without `run` has no run route
+    const plain = pages.open("plain", HTML, {})!;
+    const plainAuth = { Authorization: `Bearer ${await routeToken(get, plain.url)}` };
+    assert.equal((await post(port, "/live/plain/run", body, plainAuth)).status, 404);
+  });
+});
+
+test("POST /run: a closed dialog runs nothing; a throwing handler answers a failure, never a 5xx", async () => {
+  await withServer({}, async ({ pages, port, get }) => {
+    let ran = 0;
+    const s = pages.open("note", HTML, {}, async () => (ran++, { code: 0, text: "" }))!;
+    const auth = { Authorization: `Bearer ${await routeToken(get, s.url)}` };
+    s.close();
+    assert.equal((await post(port, "/live/note/run", JSON.stringify({ line: "stamp loop" }), auth)).status, 404);
+    assert.equal(ran, 0);
+    const t = pages.open("boom", HTML, {}, async () => { throw new Error("x"); })!;
+    const tAuth = { Authorization: `Bearer ${await routeToken(get, t.url)}` };
+    const answer = await post(port, "/live/boom/run", JSON.stringify({ line: "a" }), tAuth);
+    assert.equal(answer.status, 200);
+    assert.equal(JSON.parse(answer.text).code, 1);
+  });
+});
+
+test("POST /run: only <page>/run takes a POST", async () => {
+  await withServer({}, async ({ pages, port, get }) => {
+    const s = pages.open("note", HTML, {}, async () => ({ code: 0, text: "" }))!;
+    const auth = { Authorization: `Bearer ${await routeToken(get, s.url)}` };
+    assert.equal((await post(port, "/live/note/x/run", "{}", auth)).status, 404);
+  });
+});

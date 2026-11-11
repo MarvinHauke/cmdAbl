@@ -283,9 +283,17 @@ export interface ModuleApi {
      * (`{ replaced: true }`), and the dialog closing answers `{ error: "closed" }`. `cancel.onCancel(cb)` runs once when the
      * wait ends for any reason (answered, timeout, replaced, client gone, closed): drop your listeners there.
      * Without the server (port taken) the page opens as a data page with `LIVE = null`: it must work without polling.
+     * `options.run` (plan 0018 "Page runs") lets the page RUN command lines while open: the command paths it may run
+     * (command plus subcommands, e.g. `["stamp loop", "stamp unloop"]`; options and arguments are free). The page posts
+     * `POST <LIVE.base>/run` with JSON `{ line }` and the same `Authorization: Bearer <LIVE.token>`, and gets
+     * `{ code, text }` (the `CommandResult`'s exit code and message). A line whose command path is not listed (also a `;`
+     * chain with any unlisted part, or a bare `|`) is refused with `{ code: 2, text }` and a warn line. An allowed line runs
+     * through the normal path, nested while this call still waits: headless (no dialogs, exit 4 where it would ask), one
+     * undo step, logged, errors caught, NOT added to the history. Not available without the server (`LIVE = null`): fall back
+     * to closing the page (`then`) and reopening it.
      * Resolves with the string the page returns on close, or null if dismissed, like `dialog`.
      */
-    livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes): Promise<string | null>;
+    livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes, options?: { run?: string[] }): Promise<string | null>;
   };
   /**
    * Ask a yes/no question: a single-select list titled `message` with two
