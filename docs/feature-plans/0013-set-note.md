@@ -126,113 +126,51 @@ full text.
   - a table editor;
   - a reminder when the Set opens.
 
-## Stamps: timestamped entries (user finding note-1, decided 2026-11-11; for 0.2.x)
+## Stamps: timestamped entries (user finding note-1, 2026-11-11; built in 0.1.7)
 
-Terms: [GLOSSARY.md](GLOSSARY.md) (stamp, song position). "Stamp" for now (user, 2026-11-11); "mark" with "pick" for pick lists is to discuss again.
+Terms: [GLOSSARY.md](GLOSSARY.md) (stamp, song position). "Stamp" for now; "mark" with "pick" for pick
+lists is to discuss again.
 
-**Decisions:**
-1. **Keys in view mode:** `e` edits the whole note (as today); **`m` adds a stamp**: a new entry at the end
-   of the note, with the text below its heading. `m` then Esc without typing adds nothing.
-2. **Stored heading, one fixed format** so stamps can be found again:
-   - song running: `### @12.3.1 · 2026-11-11 14:32` (`@` + Live's bar.beat.sixteenth, then date and time);
-   - song stopped: `### 2026-11-11 14:32`.
-   The song position comes from the Remote Script (`Song.get_current_beats_song_time()` gives "12.3.1.1" directly; the SDK has none). When the
-   script doesn't answer, the heading falls back to date and time and the footer says "no song position:
-   Remote Script not running". In Session View playback the song position is stamped too.
-   A setting **`note.stampStyle`** may later change how a stamp heading looks in view mode, never the
-   stored text.
-3. **Esc in edit (both `e` and `m`) returns to view and keeps the text;** Esc in view closes and saves. A
-   **Discard** button (or Cmd+Z in the text box) throws changes away. This replaces "a second Esc
-   discards" (user: he'll report how it feels; a vim mode for the note is a later idea).
-4. **Loop while writing:** with **`note.stampLoop`** (default **on**), `m` during Arrangement playback sets
-   the arrangement loop to start at the current bar, **`note.loopBars`** long (default 4), and switches it
-   on, so the music repeats while typing. Esc puts the loop back as it was (on/off, start, length), and
-   playback goes on. If the loop was moved by hand meanwhile, it is left alone. In Session playback the
-   loop isn't touched (it doesn't loop clips). Through the Remote Script (`Song.loop`, `loop_start`,
-   `loop_length`); the SDK has no Set loop. Accepted: the Set counts as changed (Live asks to save). The Live 13 spike showed the loop write leaves no
-   undo step.
-
-**Later:**
-- **Jump to a stamp:** Enter or a click on an `@12.3.1` heading in view mode moves Live's playhead there
-  (Remote Script, a transport change, not the Set's content); with it `stamp next`/`stamp prev`. Locators
-  only if the user wants stamps in the Set.
-- **Session stamps** (no key of their own, user 2026-11-11): a stamp made during Session playback is
-  linked to the playing scene automatically (Shift+S only if a choice is ever needed); an entry linked to a scene, to jump to that scene. Needs a stable scene
-  link that survives rename and move. **Live 13 spike (2026-11-11): `Scene` has no `get_data`/`set_data`**
-  (only Song and Track), so the link needs another design (open). Built together with [0017](0017-scripts-and-triggers.md) phase 2,
-  which needs the same scene link.
-- The old idea "edit mode opens again for a while" was a loop in this sense (decision 4); it is
-  replaced by `note.stampLoop`.
-
-**How it is built (architect, 2026-11-11; 0.1.7):**
-- **A page never writes**, so `m` can't set the loop itself. `m` in view **closes the page with a stamp
-  request**; the module then reads the song position, sets the loop, and opens the page again in stamp
-  mode. `note -m` (alias `--stamp`) does the same from the palette.
-- **Page answer (note-internal, replaces "" / "\n" / text):** JSON `{"text": string | null, "then":
-  "stamp" | null}`. `text: null` = unchanged, `""` = cleared. Page input gains `mode: "stamp"` and
-  `stamp: {heading, hint?}`. In stamp mode the page opens in edit with `heading` appended as a new
-  last entry and the caret below it. With nothing typed below the heading, the entry is dropped.
-- **The heading is built by the module** (one place for the format): position trimmed to three parts
-  (`12.3.1`), local `YYYY-MM-DD HH:MM`. Stopped: date only, no hint. No script: date only, hint "no
-  song position: Remote Script not running".
-- **The loop is restored when the page closes** (not at the first Esc, which only returns to view),
-  and only if the current loop still equals the one cmdAbl set. It runs whatever the save does.
-- **Session playback** = any track plays a session clip (`playing_slot_index >= 0`): the loop is left
-  alone. The bar start uses the Set's current time signature (a limit with signature changes).
-- **Bridge (additive, script 0.1.15):** `transport {}` (read, no token) → `{playing, session, pos:
-  "12.3.1.1", time, barStart, barLen, loop: {on, start, length}}`, times in beats; `loop_set {on,
-  start, length}` (write, token) → `{loop}`.
-- **`SetPort` (additive):** `transport(): Promise<Transport | null>` and `setLoop(loop): Promise<Loop |
-  null>`; null without the script or on an old one. Never throws.
-- **Settings:** `note.stampLoop` (bool, true), `note.loopBars` (int 1–64, 4).
-
-**Stamp after stamp (user finding, 2026-11-11, after the first Live test):** staying in view and
-pressing `m` again for the next section must work, and the loop must stop when the stamp's edit ends,
-not only when the page closes. Since a page never writes:
-- **Esc in stamp edit closes the page with `then: "view"`.** The module saves, restores the loop, and
-  reopens the page in view. `m` there starts the next stamp (close, loop, reopen) as usual.
-- `then` is `"stamp" | "view" | null`; the module runs the page in a loop until `then` is null.
-  The stamp page no longer hides `m`/Stamp. Esc in a plain edit (`e`) still stays in the page; Cmd+S
-  saves and closes in both.
-- **`stamp` is its own command** in the note module (user, 2026-11-11): `stamp` adds a stamp and
-  replaces `note -m` (unreleased, dropped). Later: `stamp next`/`stamp prev` jump the playhead,
-  `stamp -l` lists the stamps (a pick list, Enter jumps), with "jump to a stamp" below. A separate
-  module can't read the note's file, so `stamp` lives in the note module.
-
-**Without close and reopen (user, 2026-11-11; plan 0018 "Page runs"):** the note page opens as a
-live page that may run `stamp --loop` and `stamp --unloop` (see "Spelling" below):
-- `s` in view: the page reads the heading from a route `heading` (transport + format, built by the module),
-  runs `stamp loop` and switches to stamp edit in place. Esc in stamp edit runs `stamp unloop` and
-  returns to view in place. No flicker, no lost keys.
-- `stamp loop` sets the stamp loop at the current bar (`note.loopBars`, Arrangement only, `note.stampLoop`)
-  and remembers the old loop; `stamp unloop` restores it if it is still the one set. Both also work by hand.
-  When the page closes, the module still restores a loop it set (safety net).
-- The text is still saved when the page closes (Cmd+S or Esc in view). Without the server the page
-  falls back to `then` and close/reopen (above).
-
-**Spelling (user, 2026-11-11; replaces `stamp --loop` and the top-level `stamp`):** stamps belong to the
-note, so everything starts with `note`, and actions are subcommands (plan 0005, POSIX style), using the
-new runnable groups (0005 "the `git stash` rule"):
+**Commands** (user, 2026-11-11: stamps belong to the note; actions are subcommands, plan 0005 "the
+`git stash` rule"):
 
 | Line | What it does |
 |---|---|
-| `note` | opens the note (bare-runnable fallback, as before; `note -e` edits) |
-| `note stamp` | adds a stamp (bare-runnable fallback of the `stamp` group) |
-| later: `note stamp next`, `note stamp prev`, `note stamp list` | jump between stamps, pick one |
+| `note` / `note -e` | opens the note to read / to edit (bare fallback `open`) |
+| `note stamp` | opens the note with a new stamp (bare fallback `add`) |
+| later: `note stamp next` / `prev` / `list` | jump the playhead between stamps, pick one |
 
-**The loop moved to its own module** ([0026](0026-loop.md), user 2026-11-11): the page runs `loop here` /
-`loop back` (allowlist `["loop here", "loop back"]`, `onClose: "loop back"`); `note.loopBars` became
-`loop.bars`; `note.stampLoop` stays (whether the note page loops). Esc and Cmd+S right after `s` wait up to
-0.5 s for the heading (user, 2026-11-11). A page opened by `note stamp` also ends
-a stamp in place. A short `stamp` comes back later only as a user alias (plan 0020). Read `stamp --loop` /
-`stamp --unloop` / `stamp` above as these lines.
+**Decisions (user, 2026-11-11):**
+1. **Keys in view:** `e` edits the whole note; **`s` adds a stamp** (a new entry at the end, text below
+   its heading). `s` switches to edit at once, so typing starts immediately. With nothing typed, no entry.
+2. **Stored heading, one format:** `### @12.3.1 · 2026-11-11 14:32` while the song runs (Live's
+   bar.beat.sixteenth from the Remote Script, `transport.pos`), `### 2026-11-11 14:32` when stopped.
+   No script: date only and the hint "no song position: Remote Script not running". Built by the module
+   (`stamp.ts`); the page has a date-only copy for a missing heading (keep in step). A setting
+   `note.stampStyle` may later change how headings look in view, never the stored text.
+3. **Esc in edit returns to view and keeps the text; Esc in view saves and closes.** Cmd+S saves and
+   closes. **Discard** asks once when there are changes. (A vim mode is a later idea.)
+4. **Loop while writing** with `note.stampLoop` (default on), during Arrangement playback only (not
+   Session, not stopped): the page runs `loop here` on `s` and `loop back` when the stamp ends. The loop
+   is the [`loop` module](0026-loop.md) (`loop.bars`, default 4); the note keeps no loop logic. A loop
+   moved by hand meanwhile is left alone. The loop write leaves no undo step; the Set counts as changed.
+5. **Stamp after stamp in place:** the note page is a live page with page runs ([0018](0018-midi-mapping.md)
+   "Page runs"): allowlist `["loop here", "loop back"]`, `onClose: "loop back"` (runs only if the page ran
+   a line). The `heading` route answers `{heading, hint?, loop}`. Esc and Cmd+S right after `s` wait up to
+   0.5 s for the heading. Without the server (`LIVE = null`) the page falls back to closing with
+   `{text, then: "stamp" | "view" | null}` and the module reopens it; a stamp then doesn't loop.
+6. **Session stamps** get no key: a stamp made during Session playback is to be linked to the playing scene
+   automatically (later; `Scene` has no `get_data`/`set_data` in Live 13, so the link needs another design;
+   with [0017](0017-scripts-and-triggers.md) phase 2).
 
-**Key `s` (user, 2026-11-11):** a stamp is added with **`s`** in view (was `m`; read `m` as `s` above).
+**Bridge and ports (additive, 0.1.7):** Remote Script 0.1.15 `transport {}` (read) → `{playing, session,
+pos, time, barStart, barLen, loop}`, `loop_set {on, start, length}` (write, token; rolls back what Live
+doesn't keep); `SetPort.transport()` / `setLoop()`, null without the script. Session playback = any track
+plays a session clip.
 
-**Rollout:** cmdabl-bridge (the two ops, tests, script 0.1.15), cmdabl-core (`SetPort`),
-cmdabl-modules (settings, `-m`, the heading, the loop and restore), cmdabl-ui (stamp mode, `m`, the
-Esc change, Discard, the hint; browser-checked), cmdabl-docs (using.md). Gear on the note page with
-0019 phase 6.
+**Later:** jump to a stamp (Enter or click on an `@12.3.1` heading, `note stamp next/prev/list`); locators
+only if the user wants stamps in the Set; a short `stamp` only as a user alias (0020); with substitution
+(0017) `loop at $(note stamp prev)`.
 
 ## Phased rollout
 

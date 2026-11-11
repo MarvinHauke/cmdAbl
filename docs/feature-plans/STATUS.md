@@ -23,52 +23,24 @@ All releases were tested in Live, including the installed `.ablx`.
 
 ## Now
 
-- **0.1.7 in work** on `feat/0.1.7-listnav-stamps` (also carries the plans from `docs/findings-live13`):
-  0019 phase 4 `listnav.js` (cmdabl-ui) and 0013 stamps (bridge: `transport`/`loop_set`, script 0.1.15;
-  core: `SetPort.transport/setLoop`; modules: `note -m`, settings; ui: stamp mode). Needs a Live restart
-  for script 0.1.15 before the Live test.
-  - bridge done (`22cae33`). Live test after the restart: `cmdabl bridge` shows 0.1.15; `transport`
-    stopped/playing/session clip/6-8 (barLen 3); `loop_set` 8/16, odd values 46.5/2.25 read back, length 0
-    or start -1 → exit 2. For docs at the end: 0.1.14 → 0.1.15 in README, using.md, remote-script.md,
-    getting-started.md alt text.
-  - core done (`2920224`), modules done (`abebefc`): `note -m`, settings. Live test (needs ui's note.html):
-    Arrangement `note -m` → `@pos · date` heading, 4-bar loop, restored on close; loop moved by hand → left
-    alone; session clip → no loop; stopped → date only; script off → hint; stampLoop off / loopBars 8;
-    `m` from view saves first, then reopens in stamp mode. User: undo history, "save changes?".
-  - Release notes: Discard on the note page asks once (click twice) when there are changes; palette
-    Shift+Enter no longer runs the line; in a pick list Esc goes back to the filter first. Docs: using.md
-    still says "Tab marks" (using.md 118, 405; getting-started.md 134). Shift+Tab in the palette no
-    longer completes.
-  - ui done (note `db1a80e` + footer fix, listnav `51f1705`). Live test: `m` → stamp page, Esc without
-    typing drops it, Discard asks once; `mute` multi pick: ↓ then Space marks, Tab nothing, Esc → filter;
-    "Bass 2" typed in the filter stays text; `tag`/`find` pick with fill: Tab fills; palette Tab, ↑/↓,
-    Ctrl+n/p.
-  - **Live test through MCP (2026-11-11, Live 13.0b25, script 0.1.15): passed.** transport stopped/playing/
-    session; loop_set incl. snapped values rolled back and bad input refused; `note -m` while playing →
-    `@16.3.1` heading, loop 60–76, "loop put back" on close; `m` from view reopens in 312 ms; loop moved →
-    "left alone"; session clip → loop untouched; empty stamp dropped; pick: Space in the filter types,
-    ↓ Space marks, Esc → filter, Esc closes (cancelled); palette Tab completes. Open for the user: settings
-    page (stampLoop off, loopBars 8), Discard confirm, Ctrl+n/p, "save changes?" after a stamp.
-  - Found (from 0.1.6, not 0.1.7): the palette footer's argument help wraps to a third row for `mute `
-    (UX #10: one row, ends in …). Small ui fix, can go into 0.1.7 (asked the user; paused 2026-11-11).
-  - Docs done (using.md, getting-started, remote-script.md, 0.1.15). Before the PR: `npm run docs:reference`
-    (core; docs:check fails until then); `note` man text command.ts:102 still says "Esc … warns first"
-    (modules); retake note-view/note-edit screenshots (docs); 0.1.7 notes go in the PR (no changelog).
-  - **`next`/`prev` → `find next`/`find prev`** (user finding, 2026-11-11; 0007): plus `find --first/--last`,
-    list from `find` only. Breaks old bindings/history lines with `next`/`prev`: PR notes. Docs (README:58,
-    using.md 175/290, getting-started.md 148, palette-empty.png) and `docs:reference` go to docs/core at the end.
-  - **Page runs + stamps in place (2026-11-11), Live-tested through MCP:** `stamp --loop/--unloop` (set, put
-    back, nothing to restore, stopped → nothing to do, both → exit 2); note page `s` + instant typing keeps
-    every character, heading fills in (`@236.4.3`), loop 940/16, Esc unloops in place; `s`+Esc drops the empty
-    stamp; `s x` Cmd+S: the in-flight loop finishes, then the safety net restores it (core's wait).
-    Known: Cmd+S right after `s` stores a date-only heading (the page didn't get the position yet).
-  - **Spelling (user, 2026-11-11):** stamps are `note stamp` / `note stamp loop|unloop` (runnable groups,
-    0005 "git stash rule"); top-level `stamp` and `--loop` gone. Live-tested: help, old spellings refused,
-    three stamps through the page while playing, loop set/put back each time, note saved.
-  - Docs done (`9ca33a5` find, `58aefd6` stamps + page runs + note screenshots); reference `a3b2820`.
-    PR notes collected (docs agent). Open: Esc/Cmd+S within ~200 ms of `s` stores a date-only heading
-    (fix: wait up to 0.5 s for the position, asked the user); the test note was emptied at 22:08:33 with
-    no cmdAbl run logged (asked the user whether he cleared it).
+- **0.1.7 in work** on `feat/0.1.7-listnav-stamps` (also carries the plans from `docs/findings-live13`).
+  Contents: `listnav.js` (0019 phase 4: Space marks, Tab completes, Esc → filter); stamps (0013:
+  `note stamp`, key `s`, in place); the `loop` module (0026); page runs and `onClose` (0018); runnable
+  groups (0005 "git stash rule"); `find next`/`prev` + `--first`/`--last` (0007); Remote Script 0.1.15
+  (`transport`, `loop_set`). Docs: `9ca33a5`, `58aefd6`.
+  - **Live-tested through MCP** (Live 13.0b25): transport and loop_set; pick list and palette keys; find
+    `--first/--last/next/prev`; stamps in place while playing (instant typing kept, heading `@pos`, loop
+    set and put back per stamp, empty stamp dropped, `s`+Cmd+S race safe); `note`/`note stamp` help and
+    old spellings refused.
+  - **Still to do:** the `loop` module and the last note page round (modules `a2307ca`, ui `05d6df5`, core
+    `onClose` in work): Live test, then docs (using.md: `loop`, `note stamp loop` lines gone, the chain
+    `loop here; note stamp; loop back`), `docs:reference`, the PR.
+  - **For the user (by hand):** settings page (`note.stampLoop` off, `loop.bars` 8), Discard confirm,
+    Ctrl+n/p, "save changes?" after a stamp, the undo history.
+  - **PR notes:** breaking `next`/`prev` → `find next`/`prev` (old bindings stop working); palette
+    Shift+Enter no longer runs, Shift+Tab no longer completes; pick list Esc → filter first, Tab doesn't
+    mark; note page Discard asks once; new `find --first/--last`, `note stamp`, `loop`, page runs, runnable
+    groups; Remote Script 0.1.15 (restart Live).
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
 - **Live 13 check (2026-11-11, Live 13.0b25):** the installed 0.1.6 and the dev build run (same Extension

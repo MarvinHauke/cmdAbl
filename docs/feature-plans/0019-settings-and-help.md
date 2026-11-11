@@ -108,7 +108,7 @@ interface ModuleApi {
   | `map.enabled` | bool | true | 0018 | 1a |
   | `midi.statusBar` | bool | false | 0018 | 1a |
   | `ui.helpLine` | bool | true | tag-4 | 2 |
-  | `note.stampLoop`, `note.loopBars` | bool, int | true, 4 | note-1 (0013 "Stamps") | 6 |
+  | `note.stampLoop`, `loop.bars` | bool, int | true, 4 | note-1 (0013 "Stamps") | 6 |
 
   **A key is declared in the phase that gives it an effect** (user, 2026-11-05), so the page never
   shows a switch that does nothing.
@@ -362,7 +362,7 @@ see it:
    to the log (user, 2026-11-11). The help line is always one row (2026-11-11).
 4. **`listnav.js`** on the pick list and the palette rows, then the board.
 5. **The setup status page:** released in 0.1.6 as [0021](0021-installation-and-setup-page.md).
-6. **With 0013:** the note's stamps (0013) and `note.stampLoop`/`note.loopBars`, gear on the note page.
+6. **With 0013:** the note's stamps (0013) and `note.stampLoop` and `loop.bars` (0026), gear on the note page.
 7. **Shortcuts** (after 0.1.6, user 2026-11-05): `Cmd+,` opens settings, tested in Live first (Karabiner
    and Live may take it), and the start of 0006's keymap for global keys. The list keys stay in §5.
 
