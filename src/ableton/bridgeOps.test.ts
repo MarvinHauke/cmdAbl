@@ -289,9 +289,9 @@ test("setId reads or creates through the writing op with the token, and every pr
   assert.equal(await setId(createFakeBridge({ ops: { set_id: () => fail(1, "x") } }), true), null);
 });
 
-import { transport, setLoop } from "./bridgeOps.js";
+import { transport, setLoop, jump } from "./bridgeOps.js";
 
-const tr = { playing: true, session: false, pos: "12.3.1.1", time: 46.5, barStart: 44, barLen: 4, songLength: 64, loop: { on: true, start: 8, length: 16 } };
+const tr = { playing: true, session: false, pos: "12.3.1.1", time: 46.5, barStart: 44, barLen: 4, sigNum: 4, sigDen: 4, songLength: 64, loop: { on: true, start: 8, length: 16 } };
 
 test("transport returns the checked reply; every problem is null", async () => {
   const bridge = createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr } }) } });
@@ -322,4 +322,31 @@ test("transport carries songLength, 0 from an older script", async () => {
   const withLen = createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr } }) } });
   assert.equal((await transport(withLen))?.songLength, 64);
   assert.equal((await transport(createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr, songLength: undefined } }) } })))?.songLength, 0);
+});
+
+test("transport carries the signature, 0 (unknown) from an older script", async () => {
+  const six = createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr, sigNum: 6, sigDen: 8 } }) } });
+  const t = await transport(six);
+  assert.deepEqual([t?.sigNum, t?.sigDen], [6, 8]);
+  const old = await transport(createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr, sigNum: undefined, sigDen: undefined } }) } }));
+  assert.deepEqual([old?.sigNum, old?.sigDen], [0, 0]);
+});
+
+test("jump sends the time with the token and returns the read-back", async () => {
+  const bridge = createFakeBridge({ ops: { jump: (a) => ({ ok: true, value: { time: a.time } }) } });
+  assert.deepEqual(await jump(bridge, 12), { ok: true, time: 12 });
+  assert.deepEqual(bridge.calls, [{ op: "jump", args: { time: 12 }, changes: true, token: true }]);
+  const none = await jump(createFakeBridge({}), 1);
+  assert.equal(none.ok === false && none.code, 5);
+  assert.deepEqual(await jump(createFakeBridge({ ops: { jump: () => fail(1, "Live refused the jump") } }), 1), { ok: false, code: 1, text: "Live refused the jump" });
+  assert.deepEqual(await jump(createFakeBridge({ ops: { jump: () => fail(5, "old") } }), 1), { ok: false, code: 5, text: "old" });
+  const bad = await jump(createFakeBridge({ ops: { jump: () => ({ ok: true, value: { time: "x" } }) } }), 1);
+  assert.equal(bad.ok === false && bad.code, 1);
+});
+
+test("jump passes the mismatch note up, and has none otherwise", async () => {
+  const noted = createFakeBridge({ ops: { jump: () => ({ ok: true, value: { time: 1, note: "read back 1 after asking for 8" } }) } });
+  assert.deepEqual(await jump(noted, 8), { ok: true, time: 1, note: "read back 1 after asking for 8" });
+  const plain = createFakeBridge({ ops: { jump: () => ({ ok: true, value: { time: 8 } }) } });
+  assert.deepEqual(await jump(plain, 8), { ok: true, time: 8 });
 });

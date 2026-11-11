@@ -4,7 +4,7 @@ import unittest
 from fake_live import FakeSong, FakeTrack
 from cmdAbl import protocol
 from cmdAbl.ops import OPS, WRITES
-from cmdAbl.ops.transport import loop_set, transport
+from cmdAbl.ops.transport import jump, loop_set, transport
 from cmdAbl.protocol import OpError
 
 TOKEN = "t" * 32
@@ -35,7 +35,7 @@ class Transport(unittest.TestCase):
         self.assertTrue(r["ok"])
         self.assertEqual(r["result"], {
             "playing": True, "session": False, "pos": "12.3.1.1", "time": 46.5,
-            "barStart": 44.0, "barLen": 4.0, "songLength": 0.0, "loop": {"on": True, "start": 8.0, "length": 16.0},
+            "barStart": 44.0, "barLen": 4.0, "sigNum": 4, "sigDen": 4, "songLength": 0.0, "loop": {"on": True, "start": 8.0, "length": 16.0},
         })
 
     def test_bar_grid_follows_the_signature(self):
@@ -44,6 +44,7 @@ class Transport(unittest.TestCase):
         s.current_song_time = 7.0
         r = transport(s, {})
         self.assertEqual((r["barLen"], r["barStart"]), (3.0, 6.0))
+        self.assertEqual((r["sigNum"], r["sigDen"]), (6, 8))
 
     def test_session_is_true_when_any_track_plays_a_slot(self):
         s = song()
@@ -159,6 +160,66 @@ class LoopSet(unittest.TestCase):
         s = song()
         s.beats_song_time = BT()
         self.assertEqual(transport(s, {})["pos"], "12.3.1.1")
+
+
+class Jump(unittest.TestCase):
+    def test_moves_the_playhead_and_reads_back(self):
+        s = song()
+        s.is_playing = True
+        self.assertEqual(jump(s, {"time": 12}), {"time": 12.0})
+        self.assertEqual(s.current_song_time, 12.0)
+        self.assertTrue(s.is_playing)
+
+    def test_needs_the_token(self):
+        s = song()
+        r = ask(s, "jump", {"time": 4}, with_token=False)
+        self.assertFalse(r["ok"])
+        self.assertEqual(s.current_song_time, 0.0)
+        self.assertTrue(ask(s, "jump", {"time": 4})["ok"])
+
+    def test_validates_input(self):
+        s = song()
+        for bad in ({}, {"time": -1}, {"time": "4"}, {"time": True}, {"time": float("nan")}, {"time": float("inf")}):
+            with self.assertRaises(OpError, msg=str(bad)):
+                jump(s, bad)
+
+    def test_live_refusing_is_failed_with_its_reason(self):
+        class Refuses(FakeSong):
+            def __setattr__(self, k, v):
+                if k == "current_song_time":
+                    raise RuntimeError("beyond the end")
+                object.__setattr__(self, k, v)
+        with self.assertRaises(OpError) as cm:
+            jump(Refuses(), {"time": 9999})
+        self.assertEqual(cm.exception.code, "failed")
+        self.assertIn("beyond the end", cm.exception.text)
+
+    def test_a_lagging_read_back_is_not_an_error(self):
+        class Deferred(FakeSong):
+            @property
+            def current_song_time(self):
+                return 1.0
+
+            @current_song_time.setter
+            def current_song_time(self, v):
+                pass
+        r = jump(Deferred(), {"time": 8})
+        self.assertEqual(r["time"], 1.0)
+        self.assertIn("note", r)
+        self.assertNotIn("note", jump(song(), {"time": 8}))
+
+    def test_playing_playhead_may_have_moved_on(self):
+        class Moves(FakeSong):
+            @property
+            def current_song_time(self):
+                return self.__dict__.get("_t", 0.0) + 0.2
+
+            @current_song_time.setter
+            def current_song_time(self, v):
+                self.__dict__["_t"] = v
+        s = Moves()
+        s.is_playing = True
+        self.assertAlmostEqual(jump(s, {"time": 8})["time"], 8.2)
 
 
 if __name__ == "__main__":

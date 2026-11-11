@@ -15,11 +15,12 @@ from .select import select
 from .setid import set_id
 from .tags import tags_all, tags_set
 from .tracks import track_facts
-from .transport import loop_set, transport
+from .transport import jump, loop_set, transport
 
 OPS = {
     "chain_set": chain_set,
     "chains": chains,
+    "jump": jump,
     "loop_set": loop_set,
     "midi_last": midi_last,
     "midi_listen": midi_listen,
@@ -33,4 +34,4 @@ OPS = {
 }
 
 # Ops that change something: refused without the access token (protocol.handle_request).
-WRITES = frozenset(["chain_set", "loop_set", "midi_listen", "set_id", "tags_set"])
+WRITES = frozenset(["chain_set", "jump", "loop_set", "midi_listen", "set_id", "tags_set"])

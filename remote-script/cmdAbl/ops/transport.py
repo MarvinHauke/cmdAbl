@@ -1,7 +1,8 @@
-"""`transport` and `loop_set`: the play state, the bar grid and the arrangement loop (plan 0013 "Stamps").
+"""`transport`, `loop_set` and `jump`: the play state, the bar grid, the arrangement loop and the playhead (plans 0013, 0027).
 
 transport   Args: {} (a read; no token).
-            Result: {playing, session, pos, time, barStart, barLen, songLength, loop: {on, start, length}}.
+            Result: {playing, session, pos, time, barStart, barLen, sigNum, sigDen, songLength, loop: {on, start, length}}.
+            sigNum/sigDen = the current time signature (so "12.3.1" can be turned into beats).
             songLength = song.song_length in beats (Live counts the current loop's end in it, and refuses a
             loop_start beyond it).
             Times are in beats. `pos` is Song.get_current_beats_song_time() as text ("12.3.1.1").
@@ -11,6 +12,10 @@ transport   Args: {} (a read; no token).
 loop_set    Args: {on: bool, start: number >= 0, length: number > 0}. (A writing op: it needs the token.)
             Result: {loop: {on, start, length}}; start and length are read back after the write (`failed` if Live differs),
             `on` is the requested value (Live may apply song.loop on the next tick, so a same-call read can lag).
+jump        Args: {time: number >= 0} in beats. (A writing op: it needs the token.)
+            Result: {time}: song.current_song_time as read right after the write. Playing stays playing.
+            No strict read-back: the playhead moves on while playing and Live may apply the write on the next tick,
+            so a mismatch is not an error: the op returns what it read, plus a `note` text for the caller's debug log. Only Live raising is `failed`, with its reason.
 """
 
 import math
@@ -58,6 +63,8 @@ def transport(song, args):
         "time": time,
         "barStart": math.floor(time / bar_len) * bar_len,
         "barLen": bar_len,
+        "sigNum": int(song.signature_numerator),
+        "sigDen": int(song.signature_denominator),
         "songLength": _song_length(song),
         "loop": _loop(song),
     }
@@ -139,3 +146,21 @@ def loop_set(song, args):
         raise _failed(song, prev, "Live did not keep the loop")
     got["on"] = on
     return {"loop": got}
+
+
+def jump(song, args):
+    want = _number(args, "time")
+    if want < 0:
+        raise OpError("bad_request", "time must be 0 or more")
+    try:
+        song.current_song_time = want
+        got = float(song.current_song_time)
+        playing = bool(song.is_playing)
+    except Exception as e:
+        raise OpError("failed", "Live refused the jump: %s: %s" % (type(e).__name__, e))
+    result = {"time": got}
+    # While playing the playhead moves on (never back) between the write and the read.
+    if not ((-1e-6 <= got - want <= 1.0) if playing else abs(got - want) <= 1e-6):
+        result["note"] = "read back %s after asking for %s (Live may apply it on the next tick)" % (got, want)
+    return result
+

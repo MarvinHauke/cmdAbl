@@ -215,7 +215,7 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
   },
   {
     name: "transport",
-    summary: "Reads the play state, the position, the bar grid (current time signature only) and the arrangement loop, in beats.",
+    summary: "Reads the play state, the position, the bar grid (current time signature, also as sigNum/sigDen) and the arrangement loop, in beats.",
     changesLive: false,
     via: "script",
     usesRoute: false,
@@ -233,6 +233,19 @@ export const REMOTE_SCRIPT_OPS: readonly RemoteScriptOp[] = [
       lom("Track", "track", "playing_slot_index", "get", "int", "session = any track with a value >= 0"),
     ],
     sdkAlternative: "none yet (check the SDK transport for the play state)",
+  },
+  {
+    name: "jump",
+    summary: "Moves the playhead to a position in beats (playing stays playing) and reads the position back.",
+    params: "{ time: number >= 0, token }",
+    changesLive: true,
+    via: "script",
+    usesRoute: false,
+    lom: [
+      lom("Song", "song", "current_song_time", "set", "float", "read back, plus a note on a mismatch; no strict check: the playhead may have moved on or Live may apply it next tick"),
+      lom("Song", "song", "is_playing", "get", "bool", "only to word the mismatch note"),
+    ],
+    sdkAlternative: "none yet",
   },
   {
     name: "loop_set",
