@@ -60,7 +60,9 @@ modes (the UC4: e.g. 63/65 or 1/127 per detent). Proposal: a control type **rela
 and pot/fader; a trigger line bound to it runs once per detent, in the direction turned (`jump +1` forward,
 the opposite sign backward), and needs no pickup. Open: how a line names its backward action (the sign of
 `+N`, or an explicit second line), how the type is set (monitor buttons above, or detected), and other types
-(notes as keys, MPE).
+(notes as keys, MPE). Reference for the encodings: Live's MIDI-map "Mode" list (Absolute, Absolute 14-bit,
+Relative Signed Bit, Signed Bit 2, BinOffset, 2's Comp., each relative one also as "lin.", i.e. without
+acceleration; user screenshot 2026-11-12); a relative-encoder type takes the same names.
 
 ## Live 13 spike results (2026-11-11)
 

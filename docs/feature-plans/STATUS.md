@@ -35,7 +35,13 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     name and a disabled rule (`enabled: false`).
   - **Open for 0.1.8:** the MIDI monitor status and auto-extend, pakabl stars; the docs
     ("tag board" → tag list and tag editor, `runs` in the authoring guide is done; waits for the user's
-    findings); the user's hand checks (release test list below).
+    findings); the user's hand checks (release test list below). **Docs pass also gets (user, 2026-11-12):** a
+    section in the MIDI mapping page on encoder behaviours: what Live's MIDI-map "Mode" values mean (Absolute,
+    Absolute 14-bit, Relative Signed Bit / Signed Bit 2 / BinOffset / 2's Comp., and the "lin." variants), with
+    the byte values a one-step turn sends, from Ableton's manual (MIDI mapping, "Relative Map Modes"), checked
+    by the reviewer; and what cmdAbl does today: a bound line fires on a press (0 → >0), so an absolute encoder
+    fires once and then only after a 0; for trigger lines use a button, or set the encoder to send a button
+    message; relative encoders are planned (0025).
   - Commits `2237c41` and `9685199` each carry another agent's staged work (shared index); since then the
     rule is `git commit -- <paths>` (CLAUDE.md).
   - **`jump.step` tested in Live (script 0.1.16, 2026-11-12):** steps follow Live's launch quantization at 1 Bar,
