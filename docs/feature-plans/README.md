@@ -70,7 +70,7 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
 ```
 
 1. **0.1.8: the tag list and tag editor** ([0010](0010-tag-editing.md), tag-0), the first page on `listnav.js`
-   and `api.pickRows`. Small items with it: `jump.step` ([0027](0027-jump.md)), the MIDI monitor's status and
+   and `api.pickRows`, with inner runs ([0028](0028-inner-runs.md), `api.commands.run`). Small items with it: `jump.step` ([0027](0027-jump.md)), the MIDI monitor's status and
    auto-extend ([0018](0018-midi-mapping.md)).
 2. **0.1.9: the `script` module** ([0017](0017-scripts-and-triggers.md) phase 1): global scripts first, `script
    <name>`; then clips and scenes run them (phase 2).

@@ -264,6 +264,8 @@ Built in 0.1.5 (core `livePage`, ui `live.js`, the monitor and learn pages).
 
 ### Page runs: a live page may run allowed command lines (user, 2026-11-11)
 
+Since 2026-11-12 page runs are one kind of inner run ([0028](0028-inner-runs.md)): one engine, the page's `run` list narrows the command's declared `runs`.
+
 From the note's stamps (0013): closing and reopening a page around every write flickers and loses
 the keys typed in between. The exception is widened, without a second write path:
 - **The module allows command lines when it opens the page:** `livePage(…, routes, { run: ["loop here", "loop back"], onClose: "loop back" })`. An entry is a command path (command plus subcommands); the page may run a line

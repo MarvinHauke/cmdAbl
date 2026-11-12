@@ -17,6 +17,14 @@ _Avoid_: selection, object (when the target is meant)
 A dialog window cmdAbl opens: it gets data in and gives one answer back when it closes.
 _Avoid_: window, view (a view is a layout inside a page)
 
+**Inner run**:
+A command line that a command or a page runs while it is itself running, limited to the commands it allows.
+_Avoid_: sub-command (that is a word of a command), nested command, macro
+
+**Allowlist**:
+The commands a command (or its page) may run as inner runs.
+_Avoid_: whitelist, permissions
+
 ## Tags
 
 **Tag**:
