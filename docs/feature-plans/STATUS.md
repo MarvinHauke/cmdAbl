@@ -42,7 +42,7 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     absolute encoder fires once and then only after a 0; for trigger lines use a button; relative encoders are
     planned (0025). Also: docs/using.md ~557 (note page) still says "click Discard again to confirm… goes away
     after a few seconds"; since 0.1.8 every page with pending changes asks in the shared footer bar (Keep
-    editing / Discard, ←/→, Enter, Esc keeps).
+    editing / Discard, ←/→, Enter, Esc keeps); the note page's footer button is now "Cancel".
   - Commits `2237c41` and `9685199` each carry another agent's staged work (shared index); since then the
     rule is `git commit -- <paths>` (CLAUDE.md).
   - **`jump.step` tested in Live (script 0.1.16, 2026-11-12):** steps follow Live's launch quantization at 1 Bar,
@@ -72,7 +72,7 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     Clipped help-line text scrolls after 0.8 s (shared `marquee` in help.js, `faf3d62`); one shared discard
     bar for the tag editor, settings, defaults and note pages (`ui/confirm.js`, ←/→, Enter, Esc keeps; `fb3baa0`;
     seen in Live on settings: arrows, Discard drops the change; accent ring and a focus re-assert for the
-    note page `3e03eff`, the cause of the lost focus there is a guess: the user checks a mouse-opened bar).
+    note page `3e03eff`, the cause of the lost focus there is a guess: seen working by the user).
     Minor: the note page footer changes height between a 1- and 2-line error (checklist item 3).
   - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
   - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
