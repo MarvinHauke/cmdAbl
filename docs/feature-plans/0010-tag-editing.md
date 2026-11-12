@@ -268,8 +268,9 @@ Tags section, reference, images: "board" leaves the docs).
 
 ## Open questions
 
-- A large change set leaves one undo step per track written. Is a batched `tags_set`
-  (script op) worth it?
+- A large change set leaves one undo step per track written. **Accepted for 0.1.8** (architect,
+  2026-11-12): the same as the board since 0.1.2; the result text says "one undo step per track". A batched
+  `tags_set` would be a bridge protocol change (the user's call); revisit after 0.1.8.
 
 ## Phased rollout
 
