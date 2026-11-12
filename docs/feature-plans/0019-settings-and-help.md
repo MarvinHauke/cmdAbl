@@ -124,7 +124,8 @@ interface ModuleApi {
 
 - One group per declaring module, in the order core, then modules by name. `focus` scrolls to a group
   and puts the cursor on its first row, and `<module> config` sends only that group.
-- **Rows:** a bool is a switch, an enum a segmented switch like today's footer switch, and an int a
+- **Rows:** a bool is a switch, an enum a segmented switch like today's footer switch (with more than 6 choices on its own
+  full-width line under the label; any segmented switch wraps when it does not fit, `013614c`), and an int a
   number field with − / +. A row whose value differs from the default shows a dim "reset" button.
 - **Keys:** ↑/↓ move between rows (§5), ←/→ change an enum or int, Space toggles a bool, Enter
   saves, and Esc leaves without saving: with changes it asks first ("Discard 2 changes?"), like the
