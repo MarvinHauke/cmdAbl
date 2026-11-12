@@ -84,7 +84,9 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   - Small follow-ups: `jump`'s usage error lists `+2b`/`+3q` (modules); whether an argument may opt in to
     `-2b`-style values without `--` (`ArgDef.negative`, a parser question for the user; today `jump -- -2b`).
   - Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
-- **Release test list 0.1.8 (the user, by hand; everything else is tested through MCP):**
+- **Release test list 0.1.8 (the user, by hand; everything else is tested through MCP).** User, 2026-11-12: the
+  checks so far passed (incl. today's tag editor, note Cancel, history, ⌘R); still to report: MIDI monitor knob
+  test and `map learn` if not done, then items 5–6 after the release.
   1. ~~Tag editor gear~~ (done). Tag editor Apply (`4c5ad61`): shows nothing; hovering Apply shows the Cmd+Z
      warning (Live can't undo tags, docs/limits.md); `cmdabl log` shows "N tracks changed…" and the `undo:` lines,
      `cmdabl log --undo` lists them; the palette history lists the run.
