@@ -25,6 +25,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
 ## Now
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and `gitleaks`).
+- **pakabl:** a review of the 25 candidates is in work (table for the user); stars in `pakabl list` go with
+  0.1.8 ([0003](0003-pakabl-extension-system.md)).
 - **Next: 0.1.8 = the tag list and tag editor** ([0010](0010-tag-editing.md), tag-0), on `listnav.js` and
   `api.pickRows`. Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1, global first).
 - **Docs PR after 0.1.7** (on `docs/after-0.1.7`): a Karabiner section with the user's screenshot

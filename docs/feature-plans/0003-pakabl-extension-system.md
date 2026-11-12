@@ -176,6 +176,14 @@ Host works. `pakabl install` extends that same pattern to `git clone` / `npm ins
 optional build step, landing the result in `<storageDirectory>/extensions/<id>/` and handing
 it to the loader.
 
+## Next (user, 2026-11-12)
+
+- **GitHub stars in `pakabl list`** (0.1.8): the crawler writes `stars` for approved extensions into
+  `index.json` (it already reads them for candidates); `pakabl list` shows `★ N` next to the version and
+  may sort by it.
+- **Growing the list:** the 25 candidates in `pakabl/candidates.json` get a review table (stars, release,
+  manifest, what it does, risks); the user ticks which ones go into `sources.json`.
+
 ## Open questions
 
 - **Does runtime code-loading actually work in the Extension Host?** (Phased rollout, Step 0
