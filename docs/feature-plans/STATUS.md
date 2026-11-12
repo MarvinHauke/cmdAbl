@@ -34,7 +34,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   monitor status, pakabl stars.
   Note: commit `2237c41` (a 0010 docs commit by the architect) also carries cmdabl-modules' staged tag work
   (the `tag -l` list, `tag -e` editor wiring, placeholder page). Its `{...ok(), run} as CommandResult` at
-  `src/modules/tag/command.ts:89` must be replaced by `api.commands.run` before release (design with the user).
+  `src/modules/tag/command.ts:89` must be replaced by `api.commands.run` before release (design with the user). Likewise `9685199`
+  (modules) carries core's board deletions; the branch builds again once core commits the rest of the removal.
   Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
 - **Decided, not built (2026-11-12):** MIDI monitor shows its status and extends its window by itself, plus
   an "all ins" spike (0018); `jump.step` from Live's global quantization (0027); the note page's help line
