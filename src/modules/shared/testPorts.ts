@@ -9,7 +9,7 @@ import type { MidiBinding } from "../../core/midi/midiEngine.js";
 import type { MidiControl } from "../../core/midi/midi.js";
 import type { MidiMessage as StoredMidiMessage } from "../../ableton/bridgeOps.js";
 import type { Provider } from "../../core/types.js";
-import type { BoardAnswer, BoardRequest, StateChange } from "../../core/surfaces/ui.js";
+import type { StateChange } from "../../core/surfaces/ui.js";
 import { MAX_FILE_BYTES, validFileName } from "../../core/settings/files.js";
 import type { Loop, ModuleApi, PickRow, SettingDef, TagRow, TrackHandle, Transport } from "../types.js";
 
@@ -26,8 +26,6 @@ export interface FakeApiOptions {
   gearAvailable?: boolean;
   /** What `api.pick` answers (default: cancelled). Registered `onPick` listeners are notified like the platform does. */
   pickAnswer?: (candidates: ObjectNode[], multi: boolean) => ObjectNode[] | null;
-  /** What `api.ui.board` answers (default: closed). The request is recorded in `fake.boards`. */
-  boardAnswer?: (request: BoardRequest) => BoardAnswer | null;
   /** What `api.confirm` answers (default: false, i.e. cancelled). */
   confirmAnswer?: boolean;
   /** What `api.pickRows` answers: the index chosen (default: cancelled; a disabled row counts as cancelled). */
@@ -62,8 +60,6 @@ export interface FakeApi {
   providers: Provider[];
   logs: string[];
   feedback: string[];
-  /** The boards `api.ui.board` was asked to show. */
-  boards: BoardRequest[];
   /** The `state` options `api.pick` was given, in order. */
   pickStates: Array<{ label: string; values: Array<boolean | null>; change?: StateChange }>;
   /** Every line written through `api.logger`, with its level (`api.log` lines are in `logs` as well). */
@@ -139,7 +135,6 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     logs: [],
     feedback: [],
     logged: [],
-    boards: [],
     pickStates: [],
     confirms: [],
     tagLists: [],
@@ -302,10 +297,6 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       livePage: async (name, html, width, height, routes, pageOptions) => {
         fake.livePages.push({ name, html, width, height, routes, ...(pageOptions?.run ? { run: pageOptions.run } : {}), ...(pageOptions?.onClose ? { onClose: pageOptions.onClose } : {}) });
         return options.dialogAnswer || null;
-      },
-      board: async (request) => {
-        fake.boards.push(request);
-        return { answer: options.boardAnswer?.(request) ?? null, cut: false };
       },
     },
     confirm: async (message) => {

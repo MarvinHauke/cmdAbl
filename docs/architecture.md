@@ -94,12 +94,12 @@ reads the import statements of every file under `src/` and fails when a rule is 
 | `src/modules/` | One folder per feature, listed in `src/modules/index.ts`. Each module declares commands and reaches Live through ports. | another module's folder, `src/extension.ts`, `src/httpTrigger.ts`, the platform's dialog pages, `src/ableton/bridge.ts`, `src/ableton/trackLookup.ts`, `src/ableton/tagCache.ts`, the SDK (`@ableton-extensions/*`), Node built-ins other than `path` and `url` |
 | `src/ableton/` | The Live Set as an object tree, path resolution, and the bridge client that talks to the Remote Script. | `src/modules/`, `src/extension.ts`, and `src/core/` except its shared types and the logger |
 | `remote-script/cmdAbl/` | The Remote Script, in Python. It runs inside Live and talks to the extension only over the UDP socket. | (Python; the rules above do not apply) |
-| `ui/` | The dialog pages. The core pages are the palette, the pick list, the message page and the tag board. A module's own pages live in `ui/modules/<module>/`. They are HTML, CSS and JavaScript, inlined into the bundle at build time. | (HTML; no imports) |
+| `ui/` | The dialog pages. The core pages are the palette, the pick list, and the message page. A module's own pages live in `ui/modules/<module>/`. They are HTML, CSS and JavaScript, inlined into the bundle at build time. | (HTML; no imports) |
 
 The test states seven rules:
 
 1. A module does not import another module's folder, `src/extension.ts`, `src/httpTrigger.ts`, or
-   the platform's pages `interface`, `pick`, `feedback` and `board`. A module may import its own dialog
+   the platform's pages `interface`, `pick`, and `feedback`. A module may import its own dialog
    page only from its own folder, `ui/modules/<its own name>/`. Helpers placed directly under
    `src/modules/` are shared and follow the same rules. Only `src/modules/index.ts`, the manifest, may import every module folder.
 2. `src/core/` does not import `src/modules/`, `src/httpTrigger.ts` or `src/extension.ts`.
@@ -126,9 +126,9 @@ of `ModuleApi`. The main ports are:
 - `tracks`: `transaction(fn)` groups changes into one undo step, and `track(node)` gives a track's SDK object.
   It works without the Remote Script.
 - `tags`: the track tags, read through a cache that `refresh()` fills from the Remote Script.
-- `pick`, `pickTags`, `confirm` and `ui.board`: the questions a command can ask (a pick list, a list of tags, a
-  yes/no question and the tag board). A module never opens a dialog by itself.
-- `dialog(html, width, height, name?)`: a page of the module's own, through the dialog queue.
+- `pick`, `pickTags` and `confirm`: the questions a command can ask (a pick list, a list of tags and a
+  yes/no question). A module never opens a dialog by itself.
+- `dialog(html, width, height, name?, { gear? })`: a page of the module's own, through the dialog queue.
 - `log(line)` and `logger`: the log (see below).
 - `commands`, `registerProvider`, `onPick`, `onCommandRun` and `showFeedback`: declare commands, add palette
   rows, and listen to picks and finished commands.
@@ -206,8 +206,6 @@ Every dialog is a modal dialog that the SDK opens with `showModalDialog`. Three 
     state buttons and an optional create row. It returns the indexes of the rows the user chose, or nothing when
     cancelled.
   - `notify`: a message. It takes a text and the exit code it belongs to, and returns nothing.
-  - `board`: the tag board. It takes sections of items that are on or off and returns the changes the user made.
-    The page applies nothing; the module writes the changes.
   - `page`: a dialog page of its own, given by name, HTML and size. It returns the string the page
     sends back, or nothing when it was dismissed. The `dialog` port of a module is built on it.
 

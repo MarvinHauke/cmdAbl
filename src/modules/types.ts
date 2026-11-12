@@ -19,7 +19,7 @@ import type { MidiPort } from "../core/midi/midiPort.js";
 export type { BindingsSet, ListenOptions, MidiPort } from "../core/midi/midiPort.js";
 export type { MidiBinding } from "../core/midi/midiEngine.js";
 export type { MidiControl, MidiMessage, OperatorName } from "../core/midi/midi.js";
-import type { BoardAnswer, BoardRequest, PickPreview, StateChange } from "../core/surfaces/ui.js";
+import type { PickPreview, StateChange } from "../core/surfaces/ui.js";
 import type { SettingDef } from "../core/settings/settings.js";
 export type { SettingDef } from "../core/settings/settings.js";
 import type { BridgeResult } from "../ableton/bridgeProtocol.js";
@@ -241,7 +241,7 @@ export interface ModuleApi {
    * string counts as dismissed. `name` appears in the queue's log lines.
    *
    * `options.gear` (plan 0019, 0010 "Build"): the page draws a settings gear and answers `{"settings": true}` when it is
-   * pressed. Core then opens `<module> config` and runs the command line again (the same rules as the board's gear: the
+   * pressed. Core then opens `<module> config` and runs the command line again (the
    * WHOLE line runs again, so only a command that reads first and writes after the page closed may use it). The module sees
    * only a closed page (null). The flag counts only while a command with declared settings runs; otherwise it is ignored and
    * the answer comes back as a plain string. Also on `ui.livePage` through its options.
@@ -294,19 +294,7 @@ export interface ModuleApi {
     multi?: boolean,
     options?: { fill?: boolean; state?: { label: string; values: Array<boolean | null>; change?: StateChange } },
   ): Promise<ObjectNode[] | null>;
-  /**
-   * The board editor (plan 0010): sections whose items are on or off. Resolves when the page
-   * closes with `answer` = the changes and new section names core validated against the request
-   * (unknown ids, readonly sections, no-ops and names not matching `create.pattern` are already
-   * dropped), or null when closed. `cut` says the request was capped (40 sections × 200 items ×
-   * 300 characters) or had entries dropped, so the module can say "list cut". Nothing is applied
-   * by the page: write the changes, then show a new board if wanted. A section flagged `renamable` / `removable` gets a rename / remove
-   * action on its heading; the answer then also carries `renamed: [{ section, to }]` (a new name that matches `create.pattern`; an
-   * existing name means merge: the module decides) and `removed: [section]` (the whole section; wins over a rename of it). Both are
-   * absent when empty. Removing a whole section is destructive: confirm with `api.confirm` after the board closes, before writing. Section and item ids must be at most 300 characters (longer ones are dropped, `cut` is true); `create.pattern` is used as given.
-   */
   ui: {
-    board(request: BoardRequest): Promise<{ answer: BoardAnswer | null; cut: boolean }>;
     /**
      * A page of the module's own that may READ from the module while it is open (the read-only exception to the dialog
      * rule, plan 0018 "Live pages"): like `dialog`, but `routes` are served to the page under a one-time token, e.g.

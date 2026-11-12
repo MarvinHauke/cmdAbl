@@ -44,8 +44,6 @@ export function dialogKind(entry: string): string {
       return "a pick list";
     case "tags":
       return "a tag pick list";
-    case "board":
-      return "a board";
     case "page":
       return "a page";
     case "settings":

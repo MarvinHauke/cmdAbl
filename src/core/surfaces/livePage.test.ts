@@ -206,7 +206,7 @@ test("a headless run dismisses a live page like any dialog and names it", async 
     select: async () => null,
     notify: () => {},
     notifyAnswer: async () => null,
-    settings: async () => null, defaults: async () => null, board: async () => null,
+    settings: async () => null, defaults: async () => null,
     page: async () => null,
     livePage: async (name) => (opened.push(name), "real"),
   });

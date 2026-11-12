@@ -1,7 +1,6 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./core/command/commandRegistry.js";
 import { appLog, logger } from "./core/log.js";
-import { runBoard } from "./core/surfaces/board.js";
 import { helpForPath, usageForPath } from "./core/command/commandTree.js";
 import { createCommandProvider } from "./core/command/commandProvider.js";
 import { buildCompletionData } from "./core/complete/completeSnapshot.js";
@@ -80,8 +79,8 @@ export function activate(activation: ActivationContext) {
   // Declared settings (plan 0019): core's groups are in the registry from the start, the modules declare theirs at activation.
   const settingsRegistry = createSettingsRegistry((text) => logger("settings").warn(text));
   const settingsStore = createSettingsStore({ base: dataFolder, registry: settingsRegistry, warn: (text) => logger("settings").warn(text) });
-  // A page's gear (plan 0019): remembered here, taken by the run right after the board closed.
-  let pendingGear: { surface: "board" | "page" } | undefined;
+  // A page's gear (plan 0019): remembered here, taken by the run right after the page closed.
+  let pendingGear: { surface: "page" } | undefined;
   // Live pages (plan 0018): a module's dialog may read from it through token-guarded routes of the trigger server.
   // Registered in release builds too; unavailable (data-page fallback) when the port is taken.
   let trigger: { listening(): boolean } | undefined;
@@ -189,7 +188,7 @@ export function activate(activation: ActivationContext) {
     return answer;
   }
   let isOpen = false;
-  /** The line the palette (or /show) is running now; the board's gear belongs to its command (plan 0019). */
+  /** The line the palette (or /show) is running now; a page's gear belongs to its command (plan 0019). */
   let activeLine: string | undefined;
   /** A module page's gear (plan 0019) counts only for a command that has settings; otherwise the flag is dropped. */
   function withGear<T extends { gear?: boolean }>(options: T | undefined): T | undefined {
@@ -347,8 +346,6 @@ export function activate(activation: ActivationContext) {
       get: async () => undefined as never,
     },
     ui: {
-      // The gear (plan 0019) is drawn only for a command that has settings: `tag --list` → the group `tag`.
-      board: (request) => runBoard(ui, { ...request, ...(activeGroup() !== undefined ? { gear: true } : {}) }),
       livePage: (name, html, width, height, routes, options) => ui.livePage(name, html, width, height, routes, options && withGear(options)),
     },
     pickRows: (title, rows, options) => pickRowIndex(ui, { title, rows, ...(options?.cursor !== undefined ? { cursor: options.cursor } : {}) }),
@@ -525,8 +522,8 @@ export function activate(activation: ActivationContext) {
       }
       line = mapped;
     }
-    // The board's gear (plan 0019): the page closed with {settings: true}; the settings open, then the same line runs again
-    // (also after Esc on the settings). The module only saw a closed board.
+    // A page's gear (plan 0019): the page closed with {settings: true}; the settings open, then the same line runs again
+    // (also after Esc on the settings). The module only saw a closed page.
     let outcome: Awaited<ReturnType<typeof runLine>>;
     for (let round = 0; ; round++) {
       pendingGear = undefined;
@@ -543,7 +540,7 @@ export function activate(activation: ActivationContext) {
       } finally {
         activeLine = undefined;
       }
-      const gear = pendingGear as { surface: "board" | "page" } | undefined;
+      const gear = pendingGear as { surface: "page" } | undefined;
       pendingGear = undefined;
       const group = gear !== undefined ? rootCommandOf(line, registry.roots()) : undefined;
       if (group === undefined || round >= 20 || !settingsFlow.has(group)) break;

@@ -164,7 +164,6 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "logger.info", via: "platform", call: "log line (info), tagged with the module", lom: [] },
   { port: "logger.warn", via: "platform", call: "log line (warn), tagged with the module", lom: [] },
   { port: "logger.error", via: "platform", call: "log line (error), tagged with the module", lom: [] },
-  { port: "ui.board", via: "platform", call: "the board editor surface (sections of on/off items)", lom: [] },
   { port: "commands.roots", via: "platform", call: "reads the declared command tree", lom: [] },
   { port: "commands.usage", via: "platform", call: "renders the short --help text for a command path", lom: [] },
   { port: "commands.defaults", via: "platform", call: "reads the usable default commands (command → line)", lom: [] },

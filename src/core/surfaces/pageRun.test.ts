@@ -51,7 +51,7 @@ test("createPageRun: a throwing run becomes a failure", async () => {
 test("a nested run: a page run goes headless while the opener's dialog is open, and leaves the dialogs open afterwards", async () => {
   const real: Ui = {
     prompt: async () => null, select: async () => null, notify: () => {}, notifyAnswer: async () => null,
-    settings: async () => null, defaults: async () => null, board: async () => null, page: async () => null,
+    settings: async () => null, defaults: async () => null, page: async () => null,
     livePage: async () => "closed",
   };
   const gate = createUiGate(real);
@@ -82,7 +82,7 @@ test("a nested run: a page run goes headless while the opener's dialog is open, 
 test("overlapping headless runs: A starts, B starts, A ends, B ends -> dialogs reach the real ui again", async () => {
   const gate = createUiGate({
     prompt: async () => "real" as never, select: async () => null, notify: () => {}, notifyAnswer: async () => null,
-    settings: async () => null, defaults: async () => null, board: async () => null, page: async () => null, livePage: async () => null,
+    settings: async () => null, defaults: async () => null, page: async () => null, livePage: async () => null,
   });
   let endA!: () => void, endB!: () => void;
   const a = gate.within({ dialogs: [], notices: [] }, () => new Promise<void>((r) => (endA = r)));

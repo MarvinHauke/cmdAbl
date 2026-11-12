@@ -7,7 +7,7 @@ import type { Ui } from "../surfaces/ui.js";
 
 // A run without a screen (plan 0016): the same `runLine`, but no dialog ever opens. A pick that a
 // person would answer ends the run with exit 4 and the candidates in the message, so a test sees
-// why; every other surface (prompt, select, board, page — and so `api.confirm`) counts as
+// why; every other surface (prompt, select, page — and so `api.confirm`) counts as
 // dismissed, and the outcome names what the command tried to open. `notify` is captured.
 // Nothing here is tied to a route: any non-interactive caller can use it.
 
@@ -68,7 +68,6 @@ export function createUiGate(real: Ui): UiGate {
     },
     defaults: (request, check) => (capture ? Promise.resolve(shut(`defaults "${request.title}"`)) : real.defaults(request, check)),
     settings: (request) => (capture ? Promise.resolve(shut(`settings "${request.title}"`)) : real.settings(request)),
-    board: (request) => (capture ? Promise.resolve(shut(`board "${request.title}"`)) : real.board(request)),
     page: (name, html, width, height, options) => (capture ? Promise.resolve(shut(`page "${name}"`)) : real.page(name, html, width, height, options)),
     livePage: (name, html, width, height, routes, options) => (capture ? Promise.resolve(shut(`page "${name}"`)) : real.livePage(name, html, width, height, routes, options)),
   };

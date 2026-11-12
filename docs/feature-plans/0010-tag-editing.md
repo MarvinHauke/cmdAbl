@@ -249,7 +249,7 @@ Tags section, reference, images: "board" leaves the docs).
 
 - **A module page, not a core surface** (user, 2026-11-12): `ui/modules/tag/editor.html` through
   `api.ui.dialog`, on `ui/listnav.js`. The `board` surface (`src/core/surfaces/board.ts`, `ui/board.html`,
-  `api.ui.board`, `BoardRequest/Answer`) is removed with its last user; it comes back as a core surface only
+  `api.ui.board`, `BoardRequest/Answer`) is removed (done, 0.1.8); it comes back as a core surface only
   when a second module needs one (rule above).
 - **Gear on module pages** (cmdabl-core, a small `ModuleApi` addition): a module page opened with a gear flag
   that answers `{"settings": true}` gets what the board gets today: core opens `<module> config` and runs
