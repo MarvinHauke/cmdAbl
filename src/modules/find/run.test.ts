@@ -24,21 +24,18 @@ const selectOk = (args: Record<string, unknown>) => ({
 
 function setup() {
   const fake = createFakeApi({ nodes, bridge: { ops: { select: selectOk } } });
-  // Like the platform: a pick list's answer is announced to the listeners.
-  const listeners: Array<(c: ObjectNode[], chosen: ObjectNode[] | null) => void> = [];
-  fake.api.onPick = (l) => void listeners.push(l);
   const answer = (choose: (c: ObjectNode[]) => ObjectNode[] | null) => {
-    fake.api.pick = async (_title, candidates) => {
-      const chosen = choose(candidates);
-      for (const l of listeners) l(candidates, chosen);
-      return chosen;
-    };
+    fake.api.pick = async (_title, candidates) => choose(candidates);
   };
   activate(fake.api);
-  const cmd = (name: string) => fake.commands.find((c) => c.name === name)!;
+  // "find" runs the fallback child `search`; "next"/"prev" are subcommands of find.
+  const cmd = (name: string) => {
+    const group = fake.commands.find((c) => c.name === "find")!;
+    return group.children!.find((c) => (name === "find" ? c.fallback : c.name === name))!;
+  };
   const run = async (name: string, options: Record<string, string | true>, pattern?: string) =>
     (await cmd(name).run!(
-      { path: [name], options, args: pattern === undefined ? [] : [[pattern]] } as never,
+      { path: name === "find" ? ["find"] : ["find", name], options, args: pattern === undefined ? [] : [[pattern]] } as never,
       undefined as never,
     )) as CommandResult | void;
   return { fake, run, answer };
@@ -170,26 +167,60 @@ test("find -L 2 -c kick: a kind flag combines with -L", async () => {
   assert.deepEqual(fake.bridge.calls.map((c) => c.args.route), [[0, 0, 0]]);
 });
 
-test("find: the pick list asks for Tab-fill; a null pick (cancel or fill) selects nothing and keeps the list as the cancel left it", async () => {
+test("find: the pick list asks for Tab-fill; a null pick (cancel or fill) selects nothing; next then starts at the first match, without --unfold", async () => {
   const { fake, run } = setup();
-  const listeners: Array<(c: ObjectNode[], chosen: ObjectNode[] | null) => void> = [];
-  fake.api.onPick = (l) => void listeners.push(l);
-  // re-activate so the module's listener is registered on this onPick
-  fake.commands.length = 0;
-  activate(fake.api);
   let options: unknown;
-  fake.api.pick = async (_title, candidates, _multi, opts) => {
+  fake.api.pick = async (_title, _candidates, _multi, opts) => {
     options = opts;
-    for (const l of listeners) l(candidates, null);
     return null;
   };
-  const cmd = fake.commands.find((c) => c.name === "find")!;
-  const result = await cmd.run!({ path: ["find"], options: { unfold: true }, args: [["kick"]] } as never, undefined as never);
-  assert.equal((result as CommandResult | void)?.code ?? ExitCode.OK, ExitCode.OK);
+  assert.equal(code(await run("find", { unfold: true }, "kick")), ExitCode.OK);
   assert.deepEqual(options, { fill: true });
   assert.equal(fake.bridge.calls.length, 0);
-  // next steps through the list the cancelled pick left, without --unfold
-  const next = fake.commands.find((c) => c.name === "next")!;
-  assert.equal(((await next.run!({ path: ["next"], options: {}, args: [] } as never, undefined as never)) as CommandResult).code, ExitCode.OK);
+  assert.equal(code(await run("next", {})), ExitCode.OK);
+  assert.deepEqual(fake.bridge.calls[0]!.args.route, [0, 0, 0]);
   assert.equal(fake.bridge.calls[0]!.args.showChains, undefined);
+});
+
+test("find --first / --last select without the pick list and next/prev continue from there", async () => {
+  const { fake, run } = setup();
+  fake.api.pick = async () => assert.fail("no pick list");
+  assert.equal(code(await run("find", { first: true }, "kick")), ExitCode.OK);
+  assert.deepEqual(fake.bridge.calls[0]!.args.route, [0, 0, 0]);
+  assert.equal(code(await run("next", {})), ExitCode.OK);
+  assert.deepEqual(fake.bridge.calls[1]!.args.route, [1]);
+  assert.equal(code(await run("find", { last: true }, "kick")), ExitCode.OK);
+  assert.deepEqual(fake.bridge.calls[2]!.args.route, [1]);
+  assert.equal(code(await run("prev", {})), ExitCode.OK);
+  assert.deepEqual(fake.bridge.calls[3]!.args.route, [0, 0, 0]);
+});
+
+test("find --first with one match changes nothing; with both flags it is a usage error", async () => {
+  const { fake, run } = setup();
+  assert.equal(code(await run("find", { first: true }, "snare")), ExitCode.OK);
+  assert.deepEqual(fake.bridge.calls.map((c) => c.args.route), [[0, 0, 1]]);
+  assert.equal(code(await run("find", { first: true, last: true }, "kick")), ExitCode.USAGE);
+  assert.equal(fake.bridge.calls.length, 1);
+});
+
+test("only the last find is the list: another pick list does not replace it", async () => {
+  const { fake, run, answer } = setup();
+  answer((c) => [c[0]!]);
+  await run("find", {}, "kick"); // list: pad, Kick Bus; current = pad
+  fake.api.pick(("goto" as never), [nodes[3]!] as never, false); // some other pick: must not touch the list
+  assert.equal(code(await run("next", {})), ExitCode.OK);
+  assert.deepEqual(fake.bridge.calls[1]!.args.route, [1]);
+});
+
+test("find: next/prev are subcommands and win over a pattern word; a flag first keeps the word a pattern", async () => {
+  const { fake } = setup();
+  const { parse } = await import("../../core/command/parse.js");
+  const next = parse("find next", fake.commands);
+  assert.equal(next.kind, "run");
+  if (next.kind === "run") assert.deepEqual(next.invocation.path, ["find", "next"]);
+  const word = parse("find -t next", fake.commands);
+  assert.equal(word.kind, "run");
+  if (word.kind === "run") assert.deepEqual(word.invocation.path, ["find"]);
+  const both = parse("find kick next", fake.commands);
+  if (both.kind === "run") assert.deepEqual(both.invocation.path, ["find"]);
 });

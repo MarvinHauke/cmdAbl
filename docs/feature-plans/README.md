@@ -58,23 +58,28 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
 ### Next, in dependency order
 
 ```
-Live 13 compatibility check ──> 0.2.x scope
 0019 phase 4 one keyboard model (listnav) ──> 0019 phase 7 shortcuts ──> 0006 keymap
 0017 phase 1 script files (run) ──> 0017 phase 2 clip/scene triggers (uses 0018's UDP push)
-0018 value mode ──> 0015 link ──┬─> pan / send
-                                └─> 0012 dca
+0018 value mode ──┬─> 0015 link ──┬─> pan / send
+                  │               └─> 0012 dca
+                  └─> 0024 param ──> 0025 morph (after the undo/speed spikes in Live 13)
+0019 phase 4 (listnav) ──> 0010 tag list and tag editor (tag-0)
 0019 §7 default commands (built) ──> 0020 aliases ──> 0017 phase 3 (&&, $1)
 0006 step 3 paths level by level ──> device on/off (`bypass`)
 ```
 
-1. **Live 13 compatibility** (user, 2026-11-10; 0.1.6 was the last Live 12 release, tag `live12-last`):
-   the SDK version and `minimumApiVersion`, the Remote Script under Live 13's Python, the sandbox,
-   `LIVE_MANUAL_VERSION`. Then decide what changes for 0.2.x.
-2. **One keyboard model for lists** ([0019](0019-settings-and-help.md) phase 4), then shortcuts (phase 7).
+1. **Live 13 compatibility:** done 2026-11-11 (0.1.6 runs on Live 13; spikes in
+   [research/live13-spikes.md](research/live13-spikes.md)). `minimumApiVersion` and the SDK version move
+   when a release needs them. **Stamps** ([0013](0013-set-note.md)) are built with item 2 as 0.1.7.
+2. **0.1.7 (in work):** `listnav.js`, stamps ([0013](0013-set-note.md)), `loop` ([0026](0026-loop.md)), `jump` ([0027](0027-jump.md)), page runs, runnable groups.
+   0.1.8: the tag list and tag editor ([0010](0010-tag-editing.md), tag-0).
+   Then **one keyboard model for lists** ([0019](0019-settings-and-help.md) phase 4), then the **tag list and
+   tag editor** ([0010](0010-tag-editing.md), tag-0) as its first page, then shortcuts (phase 7).
 3. **Script files** ([0017](0017-scripts-and-triggers.md) phase 1): `.cmdabl` files run with `run`;
    then clips and scenes run them on launch (phase 2), on 0018's push channel.
 4. **MIDI value mode** ([0018](0018-midi-mapping.md)): `map learn | vol #synth`; bindings that open a
-   page; per-control thresholds.
+   page; per-control thresholds. Then **`param`** ([0024](0024-param.md), draft) and the **morph**
+   ([0025](0025-morph.md), draft; pickup and control types still to discuss).
 5. **Aliases** ([0020](0020-aliases.md), draft; from [0008](0008-tags-and-aliases.md) and
    [0009](0009-ideas-from-clyphx.md)): an `alias` module on 0019's expansion step; syntax and the
    default rule still open.
@@ -110,6 +115,8 @@ Live 13 compatibility check ──> 0.2.x scope
  ├─ 0016  Test access for agents
  ├─ 0017  Scripts and triggers (.cmdabl files, run from clips and scenes)
  ├─ 0018  MIDI mapping (map, midi; operators; later value mode and the matrix)
+ │   ├─ 0024  param (Live device parameters by name; draft)
+ │   └─ 0025  Morph (morph groups on a master fader; draft)
  ├─ 0019  Settings and help pattern (released 0.1.6; open: list keys, shortcuts)
  ├─ 0020  Aliases (the alias module)
  ├─ 0021  Installation and setup page (released 0.1.6)

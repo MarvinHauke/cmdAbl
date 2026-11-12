@@ -18,13 +18,13 @@ import { registerBuiltins } from "./core/command/builtins.js";
 import { reportBridge } from "./core/host/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { getTagCache } from "./ableton/tagCache.js";
-import { paramDisplay, setId } from "./ableton/bridgeOps.js";
+import { jump, paramDisplay, setId, setLoop, transport } from "./ableton/bridgeOps.js";
 import { findRacks, getChainNameCache } from "./ableton/chainNames.js";
 import { presentResult } from "./core/surfaces/present.js";
 import { runLine } from "./core/command/run.js";
 import { objectRowLine } from "./core/command/objectRow.js";
 import { confirm } from "./core/surfaces/confirm.js";
-import { pickNodes, pickTagNames } from "./core/surfaces/pick.js";
+import { pickNodes, pickRowIndex, pickTagNames } from "./core/surfaces/pick.js";
 import { quoteIfNeeded } from "./core/command/tokenize.js";
 import { uniquePath } from "./ableton/resolvePath.js";
 import { createDialogQueue } from "./core/surfaces/dialogQueue.js";
@@ -46,6 +46,7 @@ import { midiBlocked, midiLast, midiListen, onBlocked, onMidiEvent } from "./abl
 import { createMidiEngine } from "./core/midi/midiEngine.js";
 import { createSetWatch } from "./core/host/setWatch.js";
 import { createLivePages } from "./core/surfaces/livePage.js";
+import { createPageRun } from "./core/surfaces/pageRun.js";
 import { createMidiPort } from "./core/midi/midiPort.js";
 import { createMidiListenRoute, logMidiEvent } from "./ableton/midiEvents.js";
 import { buildObjectTree, flattenObjectTree, type ObjectNode } from "./ableton/objectTree.js";
@@ -87,9 +88,22 @@ export function activate(activation: ActivationContext) {
   const livePages = createLivePages({ port: TRIGGER_PORT, available: () => trigger?.listening() === true });
   const gate = createUiGate(
     withHelpLine(
-      createDefaultUi(context, dialogs, livePages, (gear) => {
-        pendingGear = gear;
-      }),
+      createDefaultUi(
+        context,
+        dialogs,
+        livePages,
+        (gear) => {
+          pendingGear = gear;
+        },
+        // Page runs (plan 0018): a live page runs the lines its module allowed, headless, nested in the opener's wait.
+        (allow) => createPageRun({
+          roots: () => registry.roots(),
+          run: async (line) => {
+            const outcome = await runHeadless(line, runBase, gate);
+            return { code: outcome.code, text: outcome.message };
+          },
+        })(allow),
+      ),
       async () => (await settingsStore.get())["ui.helpLine"],
     ),
   );
@@ -294,7 +308,12 @@ export function activate(activation: ActivationContext) {
       track: (node) => (node.kind === "track" ? trackFor(context, node) : null),
     },
     // The Set's id lives in the Set, written and read by the Remote Script (operation set_id).
-    set: { id: (create) => setId(getBridge(), create === true) },
+    set: {
+      id: (create) => setId(getBridge(), create === true),
+      transport: () => transport(getBridge()),
+      setLoop: (loop) => setLoop(getBridge(), loop),
+      jump: (time) => jump(getBridge(), time),
+    },
     midi: midiRuntime.port,
     onSetChange: (listener) => setWatch.onChange(listener),
     // Replaced per module below (a module sees its own folder only). Before a module's first command names it,
@@ -321,8 +340,9 @@ export function activate(activation: ActivationContext) {
     ui: {
       // The gear (plan 0019) is drawn only for a command that has settings: `tag --list` → the group `tag`.
       board: (request) => runBoard(ui, { ...request, ...(activeGroup() !== undefined ? { gear: true } : {}) }),
-      livePage: (name, html, width, height, routes) => ui.livePage(name, html, width, height, routes),
+      livePage: (name, html, width, height, routes, options) => ui.livePage(name, html, width, height, routes, options),
     },
+    pickRows: (title, rows, options) => pickRowIndex(ui, { title, rows, ...(options?.cursor !== undefined ? { cursor: options.cursor } : {}) }),
     pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, ...options, multi: options?.multi ?? true }),
     tags: {
       refresh: () => getTagCache().refreshNow(getBridge()),

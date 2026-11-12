@@ -87,3 +87,25 @@ test("fake api.midi.onEvent: listeners are kept in fake.eventListeners and can b
   off();
   assert.equal(fake.eventListeners.length, 0);
 });
+
+test("fake api: set.jump records the time, moves the fake transport and can fail", async () => {
+  const transport = { playing: true, session: false, pos: "1.1.1.1", time: 0, barStart: 0, barLen: 4, sigNum: 4, sigDen: 4, songLength: 100, loop: { on: false, start: 0, length: 16 } };
+  const fake = createFakeApi({ transport });
+  assert.deepEqual(await fake.api.set.jump(12), { ok: true, time: 12 });
+  assert.equal(fake.transport?.time, 12);
+  fake.jumpFails = { code: 1, text: "refused" };
+  assert.deepEqual(await fake.api.set.jump(20), { ok: false, code: 1, text: "refused" });
+  assert.deepEqual(fake.jumps, [12, 20]);
+  assert.equal(fake.transport?.time, 12);
+  const none = createFakeApi();
+  assert.deepEqual(await none.api.set.jump(1), { ok: false, code: 5, text: "the Remote Script is not running" });
+});
+
+test("fake api: pickRows records the list and answers the index; a disabled row is never chosen", async () => {
+  const rows = [{ label: "a" }, { label: "b", detail: "x", disabled: true }];
+  const fake = createFakeApi({ pickRowsAnswer: (_r, cursor) => (cursor === 1 ? 1 : 0) });
+  assert.equal(await fake.api.pickRows("Stamps", rows), 0);
+  assert.equal(await fake.api.pickRows("Stamps", rows, { cursor: 1 }), null);
+  assert.deepEqual(fake.rowLists, [{ title: "Stamps", rows }, { title: "Stamps", rows, cursor: 1 }]);
+  assert.equal(await createFakeApi().api.pickRows("t", rows), null);
+});

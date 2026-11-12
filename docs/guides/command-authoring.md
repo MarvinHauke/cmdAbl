@@ -102,11 +102,13 @@ fakes (`createFakeApi` in `src/modules/shared/testPorts.ts`, which fakes `set.id
 | `api.files.read(name)` and `api.files.write(name, text)` | `Promise<string \| null>` and `Promise<boolean>`: text files in a folder of your module in cmdAbl's data folder. Names are plain: no `/`, `\` or `..`, no leading dot, at most 100 characters. UTF-8, written atomically, at most 1 MB per write. A missing or unreadable file reads null. Nothing throws. |
 | `api.tags` | Track tags: `refresh()` reads them from the script, `of(node)` returns a track's tags, `write(node, tags)` replaces them. Names must be normalised by the caller. |
 | `api.pick(title, candidates, multi?, options?)` | The pick list, when a command has to ask. `options.state` gives each row a state button: `{ label, values, change? }` with `values[i]` true, false or null. |
+| `api.pickRows(title, rows, options?)` | A single-select list of plain rows. `rows` are `{ label, detail?, disabled? }`; a `disabled` row is shown dimmed and cannot be picked. `options.cursor` is the index the cursor starts on. It resolves with the chosen row's index, or null. |
 | `api.pickTags(title, rows, options?)` | A list of tags. `rows` are `{ name, count?, on? }`. `options.multi: false` makes it single-select, `options.allowNew` adds a row that creates a new name, `options.change` previews what `Enter` does. It resolves with the chosen names, or null. |
 | `api.ui.board(request)` | The tag board: sections whose items are on or off. It resolves with the changes; the page applies nothing, so the module writes them. |
 | `api.settings` | `declare({ heading, items })` once at activation, after the first `commands.add` (or once `Module.name` is set), and `get(name)` → `Promise<value>`, the full key (`tag.foldAfter`) or the part after the module's name (`foldAfter`); the declared default when the file has no or a wrong value, `undefined` for a key nobody declared. Every key must be `<module>.<name>`, else it is dropped with a warning. Kinds: `bool`, `enum` (`choices`) and `int` (`min`…`max`). **Modules don't write settings**: only the Settings page does, and `get` reads the file again so a new value applies at the next run. The platform adds `<module> config` (e.g. `tag config`) to every module that declares settings (from 1b on, every module with a command), opening just that group. `config` is therefore a reserved word at the first position: `tag config` opens the settings, and `tag "config"` addresses a track called config. |
 | `api.confirm(message, confirmLabel)` | A yes/no question. `Cancel` is the first row, so a reflex `Enter` never acts. |
 | `api.dialog(html, width, height, name?)` | A page of the module's own, through the dialog queue; resolves with the string the page returns, or null when dismissed. |
+| `api.ui.livePage(name, html, width, height, routes, options?)` | A page served from `http://localhost:27184` with a one-time token per dialog. While it is open it may read from your module through `routes`, and it may run the command lines you allow in `options.run`. It resolves like `dialog`. See "Live pages and page runs" below. |
 | `api.log(line)` | One log line at info: `cmdAbl [<module>] info: …`. The platform adds the prefix; write the text only. |
 | `api.logger.{debug,info,warn,error}(text)` | The same, at the level you name. `debug` lines show only after `cmdabl log --debug`. |
 | `api.commands` | `add`, plus `roots()`, `help(path)` and `usage(path)` for commands such as `man`, and `defaults()`: the default commands (bare command word → the line it runs, read-only, fresh in any handler; may be empty at activation). |
@@ -114,6 +116,37 @@ fakes (`createFakeApi` in `src/modules/shared/testPorts.ts`, which fakes `set.id
 
 A module that has its own page puts the HTML in `ui/modules/<module>/`. A module may import a page only from its own
 folder.
+
+## Live pages and page runs
+
+A page that opens with `api.dialog` gets JSON in and returns one string when it closes; everything that changes Live
+happens afterwards, in a command. A **live page** (`api.ui.livePage`) is the one exception. It is served from
+`http://localhost:27184` and may read from your module while it is open, through the `routes` you pass. It still
+works when the server cannot be reached; then the page's `LIVE` value is `null`, and the page should fall back to
+what a plain dialog does.
+
+A live page may also **run command lines while it is open**, but only those your module allows when it opens the
+page:
+
+```ts
+api.ui.livePage("note", html, width, height, routes, { run: ["loop here", "loop back"], onClose: "loop back" });
+```
+
+- `onClose` (optional) is one command line the platform runs headless after the page has closed, but only if the page ran at
+  least one line meanwhile (a safety net, here `loop back`). It must pass the same allowlist check as `run`.
+- Each entry is a command path: the command and its subcommands, as typed. The page may run a line only if its parsed
+  command path is in the list. Options and arguments are free. A line outside the list is refused (exit code 2 to the
+  page, a warning in the log).
+- The page sends `POST <base>/run` with `{ "line": "…" }`, using the same token and origin check as the read routes.
+  The answer is `{ "code", "text" }`: the command's result.
+- The line goes through the normal command path: it is parsed and resolved, it makes one undo step, it is logged and
+  its errors are caught. It runs without dialogs, so a part that would ask ends with exit code 4. It is not added to the
+  history.
+- The line runs nested, while the command that opened the page still waits for its dialog. So an allowed command
+  must not wait for that dialog or for the opening command. `livePage` resolves after the runs in flight have finished; a run that arrives after the page
+  closed gets 404.
+
+Nothing else writes. The page still answers with one string when it closes.
 
 ## Completing arguments
 

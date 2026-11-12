@@ -112,16 +112,19 @@ When a name matches more than one object, cmdAbl asks. It never picks one for yo
 The pick list opens when a name matches more than one object, or when nothing matches and cmdAbl has close
 suggestions.
 
-- **Filter.** Type to narrow the rows. `Space` types a space.
-- **Move.** `↑` and `↓` move through the rows. In a list where you can mark rows, the first arrow only enters the
-  list, so `↓` and then `Space` marks the first row.
-- **Mark.** In a list where you can mark rows, such as the lists of `mute`, `solo` and `arm`, `Tab` marks a row, and
-  so does `Space` once you are in the list. Only the marked rows are targets. The row under the cursor is not one
+- **Filter.** Type to narrow the rows. A `Space` typed in the filter is text.
+- **Move.** `↑` and `↓` move through the rows. `↓` enters the list from the filter. In a list where you can mark
+  rows, the first arrow only enters the list, so `↓` and then `Space` marks the first row.
+- **Mark.** In a list where you can mark rows, such as the lists of `mute`, `solo` and `arm`, `Space` marks a row once
+  you are in the list. `Tab` does not mark. Only the marked rows are targets. The row under the cursor is not one
   until you mark it.
+- **Fill the prompt.** In a pick list that offers it, `Tab` writes the row into the prompt. It does nothing in the
+  other lists.
 - **Choose.** In a list where you can mark rows, `Enter` runs the command on the marked rows. With nothing marked,
   `Enter` runs nothing, the list stays open and the hint asks you to mark a row. In a list where you pick one row,
   such as for `goto`, `Enter` takes the row under the cursor.
-- **Cancel.** `Esc` closes the list. Nothing runs and nothing is remembered.
+- **Cancel.** `Esc` in the list goes back to the filter. A second `Esc` closes the list. Nothing runs and nothing
+  is remembered.
 
 The line above the filter shows the command that `Enter` will run, with the exact paths of the objects.
 
@@ -169,7 +172,8 @@ and chain whose path contains `808`: the 808 track and everything below it. `fin
 - `find 808 -L 1` also lists what sits one level below those objects, such as the pads of the Drum Rack.
 - `find -c snare` lists only chains and pads. `-t` lists only tracks and `-d` only devices; the flags add up.
 - `find kick` also finds pads inside nested racks, and `find` lists the devices inside chains.
-- `next` and `prev` step through the last `find` list.
+- `find -t next` finds a track named `next`. A flag first, or another word first (`find kick next`), keeps the word a
+  pattern; `find next` alone is the step command below.
 
 Without a pattern, `find` needs `-L` or one of `-t`, `-d` and `-c`; a bare `find` is an error.
 
@@ -183,6 +187,17 @@ Without a pattern, `find` needs `-L` or one of `-t`, `-d` and `-c`; a bare `find
 ![The find pick list headed find: — 6 matches: every track of the Set with its tags, such as #drums on Kick and #bass on Bass, and the main track last](assets/images/find-top.png)
 
 *`find -L 1` lists the top-level tracks, each with its tags.*
+
+### Step through the matches: `find next` and `find prev`
+
+`find next` selects the next object of the last `find`, and `find prev` the one before. At the end of the list they
+wrap around to the other end. They step only through the last `find`; a pick list from another command does not
+replace it. They need no open palette, so you can put them on a [MIDI button](#midi-mapping).
+
+- `find --first #drums` selects the first match without a pick list, and `find --last #drums` the last. The list is
+  kept, so `find next` and `find prev` go on from there.
+- Example for a controller: button A runs `find --first #drums`, button B runs `find next`. A press of A starts at
+  the first drums track and each press of B moves on.
 
 ## Toggles, and what they do not do
 
@@ -251,7 +266,7 @@ This section goes from tagging a track to the tag board, `tag -e` and `tag -r`, 
 - `tag /Lead fx synth` switches `fx` and `synth` on for Lead, or off where they are on.
 - `tag --set 1 /Bass fx` makes sure Bass has `fx`. `tag --set 0 /Bass fx` removes it.
 - `tag /Lead` opens a list of the Set's tags. Its buttons show which ones Lead has. Mark the tags to switch with
-  `Tab`, then press `Enter`.
+  `Space`, then press `Enter`.
 
 To add a tag that does not exist yet, type its name in that list. The list then shows `+ new tag "<name>"` as its
 last row.
@@ -284,7 +299,7 @@ tracks.
 
 `find` understands tags too:
 
-- `find #drums` lists the tracks tagged `drums`. `next` and `prev` step through them.
+- `find #drums` lists the tracks tagged `drums`. `find next` and `find prev` step through them.
 - `find !#drums` lists the regular tracks without the tag.
 - `find drums` lists what the path matches and also the tracks tagged `drums`. Their rows show their tags.
 - `find #drums kick` searches inside the tagged tracks. The kind flags and `-L` apply: `find #drums -c` lists the
@@ -402,7 +417,7 @@ any click except Close, cancels the warning. The footer shows the main keys.
 
 - `tag -e fx` opens a pick list of all regular and return tracks. A "tagged fx" button is lit where a track has the
   tag.
-- Mark tracks with `Tab` and press `Enter`. `fx` switches on or off for each marked track. `Esc` changes nothing.
+- Mark tracks with `Space` and press `Enter`. `fx` switches on or off for each marked track. `Esc` changes nothing.
 - A bare `tag -e` means `tag -e #`: it opens the tag list first. That list takes one row: `Enter` on a tag opens its
   track list at once, and a new name plus `Enter` creates the tag.
 - `--edit` cannot be combined with a target, names, `--list` or `--set`.
@@ -472,6 +487,49 @@ shows how cmdAbl's ports and Remote Script operations map to the Live Object Mod
 
 ![The man page for mute inside Live: the summary, usage, the settings line `mute config`, arguments and options, with Close and Open in browser buttons](assets/images/man-page.png)
 
+## The arrangement loop: `loop`
+
+`loop` controls Live's arrangement loop. It needs the [Remote Script](remote-script.md); without it the command stops
+with exit code 5.
+
+- `loop` shows the loop: on or off, start bar and length in bars.
+- `loop here [bars]` loops from the current bar, `bars` long, and switches the loop on. Without `bars` it uses the
+  setting `loop.bars` (default 4). It remembers the loop from before.
+- `loop on` and `loop off` switch the loop on or off.
+- `loop back` puts back the loop from before the last `loop here`. If someone moved the loop since, it leaves the loop
+  alone.
+
+If the loop would start too far out (see the note under [`jump`](#move-the-playhead-jump)), cmdAbl refuses with
+"loop start `<pos>` is too far: Live allows positions only up to `<X>` here (…)" (exit code 1). With nothing
+to restore, `loop back` does nothing.
+
+Bars follow the Set's current time signature. The loop write leaves no undo step, and Live counts the Set as changed, so
+it asks you to save.
+
+## Move the playhead: `jump`
+
+`jump` moves the Arrangement playhead to a position. It needs the [Remote Script](remote-script.md); without it the
+command stops with exit code 5. Playback keeps running: if the song plays, it plays on from the new position.
+
+| You type | The playhead goes to |
+| -------- | -------------------- |
+| `jump 12.3.1` | bar 12, beat 3, sixteenth 1 |
+| `jump 12.3` | bar 12, beat 3 |
+| `jump 12` | the start of bar 12 |
+| `jump +4` or `jump -4` | four bars on or back, counted from the start of the current bar. Going back stops at the beginning of the song. |
+| `jump start` | the beginning of the song |
+| `jump end` | the end of the song: the length Live reports for the Set (it counts the loop end in it) |
+
+Bars and beats follow the Set's current time signature. If the signature changes inside the song, positions after
+the change can be off. This is a known limit.
+
+!!! note "How far the playhead can go"
+    Live lets the playhead go only up to the latest of three limits: 8 bars past the last clip or automation, the
+    loop's end, or 8 bars past the current playhead. A position further out is refused with exit code 1 and the
+    message "`<pos>` is too far: Live lets the playhead go only up to `<X>` here (the last clip or automation + 8 bars,
+    the loop's end, or the playhead + 8 bars)". A later clip or automation point, or a loop, extends the reachable
+    area.
+
 ## A note per Set: `note`
 
 `note` opens a note that belongs to the current Live Set, for things like a to-do list or a mix plan. It needs the
@@ -479,24 +537,87 @@ shows how cmdAbl's ports and Remote Script operations map to the Live Object Mod
 
 - `note` shows the note, rendered: headings, lists, checkboxes, tables, code, bold and italic. Links show as text.
 - `note -e` (long form `--edit`) opens it for editing. A Set without a note opens in edit mode on an empty page.
+- `note stamp` adds a stamp to the note. See [Stamps](#stamps-a-timestamped-entry). `note stamp list`, `next` and `prev` jump to stamps; see [Find and jump to stamps](#find-and-jump-to-stamps).
 
-![The note window in view mode: the heading Mix notes, a table with Track and Todo columns, and a checklist with one open and one done item. The footer says e edit, Esc close, with Edit and Close buttons](assets/images/note-view.png)
+![The note window in view mode: three stamps, each a heading with the date and time and a line of text below it; two headings also hold the song position, such as @79.3.2. The footer says e edit, s stamp, Esc close, with Edit, Stamp and Close buttons](assets/images/note-view.png)
 
-![The same note in edit mode: the Markdown source with its heading, table and checklist. The footer says Cmd+S save and close, Esc close (warns when unsaved), with Save and Cancel buttons](assets/images/note-edit.png)
+![The same note in stamp edit: the Markdown source, with the newest stamp heading `### @82.1.2 · 2026-11-11 22:37` and the text typed below it. The footer says Cmd+S save and close, Esc done, Discard drops this edit, with Save, Discard and Done buttons](assets/images/note-edit.png)
 
 Keys in the note window:
 
 - `e` switches from view to edit.
+- `s` in view adds a stamp (see below).
 - `Cmd+S` or **Save** saves and closes.
-- `Esc` in view closes the note.
-- `Esc` in edit with unsaved changes warns first. A second `Esc` discards the changes.
+- `Esc` in edit goes back to view and keeps your text.
+- `Esc` in view closes the note and saves your changes, if there are any.
+- **Discard** throws your changes away. When there are changes, it asks first: click **Discard** again to confirm. The question goes away after a few
+  seconds, and any key keeps your edit.
+
+### Stamps: a timestamped entry
+
+A **stamp** is a new entry at the end of the note, under a heading that says when you wrote it. Use it to jot down
+an idea while the music plays. Stamps belong to the note: `note stamp` is a subcommand of `note` and writes into
+this Set's note. It is not a separate feature.
+
+- Press `s` in view, or run `note stamp`. The note switches to edit at once, with the heading added and the cursor
+  below it. Start typing right away; the heading fills in a moment later and your text stays.
+- While the song plays, the heading reads `@bar.beat.sixteenth · date time`, for example `@12.3.1 · 2026-11-11 14:32`.
+  `@12.3.1` is the song position. While the song is stopped, the heading is only the date and time.
+- Without the [Remote Script](remote-script.md), cmdAbl cannot read the song position. The heading is then the date
+  and time, and a hint says that the Remote Script is not running.
+- `Esc` ends the stamp and goes back to view. The text is kept and the old loop comes back. Press `s` again
+  for the next section. If you typed nothing below the heading, no entry is added.
+- `Cmd+S` saves and closes the note. **Discard** throws away this edit and asks once first.
+
+Esc or Cmd+S right after `s` wait up to half a second for the song position. If the Remote Script does not answer,
+the heading holds only the date and time.
+
+**The loop while you write.** During Arrangement playback, a stamp also loops the music while you type: the note
+runs [`loop here`](#the-arrangement-loop-loop) when the stamp starts and `loop back` when it ends (`Esc`, **Done**,
+**Discard** or `Cmd+S`). Two settings control this:
+
+| Setting | Default | What it does |
+| ------- | ------- | ------------ |
+| `note.stampLoop` | on | Decides whether a stamp loops. |
+| `loop.bars` | 4 | How long that loop is, in bars. |
+
+The loop is set only during Arrangement playback, never while a Session clip plays or the song is stopped.
+
+`note stamp` from a chain or a MIDI mapping loops the same way. To loop even with `note.stampLoop` off, or outside
+Arrangement playback, set the loop yourself: `loop here 8; note stamp; loop back`, with `note.stampLoop` off.
+
+### Find and jump to stamps
+
+A stamp that was written during playback holds a song position, such as `@12.3.1`. Three commands use it. They need
+the [Remote Script](remote-script.md).
+
+- `note stamp list` shows the stamps of the note as a pick list: the heading and the first words below it. The cursor
+  starts on the next stamp after the playhead. A stamp without a position is shown dimmed and cannot be picked.
+  `Enter` jumps to the chosen stamp.
+- `note stamp next` jumps to the next stamp after the playhead, by song position.
+- `note stamp prev` jumps to the previous stamp before the playhead.
+
+Stamps without a position are skipped by `next` and `prev`. So are stamps that are too far out for Live's playhead limit
+(see the note under [`jump`](#move-the-playhead-jump)); `list` shows them disabled with "too far for Live". At the last stamp, `note stamp next` stops with
+"no stamp after bar N" (exit code 3); if stamps were left out for being too far out, it adds "(k too far for Live)". With the setting `note.stampWrap` on, it goes on to the first stamp instead,
+and `prev` goes from the first stamp to the last.
+
+| Setting | Default | What it does |
+| ------- | ------- | ------------ |
+| `note.stampWrap` | off | `note stamp next` and `prev` wrap around at the last or first stamp. |
+
+**In the note window.** When the note window is connected (as for looping while you stamp), the stamp headings with a position are a list in view: `↑` and `↓` move between them, and
+`Enter` or a click on a heading jumps there, as [`jump`](#move-the-playhead-jump) does. The window stays open. If the
+jump fails, the footer shows why.
+
+A stamp that is too far out for Live's playhead limit (see the note under [`jump`](#move-the-playhead-jump)) cannot be jumped to; the footer shows the "too far" message.
 
 **Where the note lives.** The note is plain Markdown. It is stored as a file in cmdAbl's data folder (the Extensions
 Data folder in Ableton's Application Support) and linked to the Set by an id that is saved inside the Set. Viewing
 never changes the Set. The first save adds the id, so Live asks you to save the Set. Save it, or the link is lost.
 
-**Save As and Collect All and Save.** The note stays with the Set's id. After Save As, both Sets show the same note,
-and editing it in one changes it for both. Collect All and Save keeps the note.
+**Save As and Collect All and Save.** The note stays with the Set's id. Copies of a Set (Save As, or a copied file)
+share one note, because the id lives in the Set: editing the note in one changes it for all. Collect All and Save keeps the note.
 
 **After a save.** A save is quiet; `cmdabl log` shows "note saved". If saving fails, the message says so, and the next
 `note` opens your text again until cmdAbl restarts.
@@ -526,7 +647,7 @@ the button, the line runs. `midi monitor` shows what your controller sends.
 
 **What you need.**
 
-- The [Remote Script](remote-script.md), version 0.1.14 or newer. After an update, run `cmdabl setup`, then restart
+- The [Remote Script](remote-script.md), version 0.1.15 or newer. After an update, run `cmdabl setup`, then restart
   Live.
 - Your controller as the **Input** of the cmdAbl row under **Control Surface** in Live's **Settings → Tempo & MIDI →
   MIDI**. Live has no other way to pass a controller to a Remote Script.
@@ -740,7 +861,7 @@ A remembered line keeps:
 
 The history is kept in memory. It is gone when cmdAbl restarts.
 
-![The empty palette: the commands cmdabl, history, goto, find, next, prev, mute and solo, each with its summary, and the key help line at the bottom, with no rows of recent commands](assets/images/palette-empty.png)
+![The empty palette: the commands cmdabl, history, goto, find, mute, solo, arm and vol, each with its summary, and the key help line at the bottom, with no rows of recent commands](assets/images/palette-empty.png)
 
 *With no history, the empty palette lists only the commands.*
 

@@ -53,6 +53,27 @@ export async function pickNodes(ui: Ui, options: PickOptions): Promise<ObjectNod
   return chosen.length ? chosen : null;
 }
 
+export interface PickRowsOptions {
+  title: string;
+  rows: Array<{ label: string; detail?: string; disabled?: boolean }>;
+  /** The row that has the cursor when the list opens. */
+  cursor?: number;
+}
+
+/** A single-select list of plain rows (`ModuleApi.pickRows`): the chosen row's index, or null when cancelled or a disabled row came back. */
+export async function pickRowIndex(ui: Ui, options: PickRowsOptions): Promise<number | null> {
+  const answer = await ui.select({
+    title: options.title,
+    multi: false,
+    ...(options.cursor !== undefined && Number.isInteger(options.cursor) ? { cursor: options.cursor } : {}),
+    items: options.rows.map((r) => ({ label: r.label, ...(r.detail !== undefined ? { detail: r.detail } : {}), ...(r.disabled ? { disabled: true } : {}) })),
+  });
+  if (!Array.isArray(answer) || answer.length < 1) return null;
+  const index = answer[0]!;
+  const row = options.rows[index];
+  return row && !row.disabled ? index : null;
+}
+
 export interface PickTagsOptions {
   title: string;
   /** One row per tag; `on` = the target has the tag (the row's state button is lit), absent = no state. */

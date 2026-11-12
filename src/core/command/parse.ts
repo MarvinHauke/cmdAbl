@@ -33,6 +33,12 @@ export function fallbackOf<P>(node: CommandNode<P, any>): CommandNode<P, any> | 
   return node.children?.find((c) => c.fallback === true && !(c.children?.length));
 }
 
+/** The fallback child that also runs when its group is typed alone (`fallback: true` + `bare: true`), if there is one. */
+export function bareOf<P>(node: CommandNode<P, any>): CommandNode<P, any> | undefined {
+  const fallback = fallbackOf(node);
+  return fallback?.bare === true ? fallback : undefined;
+}
+
 /**
  * An option starts with an unquoted dash; quotes later in the token (`--to="a b"`) are fine. A
  * number (`-6`, `-inf`) is a value, not an option, unless it is exactly a declared short option of
@@ -87,7 +93,8 @@ export function parse<P = unknown>(fullInput: string, roots: CommandNode<P, any>
   if (wantsHelp) return { kind: "help", node, path };
 
   // A group with a fallback child (`map CC37 | …` beside `map learn | …`): words that are no subcommand belong to the fallback.
-  if (isGroup && (rest.length > 0 || pipe)) {
+  // A group typed alone runs its fallback only when that one is `bare` (`git stash` → `git stash push`).
+  if (isGroup && (rest.length > 0 || pipe || bareOf(node))) {
     const fallback = fallbackOf(node);
     if (fallback) {
       node = fallback;

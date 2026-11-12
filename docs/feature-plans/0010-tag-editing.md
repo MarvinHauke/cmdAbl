@@ -6,7 +6,8 @@
 
 **Status:** Released in 0.1.2 (board, `tag -e`, `tag -r`); board editing released in 0.1.5 (2026-11-05,
 PR #27): rename and remove whole tags, click to assign, the file-tree keys. Open: the 0.1.6 settings
-and help pattern (gear button, `tag config`, footer help on hover).
+and help pattern (gear button, `tag config`, footer help on hover; released in 0.1.6). Next: the tag list and
+tag editor (tag-0, below), after 0019 phase 4.
 
 ## Context
 
@@ -198,6 +199,51 @@ board as the keyboard path (decision 5).
   `ui/modules/<module>/…`, for example `ui/modules/pakabl/list.html`.
 - **Rule:** when a second module needs the same kind of page, it becomes a core surface. Every
   page answers once when it closes, and edits follow collect → apply.
+
+## Tag list and tag editor (user finding tag-0, decided 2026-11-11; for 0.2.x)
+
+The board (`tag -l`) and the edit list (`tag -e`) did similar jobs. They become one **tag editor**
+(`tag -e`), and `tag -l` goes back to a simple **tag list**. Terms: [GLOSSARY.md](GLOSSARY.md).
+
+**Decisions:**
+1. **`tag -e` opens the tag editor.** No `--board` name: one way in.
+2. **`tag -l` is the tag list:** a read-only pick list, one row per tag (`#drums · 3 · Kick, Snare, Hat`),
+   untagged tracks as a last read-only row (Enter does nothing there). Enter on a tag row runs the
+   setting **`tag.listEnter`**, a command line with `{}` for the tag; default `find #{}` (so `next`/`prev`
+   step through the tracks), e.g. `tag -e {}` or `mute #{}`.
+3. **Two views of the tag editor**, sharing the same pending changes and one Apply; a header button (and a
+   key that doesn't type into the filter, e.g. `Ctrl+G`) switches; the setting **`tag.editView`** picks
+   the one that opens (default `list`):
+   - **List view, two panes:** the tags on the left, one per row with the track count and the pending
+     changes (`fx 4 · +2`); the current tag's tracks on the right, each with a checkbox. ↑/↓ on the left
+     choose the current tag, → goes into its tracks, ← back (deeper = →, out = ←, as in 0019 §5). The
+     arrows stay the way to move; what was missing is visual feedback, so the current tag is clearly
+     highlighted and the pane with the focus is marked.
+   - **Grid view:** tracks as rows, tags as columns, a checkbox per cell. Arrows move from cell to cell,
+     Space toggles; ↑ from the first row reaches the column header. Mouse: click a cell; the header has
+     the pencil and ×.
+   - In both: F2 renames the current (or header) tag, Shift+Backspace marks it for removal, as on the
+     board today; an existing name merges.
+4. **Writes on Apply,** like the board. Esc closes without changes, and asks first when changes are
+   pending. Space on a checkbox makes a pending change, not a mark.
+5. **Filter:** typing filters the tracks (in the grid also the tag columns). The setting **`tag.filter`**:
+   `compact` (default) hides what doesn't match; `highlight` keeps everything and ↑/↓ skip the rows that
+   don't match. Esc clears the filter first.
+6. **"+ New tag…" stays pinned at the top.** In the grid a new tag adds a column; in the list view it
+   becomes the current tag.
+7. **Fewer pages:** `tag -e` without a tag no longer asks which tag first (it opens on the first tag);
+   `tag /Lead` without names opens the tag editor with Lead in focus instead of its own tag list. Two
+   pages remain (`-l`, `-e`). The lines that write without a page stay: `tag /Lead fx`, `-s`, `-r`.
+8. **Built on 0019 phase 4** (`listnav.js`, one keyboard model). The tag editor is its first page user,
+   so the keys aren't built twice. The mark key there: Space marks, Tab only completes (0019 §5).
+
+**Rule for options** (applies to every module; the option review after tag-0 uses it): one page per job,
+and every write can also be done in one line, so it works in `;` chains, `map` bindings and scripts.
+
+**Rollout:** after 0019 phase 4. cmdabl-ui (the page, browser-checked against the UX checklist),
+cmdabl-modules (`tag -l` list, `tag -e` on the new page, the three settings), cmdabl-core only if the
+board surface contract changes (a decision for then: extend `board` or a new surface), cmdabl-docs (the
+Tags section, reference, images: "board" leaves the docs).
 
 ## Open questions
 

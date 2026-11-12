@@ -46,6 +46,8 @@ const listOf = (labels: string[]): string => (labels.length <= SHOWN ? labels.jo
 
 /** Wrap the real `Ui`: it passes everything through until `within` switches it. */
 export function createUiGate(real: Ui): UiGate {
+  // The captures of the runs going now (runs may overlap: MIDI, MCP, a page run); the last one is in effect.
+  let active: Capture[] = [];
   let capture: Capture | null = null;
   const shut = (what: string): null => {
     capture?.dialogs.push(what);
@@ -68,22 +70,27 @@ export function createUiGate(real: Ui): UiGate {
     settings: (request) => (capture ? Promise.resolve(shut(`settings "${request.title}"`)) : real.settings(request)),
     board: (request) => (capture ? Promise.resolve(shut(`board "${request.title}"`)) : real.board(request)),
     page: (name, html, width, height) => (capture ? Promise.resolve(shut(`page "${name}"`)) : real.page(name, html, width, height)),
-    livePage: (name, html, width, height, routes) => (capture ? Promise.resolve(shut(`page "${name}"`)) : real.livePage(name, html, width, height, routes)),
+    livePage: (name, html, width, height, routes, options) => (capture ? Promise.resolve(shut(`page "${name}"`)) : real.livePage(name, html, width, height, routes, options)),
   };
   return {
     ui,
     active: () => capture !== null,
     async within(into, fn) {
+      active.push(into);
       capture = into;
       try {
         return await fn();
       } finally {
-        if (capture === into) capture = null; // a released run that ends late must not close a newer run's capture
+        // Remove this run wherever it is; the newest run still going (or none) is in effect. A released run that ends late is not in the list.
+        const at = active.lastIndexOf(into);
+        if (at >= 0) active.splice(at, 1);
+        capture = active[active.length - 1] ?? null;
       }
     },
     release() {
       const held = capture !== null;
       capture = null;
+      active = [];
       return held;
     },
   };

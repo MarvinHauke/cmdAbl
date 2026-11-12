@@ -99,6 +99,27 @@ export const PORT_MAPPING: readonly PortMapping[] = [
     note: "Stored in the Set with Song.set_data (survives save, reload, Save As and Collect All and Save; Live-tested 2026-10-22). Null without the script.",
   },
   {
+    port: "set.transport",
+    via: "script",
+    call: "operation `transport` (read: playing, session playback, position, bar start and length, song length, arrangement loop; beats)",
+    lom: ["Song.is_playing", "Song.current_song_time", "Song.loop", "Song.loop_start", "Song.loop_length", "Song.song_length", "Song.signature_numerator", "Song.signature_denominator", "Song.get_current_beats_song_time", "Track.playing_slot_index"],
+    note: "Null without the script or with an old one.",
+  },
+  {
+    port: "set.setLoop",
+    via: "script",
+    call: "operation `loop_set` (writes the arrangement loop on/start/length in beats; answers the loop as Live has it)",
+    lom: ["Song.loop", "Song.loop_start", "Song.loop_length"],
+    note: "A writing op (token). Code 5 without the script or with an old one, code 1 when Live refuses the value.",
+  },
+  {
+    port: "set.jump",
+    via: "script",
+    call: "operation `jump` (moves the playhead to a position in beats; answers the position as Live has it)",
+    lom: ["Song.current_song_time", "Song.is_playing"],
+    note: "A writing op (token). Code 5 without the script or with an old one, code 1 when Live refuses or does not answer.",
+  },
+  {
     port: "files.read",
     via: "platform",
     call: "reads `<Extensions Data>/<extension id>/modules/<module>/<name>` (UTF-8)",
@@ -119,6 +140,7 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "pick", via: "platform", call: "the platform's pick list", lom: [] },
   { port: "confirm", via: "platform", call: "the platform's pick list (Cancel / Confirm rows)", lom: [] },
   { port: "pickTags", via: "platform", call: "the platform's pick list of tags (state buttons)", lom: [] },
+  { port: "pickRows", via: "platform", call: "the platform's pick list of plain rows (single-select, cursor, disabled rows)", lom: [] },
   {
     port: "tags.refresh",
     via: "script",
@@ -148,7 +170,7 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   { port: "commands.defaults", via: "platform", call: "reads the usable default commands (command → line)", lom: [] },
   { port: "commands.help", via: "platform", call: "renders --help text for a command path", lom: [] },
   { port: "onSetChange", via: "script", call: "operation `set_id`, polled every few seconds while a module listens", lom: [], note: "The id lives in the Set (Song.set_data); the listener hears it when the script first answers and when it differs." },
-  { port: "ui.livePage", via: "platform", call: "a dialog on http://localhost:27184/live/<page> with read-only routes under a one-time token", lom: [], note: "The read-only exception to the dialog rule (plan 0018): the page polls the module's route functions while open; it never writes." },
+  { port: "ui.livePage", via: "platform", call: "a dialog on http://localhost:27184/live/<page> with read-only routes under a one-time token", lom: [], note: "The exception to the dialog rule (plan 0018): the page polls the module's route functions while open, and may run only the command lines (`options.run` paths) its module allows via POST /run; nothing else writes." },
   { port: "files.readResult", via: "platform", call: "reads <data folder>/modules/<module>/<name>", lom: [], note: "Tells a missing file from a failed read." },
   // midi — the engine's table, and what the Remote Script forwards (plan 0018)
   { port: "midi.setBindings", via: "script", call: "operation `midi_listen` (the bound controls) + core's binding table", lom: [], note: "The script forwards exactly the bound controls (and what listen adds); pushed events run the bound lines through the headless runner." },

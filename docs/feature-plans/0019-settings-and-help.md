@@ -108,7 +108,7 @@ interface ModuleApi {
   | `map.enabled` | bool | true | 0018 | 1a |
   | `midi.statusBar` | bool | false | 0018 | 1a |
   | `ui.helpLine` | bool | true | tag-4 | 2 |
-  | `note.editLoop` | bool | false | note-1 (with 0013's timestamped entries) | 6 |
+  | `note.stampLoop`, `loop.bars` | bool, int | true, 4 | note-1 (0013 "Stamps") | 6 |
 
   **A key is declared in the phase that gives it an effect** (user, 2026-11-05), so the page never
   shows a switch that does nothing.
@@ -234,6 +234,9 @@ The rules, from the board (0010, user 2026-11-05):
   field), and ← goes out (field → heading → fold).
 - Enter takes the item under the cursor, Esc leaves the list (a second Esc clears the field, a third
   closes the page), and Tab completes without taking.
+- **Space marks, Tab only completes** (user, 2026-11-11, tag-0): Tab no longer marks in the pick list;
+  Shift+Tab/Tab move focus to the buttons. To mark from the filter field, go ↓ into the list first. The
+  user reports back if he misses Tab-marking.
 
 `listnav.js` is a small helper with no DOM assumptions beyond "an ordered list of rows of items". The
 pick list and the palette rows move to it first. The board keeps its own code until the helper covers
@@ -334,6 +337,7 @@ see it:
   `src/core/surfaces/defaultsRequest.fixture.json` is a sample request.
 - **The completion snapshot** has `defaults?: Record<command, line>` (usable ones of known commands, ≤ 200): the palette shows
   `mute → mute #drums` while the line is exactly that word.
+- **Defaults page sizing** (2026-11-12): coming from a settings page it inherits that page's height, but never below its own size (own size vs. inherited, the larger wins, 240–600), so a small `<module> config` window doesn't make it scroll. The settings page ignores a passed height (no mirror rule).
 - **Link rows:** `cmdabl` group → "Default commands" (`target: "defaults"`, summary "N set"); a group named like a top-level command →
   "Default command" (`target: "defaults:<command>"`, summary = its line or "not set"). A successful save on the opened page is quiet too (count to the log); only lines that stay invalid are told.
 - `cmdabl config defaults [<command>]` (the second word only after `defaults`); `defaults` completes among the groups.
@@ -359,7 +363,7 @@ see it:
    to the log (user, 2026-11-11). The help line is always one row (2026-11-11).
 4. **`listnav.js`** on the pick list and the palette rows, then the board.
 5. **The setup status page:** released in 0.1.6 as [0021](0021-installation-and-setup-page.md).
-6. **With 0013:** the note's timestamped entries and `note.editLoop`, gear on the note page.
+6. **With 0013:** the note's stamps (0013) and `note.stampLoop` and `loop.bars` (0026), gear on the note page.
 7. **Shortcuts** (after 0.1.6, user 2026-11-05): `Cmd+,` opens settings, tested in Live first (Karabiner
    and Live may take it), and the start of 0006's keymap for global keys. The list keys stay in §5.
 

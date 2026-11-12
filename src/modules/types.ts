@@ -63,6 +63,13 @@ export interface TracksPort {
   setVolume(node: ObjectNode, value: number): Promise<boolean>;
 }
 
+/** One row of a plain list (`ModuleApi.pickRows`). */
+export interface PickRow {
+  label: string;
+  detail?: string;
+  disabled?: boolean;
+}
+
 /** One row of a tag list (`ModuleApi.pickTags`). */
 export interface TagRow {
   /** Lower-case tag name, without the `#`. */
@@ -93,6 +100,54 @@ export interface SetPort {
    * or too old. Never throws.
    */
   id(create?: boolean): Promise<string | null>;
+  /**
+   * The transport (plan 0013, stamps): playing state, whether a session clip plays, the position `pos` ("12.3.1.1"),
+   * the time and the current bar's start and length, and the arrangement loop; all times in beats.
+   * Null: the Remote Script is not running or too old, or the read failed. Never throws.
+   */
+  transport(): Promise<Transport | null>;
+  /**
+   * Set the arrangement loop (on/off, start, length in beats). Resolves to the loop as Live has it afterwards, or a
+   * failure with the exit code (1 Live refused the value, 5 no script or an old one) and a text. Never throws.
+   */
+  setLoop(loop: Loop): Promise<SetLoopResult>;
+  /**
+   * Move the playhead to `time` beats (playing stays playing). Resolves to the position as Live has it afterwards
+   * (`note` words a difference from the target, for the debug log; never an error), or a failure with the exit code
+   * (1 Live refused or did not answer, 5 no script or an old one) and a text. Never throws.
+   */
+  jump(time: number): Promise<JumpResult>;
+}
+
+/** The answer of `SetPort.jump`. */
+export type JumpResult = { ok: true; time: number; note?: string } | { ok: false; code: 1 | 5; text: string };
+
+/** The answer of `SetPort.setLoop`. */
+export type SetLoopResult = { ok: true; loop: Loop } | { ok: false; code: 1 | 5; text: string };
+
+/** The arrangement loop, in beats. */
+export interface Loop {
+  on: boolean;
+  start: number;
+  length: number;
+}
+
+/** The transport as the Remote Script reports it (plan 0013). Times are in beats. */
+export interface Transport {
+  playing: boolean;
+  /** Any track plays a session clip. */
+  session: boolean;
+  /** The position as "bar.beat.sixteenth.tick", e.g. "12.3.1.1". */
+  pos: string;
+  time: number;
+  barStart: number;
+  barLen: number;
+  /** The current time signature (0 = unknown: an old script did not say; do not guess a bar length from it). */
+  sigNum: number;
+  sigDen: number;
+  /** The length of the Set (Song.song_length), in beats. */
+  songLength: number;
+  loop: Loop;
 }
 
 /** A module's own small text files in the extension's data folder (plan 0013). */
@@ -252,9 +307,22 @@ export interface ModuleApi {
      * (`{ replaced: true }`), and the dialog closing answers `{ error: "closed" }`. `cancel.onCancel(cb)` runs once when the
      * wait ends for any reason (answered, timeout, replaced, client gone, closed): drop your listeners there.
      * Without the server (port taken) the page opens as a data page with `LIVE = null`: it must work without polling.
+     * `options.run` (plan 0018 "Page runs") lets the page RUN command lines while open: the command paths it may run
+     * (command plus subcommands, e.g. `["loop here", "loop back"]`; options and arguments are free). The page posts
+     * `POST <LIVE.base>/run` with JSON `{ line }` and the same `Authorization: Bearer <LIVE.token>`, and gets
+     * `{ code, text }` (the `CommandResult`'s exit code and message). A line whose command path is not listed (also a `;`
+     * chain with any unlisted part, or a bare `|`) is refused with `{ code: 2, text }` and a warn line. An allowed line runs
+     * through the normal path, nested while this call still waits: headless (no dialogs, exit 4 where it would ask), one
+     * undo step, logged, errors caught, NOT added to the history. Not available without the server (`LIVE = null`): fall back
+     * to closing the page (`then`) and reopening it.
+     * `options.onClose` (plan 0026 "Safety net") is one command line core runs once after the page has closed and its
+     * in-flight page runs have finished, but only if the page made at least one page run (a refused one counts; so not for a plain read, a data page, or
+     * a close without runs); then whatever the page answered, also a dismiss (e.g. `"loop back"`). Same rules
+     * as a page run: its command path must be listed in `run` (else refused with a warn line), headless, logged, errors
+     * caught, NOT in the history, no dialogs. Its result is only logged.
      * Resolves with the string the page returns on close, or null if dismissed, like `dialog`.
      */
-    livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes): Promise<string | null>;
+    livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes, options?: { run?: string[]; onClose?: string }): Promise<string | null>;
   };
   /**
    * Ask a yes/no question: a single-select list titled `message` with two
@@ -276,6 +344,13 @@ export interface ModuleApi {
    * holds exactly one name.
    */
   pickTags(title: string, rows: TagRow[], options?: { change?: StateChange; preview?: PickPreview; allowNew?: boolean; multi?: boolean }): Promise<string[] | null>;
+  /**
+   * A single-select list of plain rows (plan 0027; not objects, not tags): Enter chooses the cursor row. Resolves with
+   * the chosen row's index, or null when cancelled. `cursor` is the row that has the cursor on opening; a `disabled` row
+   * is shown but cannot be chosen and the cursor skips it. Same dialog queue, list keys and headless rule as `pick`
+   * (headless it would ask, so the run ends with exit 4). Never rejects.
+   */
+  pickRows(title: string, rows: PickRow[], options?: { cursor?: number }): Promise<number | null>;
   /** Track tags (plan 0008). */
   tags: TagsPort;
   /** Notified whenever a pick list was shown, with what was offered and what was chosen. */

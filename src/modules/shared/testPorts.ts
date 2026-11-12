@@ -11,7 +11,7 @@ import type { MidiMessage as StoredMidiMessage } from "../../ableton/bridgeOps.j
 import type { Provider } from "../../core/types.js";
 import type { BoardAnswer, BoardRequest, StateChange } from "../../core/surfaces/ui.js";
 import { MAX_FILE_BYTES, validFileName } from "../../core/settings/files.js";
-import type { ModuleApi, SettingDef, TagRow, TrackHandle } from "../types.js";
+import type { Loop, ModuleApi, PickRow, SettingDef, TagRow, TrackHandle, Transport } from "../types.js";
 
 // A ModuleApi made of fakes, so a module's `activate` and its commands' `run`
 // can be tested without Live: an in-memory bridge, a scripted object tree,
@@ -28,12 +28,20 @@ export interface FakeApiOptions {
   boardAnswer?: (request: BoardRequest) => BoardAnswer | null;
   /** What `api.confirm` answers (default: false, i.e. cancelled). */
   confirmAnswer?: boolean;
+  /** What `api.pickRows` answers: the index chosen (default: cancelled; a disabled row counts as cancelled). */
+  pickRowsAnswer?: (rows: PickRow[], cursor: number | undefined) => number | null;
   /** What `api.pickTags` answers (default: cancelled). */
   pickTagsAnswer?: (rows: TagRow[]) => string[] | null;
   /** Tags per node (by `handleId`) the fake `api.tags` starts with; writes land in `fake.tagStore`. */
   tags?: Record<string, string[]>;
   /** The Set's id the fake `api.set.id` starts with (default: none yet; `id(true)` then makes "fake-set-id"). */
   setId?: string | null;
+  /** The transport the fake `api.set.transport` answers (default: null, i.e. no script); `setLoop` writes into its `loop`. */
+  transport?: Transport | null;
+  /** When set, `api.set.setLoop` answers this failure and leaves the loop alone (Live refusing a value: code 1). */
+  setLoopFails?: { code: 1 | 5; text: string } | null;
+  /** When set, `api.set.jump` answers this failure and leaves the position alone. */
+  jumpFails?: { code: 1 | 5; text: string } | null;
   /** Files the fake `api.files` starts with, by name. */
   files?: Record<string, string>;
   /** The messages the fake script has kept (`api.midi.last` returns those after `since`). */
@@ -60,13 +68,15 @@ export interface FakeApi {
   logged: Array<{ level: "debug" | "info" | "warn" | "error"; text: string }>;
   /** The messages `api.confirm` was asked. */
   confirms: string[];
+  /** The row lists `api.pickRows` showed. */
+  rowLists: Array<{ title: string; rows: PickRow[]; cursor?: number }>;
   /** The tag lists `api.pickTags` showed (title and rows). */
   tagLists: Array<{ title: string; rows: TagRow[]; allowNew?: boolean }>;
   /** Tags by node `handleId`; `api.tags.write` replaces the entry (empty removes it). */
   tagStore: Map<string, string[]>;
   dialogs: Array<{ html: string; width: number; height: number }>;
   /** The live pages `api.ui.livePage` was asked to show, with their route functions (call them to test the data a page would poll). */
-  livePages: Array<{ name: string; html: string; width: number; height: number; routes: LiveRoutes }>;
+  livePages: Array<{ name: string; html: string; width: number; height: number; routes: LiveRoutes; run?: string[]; onClose?: string }>;
   /** Track state by handle id; writes land here. */
   tracks: Map<string, TrackHandle>;
   /** Volumes (0..1) written through the fake's `tracks.setVolume`, by handle id; unset reads 0.85. */
@@ -79,6 +89,14 @@ export interface FakeApi {
   fileStore: Map<string, string>;
   /** The Set's id now (`api.set.id(true)` fills it when empty). */
   setId: string | null;
+  /** The fake transport now (null = no script); `api.set.setLoop` replaces its `loop`. */
+  transport: Transport | null;
+  /** The failure `api.set.setLoop` answers now (null = none); tests may set it. */
+  setLoopFails: { code: 1 | 5; text: string } | null;
+  /** The failure `api.set.jump` answers now (null = none); tests may set it. */
+  jumpFails: { code: 1 | 5; text: string } | null;
+  /** The times `api.set.jump` was asked for, in order (failed asks included). */
+  jumps: number[];
   /** The bindings last given to `api.midi.setBindings` (rows with `{}` and press/release are refused, as in the engine). */
   midiBindings: MidiBinding[];
   /** Listeners registered with `api.onSetChange`; call them to simulate a Set change. */
@@ -123,6 +141,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     pickStates: [],
     confirms: [],
     tagLists: [],
+    rowLists: [],
     tagStore: new Map(Object.entries(options.tags ?? {})),
     dialogs: [],
     livePages: [],
@@ -132,6 +151,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     fileStore: new Map(Object.entries(options.files ?? {})),
     unreadableFiles: new Set(),
     setId: options.setId ?? null,
+    transport: options.transport ?? null,
+    setLoopFails: options.setLoopFails ?? null,
+    jumpFails: options.jumpFails ?? null,
+    jumps: [],
     midiBindings: [],
     setListeners: [],
     midiBlocked: [],
@@ -174,6 +197,21 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       id: async (create) => {
         if (fake.setId === null && create === true) fake.setId = "fake-set-id";
         return fake.setId;
+      },
+      transport: async () => (fake.transport ? { ...fake.transport, loop: { ...fake.transport.loop } } : null),
+      setLoop: async (loop: Loop) => {
+        if (fake.setLoopFails) return { ok: false, code: fake.setLoopFails.code, text: fake.setLoopFails.text };
+        if (!fake.transport) return { ok: false, code: 5, text: "the Remote Script is not running" };
+        fake.transport.loop = { on: loop.on, start: loop.start, length: loop.length };
+        return { ok: true, loop: { ...fake.transport.loop } };
+      },
+      // moves only `transport.time` (pos and barStart stay as they were)
+      jump: async (time: number) => {
+        fake.jumps.push(time);
+        if (fake.jumpFails) return { ok: false, code: fake.jumpFails.code, text: fake.jumpFails.text };
+        if (!fake.transport) return { ok: false, code: 5, text: "the Remote Script is not running" };
+        fake.transport.time = time;
+        return { ok: true, time };
       },
     },
     files: {
@@ -258,8 +296,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       return chosen;
     },
     ui: {
-      livePage: async (name, html, width, height, routes) => {
-        fake.livePages.push({ name, html, width, height, routes });
+      livePage: async (name, html, width, height, routes, pageOptions) => {
+        fake.livePages.push({ name, html, width, height, routes, ...(pageOptions?.run ? { run: pageOptions.run } : {}), ...(pageOptions?.onClose ? { onClose: pageOptions.onClose } : {}) });
         return options.dialogAnswer || null;
       },
       board: async (request) => {
@@ -270,6 +308,11 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     confirm: async (message) => {
       fake.confirms.push(message);
       return options.confirmAnswer ?? false;
+    },
+    pickRows: async (title, rows, listOptions) => {
+      fake.rowLists.push({ title, rows, ...(listOptions?.cursor !== undefined ? { cursor: listOptions.cursor } : {}) });
+      const index = options.pickRowsAnswer?.(rows, listOptions?.cursor) ?? null;
+      return index !== null && rows[index] && !rows[index]!.disabled ? index : null;
     },
     pickTags: async (title, rows, listOptions) => {
       fake.tagLists.push({ title, rows, ...(listOptions?.allowNew ? { allowNew: true } : {}) });

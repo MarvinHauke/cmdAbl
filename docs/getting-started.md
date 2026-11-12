@@ -93,7 +93,7 @@ Check that it works:
   Control Surface (after you copy the script and restart). The log is `~/Library/Preferences/Ableton/Live <version>/Log.txt`, where `<version>` is
   your Live version. The Remote Script's lines contain `RemoteScriptMessage: (cmdAbl)`.
 
-![The cmdabl bridge result: Remote Script 0.1.14 is running, with its protocol version, response time and operations](assets/images/bridge.png)
+![The cmdabl bridge result: Remote Script 0.1.15 is running, with its protocol version, response time and operations](assets/images/bridge.png)
 
 *`cmdabl bridge` on a current install.*
 
@@ -110,7 +110,7 @@ from step 2 works too.
 | Type | filters commands and objects of the Set |
 | `Tab` | completes the selected item into the input |
 | `Enter` | runs the typed line or the selected item |
-| `↑` / `↓` | moves through the list |
+| `↑` / `↓` | moves through the list (`Ctrl+n` / `Ctrl+p` do the same) |
 | `Esc` | closes the palette without running anything |
 
 ![The palette open with the text perc typed: the track Percs and the devices below it appear as rows, with their path in grey, followed by a device on the track Lead, and the footer lists the keys Tab, ↑↓, Enter and Esc](assets/images/palette.png)
@@ -131,7 +131,7 @@ Type each one in the palette and press `Enter`.
 
 When a name matches more than one object, cmdAbl shows a **pick list** instead of guessing. Type to filter, press
 `↑` and `↓` to move, `Enter` to choose and `Esc` to cancel. Commands that take several tracks, such as `mute`, let
-you mark more than one row with `Tab`.
+you mark more than one row with `Space`: press `↓` to enter the list, then `Space` on each row.
 
 ![The pick list for mute --pick #drums, with two tracks, Kick and Percs, each with its tag; the speaker button of Kick is marked with a dashed ring](assets/images/pick-list.png)
 
@@ -145,7 +145,7 @@ will run, and the buttons show the state that Enter would set.*
 The palette, `help`, `man`, `lom`, `cmdabl log` and the history work without the Remote Script. So do `mute`, `solo`
 and `arm` on tracks. These need it:
 
-- Track selection: `goto`, `find`, `next`, `prev`, and picking an object row in the palette. They report that the
+- Track selection: `goto`, `find` (also `find next` and `find prev`), and picking an object row in the palette. They report that the
   Remote Script is not running and select nothing.
 - Tags: `tag`, and targets such as `#fx`.
 - `mute` and `solo` on rack chains and Drum Rack pads. These also need macOS.

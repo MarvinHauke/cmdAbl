@@ -12,8 +12,10 @@ import * as lomModule from "./lom/index.js";
 import * as pakablModule from "./pakabl/index.js";
 import * as tagModule from "./tag/index.js";
 import * as noteModule from "./note/index.js";
+import * as loopModule from "./loop/index.js";
 import * as mapModule from "./map/index.js";
 import * as midiModule from "./midi/index.js";
+import * as jumpModule from "./jump/index.js";
 
 /**
  * Every module cmdAbl ships with — the single list the platform activates.
@@ -34,6 +36,8 @@ export const MODULES: Module[] = [
   pakablModule,
   tagModule,
   noteModule,
+  loopModule,
   mapModule,
   midiModule,
+  jumpModule,
 ];

@@ -5,7 +5,7 @@ known issues. Maintained by the architect. The order of the next features and ho
 each other is in the [plan index](README.md#next-in-dependency-order); design decisions live in the
 numbered plans. Finished work is in the git history, not here.
 
-_Last updated: 2026-11-11 (0.1.6 released; Live 13 next)._
+_Last updated: 2026-11-11 (0.1.6 released; Live 13 check done; 0.1.7 in work)._
 
 ## Released
 
@@ -23,14 +23,75 @@ All releases were tested in Live, including the installed `.ablx`.
 
 ## Now
 
+- **0.1.7 in work** on `feat/0.1.7-listnav-stamps` (also carries the plans from `docs/findings-live13`).
+  Contents: `listnav.js` (0019 phase 4: Space marks, Tab completes, Esc → filter); stamps (0013:
+  `note stamp`, key `s`, in place); the `loop` module (0026); page runs and `onClose` (0018); runnable
+  groups (0005 "git stash rule"); `find next`/`prev` + `--first`/`--last` (0007); Remote Script 0.1.15
+  (`transport`, `loop_set`). Docs: `9ca33a5`, `58aefd6`.
+  - **Live-tested through MCP** (Live 13.0b25): transport and loop_set; pick list and palette keys; find
+    `--first/--last/next/prev`; stamps in place while playing (instant typing kept, heading `@pos`, loop
+    set and put back per stamp, empty stamp dropped, `s`+Cmd+S race safe); `note`/`note stamp` help and
+    old spellings refused.
+  - **Still to do:** the `loop` module and the last note page round (modules `a2307ca`, ui `05d6df5`, core
+    `onClose` in work): Live test, then docs (using.md: `loop`, `note stamp loop` lines gone, the chain
+    `loop here; note stamp; loop back`), `docs:reference`, the PR.
+  - **Loop fixes Live-tested (2026-11-12):** `loop on` from off works (Live applies `loop` deferred; the
+    bridge no longer checks `on` in-call), `loop here`/`back`/`on`/`off`, stamps with the loop off at the
+    start; `loop here` behind the song end (bar 76, Live extends the song length) and `loop back`.
+    0.1.7 is complete: 1080 tests, build and docs:check green; docs `a0adcfe`. Defaults page from a small
+    settings page no longer shrinks (`224d8d9`, user Q16).
+  - **Added to 0.1.7 (user, 2026-11-12):** [0027](0027-jump.md) `jump` and reading stamps back (`note stamp
+    list/next/prev`, Enter on a stamp heading). Built: bridge `44e67f6`, core `182afde` (SetPort.jump, api.pickRows), modules `e30b0e6`; ui note page
+    (Enter jumps) in review, ui pick.html cursor/disabled open. Live-tested: jump op (applied next tick; past the
+    song length refused with Live's text), `jump 5.3.2`/`+2`/`end`/`start`, `1.9.1` → exit 2, `note stamp prev`
+    at bar 1 → exit 3, `note stamp next` to a stamp behind the song end → exit 1 with Live's text (correct).
+    ui `bbcfd35` (note page ↑/↓ + Enter jumps), `b4e4ec3` (pick list cursor/disabled); docs `6f4bcb0`.
+    Live-tested (demo Set): note page ↑/↓ + Enter jumps to @36.4.4; `note stamp prev/next` 36.4.4 ↔ 12.1.1;
+    next to @244 (behind the song end) → exit 1 with the "too far" message (0027); `note stamp list` cursor on the next stamp,
+    date-only row dimmed. Small: the view's help line shows only "↑↓ stamps · Enter jump" (e/s/Esc gone).
+    Left: the PR (asked). Small, later: `beatsToPosition` epsilon for float lengths (7/8); the `prev` exit-3
+    text counts stamps after the playhead.
+  - **Song end (2026-11-12):** `jump`, `note stamp next/prev/list` and `loop` say "<pos> is too far: Live lets
+    the playhead go only up to <X> here (…)" (0027); Live's song length = max(last content + 8 bars, loop end,
+    playhead + 8 bars).
+  - **User findings 2026-11-12 (decided):** monitor status/auto-extend + "all ins" spike (0018); `jump.step`
+    (0027); `script` module, global first, after 0.1.8 (0017 phase 1); docs: a Karabiner section with the
+    user's screenshot (configurable key, advanced), admonitions used sparingly, no ¶ permalink
+    (`toc.permalink: false`), option column without wrapping in the reference (CSS nowrap). Note page help
+    line keeps e/s/Esc when stamps exist. PR notes add: `jump`, `note stamp list/next/prev`, `note.stampWrap`, `api.pickRows`;
+    Remote Script 0.1.15 carries transport, loop_set and jump (unreleased, no bump).
+    Idea (ui): disabled stamp rows could say "no song position" in their detail. 0.1.8 = the
+    tag list rework (0010, tag-0).
+  - **Design question (later):** copies of a Set (Save As, a copied file) share one note, because its id
+    lives in the Set (0013, intended). Editing the note in the copy changes the original's note. Idea: a
+    copy gets its own note on its first change.
+  - **For the user (by hand):** settings page (`note.stampLoop` off, `loop.bars` 8), Discard confirm,
+    Ctrl+n/p, "save changes?" after a stamp, the undo history, a copied Set file sharing the note.
+  - **PR notes:** breaking `next`/`prev` → `find next`/`prev` (old bindings stop working); palette
+    Shift+Enter no longer runs, Shift+Tab no longer completes; pick list Esc → filter first, Tab doesn't
+    mark; note page Discard asks once; new `find --first/--last`, `note stamp`, `loop`, page runs, runnable
+    groups; Remote Script 0.1.15 (restart Live).
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and
   `gitleaks`, no force push).
-- **Next: Live 13** (user, 2026-11-10; Live 13.0b25 installed). First step: a compatibility check (SDK
-  version and `minimumApiVersion`, the Remote Script under Live 13's Python, the sandbox,
-  `LIVE_MANUAL_VERSION`), then decide what changes for 0.2.x. Undiscussed user findings that fit here:
-  tag-0 (merge `tag -l` and `tag -e`), note-2 (Live 13's side panel), Midi engine-1 (`docs/userfindings.md`, local).
-- **On `docs/after-0.1.6`:** this cleanup, a frame for screenshots on the docs site, and `npm run docs:check`
-  with an optional pre-push hook (cmdabl-docs, user 2026-11-11).
+- **Live 13 check (2026-11-11, Live 13.0b25):** the installed 0.1.6 and the dev build run (same Extension
+  Host 1.0.0); Remote Script 0.1.14 answers (median 49–73 ms); `find`, `mute`, `vol`, `tag` pass through MCP.
+  Dev setup: Live 13 needs Settings → Extensions → Developer Mode, and `.env`'s `EXTENSION_HOST_PATH` must
+  point to the Live 13 app. A Remote Script change needs a Live restart (toggling the control surface
+  keeps the old Python modules). Spikes (branch `spike/live13`, results in
+  [research/live13-spikes.md](research/live13-spikes.md)):
+  - note-2: **not reachable**: only Browser, Arranger, Session, Detail(/Clip, /DeviceChain) views; no side
+    panel, Help View or Lessons.
+  - `Scene` has **no** `get_data`/`set_data` (Song and Track do): session stamps (0013) and 0017 phase 2
+    need another scene link.
+  - Song position: `get_current_beats_song_time()` gives "4.4.1.42"; setting the loop leaves no undo step.
+  - Undo and speed: Python writes at 30 Hz give **1 undo step** per move (plain, gesture, or one undo step
+    around the run) and write 64 parameters in under 1.5 ms; SDK writes give one undo step per tick even
+    in transactions and take 22–53 ms. **Morph writes run in the Remote Script** (0025).
+  - Open: what else changes for 0.2.x (SDK `minimumApiVersion` stays 1.0.0 for now).
+- **User findings discussed 2026-11-11:** tag-0 → [0010](0010-tag-editing.md) "Tag list and tag editor"
+  (after 0019 phase 4); Midi engine-1/-2 → [0024](0024-param.md) `param` and [0025](0025-morph.md) morph
+  (drafts; pickup modes still to discuss). Shared terms: [GLOSSARY.md](GLOSSARY.md). note-1 → [0013](0013-set-note.md) "Stamps". Still open: the option review of
+  all modules (rule in 0010).
 - **Open from 0.1.6:**
   - `map -l` shows the expansion arrow only for one-word bindings, not `;` chains (`api.commands.expand(line)` would be the way, undecided).
   - Old docs images from a bigger Set: find-nested, vol-clip, vol-stop (retake when a Set with racks is open).

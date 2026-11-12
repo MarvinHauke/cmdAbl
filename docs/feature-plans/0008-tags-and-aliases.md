@@ -187,6 +187,11 @@ the browser by Collection colour or by our own tags keyed by `uri`; spike only w
 `tag -l` as an editable overview and `tag --edit <tag>` for one tag on many tracks: plan
 [0010](0010-tag-editing.md) (user, 2026-10-20).
 
+## Later idea: a target for untagged tracks (2026-11-11)
+
+There is no target for "no tag at all" (`!#x` only means "without x"). The tag list's untagged row is
+read-only until one exists (0010, tag-0).
+
 ## Later idea: tags in track names (user, 2026-10-20)
 
 `Lead [#fx, #drums]`: visible in Live, editable by hand, Cmd+Z works, Live marks the Set itself,

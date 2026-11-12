@@ -2,7 +2,8 @@ import type { ExtensionContext } from "@ableton-extensions/sdk";
 import type { PaletteItem, PaletteResult, ResultSection } from "../types.js";
 import type { CompletionData } from "../complete/complete.js";
 import { PALETTE_WIDTH, PALETTE_HEIGHT } from "./paletteSize.js";
-import type { LivePages, LiveRoutes } from "./livePage.js";
+import type { LivePages, LiveRoutes, LiveRun } from "./livePage.js";
+import { runLivePage } from "./pageRun.js";
 import { takePaletteAnswer } from "../settings/settings.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsSize, sectionsText, usesStatusLayout } from "./notifySize.js";
@@ -94,6 +95,11 @@ export interface SelectRequest {
    * Absent: no such row.
    */
   create?: { label: string };
+  /**
+   * Single-select only: the index (into `items`) of the row that has the cursor when the list opens (a disabled or
+   * out-of-range index counts as absent: the cursor starts on the first enabled row).
+   */
+  cursor?: number;
   /** `ui.helpLine` (plan 0019 §3): whether the page's help line follows the hover. Set by the platform. */
   help?: boolean;
   items: {
@@ -104,6 +110,8 @@ export interface SelectRequest {
     value?: string;
     /** The row's current state (see `SelectRequest.state`); absent = unknown. */
     state?: "on" | "off";
+    /** The row is shown (dimmed) but cannot be chosen, and the cursor skips it. */
+    disabled?: boolean;
   }[];
 }
 
@@ -301,7 +309,7 @@ export interface DefaultsRequest {
   focus?: string;
   /** `ui.helpLine` (plan 0019 §3): whether the page's help line follows the hover. Set by the platform. */
   help?: boolean;
-  /** Dialog height in px, set when the page is opened from the settings page so the window keeps its size (not used by the page). */
+  /** Dialog height in px, set when the page is opened from the settings page as a floor so the window doesn't shrink below the settings page (the page's own size wins if larger; not used by the page). */
   height?: number;
   rows: DefaultsRow[];
 }
@@ -350,8 +358,22 @@ export interface Ui {
    * page gets `{ base, token }` where it has `const LIVE = /*LIVE_PLACEHOLDER*\/null;`. It never writes; the close string
    * still comes back as with `page`. If the server cannot serve it (port taken), the page opens as a data page with
    * `LIVE = null` and must work without polling.
+   * `options.run` (plan 0018 "Page runs") allows the page to run command lines while open: the command paths (command
+   * plus subcommands, e.g. `"loop here"`) it may run through `POST <LIVE.base>/run`.
    */
-  livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes): Promise<string | null>;
+  livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes, options?: LivePageOptions): Promise<string | null>;
+}
+
+/** What a module allows a live page beyond reading. */
+export interface LivePageOptions {
+  /** Command paths the page may run while open, e.g. `["loop here", "loop back"]`. Options and arguments are free. */
+  run?: string[];
+  /**
+   * A command line core runs once after the page has closed and its page runs have finished (plan 0026 "Safety net"),
+   * but only if the page made at least one page run (a plain read, a data page or a dismiss without runs runs nothing). Same rules as a page run: its command path must be in `run`
+   * (else it is refused with a warn line), headless, logged, errors caught, not in the history. Its result is only logged.
+   */
+  onClose?: string;
 }
 
 const dataUrl = (html: string) => `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
@@ -371,6 +393,8 @@ export function createDefaultUi(
    * runs the page's command line again. The surface itself answers null (closed) for it.
    */
   onGear?: (gear: { surface: "board" }) => void,
+  /** Builds the page-run handler for an allowlist (`pageRun.ts`); absent: pages cannot run lines. */
+  pageRun?: (allow: string[]) => LiveRun,
 ): Ui {
   const show = (name: string, html: string, width: number, height: number): Promise<string | null> =>
     // A failure is already logged by the queue; here it only counts as dismissed.
@@ -472,18 +496,18 @@ export function createDefaultUi(
       return (await show(name, html, width, height)) || null;
     },
 
-    async livePage(name, html, width, height, routes) {
-      const session = live?.open(name, html, routes) ?? null;
-      // No server (port taken) or a bad name: the same page as a data page, `LIVE = null`.
-      if (!session) return (await show(name, html, width, height)) || null;
-      try {
+    livePage: (name, html, width, height, routes, options) =>
+      runLivePage({
+        name,
+        run: options?.run,
+        onClose: options?.onClose,
+        pageRun,
+        open: (handler) => live?.open(name, html, routes, handler) ?? null,
+        // No server (port taken) or a bad name: the same page as a data page, `LIVE = null`.
+        showData: () => show(name, html, width, height),
         // Through the same queue: only one dialog is ever open. A failure is logged by the queue and counts as dismissed.
-        const raw = await queue.run(name, () => context.ui.showModalDialog(session.url, width, height)).catch(() => null);
-        return raw || null;
-      } finally {
-        session.close(); // the token and the routes end with the dialog
-      }
-    },
+        showLive: (session) => queue.run(name, () => context.ui.showModalDialog(session.url, width, height)).catch(() => null),
+      }),
   };
   return ui;
 }

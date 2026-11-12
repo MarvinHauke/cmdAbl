@@ -187,8 +187,11 @@ multi-select.
   the host debounces (~80 ms) and calls the bridge.
 - Open: `Esc` cannot restore the previous selection until the Remote Script can reply
   (STATUS.md, "Roadmap to 0.1.0", step 2). Phase 1 leaves the selection where it is, phase 2 restores it.
-- Open: whether `next`/`prev` are still needed once follow mode exists. Kept until the spike is
-  decided — they need no open window and are what a keymap binds to a key.
+- `next`/`prev` became **`find next`/`find prev`** (user, 2026-11-11, 0.1.7): they step through the last
+  `find` only (no longer any pick list) and need no open window, for bindings and shortcuts; `find
+  --first`/`--last` build the list without a pick list. Rule: a module may have its own `next`/`prev`
+  subcommands for its own list (`stamp next` is planned, 0013); no shared top-level `next`.
+  `ModuleApi.onPick` is unused since then; kept until a later contract cleanup.
 
 ## Open questions
 

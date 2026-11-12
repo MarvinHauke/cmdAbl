@@ -1,7 +1,7 @@
 # `note`: one Markdown note per Set
 
 **Status:** Released in 0.1.3 (2026-10-22, PR #17). Live-tested, including Save As and Collect All
-and Save.
+and Save. Next: stamps (timestamped entries, note-1), decided 2026-11-11.
 Trigger: the user wants a note per Set for general reminders, written in Markdown.
 
 **Parent:** [0004](0004-command-platform.md)
@@ -126,14 +126,51 @@ full text.
   - a table editor;
   - a reminder when the Set opens.
 
-## Timestamped entries (user, 2026-11-04; planned for 0.1.6)
+## Stamps: timestamped entries (user finding note-1, 2026-11-11; built in 0.1.7)
 
-- The page opens in view mode. `e` enters edit mode and adds a Markdown timestamp line; Esc goes back
-  to view mode; another `e` adds the next timestamp and entry; Esc in view mode closes the page.
-- Option in the note's settings: after leaving edit mode, edit mode opens again for a while (a loop).
-- Later: tie an entry to an Ableton locator (needs the bridge; no locator writes without a plan,
-  since the decisions above keep the Set clean).
-- Open: the key (`e`, `i`, or `m` for mark), and the timestamp: wall-clock time or song position.
+Terms: [GLOSSARY.md](GLOSSARY.md) (stamp, song position). "Stamp" for now; "mark" with "pick" for pick
+lists is to discuss again.
+
+**Commands** (user, 2026-11-11: stamps belong to the note; actions are subcommands, plan 0005 "the
+`git stash` rule"):
+
+| Line | What it does |
+|---|---|
+| `note` / `note -e` | opens the note to read / to edit (bare fallback `open`) |
+| `note stamp` | opens the note with a new stamp (bare fallback `add`) |
+| later: `note stamp next` / `prev` / `list` | jump the playhead between stamps, pick one |
+
+**Decisions (user, 2026-11-11):**
+1. **Keys in view:** `e` edits the whole note; **`s` adds a stamp** (a new entry at the end, text below
+   its heading). `s` switches to edit at once, so typing starts immediately. With nothing typed, no entry.
+2. **Stored heading, one format:** `### @12.3.1 · 2026-11-11 14:32` while the song runs (Live's
+   bar.beat.sixteenth from the Remote Script, `transport.pos`), `### 2026-11-11 14:32` when stopped.
+   No script: date only and the hint "no song position: Remote Script not running". Built by the module
+   (`stamp.ts`); the page has a date-only copy for a missing heading (keep in step). A setting
+   `note.stampStyle` may later change how headings look in view, never the stored text.
+3. **Esc in edit returns to view and keeps the text; Esc in view saves and closes.** Cmd+S saves and
+   closes. **Discard** asks once when there are changes. (A vim mode is a later idea.)
+4. **Loop while writing** with `note.stampLoop` (default on), during Arrangement playback only (not
+   Session, not stopped): the page runs `loop here` on `s` and `loop back` when the stamp ends. The loop
+   is the [`loop` module](0026-loop.md) (`loop.bars`, default 4); the note keeps no loop logic. A loop
+   moved by hand meanwhile is left alone. The loop write leaves no undo step; the Set counts as changed.
+5. **Stamp after stamp in place:** the note page is a live page with page runs ([0018](0018-midi-mapping.md)
+   "Page runs"): allowlist `["loop here", "loop back"]`, `onClose: "loop back"` (runs only if the page ran
+   a line). The `heading` route answers `{heading, hint?, loop}`. Esc and Cmd+S right after `s` wait up to
+   0.5 s for the heading. Without the server (`LIVE = null`) the page falls back to closing with
+   `{text, then: "stamp" | "view" | null}` and the module reopens it; a stamp then doesn't loop.
+6. **Session stamps** get no key: a stamp made during Session playback is to be linked to the playing scene
+   automatically (later; `Scene` has no `get_data`/`set_data` in Live 13, so the link needs another design;
+   with [0017](0017-scripts-and-triggers.md) phase 2).
+
+**Bridge and ports (additive, 0.1.7):** Remote Script 0.1.15 `transport {}` (read) → `{playing, session,
+pos, time, barStart, barLen, loop}`, `loop_set {on, start, length}` (write, token; rolls back what Live
+doesn't keep); `SetPort.transport()` / `setLoop()`, null without the script. Session playback = any track
+plays a session clip.
+
+**Later:** jump to a stamp (Enter or click on an `@12.3.1` heading, `note stamp next/prev/list`); locators
+only if the user wants stamps in the Set; a short `stamp` only as a user alias (0020); with substitution
+(0017) `loop at $(note stamp prev)`.
 
 ## Phased rollout
 
@@ -151,5 +188,5 @@ full text.
   - `note` in a new Set opens edit mode. Write a table and save: the view renders it.
   - Save the Set, close it and reopen it: `note` shows the same text.
   - Save As under a new name: `note` shows the same note.
-  - `e` switches to edit; Esc with changes warns first.
+  - `e` switches to edit; Esc returns to view and keeps the text; Discard with changes asks once.
   - With the script off, `note` gives exit 5.

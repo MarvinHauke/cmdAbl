@@ -58,6 +58,13 @@ it.
 
 ## Phase 1: script files (no protocol change)
 
+**The `script` module (user finding, 2026-11-12; joins this phase):** a module like `note`, with a page to
+write a script and `script <name>` to run it (bare fallback, plan 0005), `script edit <name>`, `script list`;
+from MIDI too. v1 holds only command lines (one per line, or `;`); `if`/`while` later. **Global scripts
+first** (for all Sets), Set-specific ones later. Open: a shorter call like bash's `./name` (maybe a script
+marked as a command becomes its own word through aliases, 0020). Planned after 0.1.8 (the tag rework).
+
+
 - **Where:** `<data folder>/scripts/<name>.cmdabl`. Plain UTF-8 text, one command line per line,
   `#` starts a comment, empty lines are ignored.
 - **Running:**
@@ -112,6 +119,11 @@ it.
 
 - `;` action lists and user aliases: [0009](0009-ideas-from-clyphx.md), [0008](0008-tags-and-aliases.md).
 - `&&` and `||` on exit codes; `$1` and `$@` parameters for scripts and aliases.
+- **Idea (user, 2026-11-11): command substitution and a `math` module.** One command's output inside
+  another (`find --at $(math random 1 8)`), for every command, in the platform; `math` is one source of
+  values. Later, with the rest of phase 3. Example with a real output → input: `loop at $(note stamp prev)`
+  loops the section of the previous stamp (0026). Not for "while" cases (loop while writing): those are
+  page runs and `;` chains.
 - Named values, conditions on Live state, waiting in musical time: each with its own plan.
 
 ## What a complete scripting engine still needs (2026-10-23)

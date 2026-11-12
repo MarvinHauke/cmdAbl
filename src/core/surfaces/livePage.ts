@@ -14,7 +14,11 @@ import { withBudget } from "../complete/completeSnapshot.js";
 // Two tokens: the load token is in the dialog's URL (which Live or the web view may keep), the route token is written
 // only into the served HTML (`LIVE.token`), so what the URL leaves behind cannot read any route.
 //
-// Rules on every request: GET only; Host `localhost:<port>`; Origin absent or exactly `http://localhost:<port>`
+// Page runs (plan 0018 "Page runs"): a page opened with `run` may also `POST /live/<page>/run` with `{ line }` and gets
+// `{ code, text }`. That is the ONLY POST, with the same route token, Host/Origin checks and dialog lifetime; the module's
+// allowlist is enforced by `LiveRun` (pageRun.ts), not here. Small bodies only.
+//
+// Rules on every request: GET only (but the one POST above); Host `localhost:<port>`; Origin absent or exactly `http://localhost:<port>`
 // (and Sec-Fetch-Site same-origin / none when sent); the token compared in constant time. A route runs under a
 // short budget and answers `{ error }` on a throw, a timeout or an oversized answer: never a crash, never a 5xx.
 // Both tokens are 128 bits, minted per dialog, revoked when the dialog closes, and never logged. Nothing here writes.
@@ -69,6 +73,14 @@ export type LiveRoute = ((query: LiveQuery) => unknown | Promise<unknown>) | { w
 /** The read-only data sources of one live page: `{ monitor: () => rows }` is served at `/live/<page>/monitor`. */
 export type LiveRoutes = Record<string, LiveRoute>;
 
+/** Runs a command line a live page posted (already restricted to the module's allowlist by the caller); never throws. */
+export type LiveRun = (line: string) => Promise<{ code: number; text: string }>;
+
+/** Most bytes of a page-run body and most characters of its line. */
+export const MAX_RUN_BODY = 4096;
+export const MAX_RUN_LINE = 1000;
+const BODY_MS = 2000;
+
 /** One open live page: the URL the dialog loads, and `close()` which revokes the token and the routes. */
 export interface LiveSession {
   url: string;
@@ -83,7 +95,7 @@ export interface LivePages {
    * name is not a plain page name): the caller then shows the page as a data page with `LIVE = null`.
    * A second open of the same page revokes the first.
    */
-  open(name: string, html: string, routes: LiveRoutes): LiveSession | null;
+  open(name: string, html: string, routes: LiveRoutes, run?: LiveRun): LiveSession | null;
   /** The trigger server's `extra` hook: true when the request was for `/live/…`. Never throws. */
   handle(req: http.IncomingMessage, res: http.ServerResponse): boolean;
 }
@@ -127,6 +139,8 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
     routeToken: string;
     html: string;
     routes: LiveRoutes;
+    /** Present when the module allowed command lines for this page. */
+    run?: LiveRun;
     loaded: boolean;
     /** The one waiting request of this dialog; a second replaces it. */
     waiter?: { end(how: unknown): void };
@@ -139,7 +153,9 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
   const json = (res: http.ServerResponse, status: number, body: unknown): void => send(res, status, JSON.stringify(body), "application/json");
 
   async function serve(req: http.IncomingMessage, res: http.ServerResponse, pathname: string, query: string): Promise<void> {
-    if (req.method !== "GET") return send(res, 405, "", undefined, { Allow: "GET" });
+    const isPost = req.method === "POST";
+    // POST is for `<page>/run` only; everything else stays GET-only.
+    if (req.method !== "GET" && !(isPost && pathname.endsWith("/run"))) return send(res, 405, "", undefined, { Allow: "GET" });
     // The page is loaded from this origin by the dialog; nothing else may read it (DNS rebinding, another page, another origin).
     const hostHeader = req.headers.host;
     if (hostHeader !== `localhost:${deps.port}`) return send(res, 403, "forbidden");
@@ -167,6 +183,8 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
     const bearer = typeof header === "string" ? /^Bearer ([0-9a-f]{32})$/.exec(header)?.[1] : undefined;
     if (bearer === undefined || !sameToken(bearer, session.routeToken)) return send(res, 401, "unauthorized");
     const route = parts[1] ?? "";
+    if (isPost) return route === "run" && parts.length === 2 ? runLine(req, res, session) : send(res, 404, "not found");
+    if (route === "run" && session.run) return send(res, 405, "", undefined, { Allow: "POST" });
     if (!Object.prototype.hasOwnProperty.call(session.routes, route)) return send(res, 404, "not found");
     const entry = session.routes[route];
     if (typeof entry === "object" && entry !== null && typeof entry.wait === "function") {
@@ -178,6 +196,53 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
     if (typeof entry !== "function") return send(res, 404, "not found");
     const answer = await withBudget<unknown>(() => entry(parseQuery(query)), budgetMs, { error: "no answer" }, (why) => log.debug(`route ${session.name}/${route}: ${why}`));
     sendData(res, answer);
+  }
+
+  /** POST /run: read the small JSON body, run the line, answer `{ code, text }`. */
+  async function runLine(req: http.IncomingMessage, res: http.ServerResponse, session: Session): Promise<void> {
+    if (!session.run) return send(res, 404, "not found");
+    const body = await readBody(req);
+    if (body === null) return send(res, 413, "too large");
+    // The dialog may have closed while the body arrived: such a run must not start after the opener stopped waiting.
+    if (sessions.get(session.name) !== session) return send(res, 404, "not found");
+    let line: unknown;
+    try {
+      line = (JSON.parse(body) as { line?: unknown } | null)?.line;
+    } catch {
+      line = undefined;
+    }
+    if (typeof line !== "string" || line.length > MAX_RUN_LINE) return json(res, 200, { code: 2, text: "usage: POST { line } (a string, at most 1000 characters)" });
+    let answer: { code: number; text: string };
+    try {
+      answer = await session.run(line);
+    } catch (e: unknown) {
+      log.warn(`page run ${session.name}: ${e instanceof Error ? e.message : String(e)}`);
+      answer = { code: 1, text: "run failed" };
+    }
+    json(res, 200, answer);
+  }
+
+  /** The body as text, or null when it is over MAX_RUN_BODY (the request is then drained and dropped). */
+  function readBody(req: http.IncomingMessage): Promise<string | null> {
+    return new Promise((resolve) => {
+      let size = 0;
+      let over = false;
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => {
+        size += c.length;
+        if (size > MAX_RUN_BODY) over = true;
+        else chunks.push(c);
+      });
+      // A client that never ends its body must not hold the socket.
+      const timer = setTimeout(() => {
+        over = true;
+        resolve(null);
+        req.destroy();
+      }, BODY_MS);
+      (timer as { unref?: () => void }).unref?.();
+      req.on("end", () => (clearTimeout(timer), resolve(over ? null : Buffer.concat(chunks).toString("utf8"))));
+      req.on("error", () => (clearTimeout(timer), resolve(null)));
+    });
   }
 
   /** The answer as JSON: `{ error }` for what cannot be serialised or is too large. */
@@ -253,9 +318,9 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
   }
 
   return {
-    open(name, html, routes) {
+    open(name, html, routes, run) {
       if (!deps.available() || !PAGE_NAME.test(name) || typeof html !== "string") return null;
-      const session: Session = { name, loadToken: newToken(), routeToken: newToken(), html, routes, loaded: false };
+      const session: Session = { name, loadToken: newToken(), routeToken: newToken(), html, routes, ...(run ? { run } : {}), loaded: false };
       sessions.set(name, session); // a second open of the same page revokes the first
       log.debug(`live page "${name}" opened`);
       return {

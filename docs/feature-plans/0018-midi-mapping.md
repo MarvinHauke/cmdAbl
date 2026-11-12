@@ -49,7 +49,7 @@ Constraints:
 |---|---|---|
 | Target | one parameter per control | any command line: tags, `!#`, several tracks, mute/solo/arm/goto/next/tag… |
 | Tags | no | resolved when the control moves, so a newly tagged track follows |
-| Buttons | toggle one parameter | run any command (`--set 0`, `next`, `goto /Lead`) |
+| Buttons | toggle one parameter | run any command (`--set 0`, `find next`, `goto /Lead`) |
 | Feedback | Live's own | later: LEDs and motor faders via `send_midi` |
 | Saved | in the Set | bindings in the Set, the controller profile in cmdAbl |
 
@@ -93,7 +93,7 @@ The matrix page later sits on top of `map`.
   - No dialogs: an ambiguous target gives exit 4, errors are logged, and no pick list opens.
   - Each run is one undo step, and runs stay out of the history.
 - **Trigger mode:** a CC runs on the edge from below 64 to 64 or above (press, not release); a note
-  runs on note-on. Covers `mute #drums --set 0`, `next`, `goto`.
+  runs on note-on. Covers `mute #drums --set 0`, `find next`, `goto`.
 - **Value mode:**
   - A command declares which argument a control may feed: an additive `ArgDef.mapValue?: { min,
     max, unit }`.
@@ -262,6 +262,26 @@ plain routes keep the 100 ms budget.
 
 Built in 0.1.5 (core `livePage`, ui `live.js`, the monitor and learn pages).
 
+### Page runs: a live page may run allowed command lines (user, 2026-11-11)
+
+From the note's stamps (0013): closing and reopening a page around every write flickers and loses
+the keys typed in between. The exception is widened, without a second write path:
+- **The module allows command lines when it opens the page:** `livePage(…, routes, { run: ["loop here", "loop back"], onClose: "loop back" })`. An entry is a command path (command plus subcommands); the page may run a line
+  only if its parsed command path is in the list. Options and arguments are free.
+- **The page posts** `POST <base>/run` with `{ line }`, using the same route token, origin check and
+  the dialog's lifetime as the read routes. The answer is `{ code, text }` (the `CommandResult`).
+- **It runs through the normal command path:** parse, resolve, one undo step, the log, errors caught,
+  headless (no dialogs; a part that would ask gives exit 4). Not added to the history. It runs as a
+  nested run while the opening command still waits for its dialog, so it must not wait on that run.
+  While a page run is in flight the surfaces are shut like in any headless run, so a palette opened in that
+  short window is dismissed (known).
+- **`livePage` resolves only after the page runs in flight for that dialog have finished** (reviewer, 2026-11-11): a quick `s` then Cmd+S must not let the module's safety net run before the stamp is done. Runs that arrive after the close get 404.
+- **`onClose` is the module's safety net:** after the close and the in-flight runs, core runs that one line once, but only if the page made at least one page run (not for a plain read, a data page or a close without runs); then whatever it answered, also a dismiss. Same rules as a page run (its path must be in `run`, else refused with a warn line; headless, logged, errors caught, not in the history); its result is only logged.
+- **A page without the server** (`LIVE = null`) falls back to what it did before (for the note: close
+  with `then` and reopen).
+- What stays: the dialog still answers one string when it closes; anything not in the list is refused
+  (exit 2 to the page, a warn line in the log).
+
 ### Syntax rules (v1)
 
 - `|` outside quotes is reserved. In `map` it starts the raw binding line, which `;` doesn't split.
@@ -402,6 +422,17 @@ So `map` stays thin: a control plus a pipeline of these same commands and steps.
 
 **Takeover:** pickup by default, so a fader does not jump the level when it doesn't match. A
 14-bit or relative control makes pickup rarely noticeable.
+
+- **Idea (user, 2026-11-11): a knob scrolls a list.** `find --at <n>` selects the n-th match; in value mode
+  `map CC12 | find --at {}` turns a knob into a list scroller. Needs value mode and an `--at` option.
+
+- **Monitor findings (user, 2026-11-12):**
+  - The monitor shows that it listens, extends its listening window by itself while the page is open, and
+    says so when it stopped (never silent).
+  - "All ins" like Live's input menu: a Remote Script gets MIDI only from its own control-surface Input.
+    Spike first: (1) can the Remote Script read other ports, (2) Web MIDI in Live's dialog web view (the
+    NerdSEQ editor used Web MIDI in Chrome; WebKit has none), (3) a native MIDI module in the Extension
+    Host (sandbox?). Without one of them the monitor names its Input and where to change it.
 
 ## Open questions
 

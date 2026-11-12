@@ -528,3 +528,87 @@ export async function midiLast(bridge: Bridge, since = 0): Promise<BridgeResult<
     return fail(1, "midi_last failed");
   }
 }
+
+/** The arrangement loop, in beats (structurally the same as `Loop` in modules/types.ts). */
+export interface LoopState {
+  on: boolean;
+  start: number;
+  length: number;
+}
+
+/** The transport as the script reports it (plan 0013); same shape as `Transport` in modules/types.ts. */
+export interface TransportState {
+  playing: boolean;
+  session: boolean;
+  pos: string;
+  time: number;
+  barStart: number;
+  barLen: number;
+  /** The current time signature (0 = unknown: an older script did not say; do not guess a bar length from it). */
+  sigNum: number;
+  sigDen: number;
+  /** Song length in beats (Live counts the loop's end in it); 0 when an older script did not say. */
+  songLength: number;
+  loop: LoopState;
+}
+
+const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+function readLoop(v: unknown): LoopState | null {
+  if (typeof v !== "object" || v === null) return null;
+  const l = v as Record<string, unknown>;
+  return typeof l.on === "boolean" && isNum(l.start) && isNum(l.length) ? { on: l.on, start: l.start, length: l.length } : null;
+}
+
+/**
+ * Play state, bar grid and arrangement loop (plan 0013). Barstart/barLen use the current time signature
+ * only. Null: the script is not running, too old (no such op), or the reply is malformed. Never throws.
+ */
+export async function transport(bridge: Bridge): Promise<TransportState | null> {
+  try {
+    const reply = await bridge.request("transport", {});
+    if (!reply.ok) return null;
+    const v = reply.value;
+    const loop = readLoop(v.loop);
+    if (!loop || typeof v.playing !== "boolean" || typeof v.session !== "boolean" || typeof v.pos !== "string" || !isNum(v.time) || !isNum(v.barStart) || !isNum(v.barLen) || v.barLen <= 0) return null;
+    return { playing: v.playing, session: v.session, pos: v.pos, time: v.time, barStart: v.barStart, barLen: v.barLen, sigNum: isNum(v.sigNum) && v.sigNum > 0 ? v.sigNum : 0, sigDen: isNum(v.sigDen) && v.sigDen > 0 ? v.sigDen : 0, songLength: isNum(v.songLength) ? v.songLength : 0, loop };
+  } catch {
+    return null;
+  }
+}
+
+export type SetLoopResult = { ok: true; loop: LoopState } | { ok: false; code: 1 | 5; text: string };
+
+/**
+ * Set the arrangement loop (a writing op). Resolves to the loop as Live has it afterwards, or a failure that
+ * keeps the reason: code 5 when there is no script or it is too old, code 1 with Live's text when Live
+ * refused, did not keep the value, or did not answer in time. Never throws.
+ */
+export async function setLoop(bridge: Bridge, loop: LoopState): Promise<SetLoopResult> {
+  try {
+    const reply = await bridge.request("loop_set", { on: loop.on, start: loop.start, length: loop.length }, { changes: true, token: true });
+    if (!reply.ok) return { ok: false, code: reply.code === 5 ? 5 : 1, text: reply.text };
+    const read = readLoop(reply.value.loop);
+    return read ? { ok: true, loop: read } : { ok: false, code: 1, text: "Live's answer to the loop change was not understood" };
+  } catch (e) {
+    return { ok: false, code: 1, text: `the loop change failed: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
+/** `note` is set when the read-back differs from the target (for the caller's debug log; never an error). */
+export type JumpResult = { ok: true; time: number; note?: string } | { ok: false; code: 1 | 5; text: string };
+
+/**
+ * Move the playhead to `time` beats (a writing op; playing stays playing). Resolves to the position as Live has
+ * it afterwards, or a failure that keeps the reason: code 5 when there is no script or it is too old, code 1 with
+ * Live's text when Live refused or did not answer in time. Never throws.
+ */
+export async function jump(bridge: Bridge, time: number): Promise<JumpResult> {
+  try {
+    const reply = await bridge.request("jump", { time }, { changes: true, token: true });
+    if (!reply.ok) return { ok: false, code: reply.code === 5 ? 5 : 1, text: reply.text };
+    return isNum(reply.value.time) ? { ok: true, time: reply.value.time, ...(typeof reply.value.note === "string" ? { note: reply.value.note } : {}) } : { ok: false, code: 1, text: "Live's answer to the jump was not understood" };
+  } catch (e) {
+    return { ok: false, code: 1, text: `the jump failed: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}

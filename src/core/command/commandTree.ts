@@ -182,6 +182,12 @@ export interface CommandNode<P = unknown, V = string> {
    * child's path is the group's). At most one per group, a runnable leaf; it can also be typed by name.
    */
   fallback?: boolean;
+  /**
+   * Only together with `fallback`: the group typed alone (no words, no pipe) runs this child, as `git stash` runs
+   * `git stash push` (plan 0005, "Runnable groups"). Without it a bare group prints its help. Options typed after
+   * the group (`note -e`) go to the fallback with or without `bare`.
+   */
+  bare?: boolean;
   /** Group node: has children and is not runnable on its own. */
   children?: CommandNode<P, V>[];
   options?: OptionDef[];
@@ -265,6 +271,7 @@ export function validateTree(roots: CommandNode<any, any>[]): string[] {
     const fallbacks = (node.children ?? []).filter((c) => c.fallback === true);
     if (fallbacks.length > 1) problems.push(`${at}: only one subcommand may be the fallback`);
     for (const fb of fallbacks) if (fb.children?.length) problems.push(`${at} ${fb.name}: the fallback must be a runnable command, not a group`);
+    if (node.bare === true && node.fallback !== true) problems.push(`${at}: bare needs fallback: true`);
     if (node.fallback === true && parents.length === 0) problems.push(`${at}: a fallback needs a group above it`);
     if (isGroup && node.run) problems.push(`${at}: a node has either children or run, not both`);
     if (!isGroup && !node.run) problems.push(`${at}: a leaf needs run (or children to be a group)`);
@@ -487,7 +494,7 @@ export function effectiveOptions(node: Pick<CommandNode<any, any>, "children" | 
 export function usage(node: CommandNode<any, any>, path: string[]): string {
   const parts = [...path];
   if (node.children?.length) {
-    parts.push("<command>");
+    parts.push(node.children.some((c) => c.fallback === true && c.bare === true) ? "[<command>]" : "<command>");
     return parts.join(" ");
   }
   for (const opt of effectiveOptions(node)) {
@@ -516,11 +523,13 @@ function rows(entries: ReadonlyArray<[string, string]>, min = 12): string[] {
 }
 
 /** The lines of the `commands:`, `arguments:` and `options:` sections (shared by the short and the full help). */
-function sections(node: CommandNode<any, any>): string[] {
+function sections(node: CommandNode<any, any>, path: string[]): string[] {
   const lines: string[] = [];
   if (node.children?.length) {
     lines.push("", "commands:");
     lines.push(...rows(node.children.map((child) => [child.name, child.summary])));
+    const bare = node.children.find((c) => c.fallback === true && c.bare === true && !c.children?.length);
+    if (bare) lines.push("", `typed alone, \`${path.join(" ")}\` runs \`${bare.name}\`.`);
   }
   if (node.config) lines.push("", "settings:", ...rows([[`${node.name} config`, node.config.summary]]));
   const described = (node.args ?? []).filter((arg) => arg.summary);
@@ -542,7 +551,7 @@ function sections(node: CommandNode<any, any>): string[] {
 export function helpText(node: CommandNode<any, any>, path: string[]): string {
   const lines = [node.summary];
   if (node.description) lines.push("", node.description);
-  lines.push("", `usage: ${usage(node, path)}`, ...sections(node));
+  lines.push("", `usage: ${usage(node, path)}`, ...sections(node, path));
   if (node.examples?.length) {
     lines.push("", "examples:");
     for (const example of node.examples) {
@@ -559,7 +568,7 @@ export function helpText(node: CommandNode<any, any>, path: string[]): string {
  * (Core does not know which module offers it: `run.ts` passes `man <path>` only when a `man` command exists.)
  */
 export function shortHelpText(node: CommandNode<any, any>, path: string[], more?: string): string {
-  return [`usage: ${usage(node, path)}`, ...sections(node), ...(more ? ["", `more: ${more}`] : [])].join("\n");
+  return [`usage: ${usage(node, path)}`, ...sections(node, path), ...(more ? ["", `more: ${more}`] : [])].join("\n");
 }
 
 /**
@@ -630,6 +639,7 @@ export function completionTree(roots: readonly CommandNode<any, any>[]): Seriali
       summary: node.summary,
       ...(node.aliases?.length ? { aliases: node.aliases } : {}),
       ...(node.fallback ? { fallback: true } : {}),
+      ...(node.bare ? { bare: true } : {}),
       ...(node.options?.length ? { options: node.options.map((o) => withDescription(o)) } : {}),
       ...(node.args?.length ? { args: node.args.map((a) => withDescription(a)) } : {}),
       runnable: Boolean(node.run),
