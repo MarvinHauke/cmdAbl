@@ -108,5 +108,6 @@ kbd {
 .cbar { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 8px; }
 .cbar .ctext { flex: 1; min-width: 0; color: var(--accent); font-weight: 700; font-size: 12px; line-height: 15px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .cbar button { flex: none; min-height: 24px; white-space: nowrap; }
+.cbar button:focus, .cbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .cbar .ckeep { border-color: var(--accent); color: var(--accent); }
 .cbar .cdiscard { border-color: hsl(0, 75%, 62%); color: hsl(0, 75%, 62%); }

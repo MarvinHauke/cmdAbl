@@ -49,6 +49,7 @@ const confirmBar = (() => {
     cur = { footer, bar, keydown };
     footer.classList.add('confirming'); footer.append(bar);
     keep.focus();
+    requestAnimationFrame(() => { if (cur && cur.bar === bar && !bar.contains(document.activeElement)) keep.focus(); });   // a page that moves focus after the click (the button that opened the bar was just hidden) does not win
   }
 
   return { open, close, isOpen: () => !!cur };
