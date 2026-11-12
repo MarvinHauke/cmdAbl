@@ -64,7 +64,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     truncated names scroll on hover/cursor (`marquee` in editor.html, off under reduced motion) (`184e696`,
     `e3fc070`, `8b93bb8`, row spacing `903398b`: `#name … ✎ × count`, counts in one column; starting an edit settles the open one, no
     sideways scroll when the columns fit `d4bcf43`; one ↓/↑ from the filter lands on the first match, without text
-    it moves one row `acbd1d5`, seen in Live; ↑ also lands on the first match, by design); no browser tooltips left in `ui/` (`b655395`, `6605d80`, help.js). Seen in Live: list
+    it moves one row `acbd1d5`, seen in Live; ↑ also lands on the first match, by design; while
+    typing in the filter the list cursor is drawn passive, so the first ↓ shows `084a58c`, seen in Live); no browser tooltips left in `ui/` (`b655395`, `6605d80`, help.js). Seen in Live: list
     and grid marking, narrow columns, scrolling name. For the user: rename in both views, hover texts, note page.
     Minor: the note page footer changes height between a 1- and 2-line error (checklist item 3).
   - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
