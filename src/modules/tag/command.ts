@@ -134,7 +134,7 @@ export function activate(api: ModuleApi, tagEditorTemplate: string): void {
     const merges = mergesOf(tracks, edits).map(([from, to]) => `merged #${from} into #${to}`);
     return applyPlans(targets, (node, before) => diffTags(before, after(node, before)), true, undefined, (writes) => [
       ...merges,
-      `${writes} ${writes === 1 ? "track" : "tracks"} changed (one undo step per track)`,
+      `${writes} ${writes === 1 ? "track" : "tracks"} changed. Cmd+Z can't undo tag changes; cmdabl log --undo lists the commands that put them back.`,
     ]);
   };
 

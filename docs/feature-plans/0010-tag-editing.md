@@ -271,7 +271,7 @@ Tags section, reference, images: "board" leaves the docs).
   html), `editor.ts` (page data, `parseAnswer`, `finalTags`), `list.ts` (`tag -l` rows). The page fills its
   `/*TAG_EDITOR_PLACEHOLDER*/null` slot (`fillTemplate`). The page answer is validated against the request: unknown tag or
   track, invalid name or wrong shape is exit 2 and nothing is written; `{"settings":true}` (the gear where core ignores it) counts as
-  closed. Apply writes per track and says `N tracks changed (one undo step per track)`; a merge is named first. Settings:
+  closed. Apply writes per track and says `N tracks changed. Cmd+Z can't undo tag changes; cmdabl log --undo lists the commands that put them back.`; a merge is named first. Settings:
   `tag.listEnter` (an enum of presets until settings have a text kind), `tag.editView`, `tag.filter`; `tag.foldAfter` is gone.
 - **Running a line from a module:** `api.commands.run`, decided in [0028](0028-inner-runs.md). First user:
   `tag -l` Enter → `tag.listEnter` (four presets: `find #{}`, `tag -e {}`, `mute #{}`, `solo #{}`).
@@ -283,7 +283,7 @@ Tags section, reference, images: "board" leaves the docs).
 ## Open questions
 
 - A large change set leaves one undo step per track written. **Accepted for 0.1.8** (architect,
-  2026-11-12): the same as the board since 0.1.2; the result text says "one undo step per track". A batched
+  2026-11-12): the same as the board since 0.1.2; the result text says Cmd+Z cannot undo tag changes and points to `cmdabl log --undo` (user test, 2026-11-12: the undo steps are only the colour toggle). A batched
   `tags_set` would be a bridge protocol change (the user's call); revisit after 0.1.8.
 
 ## Phased rollout
