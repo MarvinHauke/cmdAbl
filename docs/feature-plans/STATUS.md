@@ -75,8 +75,9 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     `-2b`-style values without `--` (`ArgDef.negative`, a parser question for the user; today `jump -- -2b`).
   - Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
 - **Release test list 0.1.8 (the user, by hand; everything else is tested through MCP):**
-  1. ~~Tag editor gear~~ (done). Tag editor: Cmd+Z can't undo tags (Live limit, docs/limits.md); after Apply the
-     message says so and `cmdabl log --undo` lists the revert lines (message fixed by cmdabl-modules).
+  1. ~~Tag editor gear~~ (done). Tag editor Apply (`4c5ad61`): shows nothing; hovering Apply shows the Cmd+Z
+     warning (Live can't undo tags, docs/limits.md); `cmdabl log` shows "N tracks changed…" and the `undo:` lines,
+     `cmdabl log --undo` lists them; the palette history lists the run.
   2. Tag list (`tag -l`): mouse and keys, Enter runs the row.
   3. `jump config`: click a choice on the wrapped row with the mouse; Apply.
   4. MIDI monitor, with the controller: turn a knob for 60 s across the 20 s marks (no stutter, no flicker of
