@@ -38,6 +38,10 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     (gear in the editor, mouse, Cmd+Z after Apply, the grid after the fix).
   - Commits `2237c41` and `9685199` each carry another agent's staged work (shared index); since then the
     rule is `git commit -- <paths>` (CLAUDE.md).
+  - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
+    Live's default 1 Bar); `+4b` is the old meaning. Remote Script 0.1.16 (`transport` reports the quantization).
+  - Small follow-ups: `jump`'s usage error lists `+2b`/`+3q` (modules); whether an argument may opt in to
+    `-2b`-style values without `--` (`ArgDef.negative`, a parser question for the user; today `jump -- -2b`).
   - Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
 - **Decided, not built (2026-11-12):** MIDI monitor shows its status and extends its window by itself, plus
   an "all ins" spike (0018); `jump.step` from Live's global quantization (0027); the note page's help line
