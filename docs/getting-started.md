@@ -47,7 +47,7 @@ What each row does:
 
 - **Keyboard trigger.** Without Karabiner-Elements, `:` does not open cmdAbl. If it is not installed, **Get
   Karabiner** opens its download page; install it and run `cmdabl setup` again. If it is installed, **Add rule**
-  opens Karabiner's own import dialog. Click **Import**, then **Enable** (see [The `:` key with Karabiner](#the-key-with-karabiner)). The rule opens the palette with `:`
+  opens Karabiner's own import dialog. Click **Import**, then **Enable** (see [Set a hotkey for cmdAbl](#set-a-hotkey-for-cmdabl)). The rule opens the palette with `:`
   (Shift+period, which types `:` on German (QWERTZ) keyboards) while Ableton Live is focused. If the row says the
   rule is added but not enabled, **Open Karabiner** opens Karabiner's settings; enable the rule under **Complex Modifications**.
 - **Remote Script.** **Copy** copies the companion Remote Script into Live's User Library, in
@@ -70,7 +70,7 @@ Two commands do the same as the buttons, in case you prefer to type:
 - `cmdabl setup karabiner` links cmdAbl's Karabiner rule into Karabiner-Elements without the import dialog. In
   Karabiner, open **Complex Modifications → Add predefined rule**, choose **cmdAbl** and click **Enable**.
 
-## The `:` key with Karabiner
+## Set a hotkey for cmdAbl
 
 Karabiner-Elements turns the `:` key into "open cmdAbl", and only while Live is the front application. cmdAbl
 brings the rule with it. You add it once.
