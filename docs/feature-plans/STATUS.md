@@ -42,7 +42,12 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     absolute encoder fires once and then only after a 0; for trigger lines use a button; relative encoders are
     planned (0025). Also: docs/using.md ~557 (note page) still says "click Discard again to confirm… goes away
     after a few seconds"; since 0.1.8 every page with pending changes asks in the shared footer bar (Keep
-    editing / Discard, ←/→, Enter, Esc keeps); the note page's footer button is now "Cancel". docs/using.md:852 "the last 20 commands that worked and had
+    editing / Discard, ←/→, Enter, Esc keeps); the note page's footer button is now "Cancel". **Images to redo** (the docs agent shoots them with
+    `cmdabl_capture`/`cmdabl_record` in a clean demo Set, not the user's test Set with #bla/#bli and the long track
+    name): `tags.gif` and `tag-board.png` (the board is gone → tag editor list view and grid view, with a filter
+    and its marked characters), `tag-list.png` (now `tag -l`), `tag-pick.png` (check the flow still exists),
+    `note-edit.png` (footer Save · Cancel · View), `settings-page.png` (the jump group with the wrapped step
+    row); new and optional: the shared discard bar, the MIDI monitor with "Listening…". docs/using.md:852 "the last 20 commands that worked and had
     arguments" → drop "and had arguments" (bare commands enter the history since 0.1.8, e.g. `note`).
   - Commits `2237c41` and `9685199` each carry another agent's staged work (shared index); since then the
     rule is `git commit -- <paths>` (CLAUDE.md).
