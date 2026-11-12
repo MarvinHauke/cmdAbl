@@ -49,7 +49,12 @@ All releases were tested in Live, including the installed `.ablx`.
     Live-tested (demo Set): note page ↑/↓ + Enter jumps to @36.4.4; `note stamp prev/next` 36.4.4 ↔ 12.1.1;
     next to @244 (behind the song end) → exit 1 with Live's text; `note stamp list` cursor on the next stamp,
     date-only row dimmed. Small: the view's help line shows only "↑↓ stamps · Enter jump" (e/s/Esc gone).
-    Left: the PR. PR notes add: `jump`, `note stamp list/next/prev`, `note.stampWrap`, `api.pickRows`;
+    Left: the PR (asked).
+  - **User findings 2026-11-12 (decided):** monitor status/auto-extend + "all ins" spike (0018); `jump.step`
+    (0027); `script` module, global first, after 0.1.8 (0017 phase 1); docs: a Karabiner section with the
+    user's screenshot (configurable key, advanced), admonitions used sparingly, no ¶ permalink
+    (`toc.permalink: false`), option column without wrapping in the reference (CSS nowrap). Note page help
+    line keeps e/s/Esc when stamps exist. PR notes add: `jump`, `note stamp list/next/prev`, `note.stampWrap`, `api.pickRows`;
     Remote Script 0.1.15 carries transport, loop_set and jump (unreleased, no bump).
     Idea (ui): disabled stamp rows could say "no song position" in their detail. 0.1.8 = the
     tag list rework (0010, tag-0).

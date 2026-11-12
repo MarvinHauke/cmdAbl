@@ -58,6 +58,13 @@ it.
 
 ## Phase 1: script files (no protocol change)
 
+**The `script` module (user finding, 2026-11-12; joins this phase):** a module like `note`, with a page to
+write a script and `script <name>` to run it (bare fallback, plan 0005), `script edit <name>`, `script list`;
+from MIDI too. v1 holds only command lines (one per line, or `;`); `if`/`while` later. **Global scripts
+first** (for all Sets), Set-specific ones later. Open: a shorter call like bash's `./name` (maybe a script
+marked as a command becomes its own word through aliases, 0020). Planned after 0.1.8 (the tag rework).
+
+
 - **Where:** `<data folder>/scripts/<name>.cmdabl`. Plain UTF-8 text, one command line per line,
   `#` starts a comment, empty lines are ignored.
 - **Running:**

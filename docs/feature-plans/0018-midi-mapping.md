@@ -426,6 +426,14 @@ So `map` stays thin: a control plus a pipeline of these same commands and steps.
 - **Idea (user, 2026-11-11): a knob scrolls a list.** `find --at <n>` selects the n-th match; in value mode
   `map CC12 | find --at {}` turns a knob into a list scroller. Needs value mode and an `--at` option.
 
+- **Monitor findings (user, 2026-11-12):**
+  - The monitor shows that it listens, extends its listening window by itself while the page is open, and
+    says so when it stopped (never silent).
+  - "All ins" like Live's input menu: a Remote Script gets MIDI only from its own control-surface Input.
+    Spike first: (1) can the Remote Script read other ports, (2) Web MIDI in Live's dialog web view (the
+    NerdSEQ editor used Web MIDI in Chrome; WebKit has none), (3) a native MIDI module in the Extension
+    Host (sandbox?). Without one of them the monitor names its Input and where to change it.
+
 ## Open questions
 
 - Where `map` goes in the public order (`note`, then `vol`, then `dca`). `vol` gates value mode
