@@ -101,8 +101,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   3. `jump config`: click a choice on the wrapped row with the mouse; Apply.
   4. MIDI monitor, with the controller: turn a knob for 60 s across the 20 s marks (no stutter, no flicker of
      "Taken in Live"); `map learn` still catches a control after 40 s.
-  5. The installed `.ablx` of 0.1.8 (from the release build): `cmdabl setup` updates the Remote Script to
-     0.1.16, Live restarted, then `jump +1` and `tag -l` once.
+  5. The installed `.ablx` of 0.1.8 (local `npm run package`, 2026-11-13): installed; `cmdabl setup` offered no
+     update because 0.1.16 was already in place (correct). Still: `jump +1` and `tag -l` once.
   6. After the merge: `pakabl list` shows stars and downloads.
   Docs pass done 2026-11-13 (`434f54e..228ea06`, reviewed; tag-pick flow gone, reference regenerated; images retaken in a demo Set, tags.gif dropped).
 - **Decided, not built (2026-11-12):** MIDI monitor shows its status and extends its window by itself, plus
