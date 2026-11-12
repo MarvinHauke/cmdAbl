@@ -9,7 +9,7 @@
 ## Why cmdAbl
 
 - **Tags that group your tracks.** `tag /Lead fx synth` tags a track. Then `mute #fx` reaches every `fx` track at
-  once, and `mute !#drums` every regular track without the tag. `tag -l` opens the tag board.
+  once, and `mute !#drums` every regular track without the tag. `tag -e` opens the tag editor, where you change tags on many tracks.
 - **A pick list you control.** When a name fits more than one object, cmdAbl asks instead of guessing. The buttons
   show the state `Enter` would set, and nothing changes in Live until you press `Enter`.
 - **Community extensions, one list.** `pakabl` installs Ableton Live extensions from a curated community list.
@@ -27,7 +27,7 @@ mute /Bass                    toggle the mute of the track Bass
 mute --set 0 /Bass            make sure Bass is not muted, whatever its state is now
 tag /Kick drums               tag the track Kick as drums (do the same for Percs)
 mute drums                    mute every track tagged drums
-tag -l                        open the tag board
+tag -e                        open the tag editor
 ```
 
 ## Pages

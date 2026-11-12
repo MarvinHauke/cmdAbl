@@ -13,7 +13,7 @@ The Extensions SDK cannot do some things that cmdAbl needs. The Remote Script do
 - **Chains and pads.** The SDK cannot mute or solo a rack chain or a Drum Rack pad. `mute` and `solo` use the
   script for them.
 - **Tags.** The SDK has no place to keep tags in the Set. The script stores them on the tracks, so they are saved
-  with the Set. `tag`, the tag board and targets such as `#fx` use it.
+  with the Set. `tag`, the tag editor and targets such as `#fx` use it.
 - **The Set's id.** `note` needs a name for the Set that stays the same when the Set is saved, reopened or saved
   under another name. The script keeps an id inside the Set for this.
 - **Song position and loop.** The stamps of `note` need the song position, and the loop while you write needs to set the

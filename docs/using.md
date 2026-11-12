@@ -56,7 +56,7 @@ A name with spaces is quoted for you.
 The palette has a footer under the rows. It explains the line you are typing, and the prompt never moves:
 
 - **Line 1** names the command (or subcommand) you have typed and what it does, such as
-  `tag -e: edit a tag's tracks on the board`.
+  `tag -e: edit tags in the tag editor`.
 - **Line 2** describes the argument at the cursor, such as `<tag|#>`, or the option you are typing (or the value it
   waits for). The text follows the cursor. Moving the highlight over a row does not change it, because the row
   already says what it is.
@@ -256,25 +256,17 @@ with that tag: `mute #fx` mutes all tracks tagged `fx`, at once.
 
 - Tag names use lowercase letters, digits, `-` and `_`.
 - Tags are stored in the Live Set. They are saved with the Set, copied by Cmd+D and kept when a track is renamed.
-- Regular, return and main tracks can carry tags. The board and `tag -e` list regular and return tracks only.
+- Regular, return and main tracks can carry tags. The tag list and the tag editor show regular and return tracks only.
 - Tags need the Remote Script. After you update cmdAbl, run `cmdabl setup` once, then restart Live.
 
-This section goes from tagging a track to the tag board, `tag -e` and `tag -r`, then to what you see after a write.
+This section goes from tagging a track to tags as targets, the tag list, the tag editor and `tag -r`, then to what you see after a write.
 
 ### Tag tracks
 
 - `tag /Lead fx synth` switches `fx` and `synth` on for Lead, or off where they are on.
 - `tag --set 1 /Bass fx` makes sure Bass has `fx`. `tag --set 0 /Bass fx` removes it.
-- `tag /Lead` opens a list of the Set's tags. Its buttons show which ones Lead has. Mark the tags to switch with
-  `Space`, then press `Enter`.
-
-To add a tag that does not exist yet, type its name in that list. The list then shows `+ new tag "<name>"` as its
-last row.
-
-- If that row is the only one, `Enter` adds the tag.
-- Otherwise, press `↓` to reach the row, then `Enter`.
-- Tags you marked before still come along.
-- In a Set without tags, the empty list says "type a new tag".
+- `tag /Lead` opens the [tag editor](#the-tag-editor) with Lead in focus. Tick the tags Lead should carry and press
+  **Apply**. To add a tag that does not exist yet, use **+ New tag…** there.
 
 `tag` takes one target. `tag /Lead, /Bass fx` fails. To tag several tracks, use a tag target: see the next part.
 
@@ -308,127 +300,83 @@ tracks.
 
 ![The find pick list for find #drums: two tracks, Kick and Percs, each with the tag drums](assets/images/find-tags.png)
 
-### The tag board
+### The tag list
 
-`tag -l` (or `tag --list`) opens the tag board. It shows one section per tag. The board opens with the cursor in the
-**New tag** row.
+`tag -l` (or `tag --list`) opens a list of the tags in the Set. It is read-only: it changes nothing. Each row shows one
+tag with its number of tracks and their names (the first eight, then `+N`). The last row, **untagged**, shows the
+tracks without a tag. You cannot choose that row.
 
-![Screen recording of the tag board (tag -l): "ba" is typed into the add field of #drums, the suggestion /Bass appears and Enter adds it as a chip with a dashed ring; the text stays, "syn" is typed in its place and Enter adds /Synth; the Apply button reads "Apply (2 changes)"](assets/images/tags.gif)
+`Enter` on a tag runs a command line for that tag. The title of the list shows which one: `Tags · Enter runs find #<tag>`.
+The default is `find #<tag>`, so `find next` and `find prev` then step through those tracks. Change it with the setting
+**Enter in the tag list** (`tag.listEnter`) on the [settings page](#settings). The choices are `find #{}`, `tag -e {}`,
+`mute #{}` and `solo #{}`, where `{}` becomes the tag. `Esc` closes the list.
 
-*`tag -l`: add several tracks to #drums by typing and Enter. Nothing changes in Live until you press Apply.*
+### The tag editor
 
-Each tag's heading line holds a fold arrow, the tag's name, an **add…** input and the number of tracks. Below it,
-the tag's tracks sit as chips.
+The tag editor changes tags on many tracks at once. Open it with:
 
-- **Add a track.** Type a track's name in **add…**. The best match shows as ghost text, and the tracks that do not
-  carry the tag yet show as up to six suggestions below it. `Enter` adds the highlighted track. A click on a
-  suggestion adds it too. A new chip has a dashed ring. "no match" means nothing was added.
-  - The text and the list stay after `Enter`, so you can add similar names one after another. If the added name is
-    exactly what you typed, the field clears instead, and the next `Enter` applies. `Esc` clears the field.
-  - `Tab` completes the text with the highlighted suggestion. It does not add.
-  - `→` enters the suggestion row, on the highlighted suggestion (the one `↑` `↓` picked). There, `←` `→` walk the suggestions, `←` on the first returns to the field, and
-    typing edits the text.
-- **Remove a track from a tag.** Only the **×** on a chip removes it (or `Backspace` on a chip you selected). The
-  chip is struck through, and a second press unmarks it. A click on a chip's name only selects the chip, so a stray
-  click removes nothing.
-- **Fold a tag.** The arrow in the heading, or `Space` on the heading, folds a tag. A tag with more than 20 tracks
-  starts folded; a folded heading shows its pending changes, such as `+2 ×1`.
+- `tag -e` (or `tag --edit`), on the first tag.
+- `tag -e fx`, on the tag `fx`. A name that does not exist yet starts a new, empty tag.
+- `tag /Lead`, with the track Lead in focus. This is `tag` with a target and no tag names.
 
-**Untagged tracks.** The last section, **untagged**, lists the tracks without a tag, folded at first. It has no
-input; a track leaves it when you add it to a tag.
+The editor lists regular and return tracks. Nothing changes in Live until you press **Apply**.
 
-- **Click an untagged track to add it to the target tag.** The target is the tag whose **add…** field or chips you
-  were in last. It is highlighted, and the footer says "Click tracks to add them to #drums". The track leaves
-  **untagged** and shows as a chip with a dashed ring in the target. The **×** on that chip brings it back.
-- With the keyboard: `Tab` to the **untagged** heading. `→` (or `Enter`) unfolds it, and `→` again steps onto the
-  tracks. `←` `→` `↑` `↓` move, `Enter` or `Space` adds the track to the target, and `Esc` leaves.
-- A click on a chip in another tag's section adds nothing, so a track is not tagged twice by accident.
-- A track whose last tag you remove returns as a dashed card under **untagged**. You can give it another tag in the
-  same change. A tag whose tracks are all marked for removal is struck through and says "tag goes away".
+It has two views. Switch between them with the **List** and **Grid** buttons, or with `Ctrl+G`. Both views share the
+same pending changes and one **Apply**. The setting **Tag editor view** (`tag.editView`) decides which view opens.
 
-**New tag.** The **New tag** row at the top creates a tag.
+- **List view.** The tags are on the left, each with its number of tracks. On the right are the tracks, with a check box
+  for the tag you stand on. A tick means the track carries the tag.
+- **Grid view.** The tracks are rows and the tags are columns. Each cell is a check box.
 
-- Click untagged tracks to collect them: they show below the field as "goes into the new tag: …", each with a **×**.
-  Collecting before or after typing the name makes no difference.
-- Type a name and press `Enter`. The tag is created with the collected tracks. `Esc` clears the collection.
-- Names are saved in lowercase, so "Perc" becomes `perc`.
-- A name that already exists is refused with "exists already". Add the track in that tag's **add…** input instead.
-- A name with other characters is refused with "not a valid name".
-- A new tag with no track is not kept.
+**Switch a tag on or off.** Move to a check box and press `Space`. A change you have not applied is orange: an orange
+tick is a tag that will be added, an orange `×` a tag that will be removed.
 
-**Rename a tag.** Click the tag's name, or press `F2` in its **add…** input or on its heading. The name becomes an
-input. `Enter` takes the name, `Esc` cancels the edit. A name with other characters shakes and is not taken. After a
-rename the heading shows the new name and, dimmed, "(was #old)". If the new name exists already, the two tags merge,
-as with [`tag -r`](#tag-r-rename-a-tag).
+**Filter.** The field at the top is where the keyboard starts, so type right away. The characters that match are
+underlined and in the accent colour. In the grid view the filter looks at the tag names too. The setting **Tag editor
+filter** (`tag.filter`) decides what happens to the rest:
 
-**Remove a tag from every track.** Click the **×** at the right end of the heading, or press `Shift+Backspace` in an
-empty **add…** input. The section is struck through, and the footer says what will be removed. A second click
-unmarks it. When you press **Apply**, a bar in the footer asks "Remove #fx from N tracks?". **Cancel** is the
-default (`Esc` too) and returns you to editing; **Remove and apply** goes on. A single chip's **×** asks nothing.
+- **Compact** hides what does not match.
+- **Highlight** keeps everything and the arrow keys skip what does not match.
 
-![The tag board: one section per tag, bass, drums and synth, with its tracks as chips and an add field, and the key help line, Settings, Apply and Close at the bottom](assets/images/tag-board.png)
+`Esc` clears the filter first.
 
-Live does not change until you press **Apply (N changes)**. Then the board closes. **Close** with nothing applied
-changes nothing and shows no message.
+**New tag.** The row **+ New tag…** is at the top of the tags (in the grid, in the top left corner). Press `Enter` on it,
+type a name and press `Enter`. Names use lowercase letters, digits, `-` and `_`; capitals are made lowercase. Then tick
+the tracks. A new tag with no track is not kept.
 
-**Moving around.** The keys work like a file tree: `↑` and `↓` move between the headings (the **New tag** row, each
-tag, **untagged**); `→` goes in, `←` goes out.
+**Rename a tag.** Click the **✎** next to the tag, or press `⌘R` on a Mac (`Ctrl+R` on Windows). `Ctrl+R` and `F2`
+work too on every system. Type the new name and press `Enter`; `Esc` cancels. A name with other characters is refused.
+If the new name exists already, the two tags merge when you apply, and the editor says so. See also
+[`tag -r`](#tag-r-rename-a-tag), which renames without the editor.
 
-| Where you are | Key | What it does |
-| --- | --- | --- |
-| A heading | `↑` `↓` | Go to the previous or next heading. |
-| A heading | `→` | Unfolds a folded tag. On an open one, goes into its **add…** field. |
-| A heading | `Enter` | Opens a folded tag and goes into its field. That tag becomes the target. |
-| A heading | `Space` | Folds or unfolds. |
-| A heading | `←` | Folds an open tag. |
-| The **untagged** heading | `→` `Enter` | Unfolds it; again, steps onto the tracks. |
-| A heading | `F2` | Renames the tag. |
-| A heading | typing | Unfolds the tag and types into its **add…** field. On **untagged**, types into the target tag's field (or **New tag**). |
-| An **add…** field | typing | Suggests tracks. |
-| An **add…** field | `Tab` | Completes the text with the highlighted suggestion. It does not add. In an empty field, it moves on as usual. |
-| An **add…** field | `Enter` | Adds the highlighted track. The text and the list stay, unless the added name is exactly what you typed: then the field clears. With no match, nothing is added. In an empty field, it applies. |
-| An **add…** field | `↑` `↓` | Move through the suggestions. Without suggestions, they go to the other headings. |
-| An **add…** field | `→` | With suggestions showing, enters the suggestion row. Otherwise, at the end of the text (an empty field too), goes onto the first chip. |
-| An **add…** field | `←` | At the start of the text, goes out to the heading. |
-| An **add…** field | `Alt+←` `Alt+→` | Move the cursor in the typed text. |
-| An **add…** field | `Backspace` | In an empty field, marks the last chip for removal. A second press unmarks it. |
-| An **add…** field | `Shift+Backspace` | In an empty field, marks the whole tag for removal. |
-| An **add…** field | `Esc` | Clears the typed text. In an empty field, it closes the board. |
-| The suggestion row | `←` `→` | Walk the suggestions. `←` on the first returns to the field. |
-| The suggestion row | `Enter` | Adds the highlighted track. The text and the list stay, unless the added name is exactly what you typed: then the field clears. |
-| The suggestion row | `Tab` | Completes the text with it and returns to the field. |
-| The suggestion row | typing | Returns to the field and edits the text. |
-| The suggestion row | `Esc` | Leaves the row. The text stays; a second `Esc` clears it. |
-| A chip | `←` `→` | Step through the chips. `→` on the last chip stays. `←` on the first returns to the field. |
-| A chip | `Backspace` `Delete` | Mark the chip for removal. A second press unmarks it. A chip you just added disappears. |
-| A chip | `↑` `↓` | Go to the heading, or to the next one. |
-| A chip | `Enter` | Applies, when the field is empty. |
-| A chip | `Esc` `Tab`, or a letter | Return to the field. |
+**Remove a tag from every track.** Click the **×** next to the tag, or press `Shift+Backspace`. The tag is struck
+through. The same key unmarks it. When you press **Apply**, a bar in the footer asks "Remove #fx from N tracks…?". **Remove**
+goes on; **Keep editing** or `Esc` returns to the editor. A tag marked for removal cannot be renamed or ticked until
+you unmark it.
 
-The **New tag** row works the same way, with the collected tracks as its chips. `Enter` there creates the tag, or
-applies when the field and the collection are empty. The board scrolls to keep the section you work in in view.
+| Key | What it does |
+| --- | --- |
+| `↑` `↓` | Move between tags or tracks. |
+| `→` `←` | List view: into the tracks, and back to the tags. Grid view: to the next or previous tag. |
+| `Space` | Switches the check box on or off. |
+| `⌘R` | Renames the tag. |
+| `Shift+Backspace` | Marks the tag for removal. The same key unmarks it. |
+| `Ctrl+G` | Switches between the list and the grid view. |
+| `Enter` | Applies, when the filter is empty. On **+ New tag…**, names a new tag. |
+| `Ctrl+Enter` or `Cmd+Enter`, `Ctrl+S` or `Cmd+S` | Apply from anywhere. |
+| `Esc` | Clears the filter. Then it closes the editor. |
 
-`Esc` with pending changes (and **Close**) warns "N changes not applied — Esc again to discard". Any other key, or
-any click except Close, cancels the warning. The footer shows the main keys.
+The footer shows the keys that fit where you are, and the **Settings** button opens the tag settings and brings the
+editor back when you close them.
 
-### `tag -e`: one tag on many tracks
+**Apply and Cancel.** **Apply (N)** writes the N pending changes and closes the editor. It shows no message when it
+succeeds. **Cancel** (or `Esc`) leaves without writing. If changes are pending, the footer asks "Discard N pending
+changes?" with **Keep editing** and **Discard**. Move between the two with `←` and `→`, press `Enter` to choose, and
+`Esc` keeps editing.
 
-`tag --edit` (or `tag -e`) changes one tag on many tracks, from the keyboard.
-
-- `tag -e fx` opens a pick list of all regular and return tracks. A "tagged fx" button is lit where a track has the
-  tag.
-- Mark tracks with `Space` and press `Enter`. `fx` switches on or off for each marked track. `Esc` changes nothing.
-- A bare `tag -e` means `tag -e #`: it opens the tag list first. That list takes one row: `Enter` on a tag opens its
-  track list at once, and a new name plus `Enter` creates the tag.
-- `--edit` cannot be combined with a target, names, `--list` or `--set`.
-
-The pair to remember: `tag /Lead` picks the tags of one track, and `tag -e fx` picks the tracks of one tag.
-
-![The pick list for tag --edit #drums: the five regular tracks Kick, Bass, Lead, Percs and Synth, each with its tags; Kick and Bass are marked with a dashed ring, and the boxes show the result of Enter: drums off for Kick, on for Bass](assets/images/tag-pick.png)
-
-![The tag list for tag -e: the tags bass, drums and synth, each with its track count](assets/images/tag-list.png)
-
-*`tag -e #drums` and the tag list of a bare `tag -e`.*
+**Cmd+Z does not undo tag changes.** Hold the mouse over **Apply** and the help line says so. The changes and their
+undo commands go to the log: see [After a write](#after-a-write) and `cmdabl log --undo`. The [known limits](limits.md)
+explain why.
 
 ### `tag -r`: rename a tag
 
@@ -725,8 +673,8 @@ The settings page is where you change how cmdAbl behaves. Open it from the palet
   `map config`, which opens the page on that command's group. This works after every command except `man` and
   `help`. The palette offers `config` as a row after a command name. To use the word `config` as a name (a track
   called config), quote it: `tag "config"`.
-- The **Settings** button in the footer of the tag board (`tag -l`) opens the page on the tag group. When you close
-  the page, the board comes back.
+- The **Settings** button in the footer of the [tag editor](#the-tag-editor) opens the page on the tag group. When you close
+  the page, the editor comes back.
 
 The page has one group per area, with the core settings first. Each row has a name, a switch, a choice or a number,
 and a short explanation in the [help line](#the-help-line) when you point at it or move to it. A value that differs
@@ -752,7 +700,9 @@ the wrong type, means the default for that setting and a warning in the log.
 | Key | Values | What it does |
 | --- | --- | --- |
 | `"ui.helpLine"` | `true` (default), `false` | Shows what the control under the mouse, or with focus, does in the footer of the pages. `false` shows the keys only. See [the help line](#the-help-line). |
-| `"tag.foldAfter"` | 1 to 500, default 20 | On the tag board, tags with more tracks than this start folded. |
+| `"tag.listEnter"` | `"find #{}"` (default), `"tag -e {}"`, `"mute #{}"`, `"solo #{}"` | What `Enter` on a tag in the [tag list](#the-tag-list) runs. `{}` becomes the tag. |
+| `"tag.editView"` | `"list"` (default), `"grid"` | Which view the [tag editor](#the-tag-editor) opens in. |
+| `"tag.filter"` | `"compact"` (default), `"highlight"` | Whether typing in the tag editor hides what does not match, or keeps everything and skips it. |
 | `"map.enabled"` | `true` (default), `false` | `false` drops every incoming MIDI message. `map --off` and `map --on` set it. |
 | `"midi.statusBar"` | `true`, `false` (default) | `true` also shows incoming MIDI in Live's status bar while `midi monitor` or `map learn` is open. |
 | `"setup.openOnStart"` | `true` (default), `false` | Opens the [setup page](getting-started.md#2-check-the-setup-page) by itself. |
@@ -808,7 +758,7 @@ Pages have a quiet line in the footer that explains what the control under the m
 It shows the help of the element under the mouse, otherwise of the element with focus, otherwise the page's keys. A
 text field explains itself when you hover it, not when it has focus, so the keys stay visible while you type.
 
-The line is on the tag board, the settings page, the defaults page, the pick list, the setup page and other message pages with buttons. The palette's
+The line is on the tag editor, the settings page, the defaults page, the pick list, the setup page and other message pages with buttons. The palette's
 footer is the same line; see [the footer](#the-footer-what-the-line-means). Switch it off with `ui.helpLine` on the
 [settings page](#settings): the footers then show the keys only.
 
