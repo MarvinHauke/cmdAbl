@@ -122,8 +122,15 @@ stop_agent() {
         echo "[stop] $name in pane $pane"
         return
     fi
+    # The prompt runs in vim mode: Esc goes to NORMAL, where "/exit" became e, x, i and a stray "t" was sent.
+    # "cc" clears the line and enters INSERT; then /exit is typed literally.
     tmux send-keys -t "$pane" Escape
-    tmux send-keys -t "$pane" "/exit" Enter
+    sleep 0.4
+    tmux send-keys -t "$pane" -l "cc"
+    sleep 0.2
+    tmux send-keys -t "$pane" -l "/exit"
+    sleep 0.2
+    tmux send-keys -t "$pane" Enter
     for _ in 1 2 3 4 5 6 7 8 9 10; do
         tmux list-panes -a -F '#{pane_id}' | grep -qx "$pane" || { echo "stopped $name"; return; }
         sleep 0.5
