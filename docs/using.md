@@ -303,8 +303,7 @@ tracks.
 ### The tag list
 
 `tag -l` (or `tag --list`) opens a list of the tags in the Set. It is read-only: it changes nothing. Each row shows one
-tag with its number of tracks and their names (the first eight, then `+N`). The last row, **untagged**, shows the
-tracks without a tag. You cannot choose that row.
+tag with its number of tracks and their names (the first eight, then `+N`). If some tracks have no tag, the last row, **untagged**, shows them. You cannot choose that row.
 
 `Enter` on a tag runs a command line for that tag. The title of the list shows which one: `Tags · Enter runs find #<tag>`.
 The default is `find #<tag>`, so `find next` and `find prev` then step through those tracks. Change it with the setting
@@ -350,7 +349,7 @@ If the new name exists already, the two tags merge when you apply, and the edito
 [`tag -r`](#tag-r-rename-a-tag), which renames without the editor.
 
 **Remove a tag from every track.** Click the **×** next to the tag, or press `Shift+Backspace`. The tag is struck
-through. The same key unmarks it. When you press **Apply**, a bar in the footer asks "Remove #fx from N tracks…?". **Remove**
+through. The same key unmarks it. When you press **Apply**, a bar in the footer asks "Remove #fx from N tracks?". It lists every tag marked for removal, and when other changes are pending it ends "…and apply the other changes?". **Remove**
 goes on; **Keep editing** or `Esc` returns to the editor. A tag marked for removal cannot be renamed or ticked until
 you unmark it.
 
@@ -359,8 +358,8 @@ you unmark it.
 | `↑` `↓` | Move between tags or tracks. |
 | `→` `←` | List view: into the tracks, and back to the tags. Grid view: to the next or previous tag. |
 | `Space` | Switches the check box on or off. |
-| `⌘R` | Renames the tag. |
-| `Shift+Backspace` | Marks the tag for removal. The same key unmarks it. |
+| `⌘R` | Renames the tag. Works when the filter is empty. |
+| `Shift+Backspace` | Marks the tag for removal. The same key unmarks it. Works when the filter is empty. |
 | `Ctrl+G` | Switches between the list and the grid view. |
 | `Enter` | Applies, when the filter is empty. On **+ New tag…**, names a new tag. |
 | `Ctrl+Enter` or `Cmd+Enter`, `Ctrl+S` or `Cmd+S` | Apply from anywhere. |
@@ -370,7 +369,7 @@ The footer shows the keys that fit where you are, and the **Settings** button op
 editor back when you close them.
 
 **Apply and Cancel.** **Apply (N)** writes the N pending changes and closes the editor. It shows no message when it
-succeeds. **Cancel** (or `Esc`) leaves without writing. If changes are pending, the footer asks "Discard N pending
+succeeds, unless Live has to be told to save the Set (see [After a write](#after-a-write)). **Cancel** (or `Esc`) leaves without writing. If changes are pending, the footer asks "Discard N pending
 changes?" with **Keep editing** and **Discard**. Move between the two with `←` and `→`, press `Enter` to choose, and
 `Esc` keeps editing.
 
@@ -472,8 +471,8 @@ command stops with exit code 5. Playback keeps running: if the song plays, it pl
 
 !!! note "`jump +4` changed in 0.1.8"
     Before 0.1.8, `jump +4` always meant four bars. Now it counts steps of Live's launch quantization. With Live's
-    default of 1 Bar, nothing changes. For the old meaning at any setting, type `jump +4b`. The change needs Remote
-    Script 0.1.16: run `cmdabl setup`, then restart Live.
+    default of 1 Bar, nothing changes. For the old meaning at any setting, type `jump +4b`. With an older Remote
+    Script, `jump +4` keeps counting bars. Run `cmdabl setup`, then restart Live, to get Script 0.1.16.
 
 To go back in bars or quarters, put `--` before the value: `jump -- -2b`, `jump -- -3q` (a leading `-3q` would be read as an option).
 
@@ -524,7 +523,7 @@ this Set's note. It is not a separate feature.
   and time, and a hint says that the Remote Script is not running.
 - `Esc` ends the stamp and goes back to view. The text is kept and the old loop comes back. Press `s` again
   for the next section. If you typed nothing below the heading, no entry is added.
-- `Cmd+S` saves and closes the note. **Cancel** throws away this edit and asks first.
+- `Cmd+S` saves and closes the note. **Cancel** throws away this edit and asks first when you typed something.
 
 Esc or Cmd+S right after `s` wait up to half a second for the song position. If the Remote Script does not answer,
 the heading holds only the date and time.
