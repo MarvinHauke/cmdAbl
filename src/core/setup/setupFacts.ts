@@ -11,10 +11,11 @@ import { karabinerImportUrl, type SetupFacts } from "./setupRows.js";
 export const KARABINER_RULE_DESCRIPTION = "Open cmdAbl command palette with ':' when Ableton Live is focused";
 
 /**
- * Is the cmdAbl rule enabled in Karabiner's own config (`karabiner.json`, read-only)? True when the SELECTED profile lists a
- * rule with the description, false when it lists none, null when the text is not a Karabiner config.
+ * The cmdAbl rule in Karabiner's own config (`karabiner.json`, read-only), SELECTED profile: "enabled" when it lists a rule with
+ * the description (a missing `enabled` field or `true` counts as enabled), "disabled" when that rule has `enabled: false`
+ * (Karabiner keeps a switched-off rule in the file), "absent" when it lists none, null when the text is not a Karabiner config.
  */
-export function ruleEnabledIn(configText: string | null): boolean | null {
+export function ruleStateIn(configText: string | null): "enabled" | "disabled" | "absent" | null {
   if (configText === null) return null;
   let config: unknown;
   try {
@@ -26,8 +27,16 @@ export function ruleEnabledIn(configText: string | null): boolean | null {
   if (!Array.isArray(profiles)) return null;
   const selected = profiles.find((p) => (p as { selected?: unknown })?.selected === true) ?? profiles[0];
   const rules = (selected as { complex_modifications?: { rules?: unknown } } | undefined)?.complex_modifications?.rules;
-  if (!Array.isArray(rules)) return false;
-  return rules.some((r) => (r as { description?: unknown })?.description === KARABINER_RULE_DESCRIPTION);
+  if (!Array.isArray(rules)) return "absent";
+  const mine = rules.filter((r) => (r as { description?: unknown })?.description === KARABINER_RULE_DESCRIPTION);
+  if (mine.length === 0) return "absent";
+  return mine.some((r) => (r as { enabled?: unknown }).enabled !== false) ? "enabled" : "disabled";
+}
+
+/** Is the rule listed and switched on? True only for "enabled"; null when the config can't be read. */
+export function ruleEnabledIn(configText: string | null): boolean | null {
+  const state = ruleStateIn(configText);
+  return state === null ? null : state === "enabled";
 }
 
 export interface FactsDeps {
@@ -94,8 +103,9 @@ export async function gatherFacts(deps: FactsDeps): Promise<SetupFacts> {
   const triggerInstalled = safe(deps.triggerInstalled, false);
   const fileThere = safe(deps.triggerRuleThere, false);
   // macOS: an enabled rule in karabiner.json wins whatever the imported asset file is called; the file check only tells "not added" from "added, not enabled".
-  const enabled = platform === "darwin" ? ruleEnabledIn(safe(deps.karabinerConfig, null)) : null;
-  const ruleThere = fileThere || enabled === true;
+  const state = platform === "darwin" ? ruleStateIn(safe(deps.karabinerConfig, null)) : null;
+  const enabled = state === null ? null : state === "enabled";
+  const ruleThere = fileThere || state === "enabled" || state === "disabled"; // a switched-off rule still counts as added
   return {
     platform,
     trigger: { installed: triggerInstalled, ruleThere, enabled: ruleThere ? enabled : null },

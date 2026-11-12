@@ -10,6 +10,7 @@ import { sectionsSize, sectionsText, usesStatusLayout } from "../surfaces/notify
 import { karabinerImportUrl } from "./setupRows.js";
 
 const config = (profiles: unknown) => JSON.stringify({ profiles });
+const base2 = () => ({ port: 27184, controlSurfaceUrl: "u", triggerInstalled: () => true, triggerRuleThere: () => true, karabinerConfig: () => null, hostStart: 1000, dataFolder: "/x", writable: () => true, installed: () => ({ status: "current" as const, version: "1" }) });
 const rule = { description: KARABINER_RULE_DESCRIPTION };
 
 test("ruleEnabledIn: the selected profile lists the rule; none lists it; unreadable is null", () => {
@@ -19,6 +20,20 @@ test("ruleEnabledIn: the selected profile lists the rule; none lists it; unreada
   assert.equal(ruleEnabledIn(null), null);
   assert.equal(ruleEnabledIn("{nope"), null);
   assert.equal(ruleEnabledIn("{}"), null);
+});
+
+test("ruleEnabledIn: enabled false is not enabled; a missing or true field is", () => {
+  const one = (r: object) => config([{ selected: true, complex_modifications: { rules: [r] } }]);
+  assert.equal(ruleEnabledIn(one({ ...rule, enabled: false })), false);
+  assert.equal(ruleEnabledIn(one({ ...rule, enabled: true })), true);
+  assert.equal(ruleEnabledIn(one(rule)), true);
+});
+
+test("gatherFacts: a disabled rule in karabiner.json counts as added, not enabled, even without the asset file", async () => {
+  const disabled = config([{ selected: true, complex_modifications: { rules: [{ ...rule, enabled: false }] } }]);
+  const f = await gatherFacts({ ...base2(), triggerRuleThere: () => false, karabinerConfig: () => disabled, platform: "darwin" });
+  assert.equal(f.trigger.ruleThere, true);
+  assert.equal(f.trigger.enabled, false);
 });
 
 test("the rule's description in karabiner/cmdabl.json is the one ruleEnabledIn looks for", () => {
