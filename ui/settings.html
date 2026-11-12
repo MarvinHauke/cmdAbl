@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- settings surface (see src/core/surfaces/ui.ts SettingsRequest, plan 0019 §2). In: SETTINGS_PLACEHOLDER = { title, focus?: groupId, help?: boolean, groups: [{ id, heading, items: [row] }] } with row = { key, label, help, kind: "bool", value, default } | { …, kind: "enum", value, default, choices: [{ value, label }] } | { …, kind: "int", value, default, min, max } | { key, label, help, kind: "link", target, summary }. Rows: a bool is a switch, an enum a segmented switch, an int a number field with − / +, a link a button row. A dim "reset" shows while a value differs from its default. `focus` scrolls to that group and puts the cursor on its first row. Keys: ↑/↓ rows, ←/→ change an enum/int, Space toggles a bool, Enter saves (on a link row it opens the target), Esc closes; the footer also has mouse buttons "Apply (N changes)" (disabled at 0, = Enter) and "Cancel" (= Esc); with changes it asks "Discard N changes?" in the footer first. The footer is the help line (ui/help.js, plan 0019 §3): the hovered row's help and default, else the cursor row's, else the key line (help === false: the key line only). Out (close_and_send): JSON { changes: { [key]: value } } on Enter (only real differences against the request), { changes, open: target } when a link row opened its page, '' when closed. Text goes in with textContent only. -->
+<!-- settings surface (see src/core/surfaces/ui.ts SettingsRequest, plan 0019 §2). In: SETTINGS_PLACEHOLDER = { title, focus?: groupId, help?: boolean, groups: [{ id, heading, items: [row] }] } with row = { key, label, help, kind: "bool", value, default } | { …, kind: "enum", value, default, choices: [{ value, label }] } | { …, kind: "int", value, default, min, max } | { key, label, help, kind: "link", target, summary }. Rows: a bool is a switch, an enum a segmented switch (more than 6 choices: on its own full-width line under the label, wrapping), an int a number field with − / +, a link a button row. A dim "reset" shows while a value differs from its default. `focus` scrolls to that group and puts the cursor on its first row. Keys: ↑/↓ rows, ←/→ change an enum/int, Space toggles a bool, Enter saves (on a link row it opens the target), Esc closes; the footer also has mouse buttons "Apply (N changes)" (disabled at 0, = Enter) and "Cancel" (= Esc); with changes it asks "Discard N changes?" in the footer first. The footer is the help line (ui/help.js, plan 0019 §3): the hovered row's help and default, else the cursor row's, else the key line (help === false: the key line only). Out (close_and_send): JSON { changes: { [key]: value } } on Enter (only real differences against the request), { changes, open: target } when a link row opened its page, '' when closed. Text goes in with textContent only. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -11,17 +11,22 @@
     body { display: flex; flex-direction: column; }
     :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-    #scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 0; }
+    #scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 8px 0; }
     #scroll:focus { outline: none; }
     .group h3 { font-size: 11px; font-weight: 700; color: var(--text); padding: 10px 16px 4px; text-transform: none; user-select: none; }
-    .row { position: relative; display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 4px 16px 4px 22px; cursor: default; }
+    .row { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-height: 36px; padding: 4px 16px 4px 22px; cursor: default; }
     .row.cur { background: var(--bg-row); }
     .row.cur::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
-    .row .label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .row .label { flex: 1 1 14ch; min-width: 12ch; overflow-wrap: break-word; }   /* words may wrap, a single word never breaks; the control drops below the label when there's no room */
     .row.changed .label::after { content: ' •'; color: var(--accent); }   /* differs from what was saved */
 
-    .ctl { flex: none; display: inline-flex; align-items: center; gap: 6px; }
-    .reset { visibility: hidden; min-width: 24px; min-height: 24px; color: var(--dim); font-size: 11px; }
+    .ctl { flex: none; display: inline-flex; align-items: center; gap: 6px; margin-left: auto; max-width: 100%; }
+    /* an enum with more than 6 choices: the choices get their own full-width line under the label; the reset stays on the label's line */
+    .row.wide .ctl { display: contents; }
+    .row.wide .label { order: 0; }
+    .row.wide .reset { order: 1; }
+    .row.wide .seg { order: 2; flex: 1 1 100%; }
+    .reset { flex: none; visibility: hidden; min-width: 24px; min-height: 24px; color: var(--dim); font-size: 11px; }
     .reset.show { visibility: visible; }   /* reserved space, so nothing jumps when it appears */
     .reset:hover { color: var(--text); }
 
@@ -32,10 +37,9 @@
     .sw[aria-checked="true"]::after { left: 23px; background: var(--accent); }
 
     /* segmented */
-    .seg { display: inline-flex; border: 1px solid var(--dim); border-radius: 3px; overflow: hidden; }
-    .seg button { border: 0; border-radius: 0; min-height: 24px; padding: 2px 10px; }
-    .seg button + button { border-left: 1px solid var(--dim); }
-    .seg button.on { background: var(--bg); color: var(--accent); }
+    .seg { display: inline-flex; flex-wrap: wrap; min-width: 0; padding: 0 1px 1px 0; }   /* wraps when it doesn't fit; neighbours share one border line, so it stays one group */
+    .seg button { border: 1px solid var(--dim); border-radius: 0; min-height: 24px; padding: 2px 10px; margin: 0 -1px -1px 0; flex: 0 0 auto; }
+    .seg button.on { background: var(--bg); color: var(--accent); border-color: var(--accent); position: relative; z-index: 1; }
 
     /* number field */
     .num { display: inline-flex; align-items: center; gap: 4px; }
@@ -146,6 +150,7 @@
         });
         r.refresh = () => row.choices.forEach((c, i) => { btns[i].classList.toggle('on', c.value === r.value); btns[i].setAttribute('aria-checked', String(c.value === r.value)); });
         ctl.appendChild(seg);
+        if (row.choices.length > 6) el.classList.add('wide');
       } else if (row.kind === 'int') {
         const num = mk('span', 'num');
         const minus = mk('button', null, '−'); minus.type = 'button'; minus.tabIndex = -1; minus.setAttribute('aria-label', 'less');
