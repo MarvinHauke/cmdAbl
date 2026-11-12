@@ -46,7 +46,8 @@ site theme (`docs/stylesheets/`), and the UI guide when one is written.
   3. Nothing jumps while typing: reserved areas keep their size, and lists update in place.
   4. Every empty or reserved area says why it's there.
   5. One symbol, one meaning: `#` is a tag, `×` removes, `+` adds. Never two symbols for one thing.
-  6. A status note sits next to the thing it describes, not on its own line.
+  6. A status note sits next to the thing it describes, not on its own line. Hover text goes in the help
+     line (`data-help`), never in a browser tooltip (`title`; user, 2026-11-05).
   7. Text is at least 11 px, readable in light and dark.
   8. A destructive action is confirmed in the same page, not in a second window.
   9. After an action, its result is in view and focused (scroll there, focus the next input).
