@@ -149,7 +149,8 @@ lists is to discuss again.
    (`stamp.ts`); the page has a date-only copy for a missing heading (keep in step). A setting
    `note.stampStyle` may later change how headings look in view, never the stored text.
 3. **Esc in edit returns to view and keeps the text; Esc in view saves and closes.** Cmd+S saves and
-   closes. **Discard** asks once when there are changes. (A vim mode is a later idea.)
+   closes. **Discard** asks once when there are changes, in the shared footer confirm (`ui/confirm.js`:
+   "Discard this edit?", Keep editing / Discard, ←/→, Enter, Esc keeps; 0.1.8). (A vim mode is a later idea.)
 4. **Loop while writing** with `note.stampLoop` (default on), during Arrangement playback only (not
    Session, not stopped): the page runs `loop here` on `s` and `loop back` when the stamp ends. The loop
    is the [`loop` module](0026-loop.md) (`loop.bars`, default 4); the note keeps no loop logic. A loop
@@ -188,5 +189,5 @@ only if the user wants stamps in the Set; a short `stamp` only as a user alias (
   - `note` in a new Set opens edit mode. Write a table and save: the view renders it.
   - Save the Set, close it and reopen it: `note` shows the same text.
   - Save As under a new name: `note` shows the same note.
-  - `e` switches to edit; Esc returns to view and keeps the text; Discard with changes asks once.
+  - `e` switches to edit; Esc returns to view and keeps the text; Discard with changes asks once in the footer bar.
   - With the script off, `note` gives exit 5.

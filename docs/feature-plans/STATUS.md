@@ -40,7 +40,9 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     Ableton's manual for the modes (https://www.ableton.com/en/live-manual/12/midi-and-key-remote-control/#mapping-to-relative-midi-controllers)
     instead of explaining each one; and what cmdAbl does today: a bound line fires on a press (0 → >0), so an
     absolute encoder fires once and then only after a 0; for trigger lines use a button; relative encoders are
-    planned (0025).
+    planned (0025). Also: docs/using.md ~557 (note page) still says "click Discard again to confirm… goes away
+    after a few seconds"; since 0.1.8 every page with pending changes asks in the shared footer bar (Keep
+    editing / Discard, ←/→, Enter, Esc keeps).
   - Commits `2237c41` and `9685199` each carry another agent's staged work (shared index); since then the
     rule is `git commit -- <paths>` (CLAUDE.md).
   - **`jump.step` tested in Live (script 0.1.16, 2026-11-12):** steps follow Live's launch quantization at 1 Bar,
