@@ -14,7 +14,7 @@ const roots: CommandNode<any, any>[] = [
   { name: "map", summary: "map", args: [{ name: "line", kind: "text", raw: true, required: false }], run },
 ];
 const ALLOW = ["stamp loop", "stamp unloop"];
-const ctx = (): CallCtx => ({ path: "x", line: "x", inner: false, live: { on: true } });
+const ctx = (): CallCtx => ({ path: "x", line: "x", runs: ALLOW, inner: false, live: { on: true } });
 
 test("refusal: listed command paths pass, options and arguments are free", () => {
   assert.equal(refusal("stamp loop", ALLOW, roots), null);

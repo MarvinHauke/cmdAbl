@@ -121,13 +121,9 @@ export interface InnerCall {
 }
 
 /** The effective allowlist, or why there is none. */
-function allowFor(ctx: CallCtx, narrow: readonly string[] | undefined, page: boolean, roots: Roots): { allow: string[] } | { why: string } {
+function allowFor(ctx: CallCtx, narrow: readonly string[] | undefined, roots: Roots): { allow: string[] } | { why: string } {
   const declared = ctx.runs;
-  if (declared === undefined || declared.length === 0) {
-    // A live page written before `runs` existed (0.1.7): its own list stands until its command declares `runs`.
-    if (page && narrow && narrow.length > 0) return { allow: [...narrow] };
-    return { why: `"${ctx.path}" declares no runs` };
-  }
+  if (declared === undefined || declared.length === 0) return { why: `"${ctx.path}" declares no runs` };
   if (narrow === undefined) return { allow: [...declared] };
   const canon = narrow.map((entry) => resolvePath(roots, entry.trim().split(/\s+/))?.names.join(" ") ?? entry);
   return { allow: canon.filter((p) => declared.includes(p)) };
@@ -146,7 +142,7 @@ export async function innerRun(line: string, call: InnerCall, d: InnerDeps): Pro
     if (ctx.inner) return refuse("no nesting: a line run this way cannot run further lines");
     if (typeof line !== "string") return refuse("not a line");
     const roots = d.roots();
-    const allowed = allowFor(ctx, call.narrow, call.page !== undefined, roots);
+    const allowed = allowFor(ctx, call.narrow, roots);
     if ("why" in allowed) return refuse(allowed.why);
     let defaults: Readonly<Record<string, string>> = {};
     try {

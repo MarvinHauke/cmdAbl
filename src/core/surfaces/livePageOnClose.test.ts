@@ -25,7 +25,7 @@ function setup(opts: { server?: boolean; onShow?: (run: LiveRun | undefined) => 
   const session = { url: "http://x/", close: () => events.push("session closed") } as unknown as LiveSession;
   const ui = {
     livePage: (_n: string, _h: string, _w: number, _ht: number, _r: unknown, options?: { run?: string[]; onClose?: string }) =>
-      callStore.run({ path: "x", line: "x", inner: false, live: { on: true } }, () => runLivePage({
+      callStore.run({ path: "x", line: "x", runs: ["loop back", "loop here"], inner: false, live: { on: true } }, () => runLivePage({
         name: "p",
         run: options?.run,
         onClose: options?.onClose,

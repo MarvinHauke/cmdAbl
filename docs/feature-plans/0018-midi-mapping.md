@@ -266,7 +266,7 @@ Built in 0.1.5 (core `livePage`, ui `live.js`, the monitor and learn pages).
 
 Since 2026-11-12 page runs are one kind of inner run ([0028](0028-inner-runs.md)): one engine, the page's `run` list narrows the command's declared `runs`.
 
-**Built (0.1.8, `src/core/command/innerRun.ts`):** `createPageRun` is an inner run whose caller is the page: the command that opened the page (found through async context when `livePage` is called) is the caller. The effective list is that command's `runs` narrowed by the page's `run`; `outside` commands are refused whatever the lists say; the log line reads `run: loop here -> 0 (from page note)`. **Compatibility until modules add `runs`:** a command that declares no `runs` keeps the page's own `run` list as before (only for pages; `api.commands.run` always needs `runs`). Page runs stay headless, and a page run cannot run further lines (depth 1).
+**Built (0.1.8, `src/core/command/innerRun.ts`):** `createPageRun` is an inner run whose caller is the page: the command that opened the page (found through async context when `livePage` is called) is the caller. The effective list is that command's `runs` narrowed by the page's `run`; `outside` commands are refused whatever the lists say; the log line reads `run: loop here -> 0 (from page note)`. A command that opens a page with `run` must declare `runs`. Page runs stay headless, and a page run cannot run further lines (depth 1).
 
 From the note's stamps (0013): closing and reopening a page around every write flickers and loses
 the keys typed in between. The exception is widened, without a second write path:

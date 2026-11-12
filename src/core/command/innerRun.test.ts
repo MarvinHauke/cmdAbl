@@ -79,12 +79,13 @@ test("innerRun: a call's list only narrows the command's runs", async () => {
   assert.equal((await innerRun("find #a", { ctx: s.ctx, narrow: [] }, s.deps)).code, ExitCode.USAGE);
 });
 
-test("innerRun: a page without declared runs keeps its own list (0.1.7 pages), a page narrows declared ones; pages say so in the log", async () => {
-  const s = setup(null);
+test("innerRun: a page narrows the declared runs, has no list of its own without them, and the log names the page", async () => {
+  const s = setup(["find", "mute"]);
   assert.equal((await innerRun("find #a", { ctx: s.ctx, narrow: ["find"], page: "note" }, s.deps)).code, 0);
   assert.equal((await innerRun("mute #a", { ctx: s.ctx, narrow: ["find"], page: "note" }, s.deps)).code, ExitCode.USAGE);
-  assert.equal((await innerRun("find #a", { ctx: s.ctx, page: "note" }, s.deps)).code, ExitCode.USAGE); // no list at all
   assert.match(s.logged[0]!, /\(from page note\)/);
+  const none = setup(null);
+  assert.equal((await innerRun("find #a", { ctx: none.ctx, narrow: ["find"], page: "note" }, none.deps)).code, ExitCode.USAGE); // no exception any more
 });
 
 test("innerRun: a throwing exec is a failure, never a throw", async () => {
