@@ -475,3 +475,40 @@ test("POST /run: a body still arriving when the dialog closes never reaches the 
     assert.equal(ran, 0);
   });
 });
+
+test("a refused page load answers a small visible HTML page, never an empty body", async () => {
+  await withServer({}, async ({ pages, get }) => {
+    const a = pages.open("monitor", HTML, {})!;
+    assert.equal((await get(pathOf(a.url))).status, 200);
+    for (const path of [pathOf(a.url), "/live/monitor", "/live/gone?t=" + "0".repeat(32)]) {
+      const r = await get(path);
+      assert.equal(r.status, 404, path);
+      assert.match(r.text, /This page has expired/, path);
+    }
+    const bad = await get(`/live/monitor?t=${"0".repeat(32)}`, { Host: "evil.example" });
+    assert.equal(bad.status, 403);
+    assert.match(bad.text, /expired/);
+  });
+});
+
+test("a load the client dropped before delivery keeps the load token but renews the route token", async () => {
+  await withServer({}, async ({ pages, port, get }) => {
+    const a = pages.open("monitor", HTML, {})!;
+    // a hand-made request whose response closes unfinished
+    const { EventEmitter } = await import("node:events");
+    const res = Object.assign(new EventEmitter(), { writableFinished: false, body: "", writeHead() { return this; }, end(b: string) { this.body = b; } });
+    const req = { method: "GET", url: pathOf(a.url), headers: { host: `localhost:${port}` } };
+    assert.equal(pages.handle(req as never, res as never), true);
+    await new Promise((r) => setTimeout(r, 20));
+    res.emit("close");
+    const first = await get(pathOf(a.url));
+    assert.equal(first.status, 200);
+    const second = await get(pathOf(a.url));
+    assert.equal(second.status, 404);
+    const token = /"token":"([0-9a-f]{32})"/.exec(first.text)![1]!;
+    const dropped = /"token":"([0-9a-f]{32})"/.exec(res.body)![1]!;
+    assert.notEqual(dropped, token); // the token that may have reached the dropped client is dead
+    assert.equal((await get("/live/monitor/x", { Authorization: `Bearer ${dropped}` })).status, 401);
+    assert.equal((await get("/live/monitor/x", { Authorization: `Bearer ${token}` })).status, 404); // the live one is valid (unknown route, not 401)
+  });
+});

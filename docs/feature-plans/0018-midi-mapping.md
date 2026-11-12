@@ -227,7 +227,7 @@ or per command, one dialog at a time, never while a dialog is open. See STATUS b
 **Rules for a live page:**
 1. **Served from `http://localhost:27184/live/<page>?t=<load token>`, with two tokens per dialog,
    each about 128 bits** (reviewer, 2026-11-04):
-   - **the load token** is in the URL and loads the page once, then it's dead;
+   - **the load token** is in the URL and loads the page once, then it's dead (a load the client drops before delivery doesn't spend it; the route token is then renewed);
    - **the route token** is written only into the served HTML (`LIVE.token`) and is the only
      `Authorization: Bearer` accepted.
 

@@ -8,7 +8,7 @@ import { withBudget } from "../complete/completeSnapshot.js";
 // A module's page can be served from the trigger server, `http://localhost:<port>/live/<page>?t=<token>`, and
 // read data from the module WHILE the dialog is open, through routes that exist only for that dialog:
 //
-//   GET /live/<page>?t=<load token>     the page HTML, once (this token loads the page a single time and is then dead)
+//   GET /live/<page>?t=<load token>     the page HTML, once (this token loads the page a single time and is then dead; a load the client drops before delivery does not spend it, the route token is then renewed)
 //   GET /live/<page>/<route>            JSON from the module's route function; `Authorization: Bearer <route token>`
 //
 // Two tokens: the load token is in the dialog's URL (which Live or the web view may keep), the route token is written
@@ -142,6 +142,8 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
     /** Present when the module allowed command lines for this page. */
     run?: LiveRun;
     loaded: boolean;
+    /** When the dialog's session was opened (for the debug log). */
+    openedAt: number;
     /** The one waiting request of this dialog; a second replaces it. */
     waiter?: { end(how: unknown): void };
   }
@@ -152,27 +154,60 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
   }
   const json = (res: http.ServerResponse, status: number, body: unknown): void => send(res, status, JSON.stringify(body), "application/json");
 
+  /** A refused page load shows this instead of an empty window. */
+  const EXPIRED_HTML =
+    '<!doctype html><meta charset="utf-8"><title>cmdAbl</title><body style="font:14px system-ui,sans-serif;padding:24px;color:#888;background:#222">This page has expired. Close it with Esc and open it again.</body>';
+  function refuseLoad(res: http.ServerResponse, status: number): void {
+    send(res, status, EXPIRED_HTML, "text/html; charset=utf-8");
+  }
+
   async function serve(req: http.IncomingMessage, res: http.ServerResponse, pathname: string, query: string): Promise<void> {
     const isPost = req.method === "POST";
     // POST is for `<page>/run` only; everything else stays GET-only.
     if (req.method !== "GET" && !(isPost && pathname.endsWith("/run"))) return send(res, 405, "", undefined, { Allow: "GET" });
     // The page is loaded from this origin by the dialog; nothing else may read it (DNS rebinding, another page, another origin).
     const hostHeader = req.headers.host;
-    if (hostHeader !== `localhost:${deps.port}`) return send(res, 403, "forbidden");
+    const isLoad = !isPost && pathname.slice("/live/".length).split("/").length === 1;
+    const forbid = (why: string): void => {
+      if (isLoad) log.info(`live load ${pathname}: 403 (${why})`);
+      return isLoad ? refuseLoad(res, 403) : send(res, 403, "forbidden");
+    };
+    if (hostHeader !== `localhost:${deps.port}`) return forbid(`host ${String(hostHeader).slice(0, 80)}`);
     const fromOrigin = req.headers.origin;
-    if (fromOrigin !== undefined && fromOrigin !== origin) return send(res, 403, "forbidden");
+    if (fromOrigin !== undefined && fromOrigin !== origin) return forbid(`origin ${fromOrigin.slice(0, 80)}`);
     const site = req.headers["sec-fetch-site"];
-    if (site !== undefined && site !== "same-origin" && site !== "none") return send(res, 403, "forbidden");
+    if (site !== undefined && site !== "same-origin" && site !== "none") return forbid(`sec-fetch-site ${String(site).slice(0, 80)}`);
 
     const parts = pathname.slice("/live/".length).split("/");
     const session = sessions.get(parts[0] ?? "");
-    if (!session || parts.length > 2) return send(res, 404, "not found");
+    if (!session || parts.length > 2) {
+      if (isLoad) {
+        log.info(`live load ${pathname}: 404 (no open session)`);
+        return refuseLoad(res, 404);
+      }
+      return send(res, 404, "not found");
+    }
 
     if (parts.length === 1) {
       // The page load: the token in the URL, once.
       const given = TOKEN.exec(query)?.[1];
-      if (given === undefined || session.loaded || !sameToken(given, session.loadToken)) return send(res, 404, "not found");
+      if (given === undefined || session.loaded || !sameToken(given, session.loadToken)) {
+        const why = given === undefined ? "no token" : session.loaded ? "token already used" : "wrong token";
+        log.info(`live load ${session.name}: 404 (${why}), ${Date.now() - session.openedAt} ms after open`);
+        return refuseLoad(res, 404);
+      }
       session.loaded = true;
+      const started = Date.now();
+      log.info(`live load ${session.name}: serving, ${started - session.openedAt} ms after open`);
+      // A load the client dropped before it got the page does not spend the token (a retry may still load it).
+      res.on("close", () => {
+        if (res.writableFinished) log.info(`live load ${session.name}: delivered in ${Date.now() - started} ms`);
+        else {
+          session.loaded = false;
+          session.routeToken = newToken(); // part of the page (with the route token) may have reached the client
+          log.info(`live load ${session.name}: client dropped the load, token kept`);
+        }
+      });
       const html = fillTemplate(session.html, { LIVE: { base: `${origin}/live/${session.name}`, token: session.routeToken } });
       // Even an injected script cannot send the token or the data anywhere but back to this server.
       const csp = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:";
@@ -320,7 +355,7 @@ export function createLivePages(deps: LivePagesDeps): LivePages {
   return {
     open(name, html, routes, run) {
       if (!deps.available() || !PAGE_NAME.test(name) || typeof html !== "string") return null;
-      const session: Session = { name, loadToken: newToken(), routeToken: newToken(), html, routes, ...(run ? { run } : {}), loaded: false };
+      const session: Session = { name, loadToken: newToken(), routeToken: newToken(), html, routes, ...(run ? { run } : {}), loaded: false, openedAt: Date.now() };
       sessions.set(name, session); // a second open of the same page revokes the first
       log.debug(`live page "${name}" opened`);
       return {
