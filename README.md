@@ -74,8 +74,9 @@ Open the palette (`:`), type a line and press `Enter`.
 - [Using cmdAbl](https://marvinhauke.github.io/cmdAbl/using/): names, the pick list, tags, `find`, the log, history.
 - [Remote Script](https://marvinhauke.github.io/cmdAbl/remote-script/): install, update, check and its messages.
 - [Commands](https://marvinhauke.github.io/cmdAbl/reference/commands/): every command, generated from the code.
+- [pakabl](https://marvinhauke.github.io/cmdAbl/pakabl/): install Live extensions from a curated list.
 - [Known limits](https://marvinhauke.github.io/cmdAbl/limits/): what cmdAbl cannot do.
-- [List your extension in pakabl](https://marvinhauke.github.io/cmdAbl/pakabl-listing/): for extension authors.
+- [Add your extension to pakabl](https://marvinhauke.github.io/cmdAbl/develop-pakabl/): for extension authors.
 
 ## Develop
 

@@ -1,8 +1,8 @@
-# List your extension in pakabl
+# Add your extension to pakabl
 
 pakabl installs Ableton Live extensions (`.ablx` files) from a curated list of community repositories. This page is
 for extension authors: it says what your repository needs and how to get it on the list. Users see the list with
-`pakabl list` (see [Getting started](getting-started.md#install-more-extensions-with-pakabl)).
+`pakabl list` (see [pakabl](pakabl.md)).
 
 ![The pakabl extension index window: a scrollable list of extensions, each with its name, version and id, and an Install and a Repo button for each, with a Close button at the bottom](assets/images/pakabl-list.png)
 

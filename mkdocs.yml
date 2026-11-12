@@ -47,14 +47,15 @@ nav:
   - Home: index.md
   - Getting started: getting-started.md
   - Using cmdAbl: using.md
+  - pakabl: pakabl.md
   - Remote Script: remote-script.md
   - Commands: reference/commands.md
   - Known limits: limits.md
-  - List your extension in pakabl: pakabl-listing.md
   - Develop:
       - Overview: develop.md
       - Architecture: architecture.md
       - Writing a command: guides/command-authoring.md
+      - Add your extension to pakabl: develop-pakabl.md
       - Remote Script protocol: reference/remote-script.md
       - Live API mapping: reference/live-api.md
 

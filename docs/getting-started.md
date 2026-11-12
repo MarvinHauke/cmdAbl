@@ -187,27 +187,13 @@ is unavailable. Return, main and group tracks cannot be armed at all.
 
 ## Install more extensions with pakabl
 
-pakabl installs Ableton Live extensions (`.ablx` files) from cmdAbl's curated list of community repositories.
-Run `pakabl update` once to fetch the list. Then `pakabl list` shows the extensions, with buttons to install, update
-or remove each one. Restart Live after a change.
-
-- Update appears only when the list holds a newer version than the installed one.
-- If the installed version is newer than the list's, the row says so, and cmdAbl never downgrades it.
-- To install the list's version anyway, even an older one, use `pakabl upgrade <id>@<version>` with exactly the
-  version the list shows.
-
-![The pakabl extension index window: a scrollable list of extensions, each with its name, version and id, and an Install and a Repo button for each, with a Close button at the bottom](assets/images/pakabl-list.png)
-
-*Install installs the extension. Repo opens its GitHub page.*
-
-pakabl writes into Live's Extensions folder, which works today. Ableton has announced a stricter sandbox for
-extensions. If it arrives, installing through pakabl may be blocked in a later version of Live, and pakabl as a
-whole may then stop working. See [Known limits](limits.md).
+`pakabl` installs Ableton Live extensions from cmdAbl's curated list. Run `pakabl update`, then `pakabl list`.
+See [pakabl](pakabl.md).
 
 ## Next steps
 
 - [Using cmdAbl](using.md) explains names, the pick list, tags, `find`, the log and the history.
 - [Remote Script](remote-script.md) explains updating, checking and the messages.
 - [Commands](reference/commands.md) lists every command.
-- Write extensions? [List your extension in pakabl](pakabl-listing.md). Want to change cmdAbl? See
+- Write extensions? [Add your extension to pakabl](develop-pakabl.md). Want to change cmdAbl? See
   [Develop](develop.md).
