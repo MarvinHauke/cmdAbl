@@ -102,8 +102,8 @@
 
     /* ── main: grid view (header row and track column stick; both directions scroll) ── */
     #gscroll { height: 100%; overflow: auto; background: var(--bg); scroll-padding: 56px 0 0 200px; }
-    .gtable { display: grid; width: max-content; }
-    .gtable.nocols { min-width: 100%; }   /* no columns: the empty-state text gets the full width */   /* as wide as its columns: space to the right is the bare page */
+    .gtable { display: grid; width: max-content; max-width: 100%; }   /* a vertical scrollbar takes width: the columns give way (to their minimum) before a sideways scroll appears */
+    .gtable.nocols { min-width: 100%; }   /* no columns: the empty-state text gets the full width */
     .gh, .gn, .gc, .gempty { border-bottom: 1px solid var(--border); }
     .gh { position: sticky; top: 0; z-index: 2; background: var(--bg-row); padding: 4px 4px 2px 8px; display: flex; flex-direction: column; min-width: 0;
           border-right: 1px solid var(--border); box-shadow: inset 0 -2px 0 var(--border); min-height: 56px; cursor: default; }
@@ -336,10 +336,10 @@
     }
     function tagButtons(e) {
       const pen = el('button', 'ib', '✎'); pen.type = 'button'; pen.dataset.help = 'Rename #' + e.name + ' (F2)'; pen.setAttribute('aria-label', 'Rename #' + e.name);
-      pen.addEventListener('click', ev => { ev.stopPropagation(); if (editing) return; tagCur = e; onName = false; if (view === 'list') pane = 0; startEdit('rename', e); });
+      pen.addEventListener('click', ev => { ev.stopPropagation(); if (!settleEdit()) return; tagCur = e; onName = false; if (view === 'list') pane = 0; startEdit('rename', e); });
       const x = el('button', 'ib', '×'); x.type = 'button'; x.dataset.help = (e.removed ? 'Unmark #' : 'Mark #') + e.name + (e.removed ? '' : ' for removal') + ' (Shift+Backspace)';
       x.setAttribute('aria-label', x.dataset.help);
-      x.addEventListener('click', ev => { ev.stopPropagation(); if (editing) return; tagCur = e; onName = false; if (view === 'list') pane = 0; toggleRemove(e); });
+      x.addEventListener('click', ev => { ev.stopPropagation(); if (!settleEdit()) return; tagCur = e; onName = false; if (view === 'list') pane = 0; toggleRemove(e); });
       for (const b of [pen, x]) b.tabIndex = -1;   // the field keeps the keyboard; F2 and Shift+Backspace are the keys
       return [pen, x];
     }
@@ -364,7 +364,7 @@
       const lh = el('div', 'phead'); lh.append(el('span', 'pt', 'Tags'), el('span', 'pn', String(entries.length)));
       const nr = el('div', 'row new'); nr.dataset.help = 'New tag: name a tag, then check its tracks (Enter)';
       if (editing?.mode === 'new') inlineInput(nr); else nr.append(el('span', 'nm', '+ New tag…'));
-      nr.addEventListener('click', () => { if (editing) return; tagCur = NEW; pane = 0; startEdit('new'); });
+      nr.addEventListener('click', () => { if (editing?.mode === 'new') return; if (!settleEdit()) return; tagCur = NEW; pane = 0; startEdit('new'); });
       reg(nr, 'new');
       const ll = el('div', 'plist');
       for (const e of entries) {
@@ -418,7 +418,7 @@
       tbl.style.gridTemplateColumns = 'fit-content(220px) ' + L.cols.map(e => editing?.mode === 'rename' && editing.entry === e && editing.w ? editing.w + 'px' : 'fit-content(220px)').join(' ');
       const corner = el('div', 'gh corner'); corner.dataset.help = 'New tag: name a tag, then check its tracks (Enter)';
       if (editing?.mode === 'new') { corner.classList.add('editing'); inlineInput(corner); } else corner.append(el('span', 'nm', '+ New tag…'));
-      corner.addEventListener('click', () => { if (editing) return; onHead = true; onName = true; startEdit('new'); });
+      corner.addEventListener('click', () => { if (editing?.mode === 'new') return; if (!settleEdit()) return; onHead = true; onName = true; startEdit('new'); });
       tbl.append(reg(corner, 'corner'));
       for (const e of L.cols) {
         const h = el('div', 'gh' + (e.removed ? ' removed' : '') + (L.colActive && !L.colHit(e) ? ' nomatch' : ''));
@@ -568,7 +568,14 @@
       if (mode === 'rename' && entry.removed) { flash('#' + entry.name + ' is marked for removal: Shift+Backspace unmarks it first.'); return; }
       editing = { mode, entry, input: null, value: undefined, touched: false, w: 0 };
       if (mode === 'rename' && view === 'grid') editing.w = els.find(x => x.k === 'gh' && x.e === entry)?.el.offsetWidth ?? 0;   // the column keeps its width while renaming
-      setNote(null); render();
+      render();   // the note stays: a merge warning from settling the previous edit must be seen
+    }
+    // Starting another edit ends the open one first: empty → cancelled quietly; text → as Enter (an invalid name keeps it open, returns false).
+    function settleEdit() {
+      if (!editing) return true;
+      if (!normalize(editing.input.value)) { editing = null; zone = 'list'; setNote(null); return true; }
+      commitEdit();
+      return !editing;
     }
     function endEdit() { editing = null; setNote(null); zone = 'list'; render(true); focusQ(); }
     function badName(msg, short) { editing.input.classList.remove('bad'); void editing.input.offsetWidth; editing.input.classList.add('bad', 'shake'); editing.err.textContent = short || 'not allowed'; editing.err.dataset.help = msg; setNote({ text: msg, bad: true }); }
@@ -601,6 +608,7 @@
       ev.stopPropagation();
       if (ev.isComposing) return;
       if (ev.key === 'Enter') { ev.preventDefault(); commitEdit(); }
+      else if (is(CmdListNav.chord(ev), 'rename') && !/^(Shift\+)?.$/.test(CmdListNav.chord(ev))) { ev.preventDefault(); if (settleEdit()) { render(true); focusQ(); } }   // F2 in the input = Enter (a printable key bound to rename still types)
       else if (ev.key === 'Escape') { ev.preventDefault(); endEdit(); }
       else if (ev.key === 'Tab') ev.preventDefault();
     }
