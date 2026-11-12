@@ -17,10 +17,55 @@
 //   (document.activeElement, else current()), else idle. Leaving an element falls back to the next in that order.
 //   help.hovered() tells whether the target is the hovered element (a state line may yield to a hover only);
 //   help.update() redraws (call it when idle or override would answer differently); help.target() is the element
-//   whose data-help is shown now. Everything goes in with textContent; there is no delay and no animation.
+//   whose data-help is shown now. Everything goes in with textContent. A oneRow text that is clipped scrolls like a marquee after 800 ms on the same hovered/focused element (see `marquee`; not with prefers-reduced-motion).
 //   A focused INPUT/TEXTAREA does not count as focus (its help shows on hover only). The line gets the class `helpline`.
 //   A text "Subject: rest" draws the subject in normal weight (class .subj) and the rest dim.
+// Marquee (shared by the help line and pages with truncated names). A box cut off with "…" scrolls to show its end: starts after
+// `startMs` (default 400), moves at a calm reading speed to the end, pauses 1 s, jumps back, repeats while it stays. Only really
+// truncated boxes (scrollWidth > clientWidth); the box never changes size (it scrolls inside itself, overflow hidden). Not under
+// prefers-reduced-motion (the text keeps its "…"). Usage: const g = marquee.group(); g.sync(setOfElements, startMs?) whenever hover or cursor may
+// have changed; elements not in the set stop and reset at once. Markup: any element with overflow:hidden; white-space:nowrap.
+const marquee = (() => {
+  const SPEED = 45, PAUSE = 1000;   // px per second, ms
+  const reduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  // Each caller makes its own group (`const names = marquee.group()`): sync only stops what that group started, so the editor's names and
+  // the help line never stop each other.
+  const group = () => {
+  const run = new Map();   // element -> { timer, raf }
+  function stop(n) {
+    const r = run.get(n); if (!r) return;
+    clearTimeout(r.timer); cancelAnimationFrame(r.raf); run.delete(n);
+    n.scrollLeft = 0; n.style.textOverflow = '';
+  }
+  function start(n, START) {
+    if (run.has(n) || reduced() || n.scrollWidth <= n.clientWidth + 1) return;
+    const r = { timer: 0, raf: 0 }; run.set(n, r);
+    const wait = (ms, f) => { r.timer = setTimeout(f, ms); };
+    const go = () => {
+      const dist = n.scrollWidth - n.clientWidth;
+      if (dist <= 1) { stop(n); return; }
+      n.style.textOverflow = 'clip';
+      const t0 = performance.now();
+      const step = now => {
+        const x = Math.min(dist, (now - t0) / 1000 * SPEED);
+        n.scrollLeft = x;
+        if (x < dist) r.raf = requestAnimationFrame(step);
+        else wait(PAUSE, () => { n.scrollLeft = 0; n.style.textOverflow = ''; wait(START, go); });
+      };
+      r.raf = requestAnimationFrame(step);
+    };
+    wait(START, go);
+  }
+  return { sync(want, startMs = 400) {
+    for (const n of [...run.keys()]) if (!want.has(n) || !n.isConnected) stop(n);
+    for (const n of want) start(n, startMs);
+  } };
+  };
+  return { group };
+})();
+
 const help = (() => {
+  const names = marquee.group();   // the help line's own marquee group
   let line = null, opts = {}, hovered = null;
   const closestHelp = el => (el instanceof Element ? el.closest('[data-help]') : null);
 
@@ -68,6 +113,7 @@ const help = (() => {
 
   function update() {
     if (!line) return;
+    names.sync(new Set());   // the old box goes away; a clipped text re-arms below
     line.textContent = '';
     line.classList.remove('warn', 'bad', 'keys', 'two');
     line.classList.toggle('one', opts.oneRow === true);
@@ -88,10 +134,11 @@ const help = (() => {
       line.classList.toggle('warn', !!t.warn);
       line.classList.toggle('bad', !!t.bad);
       box.append(t.text);
+      if (opts.oneRow === true) names.sync(new Set([box]), 800);
       return;
     }
     const el = target();
-    if (el && el.dataset.help) { text(box, el.dataset.help); }
+    if (el && el.dataset.help) { text(box, el.dataset.help); if (opts.oneRow === true) names.sync(new Set([box]), 800); }
     else put(opts.idle ? opts.idle() : '');
   }
 
