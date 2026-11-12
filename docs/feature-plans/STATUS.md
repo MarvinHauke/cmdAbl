@@ -47,8 +47,13 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     retries (a script that comes back still says stopped until reopened). For the user: renewal rebuilds the
     script's MIDI map every 20 s, so turn a knob for 60 s across the 20 s marks and look for stutter or a
     flickering "Taken in Live"; if it stutters, a script-side "extend only" (protocol change, architect).
-  - **Bug in work (cmdabl-core):** the first live page after an `npm start` restart can open as an empty
-    window (seen twice, `midi monitor`; the next open loads). Suspect the page server's one-time load token.
+  - **Watching: blank live page.** The first live page after an `npm start` restart opened as an empty window
+    twice (`midi monitor`; the next open loaded). Not reproduced in 3 restarts after `2fd8cf6`, which logs every
+    page load at info (`cmdAbl [live] info: live load <page>: serving, N ms after open` / `delivered`), keeps a
+    load token when the client drops before delivery, and answers a refused load with a visible "This page has
+    expired" page. Next blank: read those lines. No line at all → the dialog never reached the server (core's
+    hint: the dialog uses `localhost`, the server also binds `[::1]`; check `src/httpTrigger.ts`). Once found,
+    "serving"/"delivered" go back to debug.
   - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
   - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
     Live's default 1 Bar); `+4b` is the old meaning. Remote Script 0.1.16 (`transport` reports the quantization).
