@@ -43,7 +43,6 @@ own page, without touching the core or any module.
 | `select` — the pick list | `{ title, multi, items: [{ label, detail?, value?, state? }], preview?, fill?, state?, create? }` (`preview`/`value`/`fill`/`state`: see section 4; `create: { label }` offers a row `+ <label> "<trimmed filter text>"` after the matches while the filter is non-empty and matches no row exactly; when nothing matches it is the only row and has the cursor, as in 0008) | indexes of the chosen items, `{ fill: index }`, `{ created: "<trimmed filter text>", picked: [indexes of the rows marked] }` (only when `create` was sent; `picked` is empty in a single-select list), or null when cancelled |
 | `notify` — a message | `{ text, code, link?, sections? }` (`sections: [{ heading, meta?, items: string[] }]` from `CommandResult.sections` = a structured overview the page draws instead of `text`, which stays the plain fallback; capped by the presenter to 40 sections × 200 items × 300 characters; the page gets it through `/*SECTIONS_PLACEHOLDER*/null`; `code` = the exit code it belongs to; `link: { label, url }` = a button next to Close, a plain https URL, from `CommandResult.link`; the page gets it through `/*LINK_PLACEHOLDER*/null`) | nothing, or `{"open":true}` when the link button was clicked (the platform then opens the request's own `url` with `openUrl`; a failure opening it is shown as a message) |
 
-| `board` — an editable overview (built `96e838a`, [0010](0010-tag-editing.md)) | `{ title, sections: [{ id, heading, meta?, items: [{ id, label, on }], readonly? }], create?: { label, pattern? }, apply: { label } }`: the `on` items are chips with ×, followed by an `add…` input that suggests the other items (like the tag bar in Live's browser) | `{ changes: [{ section, item, on }], created: [ids] }`, or null when closed (`api.ui.board` returns `{ answer, cut }`). Request capped by `capBoard`: 40 sections × 200 items, label/heading/meta ≤ 300 characters (shortened with …), entries without id and duplicate ids dropped, ids over 300 characters dropped, `cut` = true when anything was dropped or shortened; `create.pattern` is a regex a name must match fully. The page gets `/*BOARD_PLACEHOLDER*/null`; Close/Esc answers ''. The answer is checked by `parseBoardAnswer` (never throws): unknown ids, readonly sections and no-ops are dropped, the last change per item wins, created names are trimmed, unique, new and match the pattern |
 
 Everything is plain JSON. A page receives its request through a build-time placeholder and
 answers with `close_and_send`; each page documents this in a comment at its top.
@@ -172,6 +171,12 @@ soloed or armed, so a toggle is not applied blindly. Commands without such a sta
   when it answers, else the SDK value; chain and pad mute/solo from the script
   (`chainSwitches`); no script → no symbol for chains.
 - The symbol shows the state when the list opened and does not update.
+
+**Interactive `find` (user finding, 2026-11-12).** The user's question: since the `note` page sets the loop while
+it stays open, can `find` select each result in the Set while the list is open? Yes: page runs (0018, 0.1.7)
+let a live page run the command lines its module allows, which removes the blocker below (the dialog channel
+spike). Follow mode can be built as a live `find` page whose cursor runs `goto <path>`; needs its own small plan
+after 0.1.8.
 
 **Follow mode (draft, depends on the spike in 0006).** The active row is selected in Live while
 the pick list is open (a track or a device, through `selectNode`), for every pick list including

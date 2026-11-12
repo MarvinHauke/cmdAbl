@@ -6,8 +6,8 @@
 
 **Status:** Released in 0.1.2 (board, `tag -e`, `tag -r`); board editing released in 0.1.5 (2026-11-05,
 PR #27): rename and remove whole tags, click to assign, the file-tree keys. Open: the 0.1.6 settings
-and help pattern (gear button, `tag config`, footer help on hover; released in 0.1.6). Next: the tag list and
-tag editor (tag-0, below), after 0019 phase 4.
+and help pattern (gear button, `tag config`, footer help on hover; released in 0.1.6). In work for 0.1.8 (branch
+`feat/0.1.8-tag-editor`): the tag list and tag editor (tag-0, below; "Build" for the contract).
 
 ## Context
 
@@ -147,7 +147,7 @@ null when closed. Only real differences are sent; a created section only matters
 - One section per tag, with every track as an item.
 - Apply → group the changes per track → `planTags` / `tags_set` (one write per track) → a quiet
   result; the change and `undo:` lines go to `log` (0011).
-- After Apply the board stays closed and the result is shown (decision 4).
+- After Apply the board stays closed and shows no message; the summary line ("N tracks changed; Cmd+Z can't undo tag changes, cmdabl log --undo lists the revert commands") is in the log, and the Apply button's help text carries the warning beforehand (decision 4).
 - A failed write shows the ✓/× result. The script being down gives exit 5, as today.
 
 ### Keyboard path: `tag --edit <tag>` (`-e`)
@@ -200,7 +200,7 @@ board as the keyboard path (decision 5).
 - **Rule:** when a second module needs the same kind of page, it becomes a core surface. Every
   page answers once when it closes, and edits follow collect → apply.
 
-## Tag list and tag editor (user finding tag-0, decided 2026-11-11; for 0.2.x)
+## Tag list and tag editor (user finding tag-0, decided 2026-11-11; 0.1.8)
 
 The board (`tag -l`) and the edit list (`tag -e`) did similar jobs. They become one **tag editor**
 (`tag -e`), and `tag -l` goes back to a simple **tag list**. Terms: [GLOSSARY.md](GLOSSARY.md).
@@ -209,7 +209,7 @@ The board (`tag -l`) and the edit list (`tag -e`) did similar jobs. They become 
 1. **`tag -e` opens the tag editor.** No `--board` name: one way in.
 2. **`tag -l` is the tag list:** a read-only pick list, one row per tag (`#drums · 3 · Kick, Snare, Hat`),
    untagged tracks as a last read-only row (Enter does nothing there). Enter on a tag row runs the
-   setting **`tag.listEnter`**, a command line with `{}` for the tag; default `find #{}` (so `next`/`prev`
+   setting **`tag.listEnter`**, a command line with `{}` for the tag; default `find #{}` (so `find next`/`find prev`
    step through the tracks), e.g. `tag -e {}` or `mute #{}`.
 3. **Two views of the tag editor**, sharing the same pending changes and one Apply; a header button (and a
    key that doesn't type into the filter, e.g. `Ctrl+G`) switches; the setting **`tag.editView`** picks
@@ -245,10 +245,46 @@ cmdabl-modules (`tag -l` list, `tag -e` on the new page, the three settings), cm
 board surface contract changes (a decision for then: extend `board` or a new surface), cmdabl-docs (the
 Tags section, reference, images: "board" leaves the docs).
 
+### Build (0.1.8; architect 2026-11-12, surface decided by the user)
+
+- **A module page, not a core surface** (user, 2026-11-12): `ui/modules/tag/editor.html` through
+  `api.ui.dialog`, on `ui/listnav.js`. The `board` surface (`src/core/surfaces/board.ts`, `ui/board.html`,
+  `api.ui.board`, `BoardRequest/Answer`) is removed (done, 0.1.8); it comes back as a core surface only
+  when a second module needs one (rule above).
+- **Gear on module pages** (cmdabl-core, a small `ModuleApi` addition): a module page opened with a gear flag
+  that answers `{"settings": true}` gets what the board gets today: core opens `<module> config` and runs
+  the line again. **Shape (built):** an options argument, `api.dialog(html, w, h, name?, { gear: true })` and
+  `gear: true` in the options of `api.ui.livePage`. The page draws the gear itself and answers `{"settings": true}`;
+  core (`takePageAnswer`) then hands the module `null` (closed), opens the settings and runs the line again. The flag
+  counts only while a command with declared settings runs; otherwise it is dropped and the answer arrives as a plain
+  string. Same rule as the board: the WHOLE line runs again, so only a command that writes after the page closed may use it.
+- **Page data** (`TAG_EDITOR`, owned by the tag module):
+  `{ view: "list"|"grid", filter: "compact"|"highlight", help, gear: true,
+     tracks: [{ id, name, group? }], tags: [{ name, tracks: [id] }], focus?: { tag? , track? } }`.
+  Tracks in Set order; `group` is the parent group's name for display.
+- **Answer:** `""` / null = closed, nothing written; `{"settings": true}`; or
+  `{"apply": { "rename": [{from, to}], "remove": [tag], "set": [{tag, track, on}] } }`.
+  Order: renames (an existing name merges), then removes, then `set` with the tags' **final** names. The
+  module validates every name and id against the request and writes with `planTags`/`tags_set`, one write
+  per track (open question below); the result lists the changes and `undo:` lines as today.
+- **Built in the module (0.1.8):** `src/modules/tag/` — `command.ts` (commands; takes the page template so tests don't import
+  html), `editor.ts` (page data, `parseAnswer`, `finalTags`), `list.ts` (`tag -l` rows). The page fills its
+  `/*TAG_EDITOR_PLACEHOLDER*/null` slot (`fillTemplate`). The page answer is validated against the request: unknown tag or
+  track, invalid name or wrong shape is exit 2 and nothing is written; `{"settings":true}` (the gear where core ignores it) counts as
+  closed. Apply writes per track and is quiet: the log gets the changes, the `undo:` lines, a merge (`merged #a into #b`) and `N tracks changed; Cmd+Z can't undo tag changes, cmdabl log --undo lists the revert commands`; the warning is also in the Apply button's help text. Settings:
+  `tag.listEnter` (an enum of presets until settings have a text kind), `tag.editView`, `tag.filter`; `tag.foldAfter` is gone.
+- **Running a line from a module:** `api.commands.run`, decided in [0028](0028-inner-runs.md). First user:
+  `tag -l` Enter → `tag.listEnter` (four presets: `find #{}`, `tag -e {}`, `mute #{}`, `solo #{}`).
+- **Gear only where it works:** `api.settings.gearAvailable()` (core) tells whether the current run has a
+  settings round (a palette line); the page hides the gear otherwise.
+- Sizes: the page fits Live's dialog limits; the grid scrolls both ways with the tag header and the
+  track column sticky.
+
 ## Open questions
 
-- A large change set leaves one undo step per track written. Is a batched `tags_set`
-  (script op) worth it?
+- A large change set leaves one undo step per track written. **Accepted for 0.1.8** (architect,
+  2026-11-12): the same as the board since 0.1.2; the result text says Cmd+Z cannot undo tag changes and points to `cmdabl log --undo` (user test, 2026-11-12: the undo steps are only the colour toggle). A batched
+  `tags_set` would be a bridge protocol change (the user's call); revisit after 0.1.8.
 
 ## Phased rollout
 

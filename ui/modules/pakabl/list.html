@@ -75,7 +75,8 @@
 
   <script>
     // Injected at runtime before the dialog opens. ListEntry[]:
-    //   { id, name, version, installedVersion: string|null, canUpdate: boolean, relation?: 'newer'|'same'|'older'|'unknown', repoUrl: string|undefined }
+    //   { id, name, version, installedVersion: string|null, canUpdate: boolean, relation?: 'newer'|'same'|'older'|'unknown', repoUrl: string|undefined, stars?: number, downloads?: number|null }
+    // stars/downloads are absent when the stats file is missing; downloads null = not a release asset.
     // canUpdate is true only when the index version is newer than the installed one. relation is the
     // INSTALLED version seen from the index's ('newer' = installed is newer than the index); absent when not installed.
     const ENTRIES = /*ENTRIES_PLACEHOLDER*/null;
@@ -90,7 +91,7 @@
       const list = document.getElementById('list');
 
       for (const entry of ENTRIES) {
-        const { id, name, version, installedVersion, canUpdate, relation, repoUrl } = entry;
+        const { id, name, version, installedVersion, canUpdate, relation, repoUrl, stars, downloads } = entry;
 
         const div = document.createElement('div');
         div.className = 'entry';
@@ -104,7 +105,11 @@
         const versionSpan = document.createElement('span');
         versionSpan.className = 'version';
         versionSpan.textContent = 'v' + version;
-        metaEl.append(versionSpan, document.createTextNode(' · ' + id));
+        let metaText = ' · ' + id;
+        if (typeof stars === 'number') {
+          metaText += ' · ★ ' + stars + ' · ↓ ' + (typeof downloads === 'number' ? downloads : '–');
+        }
+        metaEl.append(versionSpan, document.createTextNode(metaText));
 
         const actionsEl = document.createElement('div');
         actionsEl.className = 'entry-actions';

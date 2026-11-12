@@ -124,7 +124,8 @@ interface ModuleApi {
 
 - One group per declaring module, in the order core, then modules by name. `focus` scrolls to a group
   and puts the cursor on its first row, and `<module> config` sends only that group.
-- **Rows:** a bool is a switch, an enum a segmented switch like today's footer switch, and an int a
+- **Rows:** a bool is a switch, an enum a segmented switch like today's footer switch (with more than 6 choices on its own
+  full-width line under the label; any segmented switch wraps when it does not fit, `013614c`), and an int a
   number field with − / +. A row whose value differs from the default shows a dim "reset" button.
 - **Keys:** ↑/↓ move between rows (§5), ←/→ change an enum or int, Space toggles a bool, Enter
   saves, and Esc leaves without saving: with changes it asks first ("Discard 2 changes?"), like the
@@ -390,3 +391,30 @@ ships when phases 1–3 are in. 4–6 may follow as 0.1.7 if they take longer.
   with the control surface off shows a ✗ row and its button.
 - **By hand (user):** the look of the settings page and the help line, hover behaviour, the palette's
   help view while typing, and whether the gear round-trip feels right.
+
+## Footer buttons on every page (user, 2026-11-12)
+
+One rule for the buttons that leave a page:
+- **Editing pages** (settings, default commands, tag editor, note in edit mode): **Apply** writes and closes
+  (the note page says **Save**, a text document); Cmd+S / Cmd+Enter do the same. **Cancel** leaves without
+  writing: with pending changes it asks in the shared footer bar (`ui/confirm.js`: "Discard N changes?",
+  Keep editing / Discard, ←/→, Enter, Esc keeps), without changes it leaves at once.
+- **Show-only pages** (messages, pick lists, the tag list, the monitor, the note in view mode, man pages):
+  **Close**.
+- **Discard** is only ever the bar's answer, never a button of its own. Esc does what Cancel or Close does (the
+  note's edit mode first returns to view).
+
+## Later: a "command line" setting kind (user, 2026-11-12; planned, after 0.1.8)
+
+Trigger: `tag.listEnter` is an enum of four presets (`find #{}`, `tag -e {}`, `mute #{}`, `solo #{}`) because the
+settings page has no text kind, and inner runs (0028) only run the commands a module declares in `runs`. The
+user wants any line there. Not a recursion risk: inner runs are depth 1 (0028 Q4).
+
+- A row kind `command` on the settings page: the checked input of the defaults page (`cmdabl config
+  defaults`: completion, the `/check` route, `{}` placeholder) instead of a segmented switch; presets stay as
+  suggestions.
+- A module may declare "the line in setting X" as a `runs` entry; it still runs at depth 1 through the normal
+  command path (undo, log, errors caught).
+- Contract changes (the user decides when it is built): `SettingsRequest` row kinds and `ModuleApi` `runs`.
+- First user: `tag.listEnter`; candidates later: other "what Enter does" settings.
+

@@ -46,12 +46,16 @@ site theme (`docs/stylesheets/`), and the UI guide when one is written.
   3. Nothing jumps while typing: reserved areas keep their size, and lists update in place.
   4. Every empty or reserved area says why it's there.
   5. One symbol, one meaning: `#` is a tag, `×` removes, `+` adds. Never two symbols for one thing.
-  6. A status note sits next to the thing it describes, not on its own line.
+  6. A status note sits next to the thing it describes, not on its own line. Hover text goes in the help
+     line (`data-help`), never in a browser tooltip (`title`; user, 2026-11-05).
   7. Text is at least 11 px, readable in light and dark.
-  8. A destructive action is confirmed in the same page, not in a second window.
+  8. A destructive action is confirmed in the same page, not in a second window, with the shared footer
+     confirm (`ui/confirm.js`: ←/→, Enter, Esc = keep). Buttons: editing pages Apply/Save + Cancel, show-only
+     pages Close, "Discard" only as the bar's answer (0019, "Footer buttons").
   9. After an action, its result is in view and focused (scroll there, focus the next input).
-  10. Nothing is cut off at the window's edge: a one-row line (help line, footer) stays one row and
-      drops parts or ends in `…`. Check at the smallest window size.
+  10. Nothing is cut off or squeezed at the window's edge: a one-row line (help line, footer) stays one
+      row and drops parts or ends in `…`; a long control wraps onto its own line instead of crushing its
+      label, and nothing scrolls sideways. Check at the smallest window size.
 
   Keep the list short. When a review finds a new kind of problem, propose an item to the architect
   instead of adding it yourself.
@@ -62,7 +66,8 @@ site theme (`docs/stylesheets/`), and the UI guide when one is written.
 1. Implement; run `npm test` and `npm run build`; open the page in a browser with sample data and
    check keyboard handling, long names, an empty list and many rows.
 2. Send `cmdabl-reviewer` the changed files; fix its must-fix findings.
-3. Commit on the task's branch, staging only your own files (`git add <files>`, never `-A`); end
+3. Commit on the task's branch, commit your own files by path
+   (`git commit -- <files>`; never a bare `git commit` after staging, the index is shared); end
    the message with the Co-Authored-By line from the session.
 4. Send `cmdabl-architect` a **short overview**: what changed, how you checked it, the commit hash,
    and a **Live test list**.

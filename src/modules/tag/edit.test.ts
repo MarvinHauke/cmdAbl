@@ -4,7 +4,8 @@ import { ExitCode } from "../../core/types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { fail as bridgeFail } from "../../ableton/bridgeProtocol.js";
 import { createFakeApi } from "../shared/testPorts.js";
-import { activate } from "./index.js";
+import { PAGE } from "./page.testkit.js";
+import { activate } from "./command.js";
 
 const track = (name: string, i: number, scope = "regular") =>
   ({ name, path: `/${name}`, kind: "track", scope, route: [i], handleId: name }) as unknown as ObjectNode;
@@ -17,7 +18,7 @@ const all = [lead, bass, ret, main];
 type Opts = Parameters<typeof createFakeApi>[0];
 function setup(tags: Record<string, string[]>, extra: Opts = {}) {
   const fake = createFakeApi({ nodes: all, tags, ...extra });
-  activate(fake.api);
+  activate(fake.api, PAGE);
   const run = (options: Record<string, string | true>, targets: ObjectNode[] = [], names: string[] = []) =>
     fake.commands[0]!.run!({ path: ["tag"], options, args: [targets, names] } as never, undefined as never) as Promise<
       { code: number; message?: string; log?: string[] } | undefined
@@ -27,51 +28,126 @@ function setup(tags: Record<string, string[]>, extra: Opts = {}) {
 
 const logOf = (r: { log?: string[] }) => (r.log ?? []).join("\n");
 
-test("--edit <tag> lists regular and return tracks (never the main) lit where tagged, and toggles the marked ones", async () => {
+const requestOf = (fake: { dialogs: Array<{ html: string }> }): { tracks: Array<{ id: string; name: string }>; tags: Array<{ name: string; tracks: string[] }>; focus?: { tag?: string; track?: string }; view: string; filter: string; gear: boolean } => {
+  const m = /const TAG_EDITOR = (.*);<\/script>/s.exec(fake.dialogs[0]!.html);
+  return JSON.parse(m![1]!);
+};
+const answer = (apply: unknown): string => JSON.stringify({ apply });
+
+test("--edit <tag> opens the editor with regular and return tracks (never the main), the tags and the tag in focus", async () => {
+  const { fake, run } = setup({ Lead: ["fx"], Bass: ["synth"] }, { dialogAnswer: null, gearAvailable: true });
+  assert.equal(await run({ edit: "fx" }), undefined);
+  const req = requestOf(fake);
+  assert.deepEqual(req.tracks.map((t) => t.name), ["Lead", "Bass", "A-Reverb"]);
+  assert.deepEqual(req.tags, [{ name: "fx", tracks: ["Lead"] }, { name: "synth", tracks: ["Bass"] }]);
+  assert.deepEqual(req.focus, { tag: "fx" });
+  assert.deepEqual([req.view, req.filter, req.gear], ["list", "compact", true]);
+  assert.equal(fake.dialogs[0]!.gear, true);
+  const quiet = setup({});
+  await quiet.run({ edit: "#" }); // a map binding or a chain: no gear
+  assert.equal(requestOf(quiet.fake).gear, false);
+  assert.equal(quiet.fake.dialogs[0]!.gear, false);
+});
+
+test("the settings choose the view and the filter", async () => {
+  const { fake, run } = setup({}, { settings: { "tag.editView": "grid", "tag.filter": "highlight" } });
+  await run({ edit: "#" });
+  const req = requestOf(fake);
+  assert.deepEqual([req.view, req.filter], ["grid", "highlight"]);
+});
+
+test("--edit without a tag (or #) opens on the first tag; a new name starts an empty tag", async () => {
+  const bare = setup({ Lead: ["fx"], Bass: ["drum"] });
+  await bare.run({ edit: "#" });
+  assert.deepEqual(requestOf(bare.fake).focus, { tag: "drum" });
+  const fresh = setup({ Lead: ["fx"] });
+  await fresh.run({ edit: "Perc" });
+  const req = requestOf(fresh.fake);
+  assert.deepEqual(req.focus, { tag: "perc" });
+  assert.deepEqual(req.tags.find((t) => t.name === "perc"), { name: "perc", tracks: [] });
+});
+
+test("a target without names opens the editor with that track in focus", async () => {
+  const { fake, run } = setup({ Lead: ["fx"] });
+  await run({}, [bass], []);
+  assert.deepEqual(requestOf(fake).focus, { tag: "fx", track: "Bass" });
+});
+
+test("several targets open the editor without a track focus; --set without names is exit 2", async () => {
+  const { fake, run } = setup({ Lead: ["fx"], Bass: ["fx"] });
+  await run({}, [lead, bass], []);
+  assert.deepEqual(requestOf(fake).focus, { tag: "fx" });
+  assert.equal((await run({ set: "1" }, [lead], []))?.code, ExitCode.USAGE);
+  assert.equal(fake.dialogs.length, 1);
+});
+
+test("closing writes nothing; the raw gear answer counts as closed", async () => {
+  for (const dialogAnswer of [null, "", '{"settings":true}']) {
+    const { fake, run } = setup({ Lead: ["fx"] }, { dialogAnswer });
+    assert.equal(await run({ edit: "fx" }), undefined);
+    assert.deepEqual(fake.tagStore.get("Lead"), ["fx"]);
+  }
+});
+
+test("Apply: renames, then removals, then the set with final names; the result says Cmd+Z cannot undo it", async () => {
   const { fake, run } = setup(
-    { Lead: ["fx"], Bass: ["synth"] },
-    { pickAnswer: (c) => c.filter((n) => n.name === "Lead" || n.name === "Bass") },
+    { Lead: ["fx", "old"], Bass: ["gone"] },
+    { dialogAnswer: answer({ rename: [{ from: "old", to: "New" }], remove: ["gone"], set: [{ tag: "new", track: "Bass", on: true }, { tag: "fx", track: "Lead", on: false }] }) },
   );
   const r = (await run({ edit: "fx" }))!;
   assert.equal(r.code, ExitCode.OK);
-  assert.deepEqual(fake.pickStates, [{ label: "tagged fx", values: [true, false, false], change: "toggle" }]);
-  assert.deepEqual(fake.tagStore.get("Bass"), ["synth", "fx"]);
+  assert.deepEqual(fake.tagStore.get("Lead"), ["new"]);
+  assert.deepEqual(fake.tagStore.get("Bass"), ["new"]);
   assert.equal(r.message, undefined);
-  assert.match(logOf(r), /\/Lead: -fx/);
-  assert.match(logOf(r), /\/Bass: \+fx/);
-  assert.match(logOf(r), /undo: tag --set 1 \/Lead fx/);
+  assert.match(logOf(r), /2 tracks changed; Cmd\+Z can't undo tag changes, cmdabl log --undo lists the revert commands/);
+  assert.match(logOf(r), /\/Lead: \+new -fx -old/);
+  assert.match(logOf(r), /undo: tag --set 0 \/Lead new/);
 });
 
-test("--edit: Esc changes nothing; a #fx value works like fx", async () => {
-  const none = setup({}, { pickAnswer: () => null });
-  assert.equal(await none.run({ edit: "fx" }), undefined);
-  assert.equal(none.fake.tagStore.size, 0);
-  const hash = setup({}, { pickAnswer: (c) => [c[0]!] });
-  assert.equal((await hash.run({ edit: "#Fx" }))?.code, ExitCode.OK);
-  assert.deepEqual(hash.fake.tagStore.get("Lead"), ["fx"]);
+test("Apply: a rename onto an existing tag merges and says so; an Apply that changes nothing says so", async () => {
+  const merge = setup({ Lead: ["a", "b"] }, { dialogAnswer: answer({ rename: [{ from: "a", to: "b" }] }) });
+  const r = (await merge.run({ edit: "a" }))!;
+  assert.deepEqual(merge.fake.tagStore.get("Lead"), ["b"]);
+  assert.equal(r.message, undefined);
+  assert.match(logOf(r), /merged #a into #b\n.*1 track changed; Cmd\+Z/s);
+  const none = setup({ Lead: ["a"] }, { dialogAnswer: answer({ set: [{ tag: "a", track: "Lead", on: true }] }) });
+  const nr = (await none.run({ edit: "a" }))!;
+  assert.equal(nr.message, undefined);
+  assert.match(logOf(nr), /nothing changed/);
+  assert.doesNotMatch(logOf(nr), /0 tracks changed/);
 });
 
-test("--edit # asks for the tag first (single choice, a new name allowed), then the tracks", async () => {
-  const { fake, run } = setup({ Lead: ["fx"] }, { pickTagsAnswer: () => ["Perc"], pickAnswer: (c) => [c[1]!] });
-  const asked: unknown[] = [];
-  const pickTags = fake.api.pickTags;
-  fake.api.pickTags = (title, rows, options) => (asked.push(options?.multi), pickTags(title, rows, options));
-  const r = (await run({ edit: "#" }))!;
-  assert.deepEqual(asked, [false]); // single choice: Enter on a tag goes straight to its track list
-  assert.equal(r.code, ExitCode.OK);
-  assert.equal(fake.tagLists[0]!.allowNew, true);
-  assert.deepEqual(fake.tagLists[0]!.rows, [{ name: "fx", count: 1 }]);
-  assert.deepEqual(fake.pickStates[0]!.label, "tagged perc");
-  assert.deepEqual(fake.tagStore.get("Bass"), ["perc"]);
-  const cancelled = setup({}, { pickTagsAnswer: () => null });
-  assert.equal(await cancelled.run({ edit: "#" }), undefined);
-  assert.equal(cancelled.fake.pickStates.length, 0);
-  const bad = setup({}, { pickTagsAnswer: () => ["FX!"] });
-  assert.equal((await bad.run({ edit: "#" }))?.code, ExitCode.USAGE);
+test("Apply: an answer that does not fit the request is exit 2 and writes nothing", async () => {
+  const bad: unknown[] = [
+    { set: [{ tag: "fx", track: "Nope", on: true }] },
+    { set: [{ tag: "F X", track: "Lead", on: true }] },
+    { rename: [{ from: "ghost", to: "x" }] },
+    { rename: [{ from: "fx", to: "A B" }] },
+    { remove: ["ghost"] },
+    { set: "everything" },
+    { rename: [{ from: "fx", to: "perc" }], remove: ["perc"] },
+    { rename: [{ from: "fx", to: "perc" }], set: [{ tag: "fx", track: "Lead", on: true }] },
+  ];
+  for (const apply of bad) {
+    const { fake, run } = setup({ Lead: ["fx"] }, { dialogAnswer: answer(apply) });
+    assert.equal((await run({ edit: "fx" }))?.code, ExitCode.USAGE, JSON.stringify(apply));
+    assert.deepEqual(fake.tagStore.get("Lead"), ["fx"]);
+  }
+  const notJson = setup({}, { dialogAnswer: "oops" });
+  assert.equal((await notJson.run({ edit: "#" }))?.code, ExitCode.USAGE);
+});
+
+test("a failing write stops Apply and reports the tracks", async () => {
+  const { fake, run } = setup({}, { dialogAnswer: answer({ set: [{ tag: "fx", track: "Lead", on: true }, { tag: "fx", track: "Bass", on: true }] }) });
+  const write = fake.api.tags.write;
+  fake.api.tags.write = (n, tags) => (n.name === "Lead" ? Promise.resolve(bridgeFail(1, "track changed")) : write(n, tags));
+  const r = (await run({ edit: "fx" }))!;
+  assert.equal(r.code, ExitCode.FAILURE);
+  assert.equal(fake.tagStore.has("Bass"), false);
 });
 
 test("--edit usage errors are exit 2 and write nothing; script down is exit 5", async () => {
-  const { run, fake } = setup({}, { pickAnswer: (c) => [c[0]!] });
+  const { run, fake } = setup({});
   for (const [options, targets, names] of [
     [{ edit: "fx" }, [lead], []],
     [{ edit: "fx" }, [], ["synth"]],

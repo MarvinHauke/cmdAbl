@@ -31,7 +31,7 @@ test("pickNodes: fill is offered only on single-select lists and comes back as t
     prompt: async () => null,
     notify: () => {},
     notifyAnswer: async () => null,
-    settings: async () => null, defaults: async () => null, board: async () => null,
+    settings: async () => null, defaults: async () => null,
     page: async () => null, livePage: async () => null,
   } satisfies Ui;
   const single = await pickNodes(ui, { title: "t", candidates: all, multi: false, fill: true });
@@ -136,7 +136,7 @@ test("pickNodes: state values become row symbols; none known → no state field 
     prompt: async () => null,
     notify: () => {},
     notifyAnswer: async () => null,
-    settings: async () => null, defaults: async () => null, board: async () => null,
+    settings: async () => null, defaults: async () => null,
     page: async () => null, livePage: async () => null,
   } satisfies Ui;
   await pickNodes(ui, { title: "t", candidates: all, multi: true, state: { label: "muted", values: [true, false, null] } });

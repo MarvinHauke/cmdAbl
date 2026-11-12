@@ -409,7 +409,7 @@
 
     // The highlighted row's description, when cut off, scrolls sideways like a marquee: it starts after 700 ms on the
     // row, moves at 40 px/s (a transform on an inner span, so nothing reflows), waits 1 s at the end, jumps
-    // back and goes again. Any render (another row, another key) stops it. Reduced motion: no scroll, the full text as a title.
+    // back and goes again. Any render (another row, another key) stops it. Reduced motion: no scroll, the footer shows the full description.
     let marqueeTimer = null, marqueeAnim = null;
     function stopMarquee() {
       clearTimeout(marqueeTimer); marqueeTimer = null;
@@ -422,7 +422,7 @@
       if (!t || !t.animate) return;
       const dist = Math.ceil(t.offsetWidth - hd.clientWidth);
       if (dist <= 1) return;   // fits: nothing to read
-      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { hd.title = t.textContent; return; }
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;   // reduced motion: no scrolling, no tooltip
       const travel = dist + 18;   // the end of the text clears the fade at the right edge
       hd.classList.add('marq');
       const run = () => {

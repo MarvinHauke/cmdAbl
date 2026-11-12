@@ -1,56 +1,39 @@
 import type { CommandNode } from "../command/commandTree.js";
-import { parse } from "../command/parse.js";
-import { pipeAt, splitChain } from "../command/tokenize.js";
-import { ExitCode } from "../types.js";
+import { callStore, innerRun, refusal } from "../command/innerRun.js";
+import type { CommandResult } from "../types.js";
 import { logger } from "../log.js";
 import type { LiveRun, LiveSession } from "./livePage.js";
 
-// Page runs (plan 0018 "Page runs"): the check behind a live page's `POST /run`. A page may run a line only if every
-// `;` part parses to a command whose path (command plus subcommands: "loop here") the module listed when it opened the
-// page. A bare `|` is refused (it would hide a raw line from the check). An allowed line goes to `run` (headless, one
-// undo step, logged, not in the history); a refusal answers exit 2 and logs a warn line. Never throws.
+// Page runs (plan 0018 "Page runs", unified with module runs in plan 0028): a live page's `POST /run` is an inner run
+// whose caller is the page. The check and the run are `innerRun` (command/innerRun.ts): every `;` part must parse to a
+// command whose path is in the calling command's `runs`, narrowed by the page's own list, and not `outside`. A bare `|`
+// is refused. A refusal answers exit 2 and logs a warn line. Page runs are always headless. Never throws.
+
+export { refusal };
 
 export interface PageRunDeps {
   roots: () => CommandNode<any, any>[];
-  /** Runs one allowed line the normal, headless way; answers its exit code and message. */
-  run: (line: string) => Promise<{ code: number; text: string }>;
+  /** Runs one allowed line headless; answers its result. */
+  exec: (line: string, headless: boolean) => Promise<CommandResult>;
+  /** The default commands, expanded before the check (see `InnerDeps.defaults`). */
+  defaults?: () => Promise<Readonly<Record<string, string>>>;
+  log?: (line: string) => void;
   warn?: (text: string) => void;
 }
 
-/** The command path a part addresses ("loop here"), or undefined when it does not parse to a runnable command. */
-function pathOf(part: string, roots: CommandNode<any, any>[]): string | undefined {
-  const parsed = parse(part, roots);
-  return parsed.kind === "run" ? parsed.invocation.path.join(" ") : undefined;
-}
-
-/** Why `line` may not run for `allow`, or null when every part is allowed. */
-export function refusal(line: string, allow: readonly string[], roots: CommandNode<any, any>[]): string | null {
-  if (pipeAt(line) >= 0) return "a bare | is not allowed here";
-  const parts = splitChain(line);
-  if (parts.length === 0) return "empty line";
-  for (const part of parts) {
-    const path = pathOf(part.text, roots);
-    if (path === undefined) return `not a runnable command: ${part.text}`;
-    if (!allow.includes(path)) return `"${path}" is not allowed from this page`;
-  }
-  return null;
-}
-
-/** Builds the handler for one page's allowlist. */
-export function createPageRun(deps: PageRunDeps): (allow: string[]) => LiveRun {
+/**
+ * Builds the handler for one page. Call it while the opening command runs (inside `ui.livePage`): that command is the
+ * caller of every run the page makes.
+ */
+export function createPageRun(deps: PageRunDeps): (allow: string[], pageName: string) => LiveRun {
   const log = logger("live");
   const warn = deps.warn ?? ((text: string) => log.warn(text));
-  return (allow) => async (line) => {
-    try {
-      const why = refusal(line, allow, deps.roots());
-      if (why !== null) {
-        warn(`page run refused (${why}): ${line.slice(0, 80)}`);
-        return { code: ExitCode.USAGE, text: `refused: ${why}` };
-      }
-      return await deps.run(line);
-    } catch (e: unknown) {
-      return { code: ExitCode.FAILURE, text: `run failed: ${e instanceof Error ? e.message : String(e)}` };
-    }
+  return (allow, pageName) => {
+    const ctx = callStore.getStore();
+    return async (line) => {
+      const result = await innerRun(line, { ctx, narrow: allow, page: pageName }, { roots: deps.roots, exec: deps.exec, defaults: deps.defaults, log: deps.log ?? ((l) => log.info(l.replace(/^cmdAbl \[run\] info: /, ""))), warn });
+      return { code: result.code, text: result.message ?? "" };
+    };
   };
 }
 
@@ -97,7 +80,7 @@ export interface RunLivePageDeps {
   run?: string[];
   /** One line to run after the close (plan 0026 "Safety net"); must pass the same allowlist check as a page run. */
   onClose?: string;
-  pageRun?: (allow: string[]) => LiveRun;
+  pageRun?: (allow: string[], pageName: string) => LiveRun;
   open: (handler: LiveRun | undefined) => LiveSession | null;
   showData: () => Promise<string | null>;
   showLive: (session: LiveSession) => Promise<string | null>;
@@ -113,7 +96,7 @@ export async function runLivePage(d: RunLivePageDeps): Promise<string | null> {
   const onClose = d.onClose?.trim() || undefined;
   if (onClose && !d.pageRun) log.warn(`live page "${d.name}": onClose cannot run (no page-run handler): ${onClose.slice(0, 80)}`);
   // The dialog's result waits for page runs in flight (plan 0018 "Page runs").
-  const runs = trackRuns(allow && allow.length > 0 && d.pageRun ? d.pageRun(allow) : undefined);
+  const runs = trackRuns(allow && allow.length > 0 && d.pageRun ? d.pageRun(allow, d.name) : undefined);
   let answer: string | null = null;
   try {
     const session = d.open(runs.run);
@@ -130,7 +113,7 @@ export async function runLivePage(d: RunLivePageDeps): Promise<string | null> {
   } finally {
     if (onClose && d.pageRun && runs.started() > 0) {
       try {
-        const result = await d.pageRun(allow ?? [])(onClose);
+        const result = await d.pageRun(allow ?? [], d.name)(onClose);
         log.info(`live page "${d.name}": onClose "${onClose.slice(0, 80)}" -> ${result.code}${result.text ? ` ${result.text}` : ""}`);
       } catch (e: unknown) {
         log.warn(`live page "${d.name}": onClose failed: ${e instanceof Error ? e.message : String(e)}`);

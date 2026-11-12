@@ -48,3 +48,39 @@ export function repoUrl(downloadUrl: string): string | undefined {
   const m = downloadUrl.match(/^https:\/\/(?:github\.com|raw\.githubusercontent\.com)\/([^/]+)\/([^/]+)\//);
   return m ? `https://github.com/${m[1]}/${m[2]}` : undefined;
 }
+
+export interface Stat {
+  stars: number;
+  downloads: number | null;
+}
+
+const isCount = (n: unknown): n is number => typeof n === "number" && Number.isSafeInteger(n) && n >= 0;
+
+/**
+ * Read the downloaded stats.json (`{ updated, stats: { id: { stars, downloads } } }`): only ids in
+ * `ids`, only non-negative integers (`downloads` may be null). Anything else is dropped; a file of
+ * the wrong shape gives an empty map.
+ */
+export function parseStats(raw: unknown, ids: ReadonlySet<string>): Map<string, Stat> {
+  const out = new Map<string, Stat>();
+  const stats = raw !== null && typeof raw === "object" ? (raw as { stats?: unknown }).stats : undefined;
+  if (stats === null || typeof stats !== "object" || Array.isArray(stats)) return out;
+  for (const [id, v] of Object.entries(stats)) {
+    if (!ids.has(id) || v === null || typeof v !== "object") continue;
+    const { stars, downloads } = v as { stars?: unknown; downloads?: unknown };
+    if (!isCount(stars) || !(downloads === null || isCount(downloads))) continue;
+    out.set(id, { stars, downloads });
+  }
+  return out;
+}
+
+/** Counts older than this are not shown (a later `pakabl update` could not refresh them). */
+export const STATS_MAX_AGE_DAYS = 7;
+
+/** Whether the file's `updated` date (YYYY-MM-DD) is recent enough; false for a missing or unreadable date. */
+export function statsFresh(raw: unknown, now: Date): boolean {
+  const updated = raw !== null && typeof raw === "object" ? (raw as { updated?: unknown }).updated : undefined;
+  if (typeof updated !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(updated)) return false;
+  const t = Date.parse(updated.slice(0, 10));
+  return Number.isFinite(t) && now.getTime() - t <= STATS_MAX_AGE_DAYS * 86_400_000;
+}

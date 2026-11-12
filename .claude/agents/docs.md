@@ -64,8 +64,8 @@ documentation work comes up:
 
 1. Read the brief and the sources it names; write the page; build the site.
 2. Send `cmdabl-reviewer` the changed files; fix its must-fix findings.
-3. Commit on the task's branch, staging only your own files by name (`git add <files>`, never
-   `-A`; the agents share one working tree and one index); end the message with the
+3. Commit on the task's branch, committing your own files by path (`git commit -- <files>`; never
+   a bare `git commit` after staging, never `-A`: the agents share one working tree and one index); end the message with the
    Co-Authored-By line from the session.
 4. Send `cmdabl-architect` a **short overview**: what the page covers, what you left open and
    why, the commit hash.

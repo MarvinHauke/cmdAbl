@@ -3,6 +3,8 @@ name: pakabl index
 # Regenerates pakabl/index.json (newest .ablx per approved source in pakabl/sources.json)
 # and pakabl/candidates.json (topic-search finds awaiting approval), then opens a PR if
 # anything changed. Merging that PR is what makes `pakabl update` in Live pick it up.
+# Stars and downloads change daily: they go to pakabl/stats.json on the branch `pakabl-data`
+# (one force-pushed commit, no PR), not into the index PR.
 
 on:
   schedule:
@@ -37,6 +39,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npx tsx scripts/pakabl-crawl.ts
+
+      - name: Push stats.json to the data branch (one commit, force-pushed)
+        if: hashFiles('pakabl/stats.json') != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          dir="$(mktemp -d)"
+          mkdir "$dir/pakabl"
+          cp pakabl/stats.json "$dir/pakabl/stats.json"
+          cd "$dir"
+          git init -q -b pakabl-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pakabl/stats.json
+          git commit -q -m "pakabl: stars and downloads"
+          auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraheader="AUTHORIZATION: basic ${auth}" push --force "https://github.com/${REPO}.git" pakabl-data
 
       - name: Open PR if the index changed
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11

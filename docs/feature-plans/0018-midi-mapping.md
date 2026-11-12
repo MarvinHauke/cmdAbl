@@ -136,7 +136,8 @@ Decisions:
   accepted only from 127.0.0.1:27185; a note-on with velocity 0 counts as note_off. A command runs
   75–110 ms after the press.
 - **Only bound controls are forwarded.** `midi_listen {controls, monitor, seconds}` forwards everything
-  for learn and the monitor (default 30 s, max 120), then ends by itself; while it is open, track
+  for learn and the monitor (default 30 s, max 120), then ends by itself (since 0.1.8 the module renews
+  it every 20 s while the monitor or learn page is open, and the page says when it stopped); while it is open, track
   input and Cmd+M on that port pause. The last 50 messages are kept in a ring (`midi_last`). Every
   reply carries a `boot` id, so the extension re-sends the last listen after a script restart.
 - **Press means value > 0, release means 0.** The UC4's buttons send 10 on press (not 127). **The
@@ -226,7 +227,7 @@ or per command, one dialog at a time, never while a dialog is open. See STATUS b
 **Rules for a live page:**
 1. **Served from `http://localhost:27184/live/<page>?t=<load token>`, with two tokens per dialog,
    each about 128 bits** (reviewer, 2026-11-04):
-   - **the load token** is in the URL and loads the page once, then it's dead;
+   - **the load token** is in the URL and loads the page once, then it's dead (a load the client drops before delivery doesn't spend it; the route token is then renewed);
    - **the route token** is written only into the served HTML (`LIVE.token`) and is the only
      `Authorization: Bearer` accepted.
 
@@ -263,6 +264,10 @@ plain routes keep the 100 ms budget.
 Built in 0.1.5 (core `livePage`, ui `live.js`, the monitor and learn pages).
 
 ### Page runs: a live page may run allowed command lines (user, 2026-11-11)
+
+Since 2026-11-12 page runs are one kind of inner run ([0028](0028-inner-runs.md)): one engine, the page's `run` list narrows the command's declared `runs`.
+
+**Built (0.1.8, `src/core/command/innerRun.ts`):** `createPageRun` is an inner run whose caller is the page: the command that opened the page (found through async context when `livePage` is called) is the caller. The effective list is that command's `runs` narrowed by the page's `run`; `outside` commands are refused whatever the lists say; the log line reads `run: loop here -> 0 (from page note)`. A command that opens a page with `run` must declare `runs`. Page runs stay headless, and a page run cannot run further lines (depth 1).
 
 From the note's stamps (0013): closing and reopening a page around every write flickers and loses
 the keys typed in between. The exception is widened, without a second write path:

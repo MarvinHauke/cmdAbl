@@ -18,16 +18,12 @@
 - **Asks instead of guessing.** If a name fits several tracks, cmdAbl shows a pick list. Live changes only when you press `Enter`.
 - **Installs community extensions.** The `pakabl` command lists extensions from a curated list and installs them for you.
 
-![Screen recording of the tag board (tag -l): "ba" is typed into the add field of #drums, the suggestion /Bass appears and Enter adds it as a chip with a dashed ring; the text stays, "syn" is typed in its place and Enter adds /Synth; the Apply button reads "Apply (2 changes)"](docs/assets/images/tags.gif)
-
-![The pick list for tag --edit #drums: the five regular tracks Kick, Bass, Lead, Percs and Synth, each with its tags; Kick and Bass are marked with a dashed ring, and the boxes show the result of Enter: drums off for Kick, on for Bass](docs/assets/images/tag-pick.png)
-
 ## Before you start
 
 - **A Mac.** cmdAbl has been tested on macOS only.
 - **A Live beta with Extensions.** Extensions are Ableton's new way to add features to Live. Extensions are in Live's beta (Live 12.4.16, the current non-beta release, has none). This release is tested with the Live 12.4.25 beta. cmdAbl is built against Extensions SDK 1.0.0-beta.1.
 - **[Karabiner-Elements](https://karabiner-elements.pqrs.org) (optional).** A free keyboard tool that lets the `:` key open cmdAbl. Without it, you open cmdAbl from a right-click menu.
-- **The Remote Script.** A small helper (version 0.1.15) that ships inside cmdAbl. It lets cmdAbl select tracks and keep tags. The setup page copies it for you.
+- **The Remote Script.** A small helper (version 0.1.16) that ships inside cmdAbl. It lets cmdAbl select tracks and keep tags. The setup page copies it for you.
 
 ## Install in 4 steps
 
@@ -49,7 +45,7 @@ Open the palette (`:`), type a line and press `Enter`.
 | `mute drums` | mutes the drum tracks; again unmutes them |
 | `tag /Lead fx` | tags the track Lead with `fx` |
 | `mute #fx` | mutes every track tagged `fx` |
-| `tag -l` | opens the tag board |
+| `tag -l` | opens the tag list |
 
 ## Commands
 
@@ -58,7 +54,7 @@ Open the palette (`:`), type a line and press `Enter`.
 | `find`, `goto` | find tracks, devices and chains; select one; step through the matches with `find next` and `find prev` |
 | `mute`, `solo`, `arm` | toggle mute, solo or record arm |
 | `vol` | change the fader level in dB |
-| `tag` | tag tracks; `tag -l` opens the tag board |
+| `tag` | tag tracks; `tag -l` lists the tags; `tag -e` opens the tag editor |
 | `map`, `midi` | bind a MIDI control to a command line; watch what your controller sends |
 | `;` | run several commands in one line, such as `mute #drums; vol -6 #bass` |
 | `note`, `history` | open the Set's note; manage recent commands |

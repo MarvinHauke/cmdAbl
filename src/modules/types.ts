@@ -8,7 +8,7 @@
 import type { Command } from "../core/command/commandRegistry.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
-import type { Provider } from "../core/types.js";
+import type { CommandResult, Provider } from "../core/types.js";
 import type { Completer } from "../core/complete/complete.js";
 import type { LiveRoutes } from "../core/surfaces/livePage.js";
 export type { LiveRoutes } from "../core/surfaces/livePage.js";
@@ -19,7 +19,7 @@ import type { MidiPort } from "../core/midi/midiPort.js";
 export type { BindingsSet, ListenOptions, MidiPort } from "../core/midi/midiPort.js";
 export type { MidiBinding } from "../core/midi/midiEngine.js";
 export type { MidiControl, MidiMessage, OperatorName } from "../core/midi/midi.js";
-import type { BoardAnswer, BoardRequest, PickPreview, StateChange } from "../core/surfaces/ui.js";
+import type { PickPreview, StateChange } from "../core/surfaces/ui.js";
 import type { SettingDef } from "../core/settings/settings.js";
 export type { SettingDef } from "../core/settings/settings.js";
 import type { BridgeResult } from "../ableton/bridgeProtocol.js";
@@ -147,6 +147,11 @@ export interface Transport {
   sigDen: number;
   /** The length of the Set (Song.song_length), in beats. */
   songLength: number;
+  /**
+   * Live's global clip launch quantization in beats (a bar counts `barLen`). null = unknown: an older
+   * script, Live did not say, or "None" (no grid; the module picks its own fallback).
+   */
+  quantizationBeats: number | null;
   loop: Loop;
 }
 
@@ -190,6 +195,13 @@ export interface SettingsPort {
    * Never throws.
    */
   get<T = unknown>(name: string): Promise<T>;
+  /**
+   * Whether the gear of a module page works in the run that is going now (plan 0010 "Build"): true while a palette line of
+   * a command with declared settings runs, false in map bindings, page runs, `;` chains
+   * and headless runs. A page that draws a gear (`gear: true` on `dialog` / `livePage`) hides it when this is false.
+   * Never throws.
+   */
+  gearAvailable(): boolean;
 }
 
 export interface LiveSetPort {
@@ -232,8 +244,14 @@ export interface ModuleApi {
    * string the page returns when it closes, or null if it was dismissed. Goes
    * through the platform's dialog queue like every other dialog. An empty
    * string counts as dismissed. `name` appears in the queue's log lines.
+   *
+   * `options.gear` (plan 0019, 0010 "Build"): the page draws a settings gear and answers `{"settings": true}` when it is
+   * pressed. Core then opens `<module> config` and runs the command line again (the
+   * WHOLE line runs again, so only a command that reads first and writes after the page closed may use it). The module sees
+   * only a closed page (null). The flag counts only while a command with declared settings runs; otherwise it is ignored and
+   * the answer comes back as a plain string. Also on `ui.livePage` through its options.
    */
-  dialog(html: string, width: number, height: number, name?: string): Promise<string | null>;
+  dialog(html: string, width: number, height: number, name?: string, options?: { gear?: boolean }): Promise<string | null>;
   /**
    * Declare a command. The platform parses the line, resolves `path`
    * arguments to Live objects (asking the user to pick when ambiguous) and
@@ -247,6 +265,18 @@ export interface ModuleApi {
     help(path: string[]): string | undefined;
     /** Exactly what `<command> --help` prints (usage, sections, and `more: man …` when `man` exists); undefined when unknown. For a handler that answers exit 2 with the usage. */
     usage(path: string[]): string | undefined;
+    /**
+     * Run a command line through the normal command path (plan 0028): parse, resolve, errors caught, the log, its own
+     * undo steps, never the history. Resolves with that line's `CommandResult` (return it or merge it into your own; core
+     * shows nothing on its own). The line may run only while the calling command runs (not kept for later), and only if
+     * every `;` part is a command path in the CALLING command's declared `runs` (`Command.runs`, checked at activation:
+     * plain command paths, no options; `outside` commands such as `pakabl install` or `cmdabl setup` are never allowed).
+     * `options.allow` can only narrow that list. Anything else is exit 2 (a warn line in the log) and nothing runs.
+     * Depth 1: a line run this way cannot run further lines. From a palette line its dialogs go through the queue; inside a
+     * headless run (map binding, chain, page run) it runs headless too (a part that would ask gives exit 4). The log marks
+     * the caller: `run: find #drums -> 0 (from tag -l)`. Never throws.
+     */
+    run(line: string, options?: { allow?: string[] }): Promise<CommandResult>;
     /**
      * Register a source of completion candidates under `key`; commands name it in `ArgDef.complete`
      * or `OptionDef.complete` (`tag --rename` -> the Set's tags). The palette calls it ONCE when it
@@ -281,19 +311,7 @@ export interface ModuleApi {
     multi?: boolean,
     options?: { fill?: boolean; state?: { label: string; values: Array<boolean | null>; change?: StateChange } },
   ): Promise<ObjectNode[] | null>;
-  /**
-   * The board editor (plan 0010): sections whose items are on or off. Resolves when the page
-   * closes with `answer` = the changes and new section names core validated against the request
-   * (unknown ids, readonly sections, no-ops and names not matching `create.pattern` are already
-   * dropped), or null when closed. `cut` says the request was capped (40 sections × 200 items ×
-   * 300 characters) or had entries dropped, so the module can say "list cut". Nothing is applied
-   * by the page: write the changes, then show a new board if wanted. A section flagged `renamable` / `removable` gets a rename / remove
-   * action on its heading; the answer then also carries `renamed: [{ section, to }]` (a new name that matches `create.pattern`; an
-   * existing name means merge: the module decides) and `removed: [section]` (the whole section; wins over a rename of it). Both are
-   * absent when empty. Removing a whole section is destructive: confirm with `api.confirm` after the board closes, before writing. Section and item ids must be at most 300 characters (longer ones are dropped, `cut` is true); `create.pattern` is used as given.
-   */
   ui: {
-    board(request: BoardRequest): Promise<{ answer: BoardAnswer | null; cut: boolean }>;
     /**
      * A page of the module's own that may READ from the module while it is open (the read-only exception to the dialog
      * rule, plan 0018 "Live pages"): like `dialog`, but `routes` are served to the page under a one-time token, e.g.
@@ -322,7 +340,7 @@ export interface ModuleApi {
      * caught, NOT in the history, no dialogs. Its result is only logged.
      * Resolves with the string the page returns on close, or null if dismissed, like `dialog`.
      */
-    livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes, options?: { run?: string[]; onClose?: string }): Promise<string | null>;
+    livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes, options?: { run?: string[]; onClose?: string; gear?: boolean }): Promise<string | null>;
   };
   /**
    * Ask a yes/no question: a single-select list titled `message` with two

@@ -35,8 +35,14 @@ class Transport(unittest.TestCase):
         self.assertTrue(r["ok"])
         self.assertEqual(r["result"], {
             "playing": True, "session": False, "pos": "12.3.1.1", "time": 46.5,
-            "barStart": 44.0, "barLen": 4.0, "sigNum": 4, "sigDen": 4, "songLength": 0.0, "loop": {"on": True, "start": 8.0, "length": 16.0},
+            "barStart": 44.0, "barLen": 4.0, "sigNum": 4, "sigDen": 4, "songLength": 0.0, "quantization": -1,
+            "loop": {"on": True, "start": 8.0, "length": 16.0},
         })
+
+    def test_reports_the_launch_quantization(self):
+        s = song()
+        s.clip_trigger_quantization = 4  # 1 Bar
+        self.assertEqual(transport(s, {})["quantization"], 4)
 
     def test_bar_grid_follows_the_signature(self):
         s = song()

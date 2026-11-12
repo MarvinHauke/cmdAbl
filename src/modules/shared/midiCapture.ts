@@ -23,8 +23,21 @@ export interface Captured {
   messages: MidiMessage[];
 }
 
-/** The window lasts this long at most (the script allows 1-120 s). */
-export const CAPTURE_SECONDS = 120;
+/**
+ * The monitor window the script is given (it allows 1-120 s). While the page is open the module sends the listen again every
+ * RENEW_MS, so the window never ends under an open page; if renewing fails the page says so (status) instead of looking alive.
+ */
+export const CAPTURE_SECONDS = 30;
+export const RENEW_MS = 20_000;
+/** A failed renewal is retried once after this long. */
+export const RETRY_MS = 1_000;
+
+/** What the page's `status` field says: it listens, or it stopped and why (plain words). */
+export interface CaptureStatus {
+  listening: boolean;
+  since: number;
+  stoppedReason?: string;
+}
 
 /** The newest messages the live page shows, and how often the fallback poll behind its route runs. */
 const LIVE_ROWS = 20;
@@ -70,7 +83,8 @@ export async function captureMessages(
     wake(false);
   };
   /** What the page gets: the messages, and the controls Live refused to forward during the window (null = unknown). */
-  const current = (): unknown => ("error" in cache ? cache : { ...cache, blocked: api.midi.blocked() });
+  let status: CaptureStatus = { listening: true, since: openedAt };
+  const current = (): unknown => ("error" in cache ? { ...cache, status } : { ...cache, status, blocked: api.midi.blocked() });
   const take = (message: MidiMessage): void => {
     if (message.seq > since) seen.set(message.seq, message);
   };
@@ -94,6 +108,42 @@ export async function captureMessages(
   const offBlocked = api.midi.onBlocked(() => wake(true));
   let running = true;
   let stopSleep: () => void = () => {};
+  // Renewal: send the monitor listen again before the window ends, for as long as the page is open. One retry, then the status says stopped.
+  let stopRenewSleep: () => void = () => {};
+  const renewSleep = (ms: number): Promise<void> =>
+    new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, ms);
+      stopRenewSleep = () => (clearTimeout(timer), resolve());
+    });
+  const renewOnce = async (): Promise<{ ok: true } | { ok: false; text: string }> => {
+    try {
+      const reply = await api.midi.listen("all", { monitor: true, seconds: CAPTURE_SECONDS });
+      return reply.ok ? { ok: true } : { ok: false, text: reply.text };
+    } catch {
+      return { ok: false, text: "no answer" };
+    }
+  };
+  const renewing = (async () => {
+    while (running) {
+      await renewSleep(RENEW_MS);
+      if (!running) break;
+      let reply = await renewOnce();
+      if (!reply.ok && running) {
+        await renewSleep(RETRY_MS);
+        if (!running) break;
+        reply = await renewOnce();
+      }
+      if (!reply.ok) {
+        if (!running) break;
+        const reason = `Listening stopped: ${reply.text}`;
+        status = { listening: false, since: Date.now(), stoppedReason: reason };
+        api.logger.warn(`${name}: ${reason}`);
+        wake(true);
+        break;
+      }
+      api.logger.debug(`${name}: listening window renewed`);
+    }
+  })();
   const loop = (async () => {
     while (running) {
       await new Promise<void>((resolve) => {
@@ -121,9 +171,11 @@ export async function captureMessages(
   } finally {
     running = false;
     stopSleep();
+    stopRenewSleep();
     off();
     offBlocked();
     await loop;
+    await renewing; // a renewal in flight finishes before the window is ended below
   }
   const got = await api.midi.last(since);
   await api.midi.listen("none"); // ends the monitor window; the bound controls stay forwarded

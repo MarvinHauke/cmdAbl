@@ -1,7 +1,6 @@
 import { initialize, type ActivationContext } from "@ableton-extensions/sdk";
 import { CommandRegistry } from "./core/command/commandRegistry.js";
 import { appLog, logger } from "./core/log.js";
-import { runBoard } from "./core/surfaces/board.js";
 import { helpForPath, usageForPath } from "./core/command/commandTree.js";
 import { createCommandProvider } from "./core/command/commandProvider.js";
 import { buildCompletionData } from "./core/complete/completeSnapshot.js";
@@ -18,7 +17,7 @@ import { registerBuiltins } from "./core/command/builtins.js";
 import { reportBridge } from "./core/host/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { getTagCache } from "./ableton/tagCache.js";
-import { jump, paramDisplay, setId, setLoop, transport } from "./ableton/bridgeOps.js";
+import { jump, paramDisplay, quantizationBeats, setId, setLoop, transport } from "./ableton/bridgeOps.js";
 import { findRacks, getChainNameCache } from "./ableton/chainNames.js";
 import { presentResult } from "./core/surfaces/present.js";
 import { runLine } from "./core/command/run.js";
@@ -31,7 +30,7 @@ import { createDialogQueue } from "./core/surfaces/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/surfaces/ui.js";
 import { createModuleFiles } from "./core/settings/files.js";
 import { createSettingsRegistry, createSettingsStore } from "./core/settings/settings.js";
-import { createSettingsFlow } from "./core/surfaces/settingsSurface.js";
+import { createSettingsFlow, withGearFlag } from "./core/surfaces/settingsSurface.js";
 import { createDefaultsStore } from "./core/command/defaultCommands.js";
 import { attachConfigs } from "./core/command/configAttach.js";
 import { createDefaultsFlow } from "./core/surfaces/defaultsSurface.js";
@@ -46,6 +45,7 @@ import { midiBlocked, midiLast, midiListen, onBlocked, onMidiEvent } from "./abl
 import { createMidiEngine } from "./core/midi/midiEngine.js";
 import { createSetWatch } from "./core/host/setWatch.js";
 import { createLivePages } from "./core/surfaces/livePage.js";
+import { callStore, callStoreWorks, innerRun, sanitizeRuns } from "./core/command/innerRun.js";
 import { createPageRun } from "./core/surfaces/pageRun.js";
 import { createMidiPort } from "./core/midi/midiPort.js";
 import { createMidiListenRoute, logMidiEvent } from "./ableton/midiEvents.js";
@@ -80,8 +80,8 @@ export function activate(activation: ActivationContext) {
   // Declared settings (plan 0019): core's groups are in the registry from the start, the modules declare theirs at activation.
   const settingsRegistry = createSettingsRegistry((text) => logger("settings").warn(text));
   const settingsStore = createSettingsStore({ base: dataFolder, registry: settingsRegistry, warn: (text) => logger("settings").warn(text) });
-  // A page's gear (plan 0019): remembered here, taken by the run right after the board closed.
-  let pendingGear: { surface: "board" } | undefined;
+  // A page's gear (plan 0019): remembered here, taken by the run right after the page closed.
+  let pendingGear: { surface: "page" } | undefined;
   // Live pages (plan 0018): a module's dialog may read from it through token-guarded routes of the trigger server.
   // Registered in release builds too; unavailable (data-page fallback) when the port is taken.
   let trigger: { listening(): boolean } | undefined;
@@ -96,13 +96,8 @@ export function activate(activation: ActivationContext) {
           pendingGear = gear;
         },
         // Page runs (plan 0018): a live page runs the lines its module allowed, headless, nested in the opener's wait.
-        (allow) => createPageRun({
-          roots: () => registry.roots(),
-          run: async (line) => {
-            const outcome = await runHeadless(line, runBase, gate);
-            return { code: outcome.code, text: outcome.message };
-          },
-        })(allow),
+        // Since plan 0028 an inner run whose caller is the page (the same engine as `api.commands.run`).
+        (allow, pageName) => createPageRun({ roots: () => registry.roots(), exec: innerExec, defaults: () => defaultsStore.get() })(allow, pageName),
       ),
       async () => (await settingsStore.get())["ui.helpLine"],
     ),
@@ -189,8 +184,44 @@ export function activate(activation: ActivationContext) {
     return answer;
   }
   let isOpen = false;
-  /** The line the palette (or /show) is running now; the board's gear belongs to its command (plan 0019). */
+  /** What one inner line needs (plan 0028): the registry, how to run a line, the log. */
+  const innerDeps = () => ({
+    roots: () => registry.roots(),
+    exec: innerExec,
+    defaults: () => defaultsStore.get(),
+    log: (line: string) => appLog.record(line),
+    warn: (text: string) => logger("run").warn(text),
+  });
+  /**
+   * Runs one allowed inner line the normal way: headless when asked (a page's run) or when a headless run is going (map
+   * binding, chain, page run: a part that would ask gives exit 4); otherwise from a palette line with real dialogs through
+   * the queue. Never throws.
+   */
+  async function innerExec(line: string, headless: boolean): Promise<CommandResult> {
+    if (headless || gate.active()) {
+      const outcome = await runHeadless(line, { ...runBase, defaults: undefined }, gate); // defaults were expanded before the check
+      return outcome.code === ExitCode.OK ? ok(outcome.message || undefined) : fail(outcome.code as Exclude<CommandResult["code"], 0>, outcome.message);
+    }
+    const outcome = await runLine(line, {
+      ...runBase,
+      defaults: undefined, // expanded before the check
+      takeFill: () => undefined,
+      pick: ({ title, candidates, multi, nodes, preview, details, state }) => pick(title, candidates, multi, { nodes, preview, details, state, fill: false }),
+      pickTags: (request) => pickTagNames(ui, request),
+    });
+    // Esc on a pick inside the inner line stays quiet, as in the palette (the caller gets exit 0 and no text).
+    return outcome.cancelled ? ok() : outcome.result;
+  }
+  /** The line the palette (or /show) is running now; a page's gear belongs to its command (plan 0019). */
   let activeLine: string | undefined;
+  /** A module page's gear (plan 0019) counts only for a command that has settings; otherwise the flag is dropped. */
+  function withGear<T extends { gear?: boolean }>(options: T | undefined): T | undefined {
+    return withGearFlag(options, gearAvailable());
+  }
+  /** Whether a gear works now: a palette line of a command with settings runs, and no headless run is going. */
+  function gearAvailable(): boolean {
+    return !gate.active() && callStore.getStore()?.inner !== true && activeGroup() !== undefined;
+  }
   /** The settings group of the running command: its first word, when that module declared settings. Not for `;` chains. */
   function activeGroup(): string | undefined {
     if (activeLine === undefined) return undefined;
@@ -310,7 +341,12 @@ export function activate(activation: ActivationContext) {
     // The Set's id lives in the Set, written and read by the Remote Script (operation set_id).
     set: {
       id: (create) => setId(getBridge(), create === true),
-      transport: () => transport(getBridge()),
+      transport: async () => {
+        const t = await transport(getBridge());
+        if (t === null) return null;
+        const { quantization, ...rest } = t;
+        return { ...rest, quantizationBeats: quantizationBeats(quantization, t.barLen) };
+      },
       setLoop: (loop) => setLoop(getBridge(), loop),
       jump: (time) => jump(getBridge(), time),
     },
@@ -321,7 +357,7 @@ export function activate(activation: ActivationContext) {
     files: createModuleFiles({ base: dataFolder, module: () => "module", warn: (text) => logger("module").warn(text) }),
     log: (line) => logger("module").info(line), // replaced per module below
     logger: logger("module") as ModuleApi["logger"],
-    dialog: (html, width, height, name = "module page") => ui.page(name, html, width, height),
+    dialog: (html, width, height, name = "module page", options) => ui.page(name, html, width, height, withGear(options)),
     commands: {
       add: (command) => void registry.add(command),
       roots: () => registry.roots(),
@@ -329,18 +365,20 @@ export function activate(activation: ActivationContext) {
       usage: (path) => usageForPath(registry.roots(), path),
       completer: (key, source) => registry.completer(key, source),
       defaults: () => defaultsStore.peek(),
+      // Inner runs (plan 0028): the caller is the command that is running now (async context), its `runs` the allowlist.
+      run: (line, options) =>
+        innerRun(line, { ctx: callStore.getStore(), narrow: Array.isArray(options?.allow) ? options.allow : undefined }, innerDeps()),
     },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
     // Declared settings; a module sees its own namespace (replaced per module below).
     settings: {
       declare: () => void logger("settings").warn("a module declared settings before it was named; dropped"),
+      gearAvailable: () => gearAvailable(),
       get: async () => undefined as never,
     },
     ui: {
-      // The gear (plan 0019) is drawn only for a command that has settings: `tag --list` → the group `tag`.
-      board: (request) => runBoard(ui, { ...request, ...(activeGroup() !== undefined ? { gear: true } : {}) }),
-      livePage: (name, html, width, height, routes, options) => ui.livePage(name, html, width, height, routes, options),
+      livePage: (name, html, width, height, routes, options) => ui.livePage(name, html, width, height, routes, options && withGear(options)),
     },
     pickRows: (title, rows, options) => pickRowIndex(ui, { title, rows, ...(options?.cursor !== undefined ? { cursor: options.cursor } : {}) }),
     pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, ...options, multi: options?.multi ?? true }),
@@ -364,6 +402,7 @@ export function activate(activation: ActivationContext) {
     const tagged = () => logger(source);
     return Object.assign(Object.create(moduleApi) as ModuleApi, {
       settings: {
+        gearAvailable: () => gearAvailable(),
         declare: (group: Parameters<ModuleApi["settings"]["declare"]>[0]) => {
           if (!named) return void tagged().warn("settings: declare after the module has a name (Module.name or a first commands.add); dropped");
           settingsRegistry.declare(source, group); // problems are warnings, logged by the registry
@@ -407,6 +446,11 @@ export function activate(activation: ActivationContext) {
     groups: () => settingsRegistry.groups().map((g) => g.id),
     warn: (text) => logger("settings").warn(text),
   });
+  // Every `runs` list is checked once all commands exist (plan 0028): entries with options, unknown paths and `outside` commands are dropped.
+  void callStoreWorks().then((works) => {
+    if (!works) logger("host").warn("async context (AsyncLocalStorage) does not survive an await in this host: api.commands.run and page runs will be refused");
+  });
+  sanitizeRuns(registry.roots(), (text) => logger("registry").warn(text));
   void defaultsStore.get().catch(() => {}); // primes `api.commands.defaults()`
   // A command that names a completer nobody registered would complete nothing: say so once, at startup.
   for (const problem of registry.unknownCompleters()) logger("host").warn(problem);
@@ -515,8 +559,8 @@ export function activate(activation: ActivationContext) {
       }
       line = mapped;
     }
-    // The board's gear (plan 0019): the page closed with {settings: true}; the settings open, then the same line runs again
-    // (also after Esc on the settings). The module only saw a closed board.
+    // A page's gear (plan 0019): the page closed with {settings: true}; the settings open, then the same line runs again
+    // (also after Esc on the settings). The module only saw a closed page.
     let outcome: Awaited<ReturnType<typeof runLine>>;
     for (let round = 0; ; round++) {
       pendingGear = undefined;
@@ -533,19 +577,19 @@ export function activate(activation: ActivationContext) {
       } finally {
         activeLine = undefined;
       }
-      const gear = pendingGear as { surface: "board" } | undefined;
+      const gear = pendingGear as { surface: "page" } | undefined;
       pendingGear = undefined;
-      const group = gear?.surface === "board" ? rootCommandOf(line, registry.roots()) : undefined;
+      const group = gear !== undefined ? rootCommandOf(line, registry.roots()) : undefined;
       if (group === undefined || round >= 20 || !settingsFlow.has(group)) break;
       await openSettings({ group, only: true });
     }
     if (outcome.fill !== undefined) return outcome.fill;
     if (outcome.cancelled) return;
     present(outcome.result);
-    // History gets successful invocations that carry arguments, in their
-    // resolved form ("mute /Bass"), so a re-run is never ambiguous.
+    // History gets every successful invocation, bare commands included, in
+    // its resolved form ("mute /Bass"), so a re-run is never ambiguous.
     const invocation = outcome.line ?? line;
-    if (remember && outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
+    if (remember && outcome.result.code === ExitCode.OK) {
       for (const listener of commandRunListeners) listener(invocation, outcome.typed);
     }
     return undefined;

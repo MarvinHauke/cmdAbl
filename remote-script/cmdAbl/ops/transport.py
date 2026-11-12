@@ -1,10 +1,12 @@
 """`transport`, `loop_set` and `jump`: the play state, the bar grid, the arrangement loop and the playhead (plans 0013, 0027).
 
 transport   Args: {} (a read; no token).
-            Result: {playing, session, pos, time, barStart, barLen, sigNum, sigDen, songLength, loop: {on, start, length}}.
+            Result: {playing, session, pos, time, barStart, barLen, sigNum, sigDen, songLength, quantization, loop: {on, start, length}}.
             sigNum/sigDen = the current time signature (so "12.3.1" can be turned into beats).
             songLength = song.song_length in beats (Live counts the current loop's end in it, and refuses a
             loop_start beyond it).
+            quantization = song.clip_trigger_quantization as its enum index (0 None, 1 8 Bars ... 13 1/32; 0.1.16);
+            -1 when Live does not say. The index is sent as is; the TypeScript side maps it to beats.
             Times are in beats. `pos` is Song.get_current_beats_song_time() as text ("12.3.1.1").
             `session` is true when any track has a playing clip slot (playing_slot_index >= 0).
             barLen = signature_numerator * 4 / signature_denominator; barStart = floor(time / barLen) * barLen.
@@ -53,6 +55,13 @@ def _song_length(song):
         return 0.0
 
 
+def _quantization(song):
+    try:
+        return int(song.clip_trigger_quantization)
+    except Exception:
+        return -1
+
+
 def transport(song, args):
     time = float(song.current_song_time)
     bar_len = float(song.signature_numerator) * 4.0 / float(song.signature_denominator)
@@ -66,6 +75,7 @@ def transport(song, args):
         "sigNum": int(song.signature_numerator),
         "sigDen": int(song.signature_denominator),
         "songLength": _song_length(song),
+        "quantization": _quantization(song),
         "loop": _loop(song),
     }
 

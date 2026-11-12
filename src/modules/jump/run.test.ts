@@ -8,7 +8,7 @@ import { parse } from "../../core/command/parse.js";
 import { activate } from "./index.js";
 
 type Result = { code: number; message?: string; log?: string[] } | undefined;
-const T = { playing: true, session: false, pos: "12.3.1.1", time: 46, barStart: 44, barLen: 4, sigNum: 4, sigDen: 4, songLength: 64, loop: { on: false, start: 0, length: 16 } };
+const T = { playing: true, session: false, pos: "12.3.1.1", time: 46, barStart: 44, barLen: 4, sigNum: 4, sigDen: 4, songLength: 64, quantizationBeats: null, loop: { on: false, start: 0, length: 16 } };
 
 function setup(transport: object | null = T) {
   const fake = createFakeApi({ transport: transport === null ? null : structuredClone(transport) } as never);
@@ -56,4 +56,21 @@ test("the tree is valid and documented; the line parses", () => {
   assertDocumented(roots, ["jump"]);
   const o = parse("jump -4", roots);
   assert.equal(o.kind === "run" ? o.invocation.args[0]?.[0] : o.kind, "-4");
+});
+
+test("jump +N takes Live's launch quantization, jump.step overrides it, +Nb / +Nq ignore it", async () => {
+  const s = setup({ ...T, quantizationBeats: 1 }); // quantizationBeats 1 (a quarter), playhead at 46 = beat 3 of bar 12
+  assert.equal((await s.run("+2"))!.code, ExitCode.OK);
+  assert.equal((await s.run("+2b"))!.code, ExitCode.OK);
+  assert.equal((await s.run("+3q"))!.code, ExitCode.OK);
+  assert.deepEqual(s.fake.jumps, [48, 52, 55]); // the fake playhead follows each jump: +3q starts from 52
+
+  const none = setup(); // None or unknown: a bar
+  await none.run("+1");
+  assert.deepEqual(none.fake.jumps, [48]);
+
+  const fixed = setup({ ...T, quantizationBeats: 1 });
+  fixed.fake.settingValues["jump.step"] = "half";
+  await fixed.run("+1");
+  assert.deepEqual(fixed.fake.jumps, [48]);
 });

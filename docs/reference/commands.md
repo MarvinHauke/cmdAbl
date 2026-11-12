@@ -542,22 +542,22 @@ watch the controls you move
 
 ### `tag`
 
-tag tracks, or list the tags of the Set
+tag tracks, list the tags, or edit them
 
-Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx reaches every track tagged fx. With --edit and a tag (tag --edit fx) every regular and return track is listed with a button that is lit where it carries the tag: mark tracks with Tab and press Enter to switch the tag on or off on each of them; tag --edit without a tag (or tag --edit #) first asks which tag, and a name that is not in that list creates it. With --rename and two names (tag --rename fx effects) the tag changes its name on every regular and return track that carries it, and writes nothing else; if the new name exists already the two tags merge, a track with both keeps one, and the result says so because renaming back cannot split them again. With --list, opens an overview: a section per tag with the tracks that carry it as chips with × to remove a track, an add… field that suggests the regular and return tracks to add, New tag… for a tag no track has yet, and a read-only list of the untagged tracks. Each tag heading has a pencil to rename the tag (a name that exists already merges) and a cross to remove the whole tag; removing whole tags asks once before Apply goes through. Apply writes the changes (renames, then removals, then the chip changes) and shows nothing; Close changes nothing. With a target and no names, opens a list of the Set's tags: the buttons show which the target has, mark the ones to switch and press Enter. Type a name that is not in the list to get a row that creates it. With names, switches each tag on for a target that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, so the script has to run, and they are saved with the Set. Cmd+Z does not undo them. A successful write shows nothing: the changes and the undo commands go to the log, and cmdabl log --undo lists the undo commands. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).
+Tags say what a track is, so one command can act on a group: after tag /Lead fx the line mute #fx reaches every track tagged fx. With --list, a read-only list shows one row per tag with its track count and track names, and the untagged tracks as a last row that cannot be picked; Enter on a tag runs the setting tag.listEnter with {} replaced by the tag (default find #{}, so find next and find prev step through those tracks). With --edit (tag --edit fx), the tag editor opens: the tags with the tracks that carry them, check boxes to switch tags on and off, Cmd+R (Ctrl+R) to rename a tag (an existing name merges), Shift+Backspace to remove a tag from every track, and a new tag. Nothing is written until Apply; Esc closes without changes. tag --edit without a tag opens on the first tag, a name that does not exist yet starts a new tag; the settings tag.editView (list or grid) and tag.filter (compact or highlight) choose how it opens and filters. With a target and no names the editor opens with that track in focus. With --rename and two names (tag --rename fx effects) the tag changes its name on every regular and return track that carries it, and writes nothing else; if the new name exists already the two tags merge, a track with both keeps one, and the result says so because renaming back cannot split them again. With names, switches each tag on for a target that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, so the script has to run, and they are saved with the Set. Cmd+Z does not undo them. A quiet write shows nothing: the changes and the undo commands go to the log, and cmdabl log --undo lists the undo commands; the editor's Apply shows nothing either (its last log line counts the tracks), so its Apply button says up front that Cmd+Z cannot undo it. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).
 
 **Usage:** `tag [--edit [<tag|#>]] [--rename <old> <new>] [--list] [--set <0|1>] [--pick] [<target>] [<name>…]`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
-| `<target>` | path (track) | no | A track (quote a name with spaces) or #tag for every track with that tag; without names a list of tags opens |
+| `<target>` | path (track) | no | A track (quote a name with spaces) or #tag for every track with that tag; without names the tag editor opens |
 | `<name>…` | text | no | Tag names: lowercase letters, digits, - and _ |
 
 | Option | Description |
 | --- | --- |
-| <code>-e, --edit [&lt;tag&#124;#&gt;]</code> | list the tracks with the tag lit and toggle the tag on the marked ones; without a tag first asks which tag (default #) |
+| <code>-e, --edit [&lt;tag&#124;#&gt;]</code> | open the tag editor on a tag (a new name starts one); without a tag on the first tag (default #) |
 | `-r, --rename <old> <new>` | rename a tag on every track that carries it; an existing name merges |
-| `-l, --list` | open the tag overview (add or remove tags on many tracks, create a tag) instead of changing tags |
+| `-l, --list` | list the tags with their tracks (read-only); Enter runs tag.listEnter |
 | <code>-s, --set &lt;0&#124;1&gt;</code> | make sure every target has the tags (1) or lacks them (0) instead of toggling |
 | `--pick` | show every match of each target in a list (also single matches, and tracks tagged with a word); only the marked rows run |
 
@@ -575,25 +575,25 @@ every track tagged fx is tagged effects instead; an existing effects tag merges
 tag --list
 ```
 
-the tag overview: add or remove tags on many tracks, create a tag
+the tags of the Set with their tracks; Enter runs tag.listEnter (default find #fx)
 
 ```
 tag --edit fx
 ```
 
-pick the tracks to switch the tag fx on or off for
+open the tag editor on the tag fx
 
 ```
 tag -e
 ```
 
-pick the tag (or type a new one), then the tracks
+open the tag editor on the first tag
 
 ```
 tag /Lead
 ```
 
-pick the tags to switch on or off for the track Lead, or type a new one
+open the tag editor with the track Lead in focus
 
 ```
 tag /Lead fx synth
@@ -731,7 +731,7 @@ The Markdown note that belongs to this Live Set, for reminders: headings, lists,
 
 open the note of this Live Set
 
-Opens the note to read; -e opens it to edit, and so does a Set that has no note yet. In the page, e switches to editing, s adds a stamp (see note stamp), Cmd+S saves and closes; Esc in edit goes back to reading and keeps the text, and Esc while reading saves and closes (Discard asks once). A saved note shows nothing; the log has one line.
+Opens the note to read; -e opens it to edit, and so does a Set that has no note yet. In the page, e switches to editing, s adds a stamp (see note stamp), Cmd+S saves and closes; Esc in edit goes back to reading and keeps the text, and Esc while reading saves and closes (Cancel asks once). A saved note shows nothing; the log has one line.
 
 **Usage:** `note open [--edit]`
 
@@ -951,13 +951,13 @@ restore the loop from before loop here
 
 move the playhead to a position
 
-Moves the Arrangement playhead (playing stays playing). jump 12.3.1 goes to bar 12, beat 3, sixteenth 1; jump 12 to the start of bar 12; jump +4 or jump -4 moves by bars from the start of the current bar (not before the start); jump start goes to the beginning, jump end to the length Live reports for the Set (Live counts the loop end in it). Positions use the Set's current time signature, so they are off in Sets whose signature changes. Needs the cmdAbl Remote Script.
+Moves the Arrangement playhead (playing stays playing). jump 12.3.1 goes to bar 12, beat 3, sixteenth 1; jump 12 to the start of bar 12; jump +4 or jump -4 moves by steps from the start of the current step (not before the start); a step is Live's global launch quantization unless jump config sets another size (1 bar when Live's is None); jump +2b moves by bars and jump +3q by quarters (to go back, put -- first: jump -- -3q); jump start goes to the beginning, jump end to the length Live reports for the Set (Live counts the loop end in it). Positions use the Set's current time signature, so they are off in Sets whose signature changes. Needs the cmdAbl Remote Script.
 
 **Usage:** `jump <position>`
 
 | Argument | Kind | Required | Description |
 | --- | --- | --- | --- |
-| `<position>` | text | yes | 12.3.1, 12, +4, -4, start or end |
+| `<position>` | text | yes | 12.3.1, 12, +4, -4, +2b, +3q, start or end |
 
 - Needs the Remote Script (reports "not running" / "outdated" otherwise).
 
@@ -979,7 +979,19 @@ to the start of bar 12
 jump +4
 ```
 
-four bars on
+four steps on (see jump config)
+
+```
+jump +2b
+```
+
+two bars on
+
+```
+jump +3q
+```
+
+three quarters on (back: jump -- -3q)
 
 ```
 jump start

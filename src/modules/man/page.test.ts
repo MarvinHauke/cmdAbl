@@ -64,3 +64,10 @@ test("findNode finds the platform's `<command> config` subcommand", () => {
   assert.deepEqual(findNode(withConfig, ["history", "config"])?.path, ["history", "config"]);
   assert.equal(findNode(tree, ["history", "config"]), undefined);
 });
+
+test("man shows what a command may run and that an outside command cannot be run", () => {
+  const node = { name: "tag", runs: ["find", "mute"] };
+  assert.match(manPage("tag", node, ["tag"]), /note: may run: find, mute/);
+  const outside = { name: "install", outside: true };
+  assert.match(manPage("install", outside, ["install"]), /note: acts outside the Live Set; no module or page can run it/);
+});

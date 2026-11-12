@@ -195,7 +195,7 @@ test("pickNodes: label is the unique path, value is the quoted unique path", asy
     prompt: async () => null,
     notify: () => {},
     notifyAnswer: async () => null,
-    settings: async () => null, defaults: async () => null, board: async () => null,
+    settings: async () => null, defaults: async () => null,
     page: async () => null, livePage: async () => null,
   };
   const candidates = all.filter((n) => n.name === "Kick" || n.name === "Vermona DRM Audio");

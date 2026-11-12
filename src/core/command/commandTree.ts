@@ -201,6 +201,17 @@ export interface CommandNode<P = unknown, V = string> {
    * Remote Script. Leaf nodes only.
    */
   requires?: "bridge"[];
+  /**
+   * Leaf node: the command paths this command may run through `api.commands.run` (and its live pages through page
+   * runs), e.g. `["find", "mute"]` (plan 0028). Plain paths only: an entry with an option, an unknown path or an
+   * `outside` command is dropped with a warning at activation. A call or a page's `run` list can only narrow it.
+   */
+  runs?: string[];
+  /**
+   * The command acts outside the Live Set (installs or removes things, edits the setup): no allowlist may contain it,
+   * so no module or page can run it (plan 0028). Leaf nodes only.
+   */
+  outside?: boolean;
   /** Removes or irreversibly changes something — such commands may not fan out via `multiple: "all"`. */
   destructive?: boolean;
   /**

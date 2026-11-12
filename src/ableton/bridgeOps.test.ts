@@ -289,9 +289,9 @@ test("setId reads or creates through the writing op with the token, and every pr
   assert.equal(await setId(createFakeBridge({ ops: { set_id: () => fail(1, "x") } }), true), null);
 });
 
-import { transport, setLoop, jump } from "./bridgeOps.js";
+import { transport, setLoop, jump, quantizationBeats } from "./bridgeOps.js";
 
-const tr = { playing: true, session: false, pos: "12.3.1.1", time: 46.5, barStart: 44, barLen: 4, sigNum: 4, sigDen: 4, songLength: 64, loop: { on: true, start: 8, length: 16 } };
+const tr = { playing: true, session: false, pos: "12.3.1.1", time: 46.5, barStart: 44, barLen: 4, sigNum: 4, sigDen: 4, songLength: 64, quantization: 4, loop: { on: true, start: 8, length: 16 } };
 
 test("transport returns the checked reply; every problem is null", async () => {
   const bridge = createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr } }) } });
@@ -349,4 +349,26 @@ test("jump passes the mismatch note up, and has none otherwise", async () => {
   assert.deepEqual(await jump(noted, 8), { ok: true, time: 1, note: "read back 1 after asking for 8" });
   const plain = createFakeBridge({ ops: { jump: () => ({ ok: true, value: { time: 8 } }) } });
   assert.deepEqual(await jump(plain, 8), { ok: true, time: 8 });
+});
+
+test("transport carries the quantization index; missing or unknown is -1", async () => {
+  const q = async (v: unknown) => (await transport(createFakeBridge({ ops: { transport: () => ({ ok: true, value: { ...tr, quantization: v } }) } })))?.quantization;
+  assert.equal(await q(7), 7);
+  assert.equal(await q(0), 0);
+  assert.equal(await q(undefined), -1);
+  assert.equal(await q(-1), -1);
+  assert.equal(await q(14), -1);
+  assert.equal(await q(2.5), -1);
+  assert.equal(await q("4"), -1);
+});
+
+test("quantizationBeats maps the enum index to beats", () => {
+  assert.equal(quantizationBeats(0, 4), null);
+  assert.equal(quantizationBeats(-1, 4), null);
+  assert.equal(quantizationBeats(14, 4), null);
+  assert.equal(quantizationBeats(1, 4), 32);
+  assert.equal(quantizationBeats(4, 3), 3);
+  assert.equal(quantizationBeats(3, 3.5), 7);
+  assert.equal(quantizationBeats(4, 0), null);
+  assert.deepEqual([5, 6, 7, 8, 9, 10, 11, 12, 13].map((i) => quantizationBeats(i, 4)), [2, 4 / 3, 1, 2 / 3, 0.5, 1 / 3, 0.25, 1 / 6, 0.125]);
 });

@@ -37,7 +37,7 @@ which order.
 | [0002](0002-command-feedback-pattern.md) | Command feedback | 0.1.0 | Phases A and C: `CommandResult` with exit codes, one presenter, ✓/× for several targets. Phase B (a lighter message channel) is open. |
 | [0003](0003-pakabl-extension-system.md) | pakabl | 0.1.0 | `pakabl install/update/upgrade/list/uninstall` from a curated index. The in-process plugin idea is concluded (blocked on the SDK). |
 | [0005](0005-command-tree-and-module-authoring.md) | Command tree, modules | 0.1.0 | The tree, parser, resolver, pick list, modules, authoring guide, completer snapshots (0.1.4). |
-| [0007](0007-ui-surfaces.md) | UI surfaces | 0.1.0 | The `Ui` contract, `board` and module pages. Open: themes, replacement pages, `api.ui.register`. |
+| [0007](0007-ui-surfaces.md) | UI surfaces | 0.1.0 | The `Ui` contract and module pages (the `board` surface was removed in 0.1.8; the tag editor is a module page). Open: themes, replacement pages, `api.ui.register`. |
 | [0008](0008-tags-and-aliases.md) | Tags and aliases | 0.1.1 | Tags on tracks, `#tag`, `!#tag`, `--pick`. Open: the store, aliases, history across restarts, tags on chains and pads. |
 | [0010](0010-tag-editing.md) | Tag editing | 0.1.2, 0.1.5 | Tag board, `tag -e`, `tag -r`; rename and remove tags, click to assign, file-tree keys (0.1.5). |
 | [0011](0011-logging.md) | Logging | 0.1.2 | Core logger, `cmdabl log`, quiet writes with undo lines. |
@@ -70,7 +70,7 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
 ```
 
 1. **0.1.8: the tag list and tag editor** ([0010](0010-tag-editing.md), tag-0), the first page on `listnav.js`
-   and `api.pickRows`. Small items with it: `jump.step` ([0027](0027-jump.md)), the MIDI monitor's status and
+   and `api.pickRows`, with inner runs ([0028](0028-inner-runs.md), `api.commands.run`). Small items with it: `jump.step` ([0027](0027-jump.md)), the MIDI monitor's status and
    auto-extend ([0018](0018-midi-mapping.md)).
 2. **0.1.9: the `script` module** ([0017](0017-scripts-and-triggers.md) phase 1): global scripts first, `script
    <name>`; then clips and scenes run them (phase 2).

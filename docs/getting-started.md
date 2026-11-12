@@ -125,7 +125,7 @@ Check that it works:
   Control Surface (after you copy the script and restart). The log is `~/Library/Preferences/Ableton/Live <version>/Log.txt`, where `<version>` is
   your Live version. The Remote Script's lines contain `RemoteScriptMessage: (cmdAbl)`.
 
-![The cmdabl bridge result: Remote Script 0.1.15 is running, with its protocol version, response time and operations](assets/images/bridge.png)
+![The cmdabl bridge result: Remote Script 0.1.16 is running, with its protocol version, response time and operations](assets/images/bridge.png)
 
 *`cmdabl bridge` on a current install.*
 
@@ -159,7 +159,7 @@ Type each one in the palette and press `Enter`.
 - `mute /Bass` mutes the track Bass, and again unmutes it. `mute --set 1 /Bass` mutes it whatever its state;
   `mute --set 0 /Bass` unmutes it.
 - Tag two of your tracks, for example `tag /Kick drums` and `tag /Percs drums`. Then `mute drums` mutes both at once.
-- `tag -l` opens the tag board, where you see every tag and its tracks and change them.
+- `tag -e` opens the tag editor, where you see every tag and its tracks and change them. `tag -l` lists the tags.
 
 When a name matches more than one object, cmdAbl shows a **pick list** instead of guessing. Type to filter, press
 `↑` and `↓` to move, `Enter` to choose and `Esc` to cancel. Commands that take several tracks, such as `mute`, let

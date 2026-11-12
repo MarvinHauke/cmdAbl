@@ -92,6 +92,7 @@ disk, `karabiner_cli`, the Remote Script's `hello`, and the version shipped with
   `karabiner://karabiner/assets/complex_modifications/import?url=http%3A%2F%2F127.0.0.1%3A27199%2Fkarabiner%2Fcmdabl.json`
   (a temporary server) made Karabiner fetch the file and show its Import dialog with the cmdAbl rule.
   `cmdabl setup karabiner` (link the file) stays as the fallback.
+- **"Added" detection** (2026-11-12): our `cmdabl.json` link, or any `.json` in `complex_modifications` holding the rule description (Karabiner's import saves `<timestamp>.json`); a rule in the selected profile of `karabiner.json` also counts as added, whatever the file is called; with `enabled: false` (Karabiner keeps a switched-off rule in the file) it is added, not enabled; a missing `enabled` field or `true` is enabled.
 - **Open Karabiner** (user, 2026-11-10): the row "added but not enabled" opens `karabiner://karabiner/` with `openUrl`,
   which brings up the Karabiner-Elements Settings window (checked by hand; it does not pick the Complex Modifications tab).
   `openUrl` allows exactly that string, next to the import link. Clicked in Live 2026-11-10: Karabiner Settings comes up, the page comes back.
@@ -140,11 +141,16 @@ install still goes through the page's **Copy** button unless the setting is on.
 
 ## Open questions
 
+- **Quiet false negative:** the "added" check reads file contents outside the allowed trees through bash (like `karabiner.json`). A stricter OS sandbox blocking child-process reads would show "not added" instead of an error.
 - **A trigger without Karabiner** (Q5, research on the side): Live's own key mapping, a MIDI note
   through 0018 (a MIDI firing can't open a dialog today), macOS Shortcuts or another key tool. The user
   likes `:` through Karabiner; this only matters if something easier exists. Result goes here.
 - Whether `karabiner.json` can be read reliably to tell "imported" from "enabled".
 - Windows: the AutoHotkey row's texts and button, untested.
+- **cmdAbl's own version on the setup page** (user, 2026-11-13, for 0.1.9): today the page shows only the
+  Remote Script version. Add a row (or the header) with the installed cmdAbl version (the manifest's), so a
+  user sees which `.ablx` runs. Could also come from pakabl (`pakabl list` knows installed versions); decide
+  when it's built.
 - The docs (Getting started, README Install) get rewritten around the page by cmdabl-docs before the
   release.
 

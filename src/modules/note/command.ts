@@ -5,6 +5,8 @@ import { barLength, behindSongEnd, friendlyRefusal, parsePos, positionToBeats, t
 import { formatPos, listCursor, nextStamp, parseStamps, prevStamp, type ParsedStamp } from "./stamps.js";
 import { buildStamp, parseAnswer, type PageThen, type StampInfo } from "./stamp.js";
 
+/** The command paths the note page may run (page runs) and the note commands may run (plan 0028). */
+const PAGE_RUNS = ["loop here", "loop back", "jump"];
 const NOTE_WIDTH = 640;
 const NOTE_HEIGHT = 520;
 
@@ -81,7 +83,7 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
         return { ...buildStamp(transport, now()), loop };
       },
     };
-    return api.ui.livePage("note", html, NOTE_WIDTH, NOTE_HEIGHT, routes, { run: ["loop here", "loop back", "jump"], onClose: "loop back" });
+    return api.ui.livePage("note", html, NOTE_WIDTH, NOTE_HEIGHT, routes, { run: PAGE_RUNS, onClose: "loop back" });
   }
 
   /** One round of the page loop: for a stamp, build the heading; open the page; save. */
@@ -135,13 +137,14 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
         description:
           "Opens the note to read; -e opens it to edit, and so does a Set that has no note yet. " +
           "In the page, e switches to editing, s adds a stamp (see note stamp), Cmd+S saves and closes; Esc in edit goes back to reading and keeps the text, " +
-          "and Esc while reading saves and closes (Discard asks once). A saved note shows nothing; the log has one line.",
+          "and Esc while reading saves and closes (Cancel asks once). A saved note shows nothing; the log has one line.",
         examples: [
           { line: "note", note: "read the note of this Set" },
           { line: "note -e", note: "open the note to edit" },
         ],
         requires: [...needsBridge],
         options: [{ name: "edit", short: "e", summary: "open the note to edit instead of to read" }],
+        runs: PAGE_RUNS,
         run: (invocation) => pageLoop(invocation.options.edit === true ? "edit" : "view"),
       },
       {
@@ -163,6 +166,7 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
               "you write below it. While Arrangement playback runs, the page loops the next bars (loop here) until it closes (loop back).",
             examples: [{ line: "note stamp", note: "add a stamp at the song position and write below it" }],
             requires: [...needsBridge],
+            runs: PAGE_RUNS,
             run: () => pageLoop("stamp"),
           },
           {

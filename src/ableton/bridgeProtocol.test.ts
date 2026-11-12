@@ -55,8 +55,8 @@ test("installed script check: missing, old, current, unknown", () => {
 });
 
 // Pins the reset value; update it together with VERSION in protocol.py on the next script change (0001 §3).
-test("the script version is 0.1.15 (0001 §3 versioning rule)", () => {
-  assert.equal(SCRIPT_VERSION, "0.1.15");
+test("the script version is 0.1.16 (0001 §3 versioning rule)", () => {
+  assert.equal(SCRIPT_VERSION, "0.1.16");
 });
 
 test("parseEvent reads a pushed event and ignores replies and junk", () => {

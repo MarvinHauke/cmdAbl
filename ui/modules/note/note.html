@@ -6,7 +6,7 @@
   <title>note</title>
   <!-- Module page of `note` (plan 0013), a LIVE page (plan 0018 "Page runs"). In: LIVE_PLACEHOLDER = null | { base, token }: with it `s` in view
        GETs `${base}/heading` (Authorization: Bearer token; answer { heading, hint?, loop } = the stamp's heading as below), POSTs `${base}/run` { line: "loop here" | "loop back" | "jump <bar.beat.sixteenth>" } (allowlist)
-       (answer { code, text }; a run error shows in the footer, writing goes on). The page runs `loop here` only when loop is true (also at the start of a page opened in stamp mode by `note stamp`: it asks /heading once and uses only `loop`), and `loop back` when the stamp ends, only if it ran `loop here` for that stamp (⌘S / Save wait for that run before closing; on other ways out the module's onClose `loop back` is the safety net). Without LIVE the page does not loop at all. `s` switches to stamp edit at once with a placeholder heading, both requests run in parallel, the real heading replaces the placeholder when it arrives (typed text and caret stay; if the read fails, or Esc / ⌘S wait up to 0.5 s for it, then: a date-only heading dated at `s`, hint "no song position"); Esc / Done / Discard in that stamp
+       (answer { code, text }; a run error shows in the footer, writing goes on). The page runs `loop here` only when loop is true (also at the start of a page opened in stamp mode by `note stamp`: it asks /heading once and uses only `loop`), and `loop back` when the stamp ends, only if it ran `loop here` for that stamp (⌘S / Save wait for that run before closing; on other ways out the module's onClose `loop back` is the safety net). Without LIVE the page does not loop at all. `s` switches to stamp edit at once with a placeholder heading, both requests run in parallel, the real heading replaces the placeholder when it arrives (typed text and caret stay; if the read fails, or Esc / ⌘S wait up to 0.5 s for it, then: a date-only heading dated at `s`, hint "no song position"); Esc / Done / Cancel in that stamp
        return to view in place. The text still leaves only when the page closes. If LIVE is null,
        `s` closes with then "stamp" as before (the module reopens the page). NOTE_PLACEHOLDER = { text: string, mode: "view" | "edit" | "stamp", setName?: string, changed?: boolean, stamp?: { heading: string, hint?: string } }
        (changed: the text is not saved yet, e.g. after a failed save, so Cmd+S / Save / Esc send it even when unedited.
@@ -21,8 +21,8 @@
        In view with LIVE, stamp headings that have a position (`### @12.3.1 · date`; date-only ones are skipped) are a list: ↑/↓ (listnav `next`/`prev`) move a
        cursor between them, Enter or a click runs the page run `jump 12.3.1` (allowlist; the page stays open, an error shows in the footer). Without LIVE they are plain headings.
        Keys: e (view) edit · s (view) stamp: in place with LIVE, else close and ask for a stamp · Esc in view closes and saves · Esc in edit returns
-       to view and keeps the text · Cmd/Ctrl+S (or Save) saves and closes (then null) · Discard throws the changes of this edit away.
-       In a stamp page (mode "stamp") with LIVE, Esc / Done / Discard go to view in place; without LIVE there is no view: Esc / Done closes with then "view" (saves the stamp and reopens in view); Discard (after its confirm, or at once when nothing was typed) closes with then "view" and the text as it opened (the pending text when NOTE.changed: the module retries that save). -->
+       to view and keeps the text · Cmd/Ctrl+S (or Save) saves and closes (then null) · Cancel throws the changes of this edit away (it asks first when there are changes).
+       In a stamp page (mode "stamp") with LIVE, Esc / Done / Cancel go to view in place; without LIVE there is no view: Esc / Done closes with then "view" (saves the stamp and reopens in view); Cancel (after its confirm, or at once when nothing was typed) closes with then "view" and the text as it opened (the pending text when NOTE.changed: the module retries that save). -->
   <style>
     /*SHARED_CSS_PLACEHOLDER*/
 
@@ -72,6 +72,7 @@
     #footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 6px 12px; display: flex; align-items: center; gap: 8px; }
     #hint { flex: 1; min-width: 0; color: var(--dim); font-size: 11px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #hint .stamp { color: var(--accent); }
+    #hint.wrap { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }   /* an error wraps (2 lines) instead of being cut off */
     #footer button { min-height: 24px; flex: none; white-space: nowrap; }
   </style>
 </head>
@@ -95,6 +96,7 @@
   </div>
 
   <script>/*LISTNAV_JS_PLACEHOLDER*/</script>
+  <script>/*CONFIRM_JS_PLACEHOLDER*/</script>
   <script>
     const NOTE = /*NOTE_PLACEHOLDER*/null;
     const LIVE = /*LIVE_PLACEHOLDER*/null;   // { base, token } when the page may read and run, else null
@@ -116,7 +118,7 @@
         if (m.index) parent.append(document.createTextNode(src.slice(0, m.index)));
         if (m[1] != null) parent.append(document.createTextNode(m[1]));
         else if (m[2] != null) parent.append(mk('code', '', m[2]));
-        else if (m[3] != null) { const a = mk('span', 'link'); a.title = m[4]; inline(m[3], a); parent.append(a); }
+        else if (m[3] != null) { const a = mk('span', 'link'); a.dataset.help = 'Link: ' + m[4]; inline(m[3], a); parent.append(a); }
         else {
           const kind = m[5] != null ? ['strong', m[5]] : m[6] != null ? ['strong', m[6]] : m[7] != null ? ['s', m[7]] : ['em', m[8] ?? m[9]];
           const e = mk(kind[0]); inline(kind[1], e); parent.append(e);
@@ -214,7 +216,7 @@
     // The new entry: after a blank line, its heading, a blank line; the caret goes below it.
     const newStamp = (before, s, live) => ({ hint: s.hint, base: before, live, head: (before.trim() ? before.replace(/\s+$/, '') + '\n\n' : '') + s.heading });
     let st = NOTE?.mode === 'stamp' && typeof NOTE?.stamp?.heading === 'string' ? newStamp(orig, NOTE.stamp, !!(LIVE?.base && LIVE?.token)) : null;
-    let saved = orig, base = orig, mode = 'view', startStamp = !!st;   // saved: the text so far; base: the text when this edit began (Discard returns to it)
+    let saved = orig, base = orig, mode = 'view', startStamp = !!st;   // saved: the text so far; base: the text when this edit began (Cancel returns to it)
     const dropEmptyStamp = v => (st && v.startsWith(st.head) && !v.slice(st.head.length).trim() ? st.base : v);   // nothing typed below the heading: no entry
 
     // ── runs (LIVE only) ──
@@ -263,9 +265,14 @@
     function startStampKey() { if (LIVE?.base && LIVE?.token) liveStamp(); else finish('stamp'); }
     function leaveStamp() { if (st?.looped) runLine('loop back'); st = null; show('view'); }   // back to view in place
 
+    // The footer shows the data-help of the hovered element (a link's URL, a stamp's jump), instead of a native tooltip.
+    let hoverHelp = '';
+    document.addEventListener('mouseover', e => { const h = e.target.closest?.('[data-help]')?.dataset.help || ''; if (h !== hoverHelp) { hoverHelp = h; setHint(); } });
+    document.addEventListener('mouseout', e => { if (!e.relatedTarget && hoverHelp) { hoverHelp = ''; setHint(); } });
     function setHint() {
       hint.replaceChildren();
-      hint.title = flash;   // a cut-off error stays readable
+      hint.classList.toggle('wrap', !!flash && !hoverHelp);
+      if (hoverHelp) { hint.append(document.createTextNode(hoverHelp)); return; }   // the hovered element's help (no tooltips)
       if (flash) hint.append(mk('span', 'stamp', flash), document.createTextNode(' · '));
       if (mode === 'edit' && st?.hint && edit.value.startsWith(st.head)) hint.append(mk('span', 'stamp', st.hint), document.createTextNode(' · '));
       if (mode === 'view') {   // one row: the longest line that fits, else shorter ones (the hint ends in … only as a last resort)
@@ -275,7 +282,7 @@
           : ['e edit · s stamp · Esc close'];
         const t = document.createTextNode(lines[0]); hint.append(t);
         for (const l of lines) { t.data = l; if (hint.scrollWidth <= hint.clientWidth) break; }
-      } else hint.append(document.createTextNode('⌘S save and close · Esc ' + (st ? 'done' : 'back to view') + ' · Discard drops this edit'));
+      } else hint.append(document.createTextNode('⌘S save and close · Esc ' + (st ? 'done' : 'back to view') + ' · Cancel drops this edit'));
     }
     window.addEventListener('resize', () => { if (mode === 'view' && !flash) setHint(); });
 
@@ -289,7 +296,7 @@
       if (!LIVE?.base || !LIVE?.token) return;
       for (const h of view.querySelectorAll('h3')) {
         const m = STAMP.exec(h.textContent);
-        if (m) { h.classList.add('jump'); h.dataset.pos = m[1]; h.title = 'Enter or click: jump to ' + m[1]; stamps.push(h); }
+        if (m) { h.classList.add('jump'); h.dataset.pos = m[1]; h.dataset.help = 'Enter or click: jump to ' + m[1]; stamps.push(h); }
       }
     }
     function moveCursor(i) {
@@ -312,14 +319,14 @@
         if (saved.trim()) render(saved, view); else view.append(mk('p', 'empty', 'empty note — press e to write, s to stamp'));
         markStamps();
         b1.textContent = 'Edit'; b1.style.cssText = '';
-        b3.textContent = 'Stamp'; b3.hidden = false;
+        b3.textContent = 'Stamp'; delete b3.dataset.help; b3.hidden = false;
         b2.textContent = 'Close';
         view.scrollTop = 0; view.focus();
       } else {
         base = saved;
         if (startStamp && st) { edit.value = st.head + '\n\n'; startStamp = false; } else edit.value = saved;
         b1.textContent = 'Save'; b1.style.borderColor = 'var(--accent)'; b1.style.color = 'var(--accent)';
-        b3.textContent = 'Discard'; b3.hidden = false;
+        b3.textContent = 'Cancel'; b3.dataset.help = 'Cancel: drop this edit (asks first when there are changes)'; b3.hidden = false;
         b2.textContent = st ? 'Done' : 'View';
         edit.focus(); edit.setSelectionRange(edit.value.length, edit.value.length);
         edit.scrollTop = edit.scrollHeight;
@@ -345,21 +352,11 @@
     }   // takes the text of the box over; an empty stamp is dropped
     async function save() { if (closing) return; closing = true; await settle(); keep(); await ended(); finish(); }   // saves and closes: no text is held only in the page
     async function back() { if (closing) return; if (st?.live) { closing = true; await settle(); closing = false; } keep(); if (st && !st.live) finish('view'); else leaveStamp(); }   // Esc / View in edit: keeps the text; a stamp page has no view of its own: it closes and the module reopens it in view
-    let sure = false;   // Discard asks once, here on the page: a second click does it
-    let sureTimer = 0;
-    function ask(on) {
-      sure = on; clearTimeout(sureTimer);
-      if (on) sureTimer = setTimeout(() => ask(false), 3000);   // the question lapses after about 3 s
-      b3.textContent = on ? 'Discard changes?' : 'Discard';
-      b3.style.borderColor = on ? 'var(--accent)' : ''; b3.style.color = on ? 'var(--accent)' : '';
-      if (on) { hint.replaceChildren(mk('span', 'stamp', 'click Discard again to throw this edit away · any key keeps it')); } else setHint();
-    }
     function discard() {
       if (closing) return;   // a stamp is ending (waiting for its heading)
-      if (dropEmptyStamp(edit.value) === base && !sure) { if (st && !st.live) { saved = base; finish('view'); } else back(); return; }   // nothing changed: nothing to ask
-      if (!sure) { ask(true); return; }
-      ask(false);
-      saved = base; if (st && !st.live) finish('view'); else if (st?.live || saved.trim()) leaveStamp(); else finish();   // an empty note has no view to return to
+      const go = () => { saved = base; if (st && !st.live) finish('view'); else if (st?.live || saved.trim()) leaveStamp(); else finish(); };   // an empty note has no view to return to
+      if (dropEmptyStamp(edit.value) === base) { if (st && !st.live) { saved = base; finish('view'); } else back(); return; }   // nothing changed: nothing to ask
+      confirmBar.open(document.getElementById('footer'), { text: 'Discard this edit?', onKeep: () => edit.focus(), onDiscard: go });   // asked here on the page (ui/confirm.js)
     }
     function esc() { if (mode === 'view') finish(); else back(); }
 
@@ -368,9 +365,7 @@
     b3.addEventListener('click', () => { if (mode === 'view') startStampKey(); else discard(); });
     edit.addEventListener('input', setHint);
 
-    document.addEventListener('mousedown', e => { if (sure && e.target !== b3) ask(false); });
     document.addEventListener('keydown', e => {
-      if (sure && !(e.target === b3 && (e.key === 'Enter' || e.key === ' '))) ask(false);   // Enter/Space on the button is the second click
       const bare = !e.metaKey && !e.ctrlKey && !e.altKey;
       const a = mode === 'view' && stamps.length && e.target.tagName !== 'BUTTON' ? nav.action(e, { zone: 'list' }) : null;   // only next / prev / take are used; typing in view moves nothing
       if (a === 'next' || a === 'prev') { e.preventDefault(); moveCursor(a === 'next' ? (cur + 1) % stamps.length : (cur < 1 ? stamps.length - 1 : cur - 1)); }

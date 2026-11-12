@@ -30,6 +30,7 @@ function stepResult(done: string | undefined, step: { ok: boolean; text: string 
 export function setupCommand(deps: SetupCommandDeps): Command {
   return {
     name: "setup",
+    outside: true, // edits the installation (Remote Script, trigger): no module or page may run it (plan 0028)
     summary: "show what is set up and what still needs you",
     description:
       "Opens the setup page: one row per step (keyboard trigger, Remote Script, restarting Live, the control surface, the data folder) " +

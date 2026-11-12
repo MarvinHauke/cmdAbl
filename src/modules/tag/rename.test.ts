@@ -4,7 +4,8 @@ import { ExitCode } from "../../core/types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { fail as bridgeFail } from "../../ableton/bridgeProtocol.js";
 import { createFakeApi } from "../shared/testPorts.js";
-import { activate } from "./index.js";
+import { PAGE } from "./page.testkit.js";
+import { activate } from "./command.js";
 
 const track = (name: string, i: number, scope = "regular") =>
   ({ name, path: `/${name}`, kind: "track", scope, route: [i], handleId: name }) as unknown as ObjectNode;
@@ -16,7 +17,7 @@ const main = track("Main", 0, "master");
 type Result = { code: number; message?: string; log?: string[]; details?: Array<{ ok: boolean }> } | undefined;
 function setup(tags: Record<string, string[]>) {
   const fake = createFakeApi({ nodes: [lead, bass, ret, main], tags });
-  activate(fake.api);
+  activate(fake.api, PAGE);
   const run = (values: string[], extra: Record<string, string | true> = {}, targets: ObjectNode[] = [], names: string[] = []) =>
     fake.commands[0]!.run!(
       { path: ["tag"], options: { rename: true, ...extra }, values: { rename: values }, args: [targets, names] } as never,

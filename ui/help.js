@@ -10,18 +10,62 @@
 //     override (el) => string | [pairs] | { text, warn?, bad? } | null   a state line that wins over everything (pending-change warning,
 //                                                   an error of the row; el = target()): `warn` draws it in the accent colour, `bad` red.
 //   oneRow (option, default false): the line is exactly one row. A key-cap line drops whole groups from the end until it fits (never
-//     wraps inside a group; order the pairs by importance, least important last); a text line is clipped with an ellipsis and its
-//     full text goes in the line's title. oneRow: 'keys' does this for key-cap lines only (settings, defaults: their help text may take three lines). Redrawn on window resize. Needs CSS `.helpline.one` (shared.css).
+//     wraps inside a group; order the pairs by importance, least important last); a text line is clipped with an ellipsis (no tooltip: the full text is in the element's own data-help). oneRow: 'keys' does this for key-cap lines only (settings, defaults: their help text may take three lines). Redrawn on window resize. Needs CSS `.helpline.one` (shared.css).
 //   An override may also be { lines: [a, b] }: two lines (a string, or key-cap pairs as idle), each clipped to one line (the palette's footer: the command, then the
 //   argument at the caret). Each is drawn like a data-help text (a "Subject: rest" gets the subject in normal weight).
 //   The line shows, in this order: override, the data-help of the hovered element, of the focused one
 //   (document.activeElement, else current()), else idle. Leaving an element falls back to the next in that order.
 //   help.hovered() tells whether the target is the hovered element (a state line may yield to a hover only);
 //   help.update() redraws (call it when idle or override would answer differently); help.target() is the element
-//   whose data-help is shown now. Everything goes in with textContent; there is no delay and no animation.
+//   whose data-help is shown now. Everything goes in with textContent. A oneRow text that is clipped scrolls like a marquee after 800 ms on the same hovered/focused element (see `marquee`; not with prefers-reduced-motion).
 //   A focused INPUT/TEXTAREA does not count as focus (its help shows on hover only). The line gets the class `helpline`.
 //   A text "Subject: rest" draws the subject in normal weight (class .subj) and the rest dim.
+// Marquee (shared by the help line and pages with truncated names). A box cut off with "…" scrolls to show its end: starts after
+// `startMs` (default 400), moves at a calm reading speed to the end, pauses 1 s, jumps back, repeats while it stays. Only really
+// truncated boxes (scrollWidth > clientWidth); the box never changes size (it scrolls inside itself, overflow hidden). Not under
+// prefers-reduced-motion (the text keeps its "…"). Usage: const g = marquee.group(); g.sync(setOfElements, startMs?) whenever hover or cursor may
+// have changed; elements not in the set stop and reset at once. Markup: any element with overflow:hidden; white-space:nowrap.
+const marquee = (() => {
+  const SPEED = 45, PAUSE = 1000;   // px per second, ms
+  const reduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  // Each caller makes its own group (`const names = marquee.group()`): sync only stops what that group started, so the editor's names and
+  // the help line never stop each other.
+  const group = () => {
+  const run = new Map();   // element -> { timer, raf }
+  function stop(n) {
+    const r = run.get(n); if (!r) return;
+    clearTimeout(r.timer); cancelAnimationFrame(r.raf); run.delete(n);
+    n.scrollLeft = 0; n.style.textOverflow = '';
+  }
+  function start(n, START) {
+    if (run.has(n) || reduced() || n.scrollWidth <= n.clientWidth + 1) return;
+    const r = { timer: 0, raf: 0 }; run.set(n, r);
+    const wait = (ms, f) => { r.timer = setTimeout(f, ms); };
+    const go = () => {
+      const dist = n.scrollWidth - n.clientWidth;
+      if (dist <= 1) { stop(n); return; }
+      n.style.textOverflow = 'clip';
+      const t0 = performance.now();
+      const step = now => {
+        const x = Math.min(dist, (now - t0) / 1000 * SPEED);
+        n.scrollLeft = x;
+        if (x < dist) r.raf = requestAnimationFrame(step);
+        else wait(PAUSE, () => { n.scrollLeft = 0; n.style.textOverflow = ''; wait(START, go); });
+      };
+      r.raf = requestAnimationFrame(step);
+    };
+    wait(START, go);
+  }
+  return { sync(want, startMs = 400) {
+    for (const n of [...run.keys()]) if (!want.has(n) || !n.isConnected) stop(n);
+    for (const n of want) start(n, startMs);
+  } };
+  };
+  return { group };
+})();
+
 const help = (() => {
+  const names = marquee.group();   // the help line's own marquee group
   let line = null, opts = {}, hovered = null;
   const closestHelp = el => (el instanceof Element ? el.closest('[data-help]') : null);
 
@@ -49,8 +93,8 @@ const help = (() => {
     line.classList.add('one');
     idleInto(parent, v);
     while (n > 1 && parent.scrollWidth > parent.clientWidth + 1) { n--; parent.textContent = ''; idleInto(parent, v.slice(0, n)); }
-    // The first group alone is still too wide: show it with an ellipsis and the full text in the title.
-    if (parent.scrollWidth > parent.clientWidth + 1) { line.classList.remove('keys'); line.title = parent.textContent; }
+    // The first group alone is still too wide: show it with an ellipsis (no tooltip).
+    if (parent.scrollWidth > parent.clientWidth + 1) { line.classList.remove('keys'); }
   }
 
   function idleInto(parent, v) {
@@ -69,17 +113,16 @@ const help = (() => {
 
   function update() {
     if (!line) return;
+    names.sync(new Set());   // the old box goes away; a clipped text re-arms below
     line.textContent = '';
     line.classList.remove('warn', 'bad', 'keys', 'two');
     line.classList.toggle('one', opts.oneRow === true);
-    line.removeAttribute('title');
     // One block child holds all of it: the line is a -webkit-box (for the line clamp), whose direct children become
     // boxes of their own and would shrink the subject and the key caps apart from the text.
     const box = document.createElement('div');
     line.append(box);
     const o = opts.override ? opts.override(target()) : null;
-    const put = v => { if (opts.oneRow && Array.isArray(v)) fitInto(box, v); else { idleInto(box, v); clip(); } };
-    const clip = () => { if (opts.oneRow === true && box.scrollWidth > box.clientWidth + 1) line.title = box.textContent; };
+    const put = v => { if (opts.oneRow && Array.isArray(v)) fitInto(box, v); else idleInto(box, v); };
     if (Array.isArray(o)) { put(o); return; }   // a state line made of key caps
     if (o && o.lines) {
       line.classList.add('two');
@@ -91,11 +134,11 @@ const help = (() => {
       line.classList.toggle('warn', !!t.warn);
       line.classList.toggle('bad', !!t.bad);
       box.append(t.text);
-      clip();
+      if (opts.oneRow === true) names.sync(new Set([box]), 800);
       return;
     }
     const el = target();
-    if (el && el.dataset.help) { text(box, el.dataset.help); clip(); }
+    if (el && el.dataset.help) { text(box, el.dataset.help); if (opts.oneRow === true) names.sync(new Set([box]), 800); }
     else put(opts.idle ? opts.idle() : '');
   }
 

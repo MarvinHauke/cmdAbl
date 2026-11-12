@@ -238,7 +238,6 @@
       plus.textContent = '+';
       // user data: textContent only
       label.append(plus, ' ' + PICK.create.label + ' "' + text + '"');
-      label.title = label.textContent;
       row.append(label);
       row.dataset.help = 'New: ' + (PICK.multi ? 'click to mark it, Enter confirms' : 'click to create it with the typed text');
       row.addEventListener('mousedown', e => {
@@ -266,7 +265,7 @@
       ].filter(part => part);
       const text = '> ' + parts.join(' ');
       cmd.textContent = text;   // user data: textContent only
-      cmd.title = text;
+      cmd.dataset.help = text;
     }
 
     // The state button needs the label (it picks the icon and is the tooltip).
@@ -324,11 +323,11 @@
       else if (name === 'armed') { btn.classList.add('arm'); btn.innerHTML = ICON_RECORD; }
       if (lit) btn.classList.add('lit');
       const off = ['muted', 'soloed', 'armed'].includes(name) ? 'un' + name : 'not ' + name;
-      btn.title = (state === 'on' ? name : off) + (pending ? ' (on confirm)' : '');
-      if (pending) btn.classList.add('pending');   // never colour alone: the tooltip names it
-      btn.dataset.help = 'State: ' + btn.title;
+      const tip = (state === 'on' ? name : off) + (pending ? ' (on confirm)' : '');
+      if (pending) btn.classList.add('pending');   // never colour alone: the help line names it
+      btn.dataset.help = 'State: ' + tip;
       btn.setAttribute('role', 'img');
-      btn.setAttribute('aria-label', btn.title);
+      btn.setAttribute('aria-label', tip);
       return btn;
     }
 

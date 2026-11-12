@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createPageRun, runLivePage } from "./pageRun.js";
+import { callStore } from "../command/innerRun.js";
+import { ok } from "../types.js";
 import type { LiveRun, LiveSession } from "./livePage.js";
 import type { CommandNode } from "../command/commandTree.js";
 
@@ -17,13 +19,13 @@ function setup(opts: { server?: boolean; onShow?: (run: LiveRun | undefined) => 
   let handler: LiveRun | undefined;
   const make = createPageRun({
     roots: () => roots,
-    run: async (line) => (events.push(`run ${line}`), { code: 0, text: "" }),
+    exec: async (line) => (events.push(`run ${line}`), ok()),
     warn: (t) => warned.push(t),
   });
   const session = { url: "http://x/", close: () => events.push("session closed") } as unknown as LiveSession;
   const ui = {
     livePage: (_n: string, _h: string, _w: number, _ht: number, _r: unknown, options?: { run?: string[]; onClose?: string }) =>
-      runLivePage({
+      callStore.run({ path: "x", line: "x", runs: ["loop back", "loop here"], inner: false, live: { on: true } }, () => runLivePage({
         name: "p",
         run: options?.run,
         onClose: options?.onClose,
@@ -31,7 +33,7 @@ function setup(opts: { server?: boolean; onShow?: (run: LiveRun | undefined) => 
         open: (h) => (opts.server === false ? null : ((handler = h), session)),
         showData: async () => (events.push("dialog"), (await opts.onShow?.(undefined)) as string),
         showLive: async () => (events.push("dialog"), (await opts.onShow?.(handler)) as string),
-      }),
+      })),
   };
   return { ui, events, warned };
 }

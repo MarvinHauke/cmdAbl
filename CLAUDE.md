@@ -53,8 +53,8 @@ short overview with a Live test list to the architect → the architect runs it 
 gets a short list of the core features to try by hand, plus what only they can check.
 
 - **One agent per area.** Tasks name the files an agent owns; before editing, check
-  `git diff <file>` and don't touch a file with another agent's uncommitted changes; stage only
-  your own files (no `-A`, no interactive `-p`). `src/modules/types.ts` is edited by `cmdabl-core`
+  `git diff <file>` and don't touch a file with another agent's uncommitted changes; 
+  commit only your own files by path, `git commit -- <files>` (a new file: `git add <file>` right before), never a bare `git commit` after staging: the index is shared, and a bare commit takes other agents' staged work (user, 2026-11-12); no `-A`, no interactive `-p`. `src/modules/types.ts` is edited by `cmdabl-core`
   only.
 - **Only the user starts or restarts Live**, and only one Extension Host connects at a time.
   **The architect may start and restart `npm start`** once the user has said in this session that Live

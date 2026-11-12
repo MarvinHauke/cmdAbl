@@ -7,7 +7,6 @@ import { runLivePage } from "./pageRun.js";
 import { takePaletteAnswer } from "../settings/settings.js";
 import { parseSelectAnswer } from "./pickResult.js";
 import { notifySize, sectionsSize, sectionsText, usesStatusLayout } from "./notifySize.js";
-import { boardSize, parseBoardAnswer } from "./board.js";
 import { pickHeight, pickWidth } from "./pickSize.js";
 import { logger } from "../log.js";
 import { fillTemplate } from "./inlineJson.js";
@@ -17,11 +16,10 @@ import selectTemplate from "../../../ui/pick.html";
 import { openUrl } from "../setup/openUrl.js";
 import { wantsOpen } from "./pickResult.js";
 import notifyTemplate from "../../../ui/feedback.html";
-import boardTemplate from "../../../ui/board.html";
 import settingsTemplate from "../../../ui/settings.html";
 import defaultsTemplate from "../../../ui/defaults.html";
 import { parseNotifyAnswer } from "./pickResult.js";
-import { isGearAnswer, parseSettingsAnswer, settingsSize } from "./settingsSurface.js";
+import { parseSettingsAnswer, settingsSize, takePageAnswer } from "./settingsSurface.js";
 import { defaultsSize, parseDefaultsAnswer } from "./defaultsSurface.js";
 import { inlineJson } from "./inlineJson.js";
 
@@ -169,84 +167,6 @@ export interface NotifyAnswer {
   open?: true;
 }
 
-/**
- * An editor of sections whose items are on or off (plan 0010): the `on` items show as chips with
- * a remove button and each section expands to a checkbox list of all its items. Nothing is applied
- * by the page; it answers once, when Apply is pressed (`BoardAnswer`), or null when closed.
- */
-export interface BoardRequest {
-  title: string;
-  /**
-   * Draw the settings gear in the footer (plan 0019; set by the platform, not by the module: the command has
-   * settings). The gear answers `{ "settings": true }` (nothing else; with pending changes the page asks
-   * "Discard changes and open settings?" first). Core then opens the settings, and afterwards runs the command
-   * line again, so the board comes back (also after Esc on the settings). The module only sees a closed board.
-   * The WHOLE line runs again: a command that writes before it opens its board would write twice, so only commands
-   * that read first and write after the board closes (`tag --list`, `tag --edit`) may be run with a gear.
-   */
-  gear?: boolean;
-  /**
-   * A section with more `on` items than this starts folded (plan 0019: the module passes `tag.foldAfter`). Whole
-   * number 1–500; anything else is dropped by core and the page uses its own default (20).
-   */
-  foldAfter?: number;
-  /** `ui.helpLine` (plan 0019 §3): whether the page's help line follows the hover. Set by the platform, not by the module. */
-  help?: boolean;
-  sections: Array<{
-    /** Stable key the answer refers to. */
-    id: string;
-    heading: string;
-    /** Short text next to the heading, e.g. a count. */
-    meta?: string;
-    /** Every candidate item; `on` = it carries the section now. */
-    items: Array<{ id: string; label: string; on: boolean }>;
-    /** Only the `on` items, as chips without a remove button and without a checkbox list. */
-    readonly?: boolean;
-    /**
-     * The heading gets a rename action (✎): the page answers `renamed: [{ section, to }]` with `to` checked against
-     * `create.pattern` (no pattern: any non-empty text). An existing name is allowed (the module merges). Created sections are not renamable.
-     */
-    renamable?: boolean;
-    /**
-     * The heading gets a remove action (×) that marks the WHOLE section for removal (struck through, undoable until Apply):
-     * the page answers `removed: [section]`. Removing one item (× on a chip) is an ordinary change. A section both
-     * renamed and removed counts as removed.
-     */
-    removable?: boolean;
-  }>;
-  /** Offer a "new section" entry (a text field); `pattern` is a regular expression a name must fully match. */
-  create?: { label: string; pattern?: string };
-  /** The button that sends the answer. */
-  apply: { label: string };
-}
-
-/**
- * The answer, after core checked it against the request: only real differences (`on` is the new
- * state), none for readonly sections; a change may name a section from `created`, whose items start off.
- */
-export interface BoardAnswer {
-  changes: Array<{ section: string; item: string; on: boolean }>;
-  /** Names of new sections, each matching `create.pattern`, in the order the user added them. */
-  created: string[];
-  /**
-   * Sections of the request flagged `renamable` that the user renamed (`to` is trimmed, matches `create.pattern`, differs
-   * from the section id; the last rename of a section wins). Absent when there are none (old callers never see it).
-   */
-  renamed?: Array<{ section: string; to: string }>;
-  /**
-   * The parser checks each entry alone, not the combinations: a module may get A→X while X is removed, A→B together
-   * with B→A (a swap), or A→X together with B→X (a merge). Order the writes (removals first, renames through a temporary
-   * name for a swap) or refuse such a case with a clear message; write them as one undo step (`api.tracks.transaction`).
-   *
-   * `removed`: sections of the request flagged `removable` that the user marked for removal; wins over a rename of the same
-   * section. Absent when there are none. `removed` is applied only when `confirmed` is true (the page asked the user before it
-   * closed), or after the module's own question (`api.confirm`) when it is not.
-   */
-  removed?: string[];
-  /** True when the page itself asked the user to confirm the removals before closing; kept only together with a non-empty `removed`. */
-  confirmed?: true;
-}
-
 // ── the settings surface (plan 0019 §2) ─────────────────────────────────────
 
 /** One row of the settings page. `value` is the stored value, `default` what a reset goes back to. */
@@ -348,10 +268,8 @@ export interface Ui {
    * Same page and sizing as `notify`; the link button's URL is NOT opened here, the caller sees `open` and decides.
    */
   notifyAnswer(request: NotifyRequest): Promise<NotifyAnswer | null>;
-  /** The board editor: resolves with the validated answer, or null if closed or unreadable. */
-  board(request: BoardRequest): Promise<BoardAnswer | null>;
   /** A module's own page: resolves with the string it returns on close, or null if dismissed (an empty string counts as dismissed). */
-  page(name: string, html: string, width: number, height: number): Promise<string | null>;
+  page(name: string, html: string, width: number, height: number, options?: PageOptions): Promise<string | null>;
   /**
    * A module's page that may READ from the module while it is open (plan 0018 "Live pages"; the read-only exception to
    * the dialog rule): `routes` are served under a one-time token at `http://localhost:27184/live/<name>/<route>`, and the
@@ -364,8 +282,17 @@ export interface Ui {
   livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes, options?: LivePageOptions): Promise<string | null>;
 }
 
+/** What a module page may ask of core beyond its own content. */
+export interface PageOptions {
+  /**
+   * The page draws a gear (plan 0019) and answers `{ "settings": true }` when it is pressed. Core then counts the page as
+   * closed (null), opens `<module> config` and runs the command line again. Honoured only while a command with settings runs.
+   */
+  gear?: boolean;
+}
+
 /** What a module allows a live page beyond reading. */
-export interface LivePageOptions {
+export interface LivePageOptions extends PageOptions {
   /** Command paths the page may run while open, e.g. `["loop here", "loop back"]`. Options and arguments are free. */
   run?: string[];
   /**
@@ -389,12 +316,12 @@ export function createDefaultUi(
   /** The live pages the trigger server serves; absent: live pages open as data pages. */
   live?: LivePages,
   /**
-   * A page's gear (plan 0019): the board answered `{ "settings": true }`. Core opens the settings and
+   * A page's gear (plan 0019): a module page answered `{ "settings": true }`. Core opens the settings and
    * runs the page's command line again. The surface itself answers null (closed) for it.
    */
-  onGear?: (gear: { surface: "board" }) => void,
+  onGear?: (gear: { surface: "page" }) => void,
   /** Builds the page-run handler for an allowlist (`pageRun.ts`); absent: pages cannot run lines. */
-  pageRun?: (allow: string[]) => LiveRun,
+  pageRun?: (allow: string[], pageName: string) => LiveRun,
 ): Ui {
   const show = (name: string, html: string, width: number, height: number): Promise<string | null> =>
     // A failure is already logged by the queue; here it only counts as dismissed.
@@ -416,6 +343,9 @@ export function createDefaultUi(
         : notifySize(request.sections ? sectionsText(request.sections) : request.text);
     return [width, height];
   };
+
+  const gearOr = (raw: string | null, options?: PageOptions): string | null =>
+    takePageAnswer(raw, options?.gear, () => onGear?.({ surface: "page" }));
 
   const ui: Ui = {
     async prompt(request) {
@@ -459,18 +389,6 @@ export function createDefaultUi(
       });
     },
 
-    async board(request) {
-      const html = fillTemplate(boardTemplate, { BOARD: request });
-      const { width, height } = boardSize(request);
-      const raw = await show("board", html, width, height);
-      // The gear: only where the request drew it. Counts as closed; core opens the settings and runs the command again.
-      if (request.gear === true && isGearAnswer(raw)) {
-        onGear?.({ surface: "board" });
-        return null;
-      }
-      return parseBoardAnswer(raw, request);
-    },
-
     async settings(request) {
       const html = fillTemplate(settingsTemplate, { SETTINGS: request });
       const { width, height } = settingsSize(request);
@@ -491,13 +409,13 @@ export function createDefaultUi(
       return parseDefaultsAnswer(await ui.livePage("defaults", html, width, height, routes), request);
     },
 
-    async page(name, html, width, height) {
+    async page(name, html, width, height, options) {
       // The SDK resolves an empty string on dismissal: both count as dismissed.
-      return (await show(name, html, width, height)) || null;
+      return gearOr(await show(name, html, width, height), options);
     },
 
-    livePage: (name, html, width, height, routes, options) =>
-      runLivePage({
+    livePage: async (name, html, width, height, routes, options) =>
+      gearOr(await runLivePage({
         name,
         run: options?.run,
         onClose: options?.onClose,
@@ -507,7 +425,7 @@ export function createDefaultUi(
         showData: () => show(name, html, width, height),
         // Through the same queue: only one dialog is ever open. A failure is logged by the queue and counts as dismissed.
         showLive: (session) => queue.run(name, () => context.ui.showModalDialog(session.url, width, height)).catch(() => null),
-      }),
+      }), options),
   };
   return ui;
 }

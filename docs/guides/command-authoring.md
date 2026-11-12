@@ -104,11 +104,11 @@ fakes (`createFakeApi` in `src/modules/shared/testPorts.ts`, which fakes `set.id
 | `api.pick(title, candidates, multi?, options?)` | The pick list, when a command has to ask. `options.state` gives each row a state button: `{ label, values, change? }` with `values[i]` true, false or null. |
 | `api.pickRows(title, rows, options?)` | A single-select list of plain rows. `rows` are `{ label, detail?, disabled? }`; a `disabled` row is shown dimmed and cannot be picked. `options.cursor` is the index the cursor starts on. It resolves with the chosen row's index, or null. |
 | `api.pickTags(title, rows, options?)` | A list of tags. `rows` are `{ name, count?, on? }`. `options.multi: false` makes it single-select, `options.allowNew` adds a row that creates a new name, `options.change` previews what `Enter` does. It resolves with the chosen names, or null. |
-| `api.ui.board(request)` | The tag board: sections whose items are on or off. It resolves with the changes; the page applies nothing, so the module writes them. |
-| `api.settings` | `declare({ heading, items })` once at activation, after the first `commands.add` (or once `Module.name` is set), and `get(name)` → `Promise<value>`, the full key (`tag.foldAfter`) or the part after the module's name (`foldAfter`); the declared default when the file has no or a wrong value, `undefined` for a key nobody declared. Every key must be `<module>.<name>`, else it is dropped with a warning. Kinds: `bool`, `enum` (`choices`) and `int` (`min`…`max`). **Modules don't write settings**: only the Settings page does, and `get` reads the file again so a new value applies at the next run. The platform adds `<module> config` (e.g. `tag config`) to every module that declares settings (from 1b on, every module with a command), opening just that group. `config` is therefore a reserved word at the first position: `tag config` opens the settings, and `tag "config"` addresses a track called config. |
+| `api.settings` | `declare({ heading, items })` once at activation, after the first `commands.add` (or once `Module.name` is set), and `get(name)` → `Promise<value>`, the full key (`tag.editView`) or the part after the module's name (`editView`); the declared default when the file has no or a wrong value, `undefined` for a key nobody declared. Every key must be `<module>.<name>`, else it is dropped with a warning. Kinds: `bool`, `enum` (`choices`) and `int` (`min`…`max`). **Modules don't write settings**: only the Settings page does, and `get` reads the file again so a new value applies at the next run. The platform adds `<module> config` (e.g. `tag config`) to every module that declares settings (from 1b on, every module with a command), opening just that group. `config` is therefore a reserved word at the first position: `tag config` opens the settings, and `tag "config"` addresses a track called config. |
 | `api.confirm(message, confirmLabel)` | A yes/no question. `Cancel` is the first row, so a reflex `Enter` never acts. |
-| `api.dialog(html, width, height, name?)` | A page of the module's own, through the dialog queue; resolves with the string the page returns, or null when dismissed. |
+| `api.dialog(html, width, height, name?, { gear? })` | A page of the module's own, through the dialog queue; resolves with the string the page returns, or null when dismissed. With `gear: true` the page shows a gear and answers `{"settings":true}`: core then opens `<module> config` and runs the line again, so write only after the page closes. Where the gear can't work (a map binding, a page run, a `;` chain, a headless run, a command without settings) you get the raw string `{"settings":true}`: treat it as closed. Pass `api.settings.gearAvailable()` as `gear` (and into the page data) so the page hides the gear where it can't work. |
 | `api.ui.livePage(name, html, width, height, routes, options?)` | A page served from `http://localhost:27184` with a one-time token per dialog. While it is open it may read from your module through `routes`, and it may run the command lines you allow in `options.run`. It resolves like `dialog`. See "Live pages and page runs" below. |
+| `api.commands.run(line, options?)` | Run a command line through the normal command path from your handler and get its `CommandResult` back (see "Running command lines" below). Only paths in your command's `runs`. |
 | `api.log(line)` | One log line at info: `cmdAbl [<module>] info: …`. The platform adds the prefix; write the text only. |
 | `api.logger.{debug,info,warn,error}(text)` | The same, at the level you name. `debug` lines show only after `cmdabl log --debug`. |
 | `api.commands` | `add`, plus `roots()`, `help(path)` and `usage(path)` for commands such as `man`, and `defaults()`: the default commands (bare command word → the line it runs, read-only, fresh in any handler; may be empty at activation). |
@@ -147,6 +147,25 @@ api.ui.livePage("note", html, width, height, routes, { run: ["loop here", "loop 
   closed gets 404.
 
 Nothing else writes. The page still answers with one string when it closes.
+
+## Running command lines
+
+A handler may run another command line with `api.commands.run(line, { allow? })`, for example `tag -l` runs the line the setting
+`tag.listEnter` names (default `find #fx`) when you press Enter on a tag. The rules (plan 0028):
+
+- **Declare `runs` on your command** (a leaf): the command paths it may run, as plain paths, e.g.
+  `runs: ["find", "tag", "mute", "solo"]`. No options in an entry. A line whose command path is not listed is refused
+  with exit 2 and a warning in the log; so is a `;` chain with an unlisted part. `allow` on the call can only narrow the list.
+- **`outside: true`** marks a command that acts outside the Live Set (it installs or removes things, edits the setup):
+  no allowlist may contain it, so no module or page can run it. `cmdabl setup` and `pakabl install`, `uninstall`, `upgrade` have it.
+- **Depth 1.** A line run this way cannot run further lines.
+- **The result comes back to you:** `run` resolves with the other command's `CommandResult`; return it from your handler
+  (`return api.commands.run(line)`) so the user sees the same result. A dialog the line opens goes through the queue; Esc in it
+  returns `ok()` quietly. Inside a headless run (a map binding, a chain, a page run) the line runs headless too.
+- The line goes through parsing, resolution and the log like a typed one (`run: find #x -> 0 (from tag -l)`).
+  `api.settings.gearAvailable()` is false inside an inner run, so a page opened that way shows no gear.
+- A live page's `run` list is checked against the same `runs` of the command that opened it, so declare the paths there too
+  (the note commands declare `runs: ["loop here", "loop back", "jump"]`). `man <command>` shows what a command may run.
 
 ## Completing arguments
 

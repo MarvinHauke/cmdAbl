@@ -8,8 +8,8 @@ import { formatControl, validateBinding } from "../../core/midi/midi.js";
 import type { MidiBinding } from "../../core/midi/midiEngine.js";
 import type { MidiControl } from "../../core/midi/midi.js";
 import type { MidiMessage as StoredMidiMessage } from "../../ableton/bridgeOps.js";
-import type { Provider } from "../../core/types.js";
-import type { BoardAnswer, BoardRequest, StateChange } from "../../core/surfaces/ui.js";
+import { ok, type CommandResult, type Provider } from "../../core/types.js";
+import type { StateChange } from "../../core/surfaces/ui.js";
 import { MAX_FILE_BYTES, validFileName } from "../../core/settings/files.js";
 import type { Loop, ModuleApi, PickRow, SettingDef, TagRow, TrackHandle, Transport } from "../types.js";
 
@@ -22,10 +22,12 @@ export interface FakeApiOptions {
   bridge?: FakeBridgeOptions;
   /** What the dialog answers (the string a page returns on close); null or empty = dismissed. */
   dialogAnswer?: string | null;
+  /** What `api.settings.gearAvailable()` answers (default false). */
+  gearAvailable?: boolean;
+  /** What `api.commands.run` answers (default `ok()`); the call is recorded in `fake.commandRuns`. */
+  runResult?: (line: string) => CommandResult;
   /** What `api.pick` answers (default: cancelled). Registered `onPick` listeners are notified like the platform does. */
   pickAnswer?: (candidates: ObjectNode[], multi: boolean) => ObjectNode[] | null;
-  /** What `api.ui.board` answers (default: closed). The request is recorded in `fake.boards`. */
-  boardAnswer?: (request: BoardRequest) => BoardAnswer | null;
   /** What `api.confirm` answers (default: false, i.e. cancelled). */
   confirmAnswer?: boolean;
   /** What `api.pickRows` answers: the index chosen (default: cancelled; a disabled row counts as cancelled). */
@@ -55,13 +57,13 @@ export interface FakeApiOptions {
 export interface FakeApi {
   api: ModuleApi;
   bridge: FakeBridge;
+  /** The lines `api.commands.run` was asked to run, with the call's `allow` if given. */
+  commandRuns: Array<{ line: string; allow?: string[] }>;
   /** Commands the module declared, in order. */
   commands: Command[];
   providers: Provider[];
   logs: string[];
   feedback: string[];
-  /** The boards `api.ui.board` was asked to show. */
-  boards: BoardRequest[];
   /** The `state` options `api.pick` was given, in order. */
   pickStates: Array<{ label: string; values: Array<boolean | null>; change?: StateChange }>;
   /** Every line written through `api.logger`, with its level (`api.log` lines are in `logs` as well). */
@@ -74,7 +76,7 @@ export interface FakeApi {
   tagLists: Array<{ title: string; rows: TagRow[]; allowNew?: boolean }>;
   /** Tags by node `handleId`; `api.tags.write` replaces the entry (empty removes it). */
   tagStore: Map<string, string[]>;
-  dialogs: Array<{ html: string; width: number; height: number }>;
+  dialogs: Array<{ html: string; width: number; height: number; name?: string; gear?: boolean }>;
   /** The live pages `api.ui.livePage` was asked to show, with their route functions (call them to test the data a page would poll). */
   livePages: Array<{ name: string; html: string; width: number; height: number; routes: LiveRoutes; run?: string[]; onClose?: string }>;
   /** Track state by handle id; writes land here. */
@@ -132,12 +134,12 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   const fake: FakeApi = {
     api: undefined as unknown as ModuleApi,
     bridge,
+    commandRuns: [],
     commands: [],
     providers: [],
     logs: [],
     feedback: [],
     logged: [],
-    boards: [],
     pickStates: [],
     confirms: [],
     tagLists: [],
@@ -229,6 +231,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       },
     },
     settings: {
+      gearAvailable: () => options.gearAvailable ?? false,
       declare: (group) => void fake.settingGroups.push(group),
       get: (async (name: string) => {
         const key = name.includes(".") ? name : `${fake.commands[0]?.name ?? "module"}.${name}`;
@@ -277,8 +280,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       warn: (text) => void fake.logged.push({ level: "warn", text }),
       error: (text) => void fake.logged.push({ level: "error", text }),
     },
-    dialog: async (html, width, height) => {
-      fake.dialogs.push({ html, width, height });
+    dialog: async (html, width, height, name, dialogOptions) => {
+      fake.dialogs.push({ html, width, height, ...(name !== undefined ? { name } : {}), ...(dialogOptions?.gear !== undefined ? { gear: dialogOptions.gear } : {}) });
       return options.dialogAnswer || null;
     },
     commands: {
@@ -286,6 +289,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       roots: () => fake.commands,
       help: (path) => helpForPath(fake.commands, path),
       usage: (path) => usageForPath(fake.commands, path),
+      run: async (line, runOptions) => {
+        fake.commandRuns.push({ line, ...(runOptions?.allow ? { allow: runOptions.allow } : {}) });
+        return options.runResult?.(line) ?? ok();
+      },
       completer: (key, source) => void (fake.completers.has(key) ? undefined : fake.completers.set(key, source)),
       defaults: () => ({ ...(options.defaults ?? {}) }),
     },
@@ -299,10 +306,6 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       livePage: async (name, html, width, height, routes, pageOptions) => {
         fake.livePages.push({ name, html, width, height, routes, ...(pageOptions?.run ? { run: pageOptions.run } : {}), ...(pageOptions?.onClose ? { onClose: pageOptions.onClose } : {}) });
         return options.dialogAnswer || null;
-      },
-      board: async (request) => {
-        fake.boards.push(request);
-        return { answer: options.boardAnswer?.(request) ?? null, cut: false };
       },
     },
     confirm: async (message) => {

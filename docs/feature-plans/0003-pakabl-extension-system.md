@@ -178,9 +178,18 @@ it to the loader.
 
 ## Next (user, 2026-11-12)
 
-- **GitHub stars in `pakabl list`** (0.1.8): the crawler writes `stars` for approved extensions into
-  `index.json` (it already reads them for candidates); `pakabl list` shows `★ N` next to the version and
-  may sort by it.
+- **Stars and downloads in `pakabl list`** (0.1.8; user, 2026-11-12): `★ N` and `↓ N` next to the version.
+  - **A separate `stats.json`, not `index.json`** (user, 2026-11-12): the counts change daily and `main` only
+    takes PRs, so the crawler pushes `pakabl/stats.json` to an unprotected data branch `pakabl-data`, without a
+    PR. `index.json` and its PRs stay for real changes (new extensions, versions). Counts are at most a day old.
+  - Shape: `{ "updated": "<ISO date>", "stats": { "<id>": { "stars": N, "downloads": N | null } } }`.
+    `downloads` is the sum of `download_count` over all releases' `.ablx` assets of that repo; `null` for an
+    extension whose `url` is not a release asset (e.g. a raw file), shown as `↓ –`.
+  - `pakabl update` fetches it next to `index.json`. It is optional: missing, unreadable or malformed → the list
+    shows no counts and logs one line. Only ids from the index and non-negative integers are read.
+  - The workflow: the push to `pakabl-data` uses the workflow token (`contents: write`); fits the parked
+    split into a read-only crawl job and a writing job (STATUS "Parked").
+  - Sorting by stars: later, if wanted.
 - **Growing the list:** the 25 candidates in `pakabl/candidates.json` get a review table (stars, release,
   manifest, what it does, risks); the user ticks which ones go into `sources.json`.
 

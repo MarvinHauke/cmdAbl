@@ -6,6 +6,7 @@ import type { CommandRegistry } from "./commandRegistry.js";
 import { shortHelpIn, type CommandNode, type Invocation, type PickState } from "./commandTree.js";
 import { commandListText } from "./topics.js";
 import { parse } from "./parse.js";
+import { callStore, type CallCtx } from "./innerRun.js";
 import { applyPick, lookupTarget, normalizeTargets, resolveTargets, tagTargetOf, type ArgValue, type PickRequest, type Target } from "./resolveArgs.js";
 import { NUMBERISH, quoteIfNeeded, splitChain, tokenize } from "./tokenize.js";
 import type { Bridge } from "../../ableton/bridgeClient.js";
@@ -505,7 +506,14 @@ async function runLineInner(input: string, deps: RunDeps): Promise<RunOutcome> {
 
     let result: CommandResult;
     try {
-      result = (await node.run!(step.invocation, undefined)) ?? ok();
+      // The running command is carried by async context so `api.commands.run` knows its caller (plan 0028).
+      const live = { on: true };
+      const ctx: CallCtx = { path: invocation.path.join(" "), line: headWords(invocation).join(" "), runs: node.runs, inner: callStore.getStore()?.inner === true, live };
+      try {
+        result = (await callStore.run(ctx, () => node.run!(step.invocation, undefined))) ?? ok();
+      } finally {
+        live.on = false;
+      }
     } catch (e: unknown) {
       result = fail(ExitCode.FAILURE, `${invocation.path.join(" ")}: ${e instanceof Error ? e.message : String(e)}`);
     }

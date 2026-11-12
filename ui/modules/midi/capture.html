@@ -8,7 +8,8 @@
        In: CAPTURE_PLACEHOLDER = { title, hint, mode: "learn" | "monitor" } (plain text, set with textContent).
            LIVE_PLACEHOLDER = null | { base, token }: the live source. With it the page long-polls GET <base>/messages?since=<last>
            (Authorization: Bearer <token>; the source holds a request up to ~1 s until something newer arrives, the next request follows at once); the answer is { opened, last, messages: [{ seq, type: "cc"|"note_on"|"note_off"|"pb",
-           channel 1-16, number, value, time }] } (the newest 20, OLDEST first; the page keeps one row per control, value updated in place), plus `blocked`: the controls Live refused to forward
+           channel 1-16, number, value, time }] } (the newest 20, OLDEST first; the page keeps one row per control, value updated in place), plus `status`: { listening: bool, since, stoppedReason? } (the module renews the listening window while the page is open; when it can't, listening is false and
+           stoppedReason says why: the page shows "Listening…" with a pulsing dot, or the reason; a source without the field shows nothing), plus `blocked`: the controls Live refused to forward
            (shown as "Taken in Live: …"; [] or null hides it), or { error }.
            null (or a source that stays unreachable) = the fallback: no list, "live view unavailable", Enter reads.
        Out (close_and_send): "go" on Enter while the live view works, "list" on Enter without a working live view (LIVE null, unreachable, or before the first answer), "go" in learn mode ~150 ms after the first control moved; "" on Esc. The module reads the
@@ -21,7 +22,16 @@
     body { display: flex; flex-direction: column; }
 
     #head { flex: 0 0 auto; padding: 10px 12px 8px; border-bottom: 1px solid var(--border); }
+    #top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
     #title { font-weight: 600; color: var(--accent); }
+    #status { margin-left: auto; min-width: 0; font-size: 11px; color: var(--dim); overflow-wrap: anywhere; text-align: right; }
+    #status:empty { display: none; }
+    #status::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--ok); }
+    #status.on::before { animation: pulse 1.6s ease-in-out infinite; }
+    #status.off { color: var(--fail); }
+    #status.off::before { background: var(--fail); }
+    @keyframes pulse { 50% { opacity: 0.25; } }
+    @media (prefers-reduced-motion: reduce) { #status.on::before { animation: none; } }
     #hint { margin-top: 3px; color: var(--dim); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
 
     #list { flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 4px 0; }
@@ -47,7 +57,7 @@
 </head>
 <body>
 
-  <div id="head"><div id="title"></div><div id="hint"></div></div>
+  <div id="head"><div id="top"><div id="title"></div><div id="status" role="status"></div></div><div id="hint"></div></div>
   <div id="list"><div id="empty"></div></div>
   <div id="foot"><div id="blocked"></div><div id="note"></div><div><kbd>Enter</kbd> done &nbsp; <kbd>Esc</kbd> cancel</div></div>
 
@@ -144,6 +154,15 @@
       const kind = b.type === 'cc' ? 'CC' : b.type === 'note_on' || b.type === 'note_off' || b.type === 'note' ? 'Note ' : b.type === 'pb' ? 'PB' : String(b.type ?? '');
       return kind + (b.type === 'pb' ? '' : String(b.number ?? '')) + (b.channel != null ? ' ch' + b.channel : '');
     }
+    // From the answer's `status`: "Listening…" (pulsing dot) while the module keeps the window open, else why it stopped.
+    const statusEl = document.getElementById('status');
+    function drawStatus(answer) {
+      const st = answer.status;
+      if (!('status' in answer)) return;   // e.g. the idle { timeout: true } answer: leave the note as it is
+      if (!st || typeof st !== 'object') { statusEl.textContent = ''; return; }
+      statusEl.className = st.listening ? 'on' : 'off';
+      setText(statusEl, st.listening ? 'Listening…' : String(st.stoppedReason || 'Listening stopped'));
+    }
     function drawBlocked(answer) {
       if (!('blocked' in answer)) return;   // a source without the field: nothing to say
       const b = answer.blocked;
@@ -162,7 +181,7 @@
     function unavailable(on) {
       note.textContent = on ? 'Live view unavailable. ' + FALLBACK_NOTE : '';
       if (on) { working = false; setLive(false); }
-      if (on) { list.textContent = ''; rows.clear(); fresh = null; seen = 0; since = null; setText(blockedEl, ''); }
+      if (on) { list.textContent = ''; rows.clear(); fresh = null; seen = 0; since = null; setText(blockedEl, ''); statusEl.textContent = ''; }
     }
     async function poll() {
       if (finished) return;
@@ -183,6 +202,7 @@
         if (since === before && Date.now() - started < 50) delay = 100;   // an answer with no news that did not wait: do not hammer
         draw(answer);
         drawBlocked(answer);
+        drawStatus(answer);
         working = true;
         setLive(true);
         maybeClose(answer);

@@ -1,7 +1,7 @@
 # Test access for agents: a `/run` route and a cmdAbl MCP server
 
 **Status:** Released in 0.1.3 (2026-10-22, PR #17), development builds only. §1–§4 run and log, §5
-screenshots, §6 recordings; all used in Live. Trigger: every Live test needed
+screenshots, §6 recordings; all used in Live. §7 (where a test tool sits) proposed 2026-11-12. Trigger: every Live test needed
 the user to type the commands; the user wants the agents to run test lists themselves.
 
 **Parent:** [0004](0004-command-platform.md)
@@ -132,6 +132,25 @@ The agents can make documentation images themselves, so images follow the code i
 - **Limits:** a recording is a screen area, not a single window: whatever covers Live (notifications,
   other windows) is recorded too. The user turns on Do Not Disturb; docs checks every frame of the
   result before it is committed. Keys only, no mouse.
+
+### 7. Where a test tool sits (proposed 2026-11-12; to confirm on the second case)
+
+Trigger: the `jump.step` test needed Live's launch quantization at 1/4, 1/4T and None, and no tool can set
+it, so the user switched it by hand. Rule, by what a tool is for:
+
+- **Setting up Live for a test** (launch quantization, time signature, loop, metronome, tempo): the
+  **AbletonMCP fork** (`MarvinHauke/ableton-mcp`, branch `cmdabl-testing`; STATUS, "Test tooling"). Test
+  setup must not go through the thing under test (it works when cmdAbl's bridge doesn't), and test-only
+  writes stay out of cmdAbl's Remote Script, which ships to every user. Cost: a second Remote Script in a
+  control-surface slot, keeping the fork in step with upstream, a Live restart when its script changes.
+- **Driving and watching cmdAbl** (run a line, log, dialog state, screenshots, keys, recordings): the
+  **cmdabl MCP server** (§1–§6). It never writes to Live beyond what cmdAbl's own commands do.
+- **What a user would want too** (e.g. setting the quantization from the palette): a **cmdAbl command**,
+  decided as a feature on its own merits; `cmdabl_run` then covers the test.
+
+Nothing is built yet: until a second test needs a setter, the user sets such state by hand. At that point
+the rule is checked against the real case, and the first fork tool is planned (idea:
+`set_song_property(name, value)` with a fixed allow-list plus a read-back; builder: cmdabl-bridge).
 
 ## Risks
 

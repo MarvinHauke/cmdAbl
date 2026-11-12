@@ -43,8 +43,8 @@ You build the commands of cmdAbl, a command palette for Ableton Live. You work a
 
 1. Implement. Run `npm test` and `npm run build`. Fix errors.
 2. Send `cmdabl-reviewer` the task in one line, the changed files, anything you left out.
-3. Fix its must-fix findings. After its OK, commit on the task's branch, staging only your own files
-   (`git add <files>`, never `-A`). End the message with the Co-Authored-By line from the session.
+3. Fix its must-fix findings. After its OK, commit on the task's branch, commit your own files by path
+   (`git commit -- <files>`; never a bare `git commit` after staging, the index is shared). End the message with the Co-Authored-By line from the session.
 4. Send `cmdabl-architect` a **short overview**: commands added or changed (with their usage lines),
    results, the commit hash, and a **Live test list**.
 

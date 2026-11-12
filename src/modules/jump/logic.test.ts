@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseTarget, resolveTarget, type JumpTransport } from "./logic.js";
+import { parseTarget, resolveTarget, stepBeats, type JumpTransport } from "./logic.js";
 
 const t44: JumpTransport = { num: 4, den: 4, barStart: 44, barLen: 4, songLength: 64 };
 const t68: JumpTransport = { num: 6, den: 8, barStart: 9, barLen: 3, songLength: 64 };
@@ -16,8 +16,8 @@ test("parseTarget knows the forms and rejects the rest", () => {
   assert.deepEqual(parseTarget("12.3.1"), { kind: "position", bar: 12, beat: 3, six: 1, parts: 3 });
   assert.deepEqual(parseTarget("12"), { kind: "position", bar: 12, beat: 1, six: 1, parts: 1 });
   assert.deepEqual(parseTarget("5.2"), { kind: "position", bar: 5, beat: 2, six: 1, parts: 2 });
-  assert.deepEqual(parseTarget("+4"), { kind: "relative", bars: 4 });
-  assert.deepEqual(parseTarget("-4"), { kind: "relative", bars: -4 });
+  assert.deepEqual(parseTarget("+4"), { kind: "relative", n: 4, unit: "step" });
+  assert.deepEqual(parseTarget("-4"), { kind: "relative", n: -4, unit: "step" });
   assert.deepEqual(parseTarget("START"), { kind: "start" });
   assert.deepEqual(parseTarget("end"), { kind: "end" });
   for (const bad of ["", "x", "1.2.3.4", "1..2", "+", "-x", "1.5e3", "12.", "--4"]) assert.equal(parseTarget(bad), null, bad);
@@ -61,4 +61,30 @@ test("relative moves by bars from the current bar; start and end", () => {
   assert.equal((time("end", old) as { code: number }).code, 5);
   assert.equal((time("-40", t44) as { text: string }).text, "the start (clamped)");
   assert.equal((time("1.1.1", { ...t44, den: 32 }) as { code: number }).code, 5);
+});
+
+test("units: +Nb bars, +Nq quarters, +N steps of the given size", () => {
+  const at = { ...t44, time: 46.5 }; // bar 12 (starts at 44), beat 3.5
+  assert.deepEqual(parseTarget("+2b"), { kind: "relative", n: 2, unit: "bar" });
+  assert.deepEqual(parseTarget("-3q"), { kind: "relative", n: -3, unit: "quarter" });
+  assert.equal((time("+2b", at) as { time: number }).time, 52);
+  assert.equal((time("+3q", at) as { time: number }).time, 49); // from the start of beat 3 (46)
+  assert.equal((time("-1q", at) as { time: number }).time, 45);
+  assert.equal((time("+1", { ...at, step: 2 }) as { time: number }).time, 48); // 2-beat grid: 46 + 2
+  assert.equal((time("+1", { ...at, step: 8 }) as { time: number }).time, 48); // 2 bars: on the 8-beat grid, 40 + 8
+  assert.equal((time("+2", { ...at, step: 4 }) as { time: number }).time, 52); // a bar step = the old +N
+  assert.equal((time("+2b", at) as { text: string }).text, "+2 bars");
+  assert.equal((time("+1", at) as { text: string }).text, "+1 step");
+  assert.equal((time("-5q", { ...t44, time: 2 }) as { time: number }).time, 0);
+});
+
+test("stepBeats: setting, Live's quantization, fallbacks", () => {
+  assert.equal(stepBeats("live", 1, 4), 1);
+  assert.equal(stepBeats("live", 0, 4), 4); // None
+  assert.equal(stepBeats("live", null, 3), 3);
+  assert.equal(stepBeats("live", undefined, 4), 4);
+  assert.equal(stepBeats("bar", 1, 3), 3);
+  assert.equal(stepBeats("2bars", 1, 3), 6);
+  assert.equal(stepBeats("eighth", null, 3), 0.5);
+  assert.equal(stepBeats("junk", 2, 4), 2);
 });
