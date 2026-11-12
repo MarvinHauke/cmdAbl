@@ -82,8 +82,10 @@
     .meta.err:empty { display: none; }
     .row.tag .ib { visibility: hidden; }   /* reserved, so nothing jumps; shown on the cursor row and on hover */
     .row.tag:hover .ib, .row.tag.cur .ib { visibility: visible; }
-    .row.tag .meta { margin-right: 2px; }
-    .row.tag.removed .nm { flex: 0 1 auto; }
+    /* name … ✎ × count: the pair is tight and sits left of the count, which ends at the pane's right padding like the header count */
+    .row.tag .nm + .ib { margin-left: auto; }
+    .row.tag .ib + .ib { margin-left: -6px; }
+    .row.tag .meta { margin-left: -4px; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* a busy count gives way before the name does */
     .empty { padding: 12px 10px; color: var(--dim); font-size: 11px; line-height: 1.5; }
     .cb { flex: none; width: 14px; height: 14px; border: 1px solid var(--dim); border-radius: 2px; display: inline-flex; align-items: center;
           justify-content: center; font-size: 11px; line-height: 1; color: var(--bg); font-weight: 700; }
@@ -314,7 +316,7 @@
 
     // ── render ─────────────────────────────────────────────────────────────────────────────────
     const metaText = (e, sep) => {
-      if (e.removed) return '× removed';
+      if (e.removed) return 'removed';
       const add = addedOf(e), drop = droppedOf(e);
       const pend = [add && '+' + add, drop && '−' + drop].filter(Boolean).join(' ');
       const dup = live().some(x => x !== e && x.name === e.name);
@@ -368,7 +370,7 @@
       for (const e of entries) {
         const r = el('div', 'row tag' + (e.removed ? ' removed' : ''));
         r.dataset.help = '#' + e.name + ' · → its tracks · ✎ or F2 renames · × or Shift+Backspace marks it for removal';
-        if (editing?.mode === 'rename' && editing.entry === e) inlineInput(r); else r.append(nameEl(e), metaEl(e, ' · '), ...tagButtons(e));
+        if (editing?.mode === 'rename' && editing.entry === e) inlineInput(r); else r.append(nameEl(e), ...tagButtons(e), metaEl(e, ' · '));
         r.addEventListener('click', () => { if (editing) return; tagCur = e; pane = 0; focusQ(); render(); });
         ll.append(reg(r, 'tag', e));
       }
