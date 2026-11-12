@@ -69,6 +69,9 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     it moves one row `acbd1d5`, seen in Live; ↑ also lands on the first match, by design; while
     typing in the filter the list cursor is drawn passive, so the first ↓ shows `084a58c`, seen in Live); no browser tooltips left in `ui/` (`b655395`, `6605d80`, help.js). Seen in Live: list
     and grid marking, narrow columns, scrolling name. For the user: rename in both views, hover texts, note page.
+    Clipped help-line text scrolls after 0.8 s (shared `marquee` in help.js, `faf3d62`); one shared discard
+    bar for the tag editor, settings, defaults and note pages (`ui/confirm.js`, ←/→, Enter, Esc keeps; `fb3baa0`;
+    seen in Live on settings: arrows, Discard drops the change).
     Minor: the note page footer changes height between a 1- and 2-line error (checklist item 3).
   - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
   - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
