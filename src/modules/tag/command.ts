@@ -86,7 +86,7 @@ export function activate(api: ModuleApi, tagEditorTemplate: string): void {
     const row = index === null ? undefined : rows[index];
     if (!row || row.tag === undefined) return;
     const template = await api.settings.get<string>("listEnter");
-    return { ...ok(), run: listEnterLine(template, row.tag) } as CommandResult;
+    return api.commands.run(listEnterLine(template, row.tag));
   };
 
   /**
@@ -214,6 +214,8 @@ export function activate(api: ModuleApi, tagEditorTemplate: string): void {
       { line: "tag --set 1 !#drums synth", note: "tag every track that is not a drums track as synth" },
     ],
     requires: ["bridge"],
+    // What tag.listEnter may run (plan 0028): the presets of the setting.
+    runs: ["find", "tag", "mute", "solo"],
     options: [
       {
         name: "edit",

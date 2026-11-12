@@ -36,6 +36,7 @@ export function pakablCommand(h: PakablHandlers): Command {
           "Restart Live to load it. Run pakabl update first to fetch the list.",
         examples: [{ line: "pakabl install federico-pepe.snake", note: "install the extension with that id" }],
         args: [{ name: "id", kind: "text", complete: "pakabl-index-ids", summary: "Extension id as shown by pakabl list: author.name" }],
+        outside: true, // installs outside the Set: no allowlist may contain it (plan 0028)
         run: (inv) => h.install(firstArg(inv)),
       },
       {
@@ -45,6 +46,7 @@ export function pakablCommand(h: PakablHandlers): Command {
           "Deletes an installed extension from Live's Extensions folder. Restart Live to unload it.",
         examples: [{ line: "pakabl uninstall federico-pepe.snake", note: "remove that extension" }],
         destructive: true,
+        outside: true, // removes outside the Set (plan 0028)
         args: [{ name: "id", kind: "text", complete: "pakabl-installed-ids", summary: "Extension id as shown by pakabl list: author.name" }],
         run: (inv) => h.uninstall(firstArg(inv)),
       },
@@ -76,6 +78,7 @@ export function pakablCommand(h: PakablHandlers): Command {
             summary: "Extension id, optionally followed by @ and the version the list holds, to install it even if it is not newer",
           },
         ],
+        outside: true, // replaces installed code outside the Set (plan 0028)
         run: (inv) => h.upgrade(firstArg(inv)),
       },
       {

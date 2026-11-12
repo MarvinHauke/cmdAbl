@@ -111,16 +111,18 @@ test("a write that changes nothing says so; a mix of changed and unchanged stays
 
 test("--list: one read-only row per tag, untagged last and disabled; Enter on a tag asks the platform to run tag.listEnter", async () => {
   const { run, fake } = setup({ Lead: ["fx", "drums"], Bass: ["fx"] }, { pickRowsAnswer: (rows) => rows.findIndex((r) => r.label === "#fx") });
-  const r = (await run({ list: true }, [], []))! as { code: number; run?: string };
+  const r = (await run({ list: true }, [], []))!;
   assert.deepEqual(fake.rowLists[0]!.rows, [
     { label: "#drums", detail: "1 \u00b7 Lead", disabled: false },
     { label: "#fx", detail: "2 \u00b7 Lead, Bass", disabled: false },
     { label: "untagged", detail: "1 \u00b7 Drums", disabled: true },
   ]);
   assert.equal(r.code, ExitCode.OK);
-  assert.equal(r.run, "find #fx");
+  assert.deepEqual(fake.commandRuns, [{ line: "find #fx" }]);
   const custom = setup({ Lead: ["fx"] }, { pickRowsAnswer: () => 0, settings: { "tag.listEnter": "tag -e {}" } });
-  assert.equal(((await custom.run({ list: true }, [], []))! as { run?: string }).run, "tag -e fx");
+  await custom.run({ list: true }, [], []);
+  assert.deepEqual(custom.fake.commandRuns, [{ line: "tag -e fx" }]);
   const none = setup({ Lead: ["fx"] }, { pickRowsAnswer: () => null });
   assert.equal(await none.run({ list: true }, [], []), undefined);
+  assert.deepEqual(none.fake.commandRuns, []);
 });

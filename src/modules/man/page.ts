@@ -5,6 +5,10 @@ interface Node {
   aliases?: string[];
   requires?: string[];
   destructive?: boolean;
+  /** Command paths this command may run through `api.commands.run` (plan 0028). */
+  runs?: string[];
+  /** Acts outside the Live Set: no module or page may run it (plan 0028). */
+  outside?: boolean;
   children?: readonly Node[];
   /** The platform's `<command> config` subcommand (plan 0019). */
   config?: Node;
@@ -64,6 +68,8 @@ export function manPage(help: string, node: Node, path: string[]): string {
   if (node.aliases?.length) facts.push(`aliases: ${node.aliases.join(", ")}`);
   if (node.requires?.includes("bridge")) facts.push("needs the Remote Script (otherwise: not running)");
   if (node.destructive) facts.push("removes or irreversibly changes something; takes one target per address, never every match");
+  if (node.runs?.length) facts.push(`may run: ${node.runs.join(", ")}`);
+  if (node.outside) facts.push("acts outside the Live Set; no module or page can run it");
   if (facts.length) lines.push("", ...facts.map((f) => `note: ${f}`));
   lines.push("", `web: ${webUrl(path)}`);
   return lines.join("\n");
