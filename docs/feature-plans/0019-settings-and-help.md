@@ -392,6 +392,18 @@ ships when phases 1–3 are in. 4–6 may follow as 0.1.7 if they take longer.
 - **By hand (user):** the look of the settings page and the help line, hover behaviour, the palette's
   help view while typing, and whether the gear round-trip feels right.
 
+## Footer buttons on every page (user, 2026-11-12)
+
+One rule for the buttons that leave a page:
+- **Editing pages** (settings, default commands, tag editor, note in edit mode): **Apply** writes and closes
+  (the note page says **Save**, a text document); Cmd+S / Cmd+Enter do the same. **Cancel** leaves without
+  writing: with pending changes it asks in the shared footer bar (`ui/confirm.js`: "Discard N changes?",
+  Keep editing / Discard, ←/→, Enter, Esc keeps), without changes it leaves at once.
+- **Show-only pages** (messages, pick lists, the tag list, the monitor, the note in view mode, man pages):
+  **Close**.
+- **Discard** is only ever the bar's answer, never a button of its own. Esc does what Cancel or Close does (the
+  note's edit mode first returns to view).
+
 ## Later: a "command line" setting kind (user, 2026-11-12; planned, after 0.1.8)
 
 Trigger: `tag.listEnter` is an enum of four presets (`find #{}`, `tag -e {}`, `mute #{}`, `solo #{}`) because the

@@ -50,7 +50,8 @@ site theme (`docs/stylesheets/`), and the UI guide when one is written.
      line (`data-help`), never in a browser tooltip (`title`; user, 2026-11-05).
   7. Text is at least 11 px, readable in light and dark.
   8. A destructive action is confirmed in the same page, not in a second window, with the shared footer
-     confirm (`ui/confirm.js`: ←/→, Enter, Esc = keep).
+     confirm (`ui/confirm.js`: ←/→, Enter, Esc = keep). Buttons: editing pages Apply/Save + Cancel, show-only
+     pages Close, "Discard" only as the bar's answer (0019, "Footer buttons").
   9. After an action, its result is in view and focused (scroll there, focus the next input).
   10. Nothing is cut off or squeezed at the window's edge: a one-row line (help line, footer) stays one
       row and drops parts or ends in `…`; a long control wraps onto its own line instead of crushing its
