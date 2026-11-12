@@ -586,10 +586,10 @@ export function activate(activation: ActivationContext) {
     if (outcome.fill !== undefined) return outcome.fill;
     if (outcome.cancelled) return;
     present(outcome.result);
-    // History gets successful invocations that carry arguments, in their
-    // resolved form ("mute /Bass"), so a re-run is never ambiguous.
+    // History gets every successful invocation, bare commands included, in
+    // its resolved form ("mute /Bass"), so a re-run is never ambiguous.
     const invocation = outcome.line ?? line;
-    if (remember && outcome.result.code === ExitCode.OK && invocation.includes(" ")) {
+    if (remember && outcome.result.code === ExitCode.OK) {
       for (const listener of commandRunListeners) listener(invocation, outcome.typed);
     }
     return undefined;
