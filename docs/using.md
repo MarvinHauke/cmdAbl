@@ -493,7 +493,7 @@ the change can be off. This is a known limit.
 
 ![The note window in view mode: three stamps, each a heading with the date and time and a line of text below it; two headings also hold the song position, such as @79.3.2. The footer says e edit, s stamp, Esc close, with Edit, Stamp and Close buttons](assets/images/note-view.png)
 
-![The same note in stamp edit: the Markdown source, with the newest stamp heading `### @82.1.2 · 2026-11-11 22:37` and the text typed below it. The footer says Cmd+S save and close, Esc done, Discard drops this edit, with Save, Discard and Done buttons](assets/images/note-edit.png)
+![The same note in stamp edit: the Markdown source, with the newest stamp heading `### @82.1.2 · 2026-11-11 22:37` and the text typed below it. The footer says Cmd+S save and close, Esc done, Cancel drops this edit, with Save, Cancel and Done buttons](assets/images/note-edit.png)
 
 Keys in the note window:
 
@@ -502,8 +502,8 @@ Keys in the note window:
 - `Cmd+S` or **Save** saves and closes.
 - `Esc` in edit goes back to view and keeps your text.
 - `Esc` in view closes the note and saves your changes, if there are any.
-- **Discard** throws your changes away. When there are changes, it asks first: click **Discard** again to confirm. The question goes away after a few
-  seconds, and any key keeps your edit.
+- **Cancel** throws your changes away. When there are changes, the footer asks "Discard this edit?" with **Keep
+  editing** and **Discard**. Move between them with `←` and `→`, press `Enter` to choose, and `Esc` keeps editing.
 
 ### Stamps: a timestamped entry
 
@@ -519,14 +519,14 @@ this Set's note. It is not a separate feature.
   and time, and a hint says that the Remote Script is not running.
 - `Esc` ends the stamp and goes back to view. The text is kept and the old loop comes back. Press `s` again
   for the next section. If you typed nothing below the heading, no entry is added.
-- `Cmd+S` saves and closes the note. **Discard** throws away this edit and asks once first.
+- `Cmd+S` saves and closes the note. **Cancel** throws away this edit and asks first.
 
 Esc or Cmd+S right after `s` wait up to half a second for the song position. If the Remote Script does not answer,
 the heading holds only the date and time.
 
 **The loop while you write.** During Arrangement playback, a stamp also loops the music while you type: the note
 runs [`loop here`](#the-arrangement-loop-loop) when the stamp starts and `loop back` when it ends (`Esc`, **Done**,
-**Discard** or `Cmd+S`). Two settings control this:
+**Cancel** or `Cmd+S`). Two settings control this:
 
 | Setting | Default | What it does |
 | ------- | ------- | ------------ |
@@ -694,7 +694,7 @@ from its default shows a dim **reset** button.
 ![The settings page from `cmdabl config`: groups cmdAbl, Setup, MIDI mapping, MIDI monitor and Tags with their switches and numbers; the footer shows the help line for the Help line row, with Apply (disabled) and Cancel](assets/images/settings-page.png)
 
 The footer has **Apply** (the same as `Enter`; it shows how many changes it will save) and **Cancel** (the same as
-`Esc`). If you changed something, `Esc` asks "Discard N changes?" first. After you save, cmdAbl says how many
+`Esc`). If you changed something, `Esc` asks "Discard N changes?" in the footer, with **Keep editing** and **Discard**; `Esc` again keeps editing. After you save, cmdAbl says how many
 settings it saved.
 
 Some rows open another page instead of holding a value. **Default commands…** opens the [default
