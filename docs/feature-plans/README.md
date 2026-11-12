@@ -47,7 +47,7 @@ which order.
 | [0006](0006-completion-engine.md) | Completion engine | 0.1.4 (steps 1–2) | Argument completion at every position, completers for modules, the palette switch Off · Hints · Options; the silent-tag row (0.1.5). Open: paths level by level (step 3), ghost text for the best word (step 4), the server variant. |
 | [0017](0017-scripts-and-triggers.md) | Scripts and triggers | 0.1.5 (`;` chains) | Several commands in one line, one undo step per part; `|` reserved. Open: script files (`run`), clip and scene triggers. |
 | [0018](0018-midi-mapping.md) | MIDI mapping | 0.1.5 (trigger mode) | `map`, `map learn`, `midi monitor`, operators `press`/`release`/`hold`/`toggle`, live pages, Cmd+M warnings. Open: value mode, bindings that open a page, the matrix. |
-| [0019](0019-settings-and-help.md) | Settings and help | 0.1.6 (phases 1–3) | `cmdabl config`, `<command> config`, declared settings, default commands and the defaults page, the help line, the palette footer. Open: one keyboard model (`listnav.js`), note timestamps with 0013, shortcuts (`Cmd+,`). |
+| [0019](0019-settings-and-help.md) | Settings and help | 0.1.6, 0.1.7 | `cmdabl config`, `<command> config`, declared settings, default commands and the defaults page, the help line, the palette footer; `listnav.js` (0.1.7). Open: shortcuts (`Cmd+,`). |
 | [0021](0021-installation-and-setup-page.md) | Setup page | 0.1.6 | `cmdabl setup` status rows, Copy/Update, `setup.autoScript`, Karabiner import link, Open Karabiner, Restart Live (macOS). |
 | [0023](0023-codebase-layout.md) | Codebase layout | 0.1.6 | `src/core/` in area folders, `modules/shared/`. |
 | [0026](0026-loop.md) | `loop` | 0.1.7 | `loop`, `loop here [bars]`, `loop on/off`, `loop back`; used by the note page. |
