@@ -17,13 +17,15 @@ live page through the normal command path. This plan makes that one engine, reac
 1. **Any time while its command runs** (Q1 b): a module may run lines after its own page or list closes,
    and also to combine other commands. Not kept for later: once the calling command has returned, the call
    is refused.
-2. **The allowlist is declared on the command node** (Q2 b), e.g. `runs: ["find", "tag -e", "mute", "solo"]`:
+2. **The allowlist is declared on the command node** (Q2 b), e.g. `runs: ["find", "tag", "mute", "solo"]`:
    readable in `man` and in review, checked at activation. A call (or a page's `run` list) can only narrow
    it, never widen it. Entries are command paths, matched against the **parsed** command path after aliases
-   are resolved, never the first typed word (reviewer).
+   are resolved, never the first typed word (reviewer). An entry with an option (`tag -e`) is not a path: core
+   warns and drops it at activation.
 3. **Other modules' commands are allowed** if they are on the list (Q3). Options and arguments are free for
    now; finer entries (an option or argument limit, e.g. `tag -e` yes, `tag -r` no) come when a case needs
-   them (user: "may become a problem later").
+   them (user: "may become a problem later"). Known today: with `tag` on its list, `tag -l` could reach
+   `tag -r` or `tag --set 0`; accepted, because `tag.listEnter` offers only four fixed presets.
 4. **Never runnable by another module:** commands that act outside the Live Set, such as `pakabl install` and
    `remove` and `cmdabl setup`, are marked on their node, and core refuses them in any allowlist (Q5; user:
    "I don't want to allow pakabl to install by itself").
