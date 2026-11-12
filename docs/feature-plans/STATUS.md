@@ -47,12 +47,13 @@ All releases were tested in Live, including the installed `.ablx`.
     at bar 1 → exit 3, `note stamp next` to a stamp behind the song end → exit 1 with Live's text (correct).
     ui `bbcfd35` (note page ↑/↓ + Enter jumps), `b4e4ec3` (pick list cursor/disabled); docs `6f4bcb0`.
     Live-tested (demo Set): note page ↑/↓ + Enter jumps to @36.4.4; `note stamp prev/next` 36.4.4 ↔ 12.1.1;
-    next to @244 (behind the song end) → exit 1 "… is behind the end of the song (it ends at 59.1.1)" (`52ece36`); `note stamp list` cursor on the next stamp,
+    next to @244 (behind the song end) → exit 1 with the "too far" message (0027); `note stamp list` cursor on the next stamp,
     date-only row dimmed. Small: the view's help line shows only "↑↓ stamps · Enter jump" (e/s/Esc gone).
     Left: the PR (asked). Small, later: `beatsToPosition` epsilon for float lengths (7/8); the `prev` exit-3
     text counts stamps after the playhead.
-  - **Song end (2026-11-12):** `jump`, `note stamp next/prev/list` and `loop` say "N is behind the end of the song
-    (it ends at M)" (exit 1, no write) instead of Live's RuntimeError; list rows disabled; next/prev skip them (0027).
+  - **Song end (2026-11-12):** `jump`, `note stamp next/prev/list` and `loop` say "<pos> is too far: Live lets
+    the playhead go only up to <X> here (…)" (0027); Live's song length = max(last content + 8 bars, loop end,
+    playhead + 8 bars).
   - **User findings 2026-11-12 (decided):** monitor status/auto-extend + "all ins" spike (0018); `jump.step`
     (0027); `script` module, global first, after 0.1.8 (0017 phase 1); docs: a Karabiner section with the
     user's screenshot (configurable key, advanced), admonitions used sparingly, no ¶ permalink
