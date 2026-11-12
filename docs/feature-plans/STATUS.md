@@ -141,6 +141,7 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   `cmdabl setup`, so the two can disagree (2026-11-12). Core: derive the line from the same fact.
 
 - `src/core/settings/settings.ts:53` still names `tag.foldAfter` in a comment (gone since 0.1.8; core).
+- Note page in edit mode: no key drops the edit. Tab types a tab, and Esc goes to view (a second Esc saves), so Cancel is only reachable by mouse (2026-11-13, docs shot). Idea: a key for Cancel (ui).
 - `jump`'s log line prints raw floats on triplet steps (`0.6666666666666666 beats`); round for display (modules).
 - `beatsToPosition` could floor a float remainder a sixteenth low (7/8); add an epsilon (0027).
 - `note stamp prev` exit-3 text counts stamps after the playhead.
