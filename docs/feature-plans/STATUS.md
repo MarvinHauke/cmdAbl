@@ -5,7 +5,7 @@ known issues. Maintained by the architect. The order of the next features and ho
 each other is in the [plan index](README.md#next-in-dependency-order); design decisions live in the
 numbered plans. Finished work is in the git history, not here.
 
-_Last updated: 2026-11-12 (0.1.8 tag editor in work on `feat/0.1.8-tag-editor`)._
+_Last updated: 2026-11-12 (0.1.8: tag list and tag editor tested in Live)._
 
 ## Released
 
@@ -27,16 +27,18 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and `gitleaks`).
 - **pakabl:** a review of the 25 candidates is in work (table for the user); stars in `pakabl list` go with
   0.1.8 ([0003](0003-pakabl-extension-system.md)).
-- **In work: 0.1.8 = the tag list and tag editor** ([0010](0010-tag-editing.md) tag-0, "Build"), branch
-  `feat/0.1.8-tag-editor`. The editor is a module page (`ui/modules/tag/editor.html`); the `board` surface
-  is removed (user, 2026-11-12). Running: cmdabl-core (gear on module pages, board removal), cmdabl-ui (the
-  page), cmdabl-modules (`tag -l` list, `tag -e`, settings). Also in 0.1.8 after that: `jump.step`, the MIDI
-  monitor status, pakabl stars.
-  Note: commit `2237c41` (a 0010 docs commit by the architect) also carries cmdabl-modules' staged tag work
-  (the `tag -l` list, `tag -e` editor wiring, placeholder page). Its `{...ok(), run} as CommandResult` at
-  `src/modules/tag/command.ts:89` must be replaced by `api.commands.run` before release (design with the user). Likewise `9685199`
-  (modules) carries core's board deletions; the branch builds again once core commits the rest of the removal.
-  Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
+- **In work: 0.1.8** on `feat/0.1.8-tag-editor`:
+  - **Done and tested in Live (2026-11-12):** the tag list (`tag -l`, Enter runs `tag.listEnter` as an inner run)
+    and the tag editor (module page, list and grid view, Apply); the `board` surface is removed; inner runs
+    ([0028](0028-inner-runs.md), `api.commands.run`, one engine with page runs; AsyncLocalStorage works in
+    Live's host); the gear on module pages; `cmdabl setup` sees a Karabiner rule imported under a timestamp
+    name and a disabled rule (`enabled: false`).
+  - **Open for 0.1.8:** `jump.step`, the MIDI monitor status and auto-extend, pakabl stars; the docs
+    ("tag board" → tag list and tag editor, `runs` in the authoring guide is done); the user's hand checks
+    (gear in the editor, mouse, Cmd+Z after Apply, the grid after the fix).
+  - Commits `2237c41` and `9685199` each carry another agent's staged work (shared index); since then the
+    rule is `git commit -- <paths>` (CLAUDE.md).
+  - Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
 - **Decided, not built (2026-11-12):** MIDI monitor shows its status and extends its window by itself, plus
   an "all ins" spike (0018); `jump.step` from Live's global quantization (0027); the note page's help line
   keeps e/s/Esc when stamps exist; disabled stamp rows say why (partly done).
@@ -58,6 +60,9 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   whole and the reviewer checks the facts (`docs/guides/release-cmdabl.md`).
 
 ## Small items
+
+- The startup line "keyboard trigger not configured" reads a stored setup flag, not the Karabiner check of
+  `cmdabl setup`, so the two can disagree (2026-11-12). Core: derive the line from the same fact.
 
 - `beatsToPosition` could floor a float remainder a sixteenth low (7/8); add an epsilon (0027).
 - `note stamp prev` exit-3 text counts stamps after the playhead.
