@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { spawnSync, spawn } from "node:child_process";
 import { childEnv } from "./childEnv.js";
 import { isSameDirectory } from "./samePath.js";
+import { KARABINER_RULE_DESCRIPTION } from "./setupFacts.js";
 
 /** What a setup step did: ok = it worked (or there was nothing to do), text = one line for the user. */
 export interface StepResult {
@@ -30,12 +31,15 @@ export function karabinerSourcePath(): string {
   return path.resolve(__dirname, "../karabiner/cmdabl.json");
 }
 
-export function isKarabinerSetupDone(): boolean {
+/** The rule file is in Karabiner's folder: our `cmdabl.json` link, or any .json that holds the rule (Karabiner's import saves it as `<timestamp>.json`). Read-only, through bash. */
+export function isKarabinerSetupDone(dir: string = KARABINER_MODS_DIR): boolean {
   try {
-    const target = path.join(KARABINER_MODS_DIR, KARABINER_SYMLINK_NAME);
-    const result = spawnSync("bash", ["-c", 'test -e "$CMDABL_TARGET"'], {
+    const target = path.join(dir, KARABINER_SYMLINK_NAME);
+    const script = 'test -e "$CMDABL_TARGET" || grep -lsF -- "$CMDABL_DESC" "$CMDABL_DIR"/*.json >/dev/null 2>&1';
+    const result = spawnSync("bash", ["-c", script], {
       stdio: "ignore",
-      env: childEnv({ CMDABL_TARGET: target }),
+      timeout: 2000,
+      env: childEnv({ CMDABL_TARGET: target, CMDABL_DIR: dir, CMDABL_DESC: KARABINER_RULE_DESCRIPTION }),
     });
     return result.status === 0;
   } catch {

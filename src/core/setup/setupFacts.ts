@@ -92,10 +92,13 @@ export async function gatherFacts(deps: FactsDeps): Promise<SetupFacts> {
   const installed = safe(deps.installed ?? (() => inspectInstalledScript()), { status: "unknown" } as InstalledScript);
   const time = safe(deps.scriptTime ?? (() => scriptTimeOf()), null);
   const triggerInstalled = safe(deps.triggerInstalled, false);
-  const ruleThere = safe(deps.triggerRuleThere, false);
+  const fileThere = safe(deps.triggerRuleThere, false);
+  // macOS: an enabled rule in karabiner.json wins whatever the imported asset file is called; the file check only tells "not added" from "added, not enabled".
+  const enabled = platform === "darwin" ? ruleEnabledIn(safe(deps.karabinerConfig, null)) : null;
+  const ruleThere = fileThere || enabled === true;
   return {
     platform,
-    trigger: { installed: triggerInstalled, ruleThere, enabled: platform === "darwin" && ruleThere ? ruleEnabledIn(safe(deps.karabinerConfig, null)) : null },
+    trigger: { installed: triggerInstalled, ruleThere, enabled: ruleThere ? enabled : null },
     script: {
       shipped: deps.shipped ?? SCRIPT_VERSION,
       installed,

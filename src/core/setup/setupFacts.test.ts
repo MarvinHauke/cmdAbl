@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { gatherFacts, KARABINER_RULE_DESCRIPTION, ruleEnabledIn, writableFolder } from "./setupFacts.js";
-import { runMacRemoteScriptSetup } from "./setup.js";
+import { isKarabinerSetupDone, runMacRemoteScriptSetup } from "./setup.js";
 import { isKarabinerImportUrl, KARABINER_SETTINGS_URL, openUrl } from "./openUrl.js";
 import { sectionsSize, sectionsText, usesStatusLayout } from "../surfaces/notifySize.js";
 import { karabinerImportUrl } from "./setupRows.js";
@@ -106,4 +106,26 @@ test("sectionsSize: the setup page's boxes add up (4 rows in 3 sections plus the
   assert.equal(usesStatusLayout([{ heading: "h", items: ["a"] }], true), true);
   assert.equal(usesStatusLayout(setup, false), true);
   assert.match(sectionsText([{ heading: "h", items: [{ text: "row", status: "ok", action: { label: "Go", command: "c" } }, "plain"] }]), /row {2}\[Go\]/);
+});
+
+test("gatherFacts (macOS): a rule enabled in karabiner.json counts as added whatever the asset file is called", async () => {
+  const base = { platform: "darwin" as const, port: 27184, controlSurfaceUrl: "u", triggerInstalled: () => true, hostStart: 1000, dataFolder: "/x", writable: () => true, installed: () => ({ status: "current" as const, version: "1" }), scriptTime: () => null };
+  const withRule = JSON.stringify({ profiles: [{ selected: true, complex_modifications: { rules: [{ description: KARABINER_RULE_DESCRIPTION }] } }] });
+  const none = JSON.stringify({ profiles: [{ selected: true, complex_modifications: { rules: [] } }] });
+  const enabled = await gatherFacts({ ...base, triggerRuleThere: () => false, karabinerConfig: () => withRule });
+  assert.deepEqual([enabled.trigger.ruleThere, enabled.trigger.enabled], [true, true]);
+  const added = await gatherFacts({ ...base, triggerRuleThere: () => true, karabinerConfig: () => none });
+  assert.deepEqual([added.trigger.ruleThere, added.trigger.enabled], [true, false]);
+  const missing = await gatherFacts({ ...base, triggerRuleThere: () => false, karabinerConfig: () => none });
+  assert.deepEqual([missing.trigger.ruleThere, missing.trigger.enabled], [false, null]);
+});
+
+test("isKarabinerSetupDone finds the rule in a timestamp-named file", { skip: process.platform === "win32" }, () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cmdabl-k-"));
+  fs.writeFileSync(path.join(dir, "other.json"), "{}");
+  assert.equal(isKarabinerSetupDone(dir), false);
+  fs.writeFileSync(path.join(dir, "1794450424.json"), JSON.stringify({ rules: [{ description: KARABINER_RULE_DESCRIPTION }] }));
+  assert.equal(isKarabinerSetupDone(dir), true);
+  assert.equal(isKarabinerSetupDone(path.join(dir, "nothing")), false);
+  fs.rmSync(dir, { recursive: true });
 });
