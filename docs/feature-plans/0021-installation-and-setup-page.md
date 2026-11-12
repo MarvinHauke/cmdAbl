@@ -147,6 +147,10 @@ install still goes through the page's **Copy** button unless the setting is on.
   likes `:` through Karabiner; this only matters if something easier exists. Result goes here.
 - Whether `karabiner.json` can be read reliably to tell "imported" from "enabled".
 - Windows: the AutoHotkey row's texts and button, untested.
+- **cmdAbl's own version on the setup page** (user, 2026-11-13, for 0.1.9): today the page shows only the
+  Remote Script version. Add a row (or the header) with the installed cmdAbl version (the manifest's), so a
+  user sees which `.ablx` runs. Could also come from pakabl (`pakabl list` knows installed versions); decide
+  when it's built.
 - The docs (Getting started, README Install) get rewritten around the page by cmdabl-docs before the
   release.
 

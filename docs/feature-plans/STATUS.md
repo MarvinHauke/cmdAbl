@@ -88,6 +88,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     Live's default 1 Bar); `+4b` is the old meaning. Remote Script 0.1.16 (`transport` reports the quantization).
   - Small follow-ups: `jump`'s usage error lists `+2b`/`+3q` (modules); whether an argument may opt in to
     `-2b`-style values without `--` (`ArgDef.negative`, a parser question for the user; today `jump -- -2b`).
+  - Also for 0.1.9 (user, 2026-11-13): the setup page shows the installed cmdAbl version, not only the Remote
+    Script's ([0021](0021-installation-and-setup-page.md) open questions; maybe through pakabl).
   - Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
 - **Release test list 0.1.8 (the user, by hand; everything else is tested through MCP).** User, 2026-11-12: the
   checks so far passed (incl. today's tag editor, note Cancel, history, ⌘R); still to report: MIDI monitor knob
