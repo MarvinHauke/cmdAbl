@@ -5,7 +5,7 @@ known issues. Maintained by the architect. The order of the next features and ho
 each other is in the [plan index](README.md#next-in-dependency-order); design decisions live in the
 numbered plans. Finished work is in the git history, not here.
 
-_Last updated: 2026-11-12 (0.1.7 released; 0.1.8 = tag list rework next)._
+_Last updated: 2026-11-12 (0.1.8 tag editor in work on `feat/0.1.8-tag-editor`)._
 
 ## Released
 
@@ -27,11 +27,11 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and `gitleaks`).
 - **pakabl:** a review of the 25 candidates is in work (table for the user); stars in `pakabl list` go with
   0.1.8 ([0003](0003-pakabl-extension-system.md)).
-- **Next: 0.1.8 = the tag list and tag editor** ([0010](0010-tag-editing.md), tag-0), on `listnav.js` and
-  `api.pickRows`. Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1, global first).
-- **Docs PR after 0.1.7** (on `docs/after-0.1.7`): a Karabiner section with the user's screenshot
-  (configurable key, advanced), admonitions used sparingly, no ¶ permalink (`toc.permalink: false`), the
-  reference's option column without wrapping. Waits for the user's Karabiner screenshot.
+- **In work: 0.1.8 = the tag list and tag editor** ([0010](0010-tag-editing.md) tag-0, "Build"), branch
+  `feat/0.1.8-tag-editor`. The editor is a module page (`ui/modules/tag/editor.html`); the `board` surface
+  is removed (user, 2026-11-12). Running: cmdabl-core (gear on module pages, board removal), cmdabl-ui (the
+  page), cmdabl-modules (`tag -l` list, `tag -e`, settings). Also in 0.1.8 after that: `jump.step`, the MIDI
+  monitor status, pakabl stars. Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
 - **Decided, not built (2026-11-12):** MIDI monitor shows its status and extends its window by itself, plus
   an "all ins" spike (0018); `jump.step` from Live's global quantization (0027); the note page's help line
   keeps e/s/Esc when stamps exist; disabled stamp rows say why (partly done).

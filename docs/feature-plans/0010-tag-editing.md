@@ -6,8 +6,8 @@
 
 **Status:** Released in 0.1.2 (board, `tag -e`, `tag -r`); board editing released in 0.1.5 (2026-11-05,
 PR #27): rename and remove whole tags, click to assign, the file-tree keys. Open: the 0.1.6 settings
-and help pattern (gear button, `tag config`, footer help on hover; released in 0.1.6). Next: the tag list and
-tag editor (tag-0, below), after 0019 phase 4.
+and help pattern (gear button, `tag config`, footer help on hover; released in 0.1.6). In work for 0.1.8 (branch
+`feat/0.1.8-tag-editor`): the tag list and tag editor (tag-0, below; "Build" for the contract).
 
 ## Context
 
@@ -200,7 +200,7 @@ board as the keyboard path (decision 5).
 - **Rule:** when a second module needs the same kind of page, it becomes a core surface. Every
   page answers once when it closes, and edits follow collect → apply.
 
-## Tag list and tag editor (user finding tag-0, decided 2026-11-11; for 0.2.x)
+## Tag list and tag editor (user finding tag-0, decided 2026-11-11; 0.1.8)
 
 The board (`tag -l`) and the edit list (`tag -e`) did similar jobs. They become one **tag editor**
 (`tag -e`), and `tag -l` goes back to a simple **tag list**. Terms: [GLOSSARY.md](GLOSSARY.md).
@@ -209,7 +209,7 @@ The board (`tag -l`) and the edit list (`tag -e`) did similar jobs. They become 
 1. **`tag -e` opens the tag editor.** No `--board` name: one way in.
 2. **`tag -l` is the tag list:** a read-only pick list, one row per tag (`#drums · 3 · Kick, Snare, Hat`),
    untagged tracks as a last read-only row (Enter does nothing there). Enter on a tag row runs the
-   setting **`tag.listEnter`**, a command line with `{}` for the tag; default `find #{}` (so `next`/`prev`
+   setting **`tag.listEnter`**, a command line with `{}` for the tag; default `find #{}` (so `find next`/`find prev`
    step through the tracks), e.g. `tag -e {}` or `mute #{}`.
 3. **Two views of the tag editor**, sharing the same pending changes and one Apply; a header button (and a
    key that doesn't type into the filter, e.g. `Ctrl+G`) switches; the setting **`tag.editView`** picks
@@ -244,6 +244,27 @@ and every write can also be done in one line, so it works in `;` chains, `map` b
 cmdabl-modules (`tag -l` list, `tag -e` on the new page, the three settings), cmdabl-core only if the
 board surface contract changes (a decision for then: extend `board` or a new surface), cmdabl-docs (the
 Tags section, reference, images: "board" leaves the docs).
+
+### Build (0.1.8; architect 2026-11-12, surface decided by the user)
+
+- **A module page, not a core surface** (user, 2026-11-12): `ui/modules/tag/editor.html` through
+  `api.ui.dialog`, on `ui/listnav.js`. The `board` surface (`src/core/surfaces/board.ts`, `ui/board.html`,
+  `api.ui.board`, `BoardRequest/Answer`) is removed with its last user; it comes back as a core surface only
+  when a second module needs one (rule above).
+- **Gear on module pages** (cmdabl-core, a small `ModuleApi` addition): a module page opened with a gear flag
+  that answers `{"settings": true}` gets what the board gets today: core opens `<module> config` and runs
+  the line again. The exact shape (an options argument on `dialog`) is core's, reviewed.
+- **Page data** (`TAG_EDITOR`, owned by the tag module):
+  `{ view: "list"|"grid", filter: "compact"|"highlight", help, gear: true,
+     tracks: [{ id, name, group? }], tags: [{ name, tracks: [id] }], focus?: { tag? , track? } }`.
+  Tracks in Set order; `group` is the parent group's name for display.
+- **Answer:** `""` / null = closed, nothing written; `{"settings": true}`; or
+  `{"apply": { "rename": [{from, to}], "remove": [tag], "set": [{tag, track, on}] } }`.
+  Order: renames (an existing name merges), then removes, then `set` with the tags' **final** names. The
+  module validates every name and id against the request and writes with `planTags`/`tags_set`, one write
+  per track (open question below); the result lists the changes and `undo:` lines as today.
+- Sizes: the page fits Live's dialog limits; the grid scrolls both ways with the tag header and the
+  track column sticky.
 
 ## Open questions
 
