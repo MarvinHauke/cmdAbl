@@ -39,8 +39,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   - Commits `2237c41` and `9685199` each carry another agent's staged work (shared index); since then the
     rule is `git commit -- <paths>` (CLAUDE.md).
   - **`jump.step` Live test (script 0.1.16 installed, 2026-11-12):** passed at "1 Bar": `+1`, `+2`, `+3q`,
-    `-- -2b` (counts from the current step's start), `-3q` exit 2, `-40` clamps. Still to run: launch quantization
-    1/4, 1/4T and None in Live's toolbar (the user switches it), `jump config` with 1/2.
+    `-- -2b` (counts from the current step's start), `-3q` exit 2, `-40` clamps; at "1/4": `+1` 0→1, `+2` 1→3,
+    `+1b` 3→4, `-1` 4→3 beats. Still to run: 1/4T and None (the user switches it), `jump config` with 1/2.
   - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
   - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
     Live's default 1 Bar); `+4b` is the old meaning. Remote Script 0.1.16 (`transport` reports the quantization).
@@ -66,6 +66,17 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   short list of the core features to try by hand (`CLAUDE.md`, "Agent team").
 - Docs: every change brings its docs; before each release, cmdabl-docs reads the touched pages as a
   whole and the reviewer checks the facts (`docs/guides/release-cmdabl.md`).
+
+## Test tooling
+
+- **AbletonMCP fork** (user, 2026-11-12): `MarvinHauke/ableton-mcp` (fork of `ahujasid/ableton-mcp`, whose
+  main is the installed script 1.7.1), cloned to `~/Development/python/ableton-mcp`, branch `cmdabl-testing`,
+  nothing built yet. Use it when a test needs Live state that no tool can set (first case: launch
+  quantization for `jump.step`). Idea: one `set_song_property(name, value)` with a fixed allow-list
+  (`clip_trigger_quantization`, signature, loop, metronome) plus a read-back; script command and server tool
+  together. To use it: Claude Code's `AbletonMCP` entry runs the checkout (`uv run --directory …`) instead of
+  `uvx ableton-mcp`, the fork's script goes into `Remote Scripts/AbletonMCP`, and Live is restarted (user).
+  Builder: cmdabl-bridge, with only that repo's files. Not part of cmdAbl's plans or contracts.
 
 ## Small items
 
