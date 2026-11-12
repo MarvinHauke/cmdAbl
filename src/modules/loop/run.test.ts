@@ -129,3 +129,11 @@ test("loop back without the Remote Script is exit 5 and keeps the remembered loo
   assert.equal((await s.run("back"))!.code, ExitCode.OK);
   assert.deepEqual(s.fake.transport!.loop, PLAYING.loop);
 });
+
+test("Live's 'behind the Songlength' refusal becomes a sentence", async () => {
+  const s = setup();
+  s.fake.setLoopFails = { code: 1, text: "Live refused the loop: RuntimeError: behind the Songlength" };
+  const r = (await s.run("here"))!;
+  assert.equal(r.code, ExitCode.FAILURE);
+  assert.equal(r.message, "loop here: that is behind the end of the song");
+});

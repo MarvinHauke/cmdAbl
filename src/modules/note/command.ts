@@ -1,7 +1,7 @@
 import type { LiveRoutes, ModuleApi } from "../types.js";
 import { fillTemplate } from "../../core/surfaces/inlineJson.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
-import { barLength, parsePos, positionToBeats, type BarPosition } from "../shared/position.js";
+import { barLength, behindSongEnd, friendlyRefusal, parsePos, positionToBeats, type BarPosition } from "../shared/position.js";
 import { formatPos, listCursor, nextStamp, parseStamps, prevStamp, type ParsedStamp } from "./stamps.js";
 import { buildStamp, parseAnswer, type PageThen, type StampInfo } from "./stamp.js";
 
@@ -231,12 +231,17 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
   }
 
   /** Jump to a stamp's position with the Set's signature. */
-  async function jumpTo(what: string, position: BarPosition, t: { sigNum: number; sigDen: number }): Promise<CommandResult> {
+  async function jumpTo(what: string, position: BarPosition, t: { sigNum: number; sigDen: number; songLength: number }): Promise<CommandResult> {
     const sig = { num: t.sigNum, den: t.sigDen };
     const beats = barLength(sig) === null ? null : positionToBeats(position, sig);
     if (beats === null) return fail(ExitCode.UNAVAILABLE, `note stamp ${what}: bar positions need the time signature: update the Remote Script`);
+    const behind = behindSongEnd(beats, t.songLength, sig);
+    if (behind !== null) return fail(ExitCode.FAILURE, `note stamp ${what}: ${behind}`);
     const moved = await api.set.jump(beats);
-    if (!moved.ok) return fail(moved.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `note stamp ${what}: ${moved.text}`);
+    if (!moved.ok) {
+      if (friendlyRefusal(moved.text) !== moved.text) api.logger.debug(`note stamp ${what}: ${moved.text}`);
+      return fail(moved.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `note stamp ${what}: ${friendlyRefusal(moved.text)}`);
+    }
     if (moved.note) api.logger.debug(`note stamp ${what}: ${moved.note}`);
     return { ...ok(), log: [`note stamp ${what}: jumped to ${formatPos(position)}`] };
   }
@@ -249,11 +254,29 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
     const from = parsePos(t.pos);
     if (from === null) return fail(ExitCode.FAILURE, `note stamp ${dir}: no song position from Live`);
     const wrap = (await api.settings.get<boolean>("stampWrap")) === true;
-    const found = (dir === "next" ? nextStamp : prevStamp)(read.stamps, from, wrap);
+    // Stamps behind the end of the song cannot be jumped to: leave them out so wrapping still works.
+    const sig = { num: t.sigNum, den: t.sigDen };
+    const reachable = read.stamps.filter((s) => {
+      const beats = s.position === null ? null : positionToBeats(s.position, sig);
+      return beats === null || behindSongEnd(beats, t.songLength, sig) === null;
+    });
+    const found = (dir === "next" ? nextStamp : prevStamp)(reachable, from, wrap);
     if (found === null || found.position === null) {
-      return fail(ExitCode.NOT_FOUND, `note stamp ${dir}: no stamp ${dir === "next" ? "after" : "before"} bar ${from.bar}`);
+      const hidden = read.stamps.length - reachable.length;
+      const why = hidden > 0 ? ` (${hidden} behind the end of the song)` : "";
+      return fail(ExitCode.NOT_FOUND, `note stamp ${dir}: no stamp ${dir === "next" ? "after" : "before"} bar ${from.bar}${why}`);
     }
     return jumpTo(dir, found.position, t);
+  }
+
+  /** A list row's detail and disabled flag: no position, or a position behind the end of the song, cannot be chosen. */
+  function rowState(s: ParsedStamp, t: { sigNum: number; sigDen: number; songLength: number }): { detail?: string; disabled?: true } {
+    if (s.position === null) return { detail: "no song position", disabled: true };
+    const beats = positionToBeats(s.position, { num: t.sigNum, den: t.sigDen });
+    if (beats !== null && behindSongEnd(beats, t.songLength, { num: t.sigNum, den: t.sigDen }) !== null) {
+      return { detail: "behind the end of the song", disabled: true };
+    }
+    return s.preview ? { detail: s.preview } : {};
   }
 
   async function stampList(): Promise<CommandResult> {
@@ -265,8 +288,7 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
     if (!stamps.some((s) => s.position !== null)) return fail(ExitCode.NOT_FOUND, "note stamp list: no stamp has a song position");
     const rows = stamps.map((s) => ({
       label: s.heading.replace(/^###\s+/, ""),
-      ...(s.preview ? { detail: s.preview } : {}),
-      ...(s.position === null ? { disabled: true } : {}),
+      ...rowState(s, t),
     }));
     const index = await api.pickRows("Stamps", rows, { cursor: listCursor(stamps, parsePos(t.pos)) });
     if (index === null) return ok();

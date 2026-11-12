@@ -1,5 +1,6 @@
 import type { ModuleApi } from "../types.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
+import { friendlyRefusal } from "../shared/position.js";
 import { describeLoop, loopHere, MAX_BARS, MIN_BARS, parseBars, sameLoop, shouldRestoreLoop, type LoopState } from "./logic.js";
 
 const NO_SCRIPT = "the Remote Script did not answer (is it running, and up to date?)";
@@ -17,8 +18,11 @@ export function activate(api: ModuleApi): void {
   const unavailable = (what: string): CommandResult => fail(ExitCode.UNAVAILABLE, `loop ${what}: ${NO_SCRIPT}`);
 
   /** A setLoop failure: its own code (1 Live refused, 5 no script) and text. */
-  const failed = (what: string, r: { code: 1 | 5; text: string }): CommandResult =>
-    fail(r.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `loop ${what}: ${r.text}`);
+  const failed = (what: string, r: { code: 1 | 5; text: string }): CommandResult => {
+    const text = friendlyRefusal(r.text);
+    if (text !== r.text) api.logger.debug(`loop ${what}: ${r.text}`);
+    return fail(r.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `loop ${what}: ${text}`);
+  };
 
   api.commands.add({
     name: "loop",

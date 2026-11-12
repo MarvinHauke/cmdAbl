@@ -44,3 +44,37 @@ export function parsePos(text: string): BarPosition | null {
 export function comparePos(a: BarPosition, b: BarPosition): number {
   return a.bar - b.bar || a.beat - b.beat || a.six - b.six;
 }
+
+/** Beats → "bar.beat.sixteenth" in the signature (the inverse of positionToBeats); null when the signature is unknown. */
+export function beatsToPosition(beats: number, sig: Signature): BarPosition | null {
+  const len = barLength(sig);
+  if (len === null) return null;
+  const bar = Math.floor(beats / len);
+  const beatLen = 4 / sig.den;
+  const rem = beats - bar * len;
+  const beat = Math.floor(rem / beatLen);
+  const six = Math.floor((rem - beat * beatLen) / 0.25);
+  return { bar: bar + 1, beat: beat + 1, six: six + 1 };
+}
+
+const fmt = (p: BarPosition): string => `${p.bar}.${p.beat}.${p.six}`;
+
+/**
+ * The sentence for a target time behind the end of the song, or null when it is not (or the length is unknown):
+ * "244.3.4 is behind the end of the song (it ends at 58.3.3)". Live would refuse such a jump with a raw RuntimeError.
+ */
+export function behindSongEnd(time: number, songLength: number, sig: Signature): string | null {
+  if (!(songLength > 0) || time <= songLength) return null;
+  const at = beatsToPosition(time, sig);
+  const end = beatsToPosition(songLength, sig);
+  if (at === null || end === null) return "that is behind the end of the song";
+  return `${fmt(at)} is behind the end of the song (it ends at ${fmt(end)})`;
+}
+
+/**
+ * Live's own refusal text → a sentence, when it is one of the two known "behind the Songlength" refusals
+ * (loop and jump); anything else comes back unchanged. The raw text belongs in the log only.
+ */
+export function friendlyRefusal(text: string): string {
+  return /behind the song\s?length/i.test(text) ? "that is behind the end of the song" : text;
+}

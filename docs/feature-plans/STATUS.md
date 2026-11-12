@@ -50,6 +50,8 @@ All releases were tested in Live, including the installed `.ablx`.
     next to @244 (behind the song end) → exit 1 with Live's text; `note stamp list` cursor on the next stamp,
     date-only row dimmed. Small: the view's help line shows only "↑↓ stamps · Enter jump" (e/s/Esc gone).
     Left: the PR (asked).
+  - **Song end (2026-11-12):** `jump`, `note stamp next/prev/list` and `loop` say "N is behind the end of the song
+    (it ends at M)" (exit 1, no write) instead of Live's RuntimeError; list rows disabled; next/prev skip them (0027).
   - **User findings 2026-11-12 (decided):** monitor status/auto-extend + "all ins" spike (0018); `jump.step`
     (0027); `script` module, global first, after 0.1.8 (0017 phase 1); docs: a Karabiner section with the
     user's screenshot (configurable key, advanced), admonitions used sparingly, no ¶ permalink

@@ -1,5 +1,6 @@
 import type { ModuleApi } from "../types.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
+import { behindSongEnd, friendlyRefusal } from "../shared/position.js";
 import { parseTarget, resolveTarget } from "./logic.js";
 
 const NO_SCRIPT = "the Remote Script did not answer (is it running, and up to date?)";
@@ -34,8 +35,13 @@ export function activate(api: ModuleApi): void {
       if (t === null) return fail(ExitCode.UNAVAILABLE, `jump: ${NO_SCRIPT}`);
       const r = resolveTarget(target, { num: t.sigNum, den: t.sigDen, barStart: t.barStart, barLen: t.barLen, songLength: t.songLength });
       if (!r.ok) return fail(r.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.USAGE, `jump: ${r.text}`);
+      const behind = behindSongEnd(r.time, t.songLength, { num: t.sigNum, den: t.sigDen });
+      if (behind !== null) return fail(ExitCode.FAILURE, `jump: ${behind}`);
       const moved = await api.set.jump(r.time);
-      if (!moved.ok) return fail(moved.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `jump: ${moved.text}`);
+      if (!moved.ok) {
+        if (friendlyRefusal(moved.text) !== moved.text) api.logger.debug(`jump: ${moved.text}`);
+        return fail(moved.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `jump: ${friendlyRefusal(moved.text)}`);
+      }
       if (moved.note) api.logger.debug(`jump: ${moved.note}`);
       return { ...ok(), log: [`jump: to ${r.text} (${r.time} beats)`] };
     },

@@ -357,6 +357,23 @@ test("stamp list: rows with the date-only one disabled, the cursor on the next s
   assert.deepEqual(s.fake.jumps, [46]);
 });
 
+test("stamps behind the song end: next says why, list marks them disabled", async () => {
+  const short = { transport: AT_BAR("5.1.1.1", { songLength: 40 }) as never };
+  const s = readSetup("5.1.1.1", {}, short);
+  const r = (await s.go("next"))!; // 12.3.1 (beat 46) and 20.2.3 are behind 40: not reachable
+  assert.equal(r.code, ExitCode.NOT_FOUND);
+  assert.match(r.message ?? "", /no stamp after bar 5 \(2 behind the end of the song\)/);
+  assert.deepEqual(s.fake.jumps, []);
+  const wrap = readSetup("5.1.1.1", { "note.stampWrap": true }, short);
+  assert.equal((await wrap.go("next"))!.code, ExitCode.OK);
+  assert.deepEqual(wrap.fake.jumps, [12]); // wraps to the first reachable stamp, 4.1.1
+  const l = readSetup("5.1.1.1", {}, short);
+  await l.go("list");
+  const rows = l.fake.rowLists[0]!.rows;
+  assert.deepEqual(rows.map((x) => x.detail), ["kick too loud", "no song position", "behind the end of the song", "behind the end of the song"]);
+  assert.deepEqual(rows.map((x) => !!x.disabled), [false, true, true, true]);
+});
+
 test("stamp list cancelled or on a disabled row jumps nowhere", async () => {
   const s = readSetup("5.1.1.1");
   assert.equal((await s.go("list"))!.code, ExitCode.OK);

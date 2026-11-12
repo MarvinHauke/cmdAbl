@@ -39,6 +39,17 @@ test("bad input is exit 2, no script 5, Live's refusal 1; nothing jumps", async 
   assert.match(r.message ?? "", /Live refused/);
 });
 
+test("a position behind the song end is a sentence, nothing jumps; Live's raw text goes only to the log", async () => {
+  const s = setup();
+  const r = (await s.run("244.3.4"))!;
+  assert.equal(r.code, ExitCode.FAILURE);
+  assert.equal(r.message, "jump: 244.3.4 is behind the end of the song (it ends at 17.1.1)");
+  assert.deepEqual(s.fake.jumps, []);
+  s.fake.jumpFails = { code: 1, text: "Live refused the jump: RuntimeError: Cannot set the Songtime behind the Songlength" };
+  const f = (await s.run("3"))!;
+  assert.equal(f.message, "jump: that is behind the end of the song");
+});
+
 test("the tree is valid and documented; the line parses", () => {
   const roots = declaredBy(activate);
   assert.deepEqual(validateTree(roots as never), []);
