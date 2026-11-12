@@ -190,6 +190,13 @@ export interface SettingsPort {
    * Never throws.
    */
   get<T = unknown>(name: string): Promise<T>;
+  /**
+   * Whether the gear of a module page works in the run that is going now (plan 0010 "Build"): true while a palette line of
+   * a command with declared settings runs, false in map bindings, page runs, `;` chains
+   * and headless runs. A page that draws a gear (`gear: true` on `dialog` / `livePage`) hides it when this is false.
+   * Never throws.
+   */
+  gearAvailable(): boolean;
 }
 
 export interface LiveSetPort {

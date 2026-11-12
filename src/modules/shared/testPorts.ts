@@ -22,6 +22,8 @@ export interface FakeApiOptions {
   bridge?: FakeBridgeOptions;
   /** What the dialog answers (the string a page returns on close); null or empty = dismissed. */
   dialogAnswer?: string | null;
+  /** What `api.settings.gearAvailable()` answers (default false). */
+  gearAvailable?: boolean;
   /** What `api.pick` answers (default: cancelled). Registered `onPick` listeners are notified like the platform does. */
   pickAnswer?: (candidates: ObjectNode[], multi: boolean) => ObjectNode[] | null;
   /** What `api.ui.board` answers (default: closed). The request is recorded in `fake.boards`. */
@@ -229,6 +231,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       },
     },
     settings: {
+      gearAvailable: () => options.gearAvailable ?? false,
       declare: (group) => void fake.settingGroups.push(group),
       get: (async (name: string) => {
         const key = name.includes(".") ? name : `${fake.commands[0]?.name ?? "module"}.${name}`;

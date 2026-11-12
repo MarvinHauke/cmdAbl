@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { buildSettingsRequest, capSettings, createSettingsFlow, isGearAnswer, takePageAnswer, parseSettingsAnswer, settingsSize, MAX_GROUPS, MAX_ROWS } from "./settingsSurface.js";
+import { buildSettingsRequest, capSettings, createSettingsFlow, isGearAnswer, takePageAnswer, withGearFlag, parseSettingsAnswer, settingsSize, MAX_GROUPS, MAX_ROWS } from "./settingsSurface.js";
 import { createSettingsRegistry, createSettingsStore, SETTINGS_FILE, type SettingDef } from "../settings/settings.js";
 import type { SettingsAnswer, SettingsRequest } from "./ui.js";
 import { ExitCode } from "../types.js";
@@ -245,4 +245,11 @@ test("takePageAnswer: the gear answer counts only where the page asked for it", 
   assert.equal(takePageAnswer("", true, onGear), null);
   assert.equal(takePageAnswer(null, true, onGear), null);
   assert.equal(gears, 1);
+});
+
+test("withGearFlag: the flag stays where the gear works and is dropped where it cannot", () => {
+  assert.deepEqual(withGearFlag({ gear: true, run: ["a"] }, true), { gear: true, run: ["a"] });
+  assert.deepEqual(withGearFlag({ gear: true, run: ["a"] }, false), { gear: false, run: ["a"] });
+  assert.equal(withGearFlag(undefined, false), undefined);
+  assert.deepEqual(withGearFlag({}, false), {});
 });

@@ -267,3 +267,9 @@ export function createSettingsFlow(deps: SettingsFlowDeps): SettingsFlow {
     },
   };
 }
+
+/** A module page's options with the gear flag dropped when the gear cannot work in this run (plan 0010 "Build"). */
+export function withGearFlag<T extends { gear?: boolean }>(options: T | undefined, available: boolean): T | undefined {
+  if (options?.gear !== true || available) return options;
+  return { ...options, gear: false };
+}

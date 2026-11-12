@@ -31,7 +31,7 @@ import { createDialogQueue } from "./core/surfaces/dialogQueue.js";
 import { createDefaultUi, type PickPreview, type StateChange, type Ui } from "./core/surfaces/ui.js";
 import { createModuleFiles } from "./core/settings/files.js";
 import { createSettingsRegistry, createSettingsStore } from "./core/settings/settings.js";
-import { createSettingsFlow } from "./core/surfaces/settingsSurface.js";
+import { createSettingsFlow, withGearFlag } from "./core/surfaces/settingsSurface.js";
 import { createDefaultsStore } from "./core/command/defaultCommands.js";
 import { attachConfigs } from "./core/command/configAttach.js";
 import { createDefaultsFlow } from "./core/surfaces/defaultsSurface.js";
@@ -193,8 +193,11 @@ export function activate(activation: ActivationContext) {
   let activeLine: string | undefined;
   /** A module page's gear (plan 0019) counts only for a command that has settings; otherwise the flag is dropped. */
   function withGear<T extends { gear?: boolean }>(options: T | undefined): T | undefined {
-    if (options?.gear !== true || activeGroup() !== undefined) return options;
-    return { ...options, gear: false };
+    return withGearFlag(options, gearAvailable());
+  }
+  /** Whether a gear works now: a palette line of a command with settings runs, and no headless run is going. */
+  function gearAvailable(): boolean {
+    return !gate.active() && activeGroup() !== undefined;
   }
   /** The settings group of the running command: its first word, when that module declared settings. Not for `;` chains. */
   function activeGroup(): string | undefined {
@@ -340,6 +343,7 @@ export function activate(activation: ActivationContext) {
     // Declared settings; a module sees its own namespace (replaced per module below).
     settings: {
       declare: () => void logger("settings").warn("a module declared settings before it was named; dropped"),
+      gearAvailable: () => gearAvailable(),
       get: async () => undefined as never,
     },
     ui: {
@@ -369,6 +373,7 @@ export function activate(activation: ActivationContext) {
     const tagged = () => logger(source);
     return Object.assign(Object.create(moduleApi) as ModuleApi, {
       settings: {
+        gearAvailable: () => gearAvailable(),
         declare: (group: Parameters<ModuleApi["settings"]["declare"]>[0]) => {
           if (!named) return void tagged().warn("settings: declare after the module has a name (Module.name or a first commands.add); dropped");
           settingsRegistry.declare(source, group); // problems are warnings, logged by the registry
