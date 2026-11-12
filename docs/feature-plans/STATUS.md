@@ -160,6 +160,7 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
 - A pad with one same-named device shows twice in `find` (collapse proposed, undecided).
 - Pick lists and `find -d` list devices inside chains (no filter yet).
 - Palette rows don't refresh chain names first; suggestions can lag a few seconds after a rack change.
+- `cmdabl_record` records only Live's main window: dialogs don't appear in the frames (2026-11-13, tags.gif dropped for 0.1.8). Needed for any docs gif of a page (plan 0016).
 - `cmdabl_keys`: another small Live window on top (a plug-in window, Settings) passes the "dialog in
   front" check (plan 0016 risks).
 - `man <command> <sub>` completes top-level names again (completion doesn't follow subcommands yet).
