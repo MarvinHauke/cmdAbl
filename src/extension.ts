@@ -17,7 +17,7 @@ import { registerBuiltins } from "./core/command/builtins.js";
 import { reportBridge } from "./core/host/bridgeStatus.js";
 import { getBridge } from "./ableton/bridge.js";
 import { getTagCache } from "./ableton/tagCache.js";
-import { jump, paramDisplay, setId, setLoop, transport } from "./ableton/bridgeOps.js";
+import { jump, paramDisplay, quantizationBeats, setId, setLoop, transport } from "./ableton/bridgeOps.js";
 import { findRacks, getChainNameCache } from "./ableton/chainNames.js";
 import { presentResult } from "./core/surfaces/present.js";
 import { runLine } from "./core/command/run.js";
@@ -341,7 +341,12 @@ export function activate(activation: ActivationContext) {
     // The Set's id lives in the Set, written and read by the Remote Script (operation set_id).
     set: {
       id: (create) => setId(getBridge(), create === true),
-      transport: () => transport(getBridge()),
+      transport: async () => {
+        const t = await transport(getBridge());
+        if (t === null) return null;
+        const { quantization, ...rest } = t;
+        return { ...rest, quantizationBeats: quantizationBeats(quantization, t.barLen) };
+      },
       setLoop: (loop) => setLoop(getBridge(), loop),
       jump: (time) => jump(getBridge(), time),
     },

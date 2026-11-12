@@ -147,6 +147,11 @@ export interface Transport {
   sigDen: number;
   /** The length of the Set (Song.song_length), in beats. */
   songLength: number;
+  /**
+   * Live's global clip launch quantization in beats (a bar counts `barLen`). null = unknown: an older
+   * script, Live did not say, or "None" (no grid; the module picks its own fallback).
+   */
+  quantizationBeats: number | null;
   loop: Loop;
 }
 

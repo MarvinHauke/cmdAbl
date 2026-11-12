@@ -89,7 +89,7 @@ test("fake api.midi.onEvent: listeners are kept in fake.eventListeners and can b
 });
 
 test("fake api: set.jump records the time, moves the fake transport and can fail", async () => {
-  const transport = { playing: true, session: false, pos: "1.1.1.1", time: 0, barStart: 0, barLen: 4, sigNum: 4, sigDen: 4, songLength: 100, loop: { on: false, start: 0, length: 16 } };
+  const transport = { playing: true, session: false, pos: "1.1.1.1", time: 0, barStart: 0, barLen: 4, sigNum: 4, sigDen: 4, songLength: 100, quantizationBeats: 4, loop: { on: false, start: 0, length: 16 } };
   const fake = createFakeApi({ transport });
   assert.deepEqual(await fake.api.set.jump(12), { ok: true, time: 12 });
   assert.equal(fake.transport?.time, 12);

@@ -101,8 +101,8 @@ export const PORT_MAPPING: readonly PortMapping[] = [
   {
     port: "set.transport",
     via: "script",
-    call: "operation `transport` (read: playing, session playback, position, bar start and length, song length, arrangement loop; beats)",
-    lom: ["Song.is_playing", "Song.current_song_time", "Song.loop", "Song.loop_start", "Song.loop_length", "Song.song_length", "Song.signature_numerator", "Song.signature_denominator", "Song.get_current_beats_song_time", "Track.playing_slot_index"],
+    call: "operation `transport` (read: playing, session playback, position, bar start and length, song length, launch quantization in beats, arrangement loop; beats)",
+    lom: ["Song.is_playing", "Song.current_song_time", "Song.loop", "Song.loop_start", "Song.loop_length", "Song.song_length", "Song.signature_numerator", "Song.signature_denominator", "Song.get_current_beats_song_time", "Song.clip_trigger_quantization", "Track.playing_slot_index"],
     note: "Null without the script or with an old one.",
   },
   {
