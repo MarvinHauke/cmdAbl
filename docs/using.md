@@ -331,6 +331,8 @@ same pending changes and one **Apply**. The setting **Tag editor view** (`tag.ed
   for the tag you stand on. A tick means the track carries the tag.
 - **Grid view.** The tracks are rows and the tags are columns. Each cell is a check box.
 
+![The tag editor in grid view: the tags bass, drums, fx and synth as columns, each with a pencil, a cross and its track count, and the tracks Kick to C-Corpus as rows with a check box in every cell. The cell of Lead under drums is ticked in orange, so the drums column shows +1 and the Apply button reads Apply (1)](assets/images/tag-grid.png)
+
 **Switch a tag on or off.** Move to a check box and press `Space`. A change you have not applied is orange: an orange
 tick is a tag that will be added, an orange `×` a tag that will be removed.
 
