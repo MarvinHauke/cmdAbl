@@ -47,7 +47,7 @@ What each row does:
 
 - **Keyboard trigger.** Without Karabiner-Elements, `:` does not open cmdAbl. If it is not installed, **Get
   Karabiner** opens its download page; install it and run `cmdabl setup` again. If it is installed, **Add rule**
-  opens Karabiner's own import dialog. Click **Import**, then **Enable**. The rule opens the palette with `:`
+  opens Karabiner's own import dialog. Click **Import**, then **Enable** (see [The `:` key with Karabiner](#the-key-with-karabiner)). The rule opens the palette with `:`
   (Shift+period, which types `:` on German (QWERTZ) keyboards) while Ableton Live is focused. If the row says the
   rule is added but not enabled, **Open Karabiner** opens Karabiner's settings; enable the rule under **Complex Modifications**.
 - **Remote Script.** **Copy** copies the companion Remote Script into Live's User Library, in
@@ -70,6 +70,31 @@ Two commands do the same as the buttons, in case you prefer to type:
 - `cmdabl setup karabiner` links cmdAbl's Karabiner rule into Karabiner-Elements without the import dialog. In
   Karabiner, open **Complex Modifications → Add predefined rule**, choose **cmdAbl** and click **Enable**.
 
+## The `:` key with Karabiner
+
+Karabiner-Elements turns the `:` key into "open cmdAbl", and only while Live is the front application. cmdAbl
+brings the rule with it. You add it once.
+
+1. In the setup page, click **Add rule** in the Keyboard trigger row. Karabiner's import window opens and asks to
+   import the rule. Click **Import**. Then find the group **cmdAbl** and click **Enable** next to "Open cmdAbl command palette with ':' when Ableton Live is focused".
+
+    ![Karabiner-Elements' import window, scrolled to the group cmdAbl, with one rule, Open cmdAbl command palette with ':' when Ableton Live is focused, and its Enable button](assets/images/karabiner-import.png)
+
+2. Check the result in Karabiner's settings under **Complex Modifications**. The rule is in the list and its switch is on.
+
+    ![Karabiner-Elements Settings, Complex Modifications: the first rule, Open cmdAbl command palette with ':' when Ableton Live is focused, is outlined and its switch is on; the other rules are covered](assets/images/karabiner-rules.png)
+
+3. Switch to Live and press `:`. The palette opens.
+
+If Karabiner asks for permissions the first time, allow them in macOS **System Settings → Privacy & Security**.
+
+!!! info "Advanced: use another key"
+    The key is part of the rule. In **Complex Modifications**, click **Edit** on the cmdAbl rule to see its JSON.
+    The key is in `from`: `"key_code": "period"` with `"mandatory": ["left_shift"]`, which is `:` on a German
+    keyboard. Change `key_code` and `mandatory` to the key you want. Leave `to` and `conditions` as they are.
+    The same rule is in the file `karabiner/cmdabl.json` of the
+    [repository](https://github.com/MarvinHauke/cmdAbl).
+
 ## 3. Turn on the Remote Script in Live
 
 After you copy the script, the setup page shows "Restart Live once to load Remote Script …". The copied script does not
@@ -78,6 +103,9 @@ appear in Live's Control Surface list until Live restarts. Do both steps:
 1. **Restart Live.** After the restart, cmdAbl appears in the Control Surface list.
 2. Open **Settings → Tempo & MIDI → MIDI**. Under **Control Surface**, choose **cmdAbl**. Leave Input and Output
    set to *None*. Choosing it starts the script; you do not need to restart Live again.
+
+!!! warning "Restart Live after a Remote Script update"
+    A new copy of the Remote Script is loaded only when Live starts. After an **Update**, restart Live once.
 
 When it works, `cmdabl setup` shows "cmdAbl answers in Live." with a ✓.
 

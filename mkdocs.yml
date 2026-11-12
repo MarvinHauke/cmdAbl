@@ -31,6 +31,7 @@ theme:
 
 extra_css:
   - stylesheets/cmdabl.css
+  - assets/tables.css
 
 # Pages that stay in the repository and are not part of the site: the SDK summary (not for a public
 # site), the plans, and the maintainer guides (releasing, CI and secrets, the pakabl index).
@@ -61,7 +62,7 @@ markdown_extensions:
   - tables
   - admonition
   - toc:
-      permalink: true
+      permalink: false
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
