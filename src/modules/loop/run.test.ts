@@ -135,5 +135,17 @@ test("Live's 'behind the Songlength' refusal becomes a sentence", async () => {
   s.fake.setLoopFails = { code: 1, text: "Live refused the loop: RuntimeError: behind the Songlength" };
   const r = (await s.run("here"))!;
   assert.equal(r.code, ExitCode.FAILURE);
-  assert.equal(r.message, "loop here: that is behind the end of the song");
+  assert.equal(r.message, "loop here: that is too far for Live (the last clip or automation + 8 bars, the loop's end, or the playhead + 8 bars)");
+});
+
+test("loop here: the refused loop start is named with the furthest position", async () => {
+  const s = setup();
+  s.fake.transport = { ...PLAYING, songLength: 20 } as never;
+  s.fake.setLoopFails = { code: 1, text: "Live refused the loop: RuntimeError: behind the Songlength" };
+  const r = (await s.run("here"))!;
+  assert.equal(r.code, ExitCode.FAILURE);
+  assert.equal(
+    r.message,
+    "loop here: loop start 12.1.1 is too far: Live allows positions only up to 6.1.1 here (the last clip or automation + 8 bars, the loop's end, or the playhead + 8 bars)",
+  );
 });

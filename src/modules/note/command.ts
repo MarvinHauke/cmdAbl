@@ -254,7 +254,7 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
     const from = parsePos(t.pos);
     if (from === null) return fail(ExitCode.FAILURE, `note stamp ${dir}: no song position from Live`);
     const wrap = (await api.settings.get<boolean>("stampWrap")) === true;
-    // Stamps behind the end of the song cannot be jumped to: leave them out so wrapping still works.
+    // Stamps too far for Live cannot be jumped to: leave them out so wrapping still works.
     const sig = { num: t.sigNum, den: t.sigDen };
     const reachable = read.stamps.filter((s) => {
       const beats = s.position === null ? null : positionToBeats(s.position, sig);
@@ -263,18 +263,18 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
     const found = (dir === "next" ? nextStamp : prevStamp)(reachable, from, wrap);
     if (found === null || found.position === null) {
       const hidden = read.stamps.length - reachable.length;
-      const why = hidden > 0 ? ` (${hidden} behind the end of the song)` : "";
+      const why = hidden > 0 ? ` (${hidden} too far for Live)` : "";
       return fail(ExitCode.NOT_FOUND, `note stamp ${dir}: no stamp ${dir === "next" ? "after" : "before"} bar ${from.bar}${why}`);
     }
     return jumpTo(dir, found.position, t);
   }
 
-  /** A list row's detail and disabled flag: no position, or a position behind the end of the song, cannot be chosen. */
+  /** A list row's detail and disabled flag: no position, or a position too far for Live, cannot be chosen. */
   function rowState(s: ParsedStamp, t: { sigNum: number; sigDen: number; songLength: number }): { detail?: string; disabled?: true } {
     if (s.position === null) return { detail: "no song position", disabled: true };
     const beats = positionToBeats(s.position, { num: t.sigNum, den: t.sigDen });
     if (beats !== null && behindSongEnd(beats, t.songLength, { num: t.sigNum, den: t.sigDen }) !== null) {
-      return { detail: "behind the end of the song", disabled: true };
+      return { detail: "too far for Live", disabled: true };
     }
     return s.preview ? { detail: s.preview } : {};
   }

@@ -1,6 +1,6 @@
 import type { ModuleApi } from "../types.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
-import { friendlyRefusal } from "../shared/position.js";
+import { behindSongEnd, friendlyRefusal } from "../shared/position.js";
 import { describeLoop, loopHere, MAX_BARS, MIN_BARS, parseBars, sameLoop, shouldRestoreLoop, type LoopState } from "./logic.js";
 
 const NO_SCRIPT = "the Remote Script did not answer (is it running, and up to date?)";
@@ -18,8 +18,8 @@ export function activate(api: ModuleApi): void {
   const unavailable = (what: string): CommandResult => fail(ExitCode.UNAVAILABLE, `loop ${what}: ${NO_SCRIPT}`);
 
   /** A setLoop failure: its own code (1 Live refused, 5 no script) and text. */
-  const failed = (what: string, r: { code: 1 | 5; text: string }): CommandResult => {
-    const text = friendlyRefusal(r.text);
+  const failed = (what: string, r: { code: 1 | 5; text: string }, exact?: string | null): CommandResult => {
+    const text = friendlyRefusal(r.text, exact);
     if (text !== r.text) api.logger.debug(`loop ${what}: ${r.text}`);
     return fail(r.code === 5 ? ExitCode.UNAVAILABLE : ExitCode.FAILURE, `loop ${what}: ${text}`);
   };
@@ -75,7 +75,7 @@ export function activate(api: ModuleApi): void {
           if (wanted === null) return fail(ExitCode.FAILURE, "loop here: no usable bar length from Live");
           const barNumber = Math.round(transport.barStart / transport.barLen) + 1;
           const result = await api.set.setLoop(wanted);
-          if (!result.ok) return failed("here", result);
+          if (!result.ok) return failed("here", result, behindSongEnd(wanted.start, transport.songLength, { num: transport.sigNum, den: transport.sigDen }, "loopStart"));
           const set = result.loop;
           // Still ours and untouched: keep the first old loop.
           if (ours === null || !sameLoop(transport.loop, ours.set)) ours = { old: transport.loop, set };

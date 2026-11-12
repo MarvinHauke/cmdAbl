@@ -59,22 +59,29 @@ export function beatsToPosition(beats: number, sig: Signature): BarPosition | nu
 
 const fmt = (p: BarPosition): string => `${p.bar}.${p.beat}.${p.six}`;
 
+/** What sets Live's song length (user, 2026-11-12; plan 0027): the largest of these three. */
+const LIMITS = "the last clip or automation + 8 bars, the loop's end, or the playhead + 8 bars";
+
 /**
- * The sentence for a target time behind the end of the song, or null when it is not (or the length is unknown):
- * "244.3.4 is behind the end of the song (it ends at 58.3.3)". Live would refuse such a jump with a raw RuntimeError.
+ * The sentence for a target time beyond Live's song length, or null when it is not (or the length is unknown):
+ * "244.3.4 is too far: Live lets the playhead go only up to 58.3.3 here (…)". Live would refuse such a jump with a
+ * raw RuntimeError. `loopStart` words it for a loop start: "loop start 244.3.4 is too far: Live allows positions
+ * only up to 58.3.3 here (…)".
  */
-export function behindSongEnd(time: number, songLength: number, sig: Signature): string | null {
+export function behindSongEnd(time: number, songLength: number, sig: Signature, kind: "playhead" | "loopStart" = "playhead"): string | null {
   if (!(songLength > 0) || time <= songLength) return null;
   const at = beatsToPosition(time, sig);
   const end = beatsToPosition(songLength, sig);
-  if (at === null || end === null) return "that is behind the end of the song";
-  return `${fmt(at)} is behind the end of the song (it ends at ${fmt(end)})`;
+  if (at === null || end === null) return `that is too far for Live (${LIMITS})`;
+  if (kind === "loopStart") return `loop start ${fmt(at)} is too far: Live allows positions only up to ${fmt(end)} here (${LIMITS})`;
+  return `${fmt(at)} is too far: Live lets the playhead go only up to ${fmt(end)} here (${LIMITS})`;
 }
 
 /**
  * Live's own refusal text → a sentence, when it is one of the two known "behind the Songlength" refusals
- * (loop and jump); anything else comes back unchanged. The raw text belongs in the log only.
+ * (loop and jump); anything else comes back unchanged. The raw text belongs in the log only. `sentence` is the
+ * exact one (from `behindSongEnd`) when the caller knows the position.
  */
-export function friendlyRefusal(text: string): string {
-  return /behind the song\s?length/i.test(text) ? "that is behind the end of the song" : text;
+export function friendlyRefusal(text: string, sentence?: string | null): string {
+  return /behind the song\s?length/i.test(text) ? (sentence ?? `that is too far for Live (${LIMITS})`) : text;
 }

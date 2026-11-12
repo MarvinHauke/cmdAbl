@@ -43,11 +43,11 @@ test("a position behind the song end is a sentence, nothing jumps; Live's raw te
   const s = setup();
   const r = (await s.run("244.3.4"))!;
   assert.equal(r.code, ExitCode.FAILURE);
-  assert.equal(r.message, "jump: 244.3.4 is behind the end of the song (it ends at 17.1.1)");
+  assert.equal(r.message, "jump: 244.3.4 is too far: Live lets the playhead go only up to 17.1.1 here (the last clip or automation + 8 bars, the loop's end, or the playhead + 8 bars)");
   assert.deepEqual(s.fake.jumps, []);
   s.fake.jumpFails = { code: 1, text: "Live refused the jump: RuntimeError: Cannot set the Songtime behind the Songlength" };
   const f = (await s.run("3"))!;
-  assert.equal(f.message, "jump: that is behind the end of the song");
+  assert.equal(f.message, "jump: that is too far for Live (the last clip or automation + 8 bars, the loop's end, or the playhead + 8 bars)");
 });
 
 test("the tree is valid and documented; the line parses", () => {
