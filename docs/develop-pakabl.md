@@ -50,3 +50,10 @@ Publish a new release with the new `.ablx`, or commit it. The crawl runs daily a
 approved repository. After the refreshed list is merged, users get the new version with `pakabl update`; the
 **Update** button in `pakabl list` appears when the list holds a newer version than the installed one. GitHub's cache
 of raw files can delay it by a few minutes.
+
+## Stars and downloads
+
+`pakabl list` shows `★` (the repository's stars) and `↓` (the sum of `download_count` over the `.ablx` assets of all
+its releases; `↓ –` when your listed `.ablx` is a committed file, not a release asset). The daily crawl writes them to
+`pakabl/stats.json` and pushes that file to the `pakabl-data` branch of the cmdAbl repository without a pull request, so
+it never makes the index change. `pakabl update` fetches it next to the index; if it is missing the list shows no counts.

@@ -1,11 +1,11 @@
 import * as path from "node:path";
 import { createIdRows } from "./idRows.js";
 import type { ModuleApi } from "../types.js";
-import { EXTENSIONS_DIR, fileExists, fileStamp, downloadFile, unzipInto, readJsonFile, openUrl, removeDir } from "./platform.js";
+import { EXTENSIONS_DIR, fileExists, fileStamp, downloadFile, unzipInto, readJsonFile, openUrl, removeDir, writeTextFile } from "./platform.js";
 import { buildListPage } from "./listPage.js";
 import { indexRelation, installedRelation, type IndexRelation } from "./version.js";
 import { pakablCommand } from "./command.js";
-import { extensionDir, filterValidEntries, isValidId, repoUrl } from "./guards.js";
+import { extensionDir, filterValidEntries, isValidId, parseStats, repoUrl, statsFresh, type Stat } from "./guards.js";
 import { ExitCode, fail, ok, type CommandResult } from "../../core/types.js";
 import pakablListTemplate from "../../../ui/modules/pakabl/list.html";
 
@@ -16,12 +16,18 @@ import pakablListTemplate from "../../../ui/modules/pakabl/list.html";
 // mistaking it for an installed extension (no manifest.json inside).
 const DATA_DIR = path.join(EXTENSIONS_DIR, ".pakabl");
 const INDEX_CACHE_PATH = path.join(DATA_DIR, "index.json");
+const STATS_CACHE_PATH = path.join(DATA_DIR, "stats.json");
 
 // Hosted alongside cmdAbl itself — one repo to maintain, versioned together,
 // fetched via the raw-file URL pattern confirmed working during this project's
 // research (raw.githubusercontent.com/<owner>/<repo>/<branch>/<path>).
 const CURATED_INDEX_URL =
   "https://raw.githubusercontent.com/MarvinHauke/cmdAbl/main/pakabl/index.json";
+
+// Stars and downloads change daily, so the crawler pushes them to the data branch `pakabl-data`
+// without a PR (plan 0003). Optional: without them the list shows no counts.
+const STATS_URL =
+  "https://raw.githubusercontent.com/MarvinHauke/cmdAbl/pakabl-data/pakabl/stats.json";
 
 interface IndexEntry {
   // The folder name Live installs the extension under — `<author-slug>.<name-slug>`
@@ -49,6 +55,12 @@ function loadIndex(): { entries: IndexEntry[]; dropped: number } | undefined {
   return { entries: valid, dropped };
 }
 
+/** The cached counts for the ids in the index; empty when the file is missing or malformed. */
+function loadStats(ids: ReadonlySet<string>): Map<string, Stat> {
+  const raw = readJsonFile<unknown>(STATS_CACHE_PATH);
+  return statsFresh(raw, new Date()) ? parseStats(raw, ids) : new Map();
+}
+
 const droppedText = (n: number): string =>
   n > 0 ? `${n} index entr${n === 1 ? "y" : "ies"} with an invalid id or URL ignored` : "";
 
@@ -67,7 +79,7 @@ function downloadAndUnpack(entry: IndexEntry): CommandResult | undefined {
   if (!target) return fail(ExitCode.FAILURE, `pakabl: "${entry.id}" does not resolve inside the Extensions folder`);
   const tmpPath = path.join(DATA_DIR, "tmp", `${entry.id}.ablx`);
 
-  const dl = downloadFile(entry.url, tmpPath);
+  const dl = downloadFile(entry.url, tmpPath, 180);
   if (!dl.ok) {
     return fail(ExitCode.FAILURE, `pakabl: failed to download ${entry.name} v${entry.version}\n${dl.output}`);
   }
@@ -140,6 +152,9 @@ interface ListEntry {
   /** The installed version seen from the index's: "newer" = the installed one is newer. Absent when not installed. */
   relation?: IndexRelation;
   repoUrl: string | undefined;
+  /** Absent when the stats file is missing. downloads null = not a release asset (shown `↓ –`). */
+  stars?: number;
+  downloads?: number | null;
 }
 
 // Browse the cached index — each row's primary button reflects install status:
@@ -152,9 +167,12 @@ async function list(api: ModuleApi): Promise<CommandResult | void> {
   if (!loaded) return fail(ExitCode.FAILURE, "pakabl: no index cached — run \"pakabl update\" first");
   const index = loaded.entries;
 
+  const stats = loadStats(new Set(index.map((e) => e.id)));
   const entries: ListEntry[] = index.map((entry) => {
     const installed = installedManifest(entry.id);
+    const stat = stats.get(entry.id);
     return {
+      ...(stat ? { stars: stat.stars, downloads: stat.downloads } : {}),
       id: entry.id,
       name: entry.name,
       version: entry.version,
@@ -204,6 +222,19 @@ async function list(api: ModuleApi): Promise<CommandResult | void> {
   return outcome;
 }
 
+/** Fetch stats.json, keep only the valid part. Returns a one-line note when it could not be used. */
+function refreshStats(ids: ReadonlySet<string>): string | undefined {
+  const tmp = path.join(DATA_DIR, "tmp", "stats.json");
+  const dl = downloadFile(STATS_URL, tmp);
+  if (!dl.ok) return "pakabl: no stars and downloads (stats.json not available)";
+  const raw = readJsonFile<unknown>(tmp);
+  removeDir(tmp);
+  const stats = parseStats(raw, ids);
+  if (!statsFresh(raw, new Date()) || stats.size === 0) return "pakabl: no stars and downloads (stats.json empty or malformed)";
+  const err = writeTextFile(STATS_CACHE_PATH, JSON.stringify({ updated: (raw as { updated: string }).updated, stats: Object.fromEntries(stats) }));
+  return err ? `pakabl: stats.json not saved — ${err}` : undefined;
+}
+
 async function update(api: ModuleApi): Promise<CommandResult | void> {
   const dl = downloadFile(CURATED_INDEX_URL, INDEX_CACHE_PATH);
   if (!dl.ok) return fail(ExitCode.FAILURE, `pakabl: failed to refresh the index\n${dl.output}`);
@@ -211,7 +242,11 @@ async function update(api: ModuleApi): Promise<CommandResult | void> {
   const loaded = loadIndex();
   if (!loaded) return fail(ExitCode.FAILURE, "pakabl: refreshed file is not a valid index");
 
+  // The counts are optional: a missing, unreadable or malformed file only costs the numbers in the list.
+  const statsNote = refreshStats(new Set(loaded.entries.map((e) => e.id)));
+
   const n = loaded.entries.length;
+  if (statsNote) api.logger.info(statsNote);
   return ok(`pakabl: index refreshed (${n} extension${n === 1 ? "" : "s"})${loaded.dropped > 0 ? ` (${droppedText(loaded.dropped)})` : ""}`);
 }
 

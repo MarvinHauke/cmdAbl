@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extensionDir, filterValidEntries, isValidId, repoUrl } from "./guards.js";
+import { extensionDir, filterValidEntries, isValidId, parseStats, repoUrl, statsFresh } from "./guards.js";
 
 test("isValidId accepts <author-slug>.<name-slug>", () => {
   for (const id of ["federico-pepe.snake", "marvinhauke.cmdabl", "a.b", "ben-casey.bbencut", "x1.y2-z3"]) {
@@ -44,4 +44,41 @@ test("repoUrl derives the repo page from github release/raw URLs", () => {
   assert.equal(repoUrl("https://github.com/o/r/releases/download/v1/x.ablx"), "https://github.com/o/r");
   assert.equal(repoUrl("https://raw.githubusercontent.com/o/r/main/x.ablx"), "https://github.com/o/r");
   assert.equal(repoUrl("https://example.com/o/r/x.ablx"), undefined);
+});
+
+test("parseStats keeps index ids with non-negative integers and null downloads", () => {
+  const ids = new Set(["a.b", "c.d", "e.f"]);
+  const raw = {
+    updated: "2026-11-12",
+    stats: {
+      "a.b": { stars: 3, downloads: 10 },
+      "c.d": { stars: 0, downloads: null },
+      "e.f": { stars: -1, downloads: 2 },
+      "x.y": { stars: 1, downloads: 1 },
+    },
+  };
+  assert.deepEqual([...parseStats(raw, ids)], [
+    ["a.b", { stars: 3, downloads: 10 }],
+    ["c.d", { stars: 0, downloads: null }],
+  ]);
+});
+
+test("parseStats drops non-integers and wrong shapes", () => {
+  const ids = new Set(["a.b"]);
+  assert.equal(parseStats({ stats: { "a.b": { stars: 1.5, downloads: 1 } } }, ids).size, 0);
+  assert.equal(parseStats({ stats: { "a.b": { stars: 1, downloads: "9" } } }, ids).size, 0);
+  assert.equal(parseStats({ stats: { "a.b": { stars: 1 } } }, ids).size, 0);
+  assert.equal(parseStats({ stats: [] }, ids).size, 0);
+  assert.equal(parseStats(null, ids).size, 0);
+  assert.equal(parseStats("x", ids).size, 0);
+});
+
+test("statsFresh: a week or less, a valid date", () => {
+  const now = new Date("2026-11-12T10:00:00Z");
+  assert.equal(statsFresh({ updated: "2026-11-12" }, now), true);
+  assert.equal(statsFresh({ updated: "2026-11-06" }, now), true);
+  assert.equal(statsFresh({ updated: "2026-11-01" }, now), false);
+  assert.equal(statsFresh({ updated: "soon" }, now), false);
+  assert.equal(statsFresh({}, now), false);
+  assert.equal(statsFresh(null, now), false);
 });

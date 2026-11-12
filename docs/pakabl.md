@@ -29,6 +29,8 @@ that extension, and a **Repo** button that opens its GitHub page.
 
 *Install installs the extension. Repo opens its GitHub page.*
 
+- Each row shows the repository's stars (`★`) and the downloads of its releases (`↓`; `↓ –` when the extension is not a
+  release download). `pakabl update` fetches the counts with the list and they are at most a day old, and they disappear if they could not be refreshed for a week.
 - **Update** appears only when the list holds a newer version than the installed one.
 - If the installed version is newer than the list's, the row says so, and cmdAbl never downgrades it.
 

@@ -52,12 +52,13 @@ export async function openUrl(url: string): Promise<CommandResult> {
 // curl ships with macOS/Linux; Invoke-WebRequest is built into PowerShell —
 // no new dependency, same "shell out" approach setup.ts already established.
 
-export function downloadFile(url: string, destPath: string): { ok: boolean; output: string } {
+/** `timeoutSec`: 20 s suits the small index and stats files; packages pass more. */
+export function downloadFile(url: string, destPath: string, timeoutSec = 20): { ok: boolean; output: string } {
   return run(
-    `mkdir -p "$(dirname "$CMDABL_DEST")" && curl -fsSL "$CMDABL_URL" -o "$CMDABL_DEST"`,
+    `mkdir -p "$(dirname "$CMDABL_DEST")" && curl -fsSL --max-time "$CMDABL_TIMEOUT" "$CMDABL_URL" -o "$CMDABL_DEST"`,
     `New-Item -ItemType Directory -Force -Path (Split-Path $env:CMDABL_DEST) | Out-Null
-Invoke-WebRequest -Uri $env:CMDABL_URL -OutFile $env:CMDABL_DEST`,
-    { CMDABL_URL: url, CMDABL_DEST: destPath },
+Invoke-WebRequest -TimeoutSec $env:CMDABL_TIMEOUT -Uri $env:CMDABL_URL -OutFile $env:CMDABL_DEST`,
+    { CMDABL_URL: url, CMDABL_DEST: destPath, CMDABL_TIMEOUT: String(timeoutSec) },
   );
 }
 
@@ -126,5 +127,16 @@ export function fileExists(filePath: string): boolean {
     return fs.existsSync(filePath);
   } catch {
     return false;
+  }
+}
+
+/** Write a text file, creating its folder; undefined on success, the error text otherwise. */
+export function writeTextFile(filePath: string, text: string): string | undefined {
+  try {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, text);
+    return undefined;
+  } catch (e: unknown) {
+    return e instanceof Error ? e.message : String(e);
   }
 }

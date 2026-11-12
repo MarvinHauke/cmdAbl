@@ -20,6 +20,8 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 const SOURCES_PATH = path.join(ROOT, "pakabl/sources.json");
 const INDEX_PATH = path.join(ROOT, "pakabl/index.json");
 const CANDIDATES_PATH = path.join(ROOT, "pakabl/candidates.json");
+// Not committed to main: the workflow pushes it to the data branch `pakabl-data` (plan 0003).
+const STATS_PATH = path.join(ROOT, "pakabl/stats.json");
 const TOPICS = ["ableton-extension", "ableton-extensions"];
 const SUPPORTED_API = "1.";
 
@@ -128,8 +130,8 @@ async function readManifest(asset: Asset): Promise<{ name: string; author: strin
   }
 }
 
-async function buildIndex(sources: Source[]): Promise<IndexEntry[]> {
-  const best = new Map<string, IndexEntry>();
+async function buildIndex(sources: Source[]): Promise<{ entry: IndexEntry; repo: string }[]> {
+  const best = new Map<string, { entry: IndexEntry; repo: string }>();
   for (const src of sources) {
     console.log(`source ${src.repo}`);
     for (const asset of await findAblx(src.repo)) {
@@ -142,12 +144,59 @@ async function buildIndex(sources: Source[]): Promise<IndexEntry[]> {
       const id = `${slug(m.author)}.${slug(m.name)}`;
       if (src.exclude?.includes(id)) continue;
       const prev = best.get(id);
-      if (!prev || compareVersions(m.version, prev.version) > 0) {
-        best.set(id, { id, name: m.name, version: m.version, url: asset.url });
+      if (!prev || compareVersions(m.version, prev.entry.version) > 0) {
+        best.set(id, { entry: { id, name: m.name, version: m.version, url: asset.url }, repo: src.repo });
       }
     }
   }
-  return [...best.values()].sort((a, b) => a.id.localeCompare(b.id));
+  return [...best.values()].sort((a, b) => a.entry.id.localeCompare(b.entry.id));
+}
+
+interface Stat {
+  stars: number;
+  downloads: number | null;
+}
+
+/** Sum of download_count over the .ablx assets of all releases of a repo (paged, newest first). */
+async function releaseDownloads(repo: string): Promise<number> {
+  let total = 0;
+  for (let page = 1; page <= 10; page++) {
+    const releases = await api<{ assets: { name: string; download_count: number }[] }[]>(
+      `/repos/${repo}/releases?per_page=100&page=${page}`,
+    );
+    if (!releases?.length) break;
+    for (const r of releases) for (const a of r.assets) if (a.name.endsWith(".ablx")) total += a.download_count;
+    if (releases.length < 100) break;
+  }
+  return total;
+}
+
+/**
+ * Stars and downloads per approved extension. Optional data: a repo whose numbers cannot be read is left out
+ * (never published as 0), and a failing call never stops the crawl. downloads is null when the url is not a
+ * release asset, or when the repo lists several extensions (its releases cannot be told apart).
+ */
+async function buildStats(entries: { entry: IndexEntry; repo: string }[]): Promise<Record<string, Stat>> {
+  const stats: Record<string, Stat> = {};
+  const perRepo = new Map<string, number>();
+  for (const { repo } of entries) perRepo.set(repo, (perRepo.get(repo) ?? 0) + 1);
+  const repos = new Map<string, { stars: number; downloads: number } | undefined>();
+  for (const { entry, repo } of entries) {
+    if (!repos.has(repo)) {
+      try {
+        const meta = await api<{ stargazers_count: number }>(`/repos/${repo}`);
+        repos.set(repo, meta ? { stars: meta.stargazers_count, downloads: await releaseDownloads(repo) } : undefined);
+      } catch (e) {
+        console.warn(`  no stats for ${repo}: ${(e as Error).message}`);
+        repos.set(repo, undefined);
+      }
+    }
+    const r = repos.get(repo);
+    if (!r) continue;
+    const isReleaseAsset = entry.url.includes(`/${repo}/releases/download/`);
+    stats[entry.id] = { stars: r.stars, downloads: isReleaseAsset && perRepo.get(repo) === 1 ? r.downloads : null };
+  }
+  return stats;
 }
 
 async function findCandidates(approved: Set<string>): Promise<Candidate[]> {
@@ -175,11 +224,19 @@ async function findCandidates(approved: Set<string>): Promise<Candidate[]> {
 const writeJson = (file: string, data: unknown) => writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`);
 
 const sources: Source[] = JSON.parse(readFileSync(SOURCES_PATH, "utf8"));
-const index = await buildIndex(sources);
-if (index.length === 0) throw new Error("crawler produced an empty index — refusing to overwrite");
+const built = await buildIndex(sources);
+if (built.length === 0) throw new Error("crawler produced an empty index — refusing to overwrite");
+const index = built.map((b) => b.entry);
 writeJson(INDEX_PATH, index);
 
 const candidates = await findCandidates(new Set(sources.map((s) => s.repo.toLowerCase())));
 writeJson(CANDIDATES_PATH, candidates);
+
+// Last, so that nothing above depends on it; it never fails the run.
+try {
+  writeJson(STATS_PATH, { updated: new Date().toISOString().slice(0, 10), stats: await buildStats(built) });
+} catch (e) {
+  console.warn(`stats skipped: ${(e as Error).message}`);
+}
 
 console.log(`\nindex: ${index.length} extensions, candidates: ${candidates.length} repos`);
