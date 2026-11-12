@@ -499,7 +499,8 @@ with exit code 5.
 - `loop back` puts back the loop from before the last `loop here`. If someone moved the loop since, it leaves the loop
   alone.
 
-If the loop would start after the end of the song, Live refuses; cmdAbl shows Live's reason (exit code 1). With nothing
+If the loop would start too far out (see the note under [`jump`](#move-the-playhead-jump)), cmdAbl refuses with
+"loop start `<pos>` is too far: Live allows positions only up to `<X>` here (…)" (exit code 1). With nothing
 to restore, `loop back` does nothing.
 
 Bars follow the Set's current time signature. The loop write leaves no undo step, and Live counts the Set as changed, so
@@ -520,8 +521,14 @@ command stops with exit code 5. Playback keeps running: if the song plays, it pl
 | `jump end` | the end of the song: the length Live reports for the Set (it counts the loop end in it) |
 
 Bars and beats follow the Set's current time signature. If the signature changes inside the song, positions after
-the change can be off. This is a known limit. If the position is behind the song's end, Live refuses; cmdAbl shows
-Live's reason (exit code 1).
+the change can be off. This is a known limit.
+
+!!! note "How far the playhead can go"
+    Live lets the playhead go only up to the latest of three limits: 8 bars past the last clip or automation, the
+    loop's end, or 8 bars past the current playhead. A position further out is refused with exit code 1 and the
+    message "`<pos>` is too far: Live lets the playhead go only up to `<X>` here (the last clip or automation + 8 bars,
+    the loop's end, or the playhead + 8 bars)". A later clip or automation point, or a loop, extends the reachable
+    area.
 
 ## A note per Set: `note`
 
@@ -590,8 +597,9 @@ the [Remote Script](remote-script.md).
 - `note stamp next` jumps to the next stamp after the playhead, by song position.
 - `note stamp prev` jumps to the previous stamp before the playhead.
 
-Stamps without a position are skipped by `next` and `prev`. At the last stamp, `note stamp next` stops with
-"no stamp after bar N" (exit code 3). With the setting `note.stampWrap` on, it goes on to the first stamp instead,
+Stamps without a position are skipped by `next` and `prev`. So are stamps that are too far out for Live's playhead limit
+(see the note under [`jump`](#move-the-playhead-jump)); `list` shows them disabled with "too far for Live". At the last stamp, `note stamp next` stops with
+"no stamp after bar N" (exit code 3); if stamps were left out for being too far out, it adds "(k too far for Live)". With the setting `note.stampWrap` on, it goes on to the first stamp instead,
 and `prev` goes from the first stamp to the last.
 
 | Setting | Default | What it does |
@@ -602,7 +610,7 @@ and `prev` goes from the first stamp to the last.
 `Enter` or a click on a heading jumps there, as [`jump`](#move-the-playhead-jump) does. The window stays open. If the
 jump fails, the footer shows why.
 
-A stamp behind the song's end cannot be jumped to; Live refuses and cmdAbl shows Live's reason.
+A stamp that is too far out for Live's playhead limit (see the note under [`jump`](#move-the-playhead-jump)) cannot be jumped to; the footer shows the "too far" message.
 
 **Where the note lives.** The note is plain Markdown. It is stored as a file in cmdAbl's data folder (the Extensions
 Data folder in Ableton's Application Support) and linked to the Set by an id that is saved inside the Set. Viewing
