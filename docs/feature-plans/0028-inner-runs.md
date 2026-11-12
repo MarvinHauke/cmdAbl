@@ -28,7 +28,10 @@ live page through the normal command path. This plan makes that one engine, reac
    `tag -r` or `tag --set 0`; accepted, because `tag.listEnter` offers only four fixed presets.
 4. **Never runnable by another module:** commands that act outside the Live Set, such as `pakabl install` and
    `remove` and `cmdabl setup`, are marked on their node, and core refuses them in any allowlist (Q5; user:
-   "I don't want to allow pakabl to install by itself").
+   "I don't want to allow pakabl to install by itself"). **"Outside"** (architect, 2026-11-12) means: installs or
+   removes software, writes files outside cmdAbl's data folder, or reaches the network (`pakabl install`,
+   `uninstall`, `upgrade`, `update`; `cmdabl setup`). cmdAbl's own data (`map` bindings, settings, the note) is
+   not outside.
 5. **Depth 1** (Q4): a line run this way cannot run further lines. Discuss again when a feature needs more.
 6. **Lines from settings obey the allowlist too** (Q5): `tag.listEnter` stays a choice of four presets
    until settings have a text kind, and then the text is still checked against the list.
@@ -70,7 +73,7 @@ live page through the normal command path. This plan makes that one engine, reac
 - `api.commands.run(line, { allow? })` and page runs both end in `innerRun`. From a palette line the inner line has real
   dialogs through the queue; inside a headless run, and always for pages, it runs headless. A throw never escapes.
 - Inside an inner run `api.settings.gearAvailable()` is false (the gear would re-run the outer line).  (user, Q10)
-- **Temporary:** page runs keep working for commands that declare no `runs` (the page's own list stands) until cmdabl-modules declares `runs` on the note command; then core removes this exception (decisions 2 and 10). `api.commands.run` always needs `runs`.
+- A page run needs the opening command's `runs` too (`note` declares `loop here`, `loop back`, `jump`); the page's `run` list only narrows it.
 - Default commands are expanded BEFORE the allowlist check and the expanded line is what runs (without a second expansion), so a default such as `mute` → `mute; pakabl install x` cannot smuggle in a part that was not allowed. The log shows `typed ⇒ ran (default)`.
 - Esc on a pick inside an inner line gives exit 0 without text (quiet, like the palette).
 - A startup warning appears if async context does not survive an `await` in the host (`callStoreWorks`).
