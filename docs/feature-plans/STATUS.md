@@ -46,8 +46,10 @@ All releases were tested in Live, including the installed `.ablx`.
     song length refused with Live's text), `jump 5.3.2`/`+2`/`end`/`start`, `1.9.1` → exit 2, `note stamp prev`
     at bar 1 → exit 3, `note stamp next` to a stamp behind the song end → exit 1 with Live's text (correct).
     ui `bbcfd35` (note page ↑/↓ + Enter jumps), `b4e4ec3` (pick list cursor/disabled); docs `6f4bcb0`.
-    Left: Live test of next/prev and `note stamp list` with stamps inside the song (needs a test Set's
-    note), then the PR. PR notes add: `jump`, `note stamp list/next/prev`, `note.stampWrap`, `api.pickRows`;
+    Live-tested (demo Set): note page ↑/↓ + Enter jumps to @36.4.4; `note stamp prev/next` 36.4.4 ↔ 12.1.1;
+    next to @244 (behind the song end) → exit 1 with Live's text; `note stamp list` cursor on the next stamp,
+    date-only row dimmed. Small: the view's help line shows only "↑↓ stamps · Enter jump" (e/s/Esc gone).
+    Left: the PR. PR notes add: `jump`, `note stamp list/next/prev`, `note.stampWrap`, `api.pickRows`;
     Remote Script 0.1.15 carries transport, loop_set and jump (unreleased, no bump).
     Idea (ui): disabled stamp rows could say "no song position" in their detail. 0.1.8 = the
     tag list rework (0010, tag-0).
