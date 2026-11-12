@@ -13,5 +13,29 @@
   },
   {
     "repo": "swwallowws/ableton-session-notes"
+  },
+  {
+    "repo": "madisonrickert/ablevsep"
+  },
+  {
+    "repo": "madisonrickert/ableton-sheet-music-extension"
+  },
+  {
+    "repo": "madisonrickert/abletab"
+  },
+  {
+    "repo": "dnvsfn/ableton-midnight-tools"
+  },
+  {
+    "repo": "fortymileswest/clip-tool"
+  },
+  {
+    "repo": "bencodec/Ableton-MIDI-Key-Detector-Extension"
+  },
+  {
+    "repo": "dnvsfn/ableton-breakdowns"
+  },
+  {
+    "repo": "NachtgeistW/drum-rack-separation"
   }
 ]
