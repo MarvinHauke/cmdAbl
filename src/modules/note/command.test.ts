@@ -179,7 +179,7 @@ test("the retry after a failed save: the page answers the kept text unchanged (i
 
 // --- stamps ---------------------------------------------------------------------------------------------
 
-const PLAYING = { playing: true, session: false, pos: "12.3.1.1", time: 44, barStart: 44, barLen: 4, sigNum: 4, sigDen: 4, songLength: 200, loop: { on: false, start: 0, length: 16 } };
+const PLAYING = { playing: true, session: false, pos: "12.3.1.1", time: 44, barStart: 44, barLen: 4, sigNum: 4, sigDen: 4, songLength: 200, quantizationBeats: null, loop: { on: false, start: 0, length: 16 } };
 const FIXED = new Date(2026, 10, 11, 14, 5);
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -303,7 +303,7 @@ const STAMPED = [
   "snare",
   "### @20.2.3 · 2026-11-12 08:00",
 ].join("\n");
-const AT_BAR = (pos: string, over: object = {}) => ({ playing: true, session: false, pos, time: 0, barStart: 0, barLen: 4, sigNum: 4, sigDen: 4, songLength: 200, loop: { on: false, start: 0, length: 16 }, ...over });
+const AT_BAR = (pos: string, over: object = {}) => ({ playing: true, session: false, pos, time: 0, barStart: 0, barLen: 4, sigNum: 4, sigDen: 4, songLength: 200, quantizationBeats: null, loop: { on: false, start: 0, length: 16 }, ...over });
 
 function readSetup(pos: string, settings: Record<string, unknown> = {}, extra: Parameters<typeof createFakeApi>[0] = {}) {
   const fake = createFakeApi({ setId: "abc", files: { "abc.md": STAMPED }, transport: AT_BAR(pos) as never, settings, ...extra } as never);

@@ -516,9 +516,13 @@ command stops with exit code 5. Playback keeps running: if the song plays, it pl
 | `jump 12.3.1` | bar 12, beat 3, sixteenth 1 |
 | `jump 12.3` | bar 12, beat 3 |
 | `jump 12` | the start of bar 12 |
-| `jump +4` or `jump -4` | four bars on or back, counted from the start of the current bar. Going back stops at the beginning of the song. |
+| `jump +4` or `jump -4` | four steps on or back, counted from the start of the current step. A step is Live's global launch quantization (1 bar when that is None); `jump config` sets another size. Going back stops at the beginning of the song. |
+| `jump +2b` | two bars on, from the start of the current bar |
+| `jump +3q` | three quarters on, from the start of the current quarter |
 | `jump start` | the beginning of the song |
 | `jump end` | the end of the song: the length Live reports for the Set (it counts the loop end in it) |
+
+To go back in bars or quarters, put `--` before the value: `jump -- -2b`, `jump -- -3q` (a leading `-3q` would be read as an option).
 
 Bars and beats follow the Set's current time signature. If the signature changes inside the song, positions after
 the change can be off. This is a known limit.
