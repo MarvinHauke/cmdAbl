@@ -31,7 +31,11 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   `feat/0.1.8-tag-editor`. The editor is a module page (`ui/modules/tag/editor.html`); the `board` surface
   is removed (user, 2026-11-12). Running: cmdabl-core (gear on module pages, board removal), cmdabl-ui (the
   page), cmdabl-modules (`tag -l` list, `tag -e`, settings). Also in 0.1.8 after that: `jump.step`, the MIDI
-  monitor status, pakabl stars. Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
+  monitor status, pakabl stars.
+  Note: commit `2237c41` (a 0010 docs commit by the architect) also carries cmdabl-modules' staged tag work
+  (the `tag -l` list, `tag -e` editor wiring, placeholder page). Its `{...ok(), run} as CommandResult` at
+  `src/modules/tag/command.ts:89` must be replaced by `api.commands.run` before release (design with the user).
+  Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
 - **Decided, not built (2026-11-12):** MIDI monitor shows its status and extends its window by itself, plus
   an "all ins" spike (0018); `jump.step` from Live's global quantization (0027); the note page's help line
   keeps e/s/Esc when stamps exist; disabled stamp rows say why (partly done).
