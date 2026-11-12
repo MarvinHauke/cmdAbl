@@ -158,6 +158,7 @@
     const statusEl = document.getElementById('status');
     function drawStatus(answer) {
       const st = answer.status;
+      if (!('status' in answer)) return;   // e.g. the idle { timeout: true } answer: leave the note as it is
       if (!st || typeof st !== 'object') { statusEl.textContent = ''; return; }
       statusEl.className = st.listening ? 'on' : 'off';
       setText(statusEl, st.listening ? 'Listening…' : String(st.stoppedReason || 'Listening stopped'));
