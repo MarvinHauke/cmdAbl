@@ -43,8 +43,8 @@ cmdabl-bridge).
 
 1. Implement with tests. Run `npm test` and `npm run build`. Fix errors.
 2. Send `cmdabl-reviewer` a message: the task in one line, the changed files, what you left out.
-3. Fix its must-fix findings. After its OK, commit on the task's branch. Stage only your own files
-   (`git add <files>`, never `-A`), because other agents share the tree. End the message with the
+3. Fix its must-fix findings. After its OK, commit on the task's branch. commit your own files by path
+   (`git commit -- <files>`; never a bare `git commit` after staging, the index is shared), because other agents share the tree. End the message with the
    Co-Authored-By line from the session.
 4. Send `cmdabl-architect` a **short overview**: what changed, test/build results, the commit hash,
    and a **Live test list** (what the user should type and what should happen).

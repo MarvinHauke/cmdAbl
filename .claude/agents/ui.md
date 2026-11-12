@@ -62,7 +62,8 @@ site theme (`docs/stylesheets/`), and the UI guide when one is written.
 1. Implement; run `npm test` and `npm run build`; open the page in a browser with sample data and
    check keyboard handling, long names, an empty list and many rows.
 2. Send `cmdabl-reviewer` the changed files; fix its must-fix findings.
-3. Commit on the task's branch, staging only your own files (`git add <files>`, never `-A`); end
+3. Commit on the task's branch, commit your own files by path
+   (`git commit -- <files>`; never a bare `git commit` after staging, the index is shared); end
    the message with the Co-Authored-By line from the session.
 4. Send `cmdabl-architect` a **short overview**: what changed, how you checked it, the commit hash,
    and a **Live test list**.

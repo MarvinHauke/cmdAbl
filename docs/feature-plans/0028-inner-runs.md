@@ -50,10 +50,24 @@ live page through the normal command path. This plan makes that one engine, reac
 - Normal command path: parse, resolve, errors caught, the log.
 - Inside a headless run (map binding, page run, chain part), an inner line runs headless too: a part that
   would ask gives exit 4. From a palette line, its dialogs go through the queue.
+- **No gear in a page an inner run opened** (user, 2026-11-12, Q10): `gearAvailable()` is false inside an
+  inner run, because the gear would run the outer line again (`tag -l` instead of `tag -e fx`). The
+  settings stay reachable with `<module> config`.
 - A line not on the list: exit 2 to the caller, a warn line in the log, nothing run.
 
 ## Open
 
-- The gear inside an inner run (reviewer): `tag -l` → Enter → `tag -e fx` opens the editor while the palette
-  line is still `tag -l`, so the gear would run `tag -l` again. To decide with the user.
 - One undo step per batch (decision 8).
+
+## Built (0.1.8, cmdabl-core)
+
+- `CommandNode.runs?: string[]` and `CommandNode.outside?: boolean` (`commandTree.ts`); `sanitizeRuns` runs once after all
+  modules are activated (`extension.ts`): entries with an option, unknown or non-runnable paths and `outside` commands are
+  dropped with a warning; an alias becomes its name. `cmdabl setup` is marked `outside` in core; **cmdabl-modules marks
+  `pakabl install` and `pakabl remove`** (`outside: true` on their nodes).
+- The running command is carried by async context (`callStore`, set by `runLine` around the handler, `live` off after it
+  returns), so `api.commands.run` needs no argument for its caller and a late call is refused.
+- `api.commands.run(line, { allow? })` and page runs both end in `innerRun`. From a palette line the inner line has real
+  dialogs through the queue; inside a headless run, and always for pages, it runs headless. A throw never escapes.
+- Inside an inner run `api.settings.gearAvailable()` is false (the gear would re-run the outer line). To be confirmed.
+- Page runs keep working for commands that declare no `runs` (the page's own list stands); `api.commands.run` always needs `runs`.
