@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- select surface (see src/core/surfaces/ui.ts). In: PICK_PLACEHOLDER = { title, help?: boolean (false: the footer shows the key line only; else it shows the hovered or focused element's help, plan 0019 §3, ui/help.js), multi, preview?: { before, after }, fill?: boolean, create?: { label } (extra last row `+ label "text"` when the filter text, trimmed, is non-empty and matches no row label exactly, ignoring case and a leading "#"; no state button), state?: { label, change?: 'toggle'|'on'|'off' }, items: [{ label, detail?, value?, state?: 'on'|'off' }] }. state.label picks the right-hand button (muted: speaker, lit when audible = 'off'; soloed: S; armed: record dot; other: neutral square), no state = no button. With state.change the buttons of the acted-on rows (multi-select: the marked rows only, none: no ring; single-select: the cursor row) show the resulting state with a pending ring, and marks lose their tint (bold label stays). Ctrl+Shift+D toggles a key-event diagnostic in the footer line (off on open). Out (close_and_send): JSON array of chosen item indexes (with the create row: {"created": text, "picked": [marked indexes]}; Enter on the create row under the cursor chooses it even unmarked), or '' when cancelled (a multi-select answers only marked rows; Enter with none marked answers nothing and stays open); with fill (single-select only) Tab answers {"fill": index} instead. -->
+<!-- select surface (see src/core/surfaces/ui.ts). In: PICK_PLACEHOLDER = { title, help?: boolean (false: the footer shows the key line only; else it shows the hovered or focused element's help, plan 0019 §3, ui/help.js), multi, preview?: { before, after }, cursor?: number (single-select only: index into items where the cursor starts; out of range or disabled: the first enabled row), fill?: boolean, create?: { label } (extra last row `+ label "text"` when the filter text, trimmed, is non-empty and matches no row label exactly, ignoring case and a leading "#"; no state button), state?: { label, change?: 'toggle'|'on'|'off' }, items: [{ label, detail?, value?, state?: 'on'|'off', disabled?: true (shown dimmed; click and Enter do nothing, the cursor skips it) }] }. state.label picks the right-hand button (muted: speaker, lit when audible = 'off'; soloed: S; armed: record dot; other: neutral square), no state = no button. With state.change the buttons of the acted-on rows (multi-select: the marked rows only, none: no ring; single-select: the cursor row) show the resulting state with a pending ring, and marks lose their tint (bold label stays). Ctrl+Shift+D toggles a key-event diagnostic in the footer line (off on open). Out (close_and_send): JSON array of chosen item indexes (with the create row: {"created": text, "picked": [marked indexes]}; Enter on the create row under the cursor chooses it even unmarked), or '' when cancelled (a multi-select answers only marked rows; Enter with none marked answers nothing and stays open); with fill (single-select only) Tab answers {"fill": index} instead. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -45,6 +45,8 @@
     #list { flex: 1; overflow-y: auto; }
     .row { display: flex; align-items: baseline; gap: 10px; padding: 5px 12px; cursor: default; }
     .row.active { background: var(--bg-row); }
+    /* disabled (item.disabled): shown, never the cursor, cannot be chosen */
+    .row.disabled .label { color: var(--dim); font-style: italic; }   /* not by colour alone */
     /* A marked row (multi-select) is a light accent tint across the row, no gutter. Cursor = row
        background + accent text; marked = tint; both = tint + accent text. */
     .row.marked, .row.marked.active { background: hsla(31, 100%, 67%, 0.13); }
@@ -110,7 +112,7 @@
   <script>/*LISTNAV_JS_PLACEHOLDER*/</script>
 
   <script>
-    // Injected by the extension: { title, multi, preview?, fill?, create?: { label }, state?: { label }, items: [{ label, detail?, value?, state?: 'on' | 'off' }] }
+    // Injected by the extension: { title, multi, preview?, fill?, create?: { label }, state?: { label }, items: [{ label, detail?, value?, state?: 'on' | 'off', disabled?: true }], cursor?: number }
     const PICK = /*PICK_PLACEHOLDER*/null;
 
     const filter = document.getElementById('filter');
@@ -134,6 +136,11 @@
     // Every typed word must occur in the label (any order); better fuzzy hits first.
     const allIndexes = PICK.items.map((_, i) => i);
     const filterIndexes = CmdMatch.filterer(allIndexes, i => PICK.items[i].label);
+
+    // Disabled rows (item.disabled) are shown but never the cursor and never chosen.
+    const isDisabled = index => index !== CREATE && !!PICK.items[index]?.disabled;
+    const firstEnabled = () => { const p = visible.findIndex(i => !isDisabled(i)); return p < 0 ? 0 : p; };   // all disabled: 0, nothing is active then
+    const activeIndex = () => { const i = visible[active]; return i === undefined || isDisabled(i) ? undefined : i; };   // the row Enter acts on
 
     // `fill` (single-select only): Tab puts the active row into the prompt instead of running it.
     const canFill = !!PICK.fill && !PICK.multi;
@@ -171,6 +178,7 @@
       // A mark belongs to the text it was set on: another text (or none) drops it.
       if (!created || created !== createdMarked) marked.delete(CREATE);
       active = Math.min(active, Math.max(visible.length - 1, 0));
+      if (isDisabled(visible[active])) active = firstEnabled();   // a filter can leave the cursor on a disabled row
 
       const actedOn = rowsActedOn();
       list.innerHTML = '';
@@ -178,7 +186,7 @@
         if (index === CREATE) { list.appendChild(createRow(pos, created)); return; }
         const item = PICK.items[index];
         const row = document.createElement('div');
-        row.className = 'row' + (pos === active ? ' active' : '') + (marked.has(index) ? ' marked' : '');
+        row.className = 'row' + (item.disabled ? ' disabled' : '') + (pos === active && !item.disabled ? ' active' : '') + (marked.has(index) ? ' marked' : '');
         // textContent, not innerHTML: labels are user data (track names).
         const label = document.createElement('span');
         label.className = 'label';
@@ -187,13 +195,14 @@
         detail.className = 'detail';
         detail.textContent = item.detail ?? '';
         row.append(label, detail);
-        row.dataset.help = PICK.multi ? 'Row: click to mark it, Space marks with the keys' : 'Row: click to choose it';
+        row.dataset.help = item.disabled ? 'Row: not available' : PICK.multi ? 'Row: click to mark it, Space marks with the keys' : 'Row: click to choose it';
         if (hasState && (item.state === 'on' || item.state === 'off')) {
           const result = actedOn.has(index) ? resultState(item.state) : item.state;
           row.append(stateButton(result, result !== item.state));
         }
         row.addEventListener('mousedown', e => {
           e.preventDefault();
+          if (item.disabled) return;
           if (PICK.multi) { toggle(index); active = pos; zone = 'list'; render(); }
           else send([index]);
         });
@@ -248,7 +257,7 @@
       // Single-select: the cursor row.
       const chosen = PICK.multi
         ? multiChosen()
-        : (visible.length ? [visible[active]] : []);
+        : (activeIndex() !== undefined ? [activeIndex()] : []);
       const valueOf = i => i === CREATE ? createText() : (PICK.items[i].value ?? PICK.items[i].label);
       const parts = [
         PICK.preview.before,
@@ -299,7 +308,7 @@
     function rowsActedOn() {
       if (!change) return new Set();
       if (PICK.multi) return marked;
-      return new Set(visible.length ? [visible[active]] : []);
+      return new Set(activeIndex() !== undefined ? [activeIndex()] : []);
     }
     function resultState(state) {
       return change === 'toggle' ? (state === 'on' ? 'off' : 'on') : change;
@@ -326,6 +335,7 @@
     // The footer line (ui/help.js): hovered element's help, else the keys of the zone. A notice or the diagnostic wins.
     function keyLine() {
       const esc = ['Esc', 'cancel'], type = 'type to filter';   // not a key: plain text
+      if (visible.length && visible.every(isDisabled)) return [['', 'nothing to choose here'], esc, type];
       if (!PICK.multi) return canFill ? [['Enter', 'run'], ['Tab', 'put in prompt'], esc, type] : [['Enter', 'choose'], esc, type];
       // Space marks in the list; from the filter, ↓ goes into the list first. Esc in the list goes back to the filter.
       const escKey = zone === 'list' ? ['Esc', 'filter'] : esc;
@@ -349,7 +359,7 @@
 
     // Space in the list zone of a multi-select: mark the active row and move on.
     function markActive() {
-      if (!visible.length) return;
+      if (activeIndex() === undefined) return;
       toggle(visible[active]);
       move(1);
     }
@@ -364,9 +374,11 @@
     }
 
     function move(delta) {
-      if (!visible.length) return;
-      active = (active + delta + visible.length) % visible.length;
-      render();
+      const n = visible.length;
+      for (let step = 1; step <= n; step++) {   // the next row that is not disabled, wrapping
+        const pos = (((active + delta * step) % n) + n) % n;
+        if (!isDisabled(visible[pos])) { active = pos; render(); return; }
+      }
     }
 
     filter.addEventListener('input', () => { active = 0; zone = 'filter'; render(); });
@@ -420,7 +432,7 @@
         case 'leave': case 'to-field': zone = 'filter'; renderZone(); break;
         case 'mark': spaceHandled = true; markActive(); break;
         case 'complete':   // Tab: only a pick list with `fill` completes; it never marks
-          if (visible.length && visible[active] !== CREATE) send(null, visible[active]);
+          if (activeIndex() !== undefined && activeIndex() !== CREATE) send(null, activeIndex());
           break;
         case 'take':
           if (PICK.multi) {
@@ -429,7 +441,7 @@
             const chosen = multiChosen();
             if (chosen.length) send(chosen);
             else { notice = 'Nothing marked: mark rows with Space first (↓ into the list)'; renderZone(); }
-          } else if (visible.length) send([visible[active]]);
+          } else if (activeIndex() !== undefined) send([activeIndex()]);
           break;
         default: break;   // 'none', 'left', 'right': ours, nothing to do in a one-column list
       }
@@ -438,6 +450,8 @@
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('title').textContent = PICK.title;
       if (PICK.preview) cmd.hidden = false;
+      visible = filterIndexes('');
+      active = !PICK.multi && Number.isInteger(PICK.cursor) && visible.includes(PICK.cursor) && !isDisabled(PICK.cursor) ? visible.indexOf(PICK.cursor) : firstEnabled();   // start cursor
       render();
       help.init(hint, { oneRow: true, idle: keyLine, enabled: PICK.help !== false, override: stateLine });
       filter.focus();
