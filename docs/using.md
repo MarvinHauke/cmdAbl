@@ -636,6 +636,13 @@ map CC37/ch2 toggle | solo #lead --set {} # each press switches solo on, then of
 **A button that latches on its own.** Some controllers send a value when you press a button and send 0 on the next
 press. Bind it with `hold`: `{}` is 1 while the controller's value is above 0, and 0 at 0, so Live follows the button.
 
+**Encoders (knobs that turn without end).** A knob can send its position (*absolute*) or only how far you turned it
+(*relative*). Live's manual explains the modes in [Mapping to relative MIDI
+controllers](https://www.ableton.com/en/live-manual/12/midi-and-key-remote-control/#mapping-to-relative-midi-controllers).
+cmdAbl treats every CC as a position. A bound line runs on a press, which is a value going from 0 to above 0. So an
+absolute encoder runs the line once, and then only after it has gone back to 0. To run a line on demand, bind a
+button. cmdAbl does not read relative encoders yet.
+
 **Learn a control.** `map learn [operator] | <command line>` opens a small page that says "Move a control". Move the
 control on your controller. The page shows it and closes by itself, and the control is bound. `Esc` binds nothing.
 `map learn toggle | mute #fx --set {}` learns a control for a `toggle` binding.
@@ -661,7 +668,7 @@ Live, or use another control. After you remove it, cmdAbl receives the control a
 
 **`midi monitor`** opens a page that lists the controls your controller sends, one row per control, with type, channel,
 number and value. A control you move for the first time is added on top, and its value updates in place. The row of the control that moved last is marked. A section **Taken in Live** lists controls that Live kept for
-itself during that time. `Enter` or `Esc` closes the page. Live's status bar can show the values too: see `midi.statusBar` in the [settings](#settings). While it is open, bound controls do not run their lines.
+itself during that time. The page says "Listening…" and keeps listening for as long as it is open. `Enter` or `Esc` closes the page. Live's status bar can show the values too: see `midi.statusBar` in the [settings](#settings). While it is open, bound controls do not run their lines.
 If the page cannot show live values, it shows the newest messages as a list when you press `Enter`.
 
 ## Settings
