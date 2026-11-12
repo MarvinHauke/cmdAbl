@@ -153,7 +153,7 @@
       if (MARKS[item.status]) {
         mark.classList.add(item.status);
         mark.textContent = MARKS[item.status];
-        mark.title = MARK_NAMES[item.status];
+        mark.setAttribute('aria-label', MARK_NAMES[item.status]);
       }
       const text = document.createElement('span');
       text.className = 'stext';
@@ -218,7 +218,7 @@
       if (LINK && typeof LINK.label === 'string' && LINK.label) {
         const link = document.getElementById('link');
         link.textContent = LINK.label;
-        if (typeof LINK.url === 'string') link.title = LINK.url;
+        if (typeof LINK.url === 'string') link.dataset.help = 'Open: ' + LINK.url;
         link.hidden = false;
         link.addEventListener('click', () => send(answer({ open: true })));
       }
