@@ -549,7 +549,44 @@ export interface TransportState {
   sigDen: number;
   /** Song length in beats (Live counts the loop's end in it); 0 when an older script did not say. */
   songLength: number;
+  /**
+   * Live's global clip launch quantization (`Song.clip_trigger_quantization`) as its enum index, see
+   * `quantizationBeats`; -1 = unknown (an older script, or Live did not say).
+   */
+  quantization: number;
   loop: LoopState;
+}
+
+/**
+ * What a `quantization` index means, as a multiplier of a bar (`bars`) or as beats (`beats`; a beat is a
+ * quarter note, triplets are 2/3 of the straight value). Index 0 is "None".
+ */
+const QUANTIZATION: readonly ({ bars: number } | { beats: number } | null)[] = [
+  null, // 0 None
+  { bars: 8 }, // 1 8 Bars
+  { bars: 4 }, // 2 4 Bars
+  { bars: 2 }, // 3 2 Bars
+  { bars: 1 }, // 4 1 Bar
+  { beats: 2 }, // 5 1/2
+  { beats: 4 / 3 }, // 6 1/2T
+  { beats: 1 }, // 7 1/4
+  { beats: 2 / 3 }, // 8 1/4T
+  { beats: 0.5 }, // 9 1/8
+  { beats: 1 / 3 }, // 10 1/8T
+  { beats: 0.25 }, // 11 1/16
+  { beats: 1 / 6 }, // 12 1/16T
+  { beats: 0.125 }, // 13 1/32
+];
+
+/**
+ * The launch quantization in beats for a `TransportState.quantization` index; bar values follow `barLen`
+ * (the current bar length in beats). Null for "None" (0), an unknown index (-1, out of range) or a bad `barLen`.
+ */
+export function quantizationBeats(index: number, barLen: number): number | null {
+  const q = Number.isInteger(index) ? QUANTIZATION[index] : undefined;
+  if (!q) return null;
+  if ("beats" in q) return q.beats;
+  return Number.isFinite(barLen) && barLen > 0 ? q.bars * barLen : null;
 }
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -561,7 +598,7 @@ function readLoop(v: unknown): LoopState | null {
 }
 
 /**
- * Play state, bar grid and arrangement loop (plan 0013). Barstart/barLen use the current time signature
+ * Play state, bar grid, launch quantization and arrangement loop (plans 0013, 0027). Barstart/barLen use the current time signature
  * only. Null: the script is not running, too old (no such op), or the reply is malformed. Never throws.
  */
 export async function transport(bridge: Bridge): Promise<TransportState | null> {
@@ -571,7 +608,7 @@ export async function transport(bridge: Bridge): Promise<TransportState | null> 
     const v = reply.value;
     const loop = readLoop(v.loop);
     if (!loop || typeof v.playing !== "boolean" || typeof v.session !== "boolean" || typeof v.pos !== "string" || !isNum(v.time) || !isNum(v.barStart) || !isNum(v.barLen) || v.barLen <= 0) return null;
-    return { playing: v.playing, session: v.session, pos: v.pos, time: v.time, barStart: v.barStart, barLen: v.barLen, sigNum: isNum(v.sigNum) && v.sigNum > 0 ? v.sigNum : 0, sigDen: isNum(v.sigDen) && v.sigDen > 0 ? v.sigDen : 0, songLength: isNum(v.songLength) ? v.songLength : 0, loop };
+    return { playing: v.playing, session: v.session, pos: v.pos, time: v.time, barStart: v.barStart, barLen: v.barLen, sigNum: isNum(v.sigNum) && v.sigNum > 0 ? v.sigNum : 0, sigDen: isNum(v.sigDen) && v.sigDen > 0 ? v.sigDen : 0, songLength: isNum(v.songLength) ? v.songLength : 0, quantization: isNum(v.quantization) && Number.isInteger(v.quantization) && v.quantization >= 0 && v.quantization < QUANTIZATION.length ? v.quantization : -1, loop };
   } catch {
     return null;
   }
