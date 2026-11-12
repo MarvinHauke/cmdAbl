@@ -470,6 +470,11 @@ command stops with exit code 5. Playback keeps running: if the song plays, it pl
 | `jump start` | the beginning of the song |
 | `jump end` | the end of the song: the length Live reports for the Set (it counts the loop end in it) |
 
+!!! note "`jump +4` changed in 0.1.8"
+    Before 0.1.8, `jump +4` always meant four bars. Now it counts steps of Live's launch quantization. With Live's
+    default of 1 Bar, nothing changes. For the old meaning at any setting, type `jump +4b`. The change needs Remote
+    Script 0.1.16: run `cmdabl setup`, then restart Live.
+
 To go back in bars or quarters, put `--` before the value: `jump -- -2b`, `jump -- -3q` (a leading `-3q` would be read as an option).
 
 Bars and beats follow the Set's current time signature. If the signature changes inside the song, positions after
