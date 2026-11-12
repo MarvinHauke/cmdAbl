@@ -666,6 +666,13 @@
         trackCur = ids[clamp((i < 0 ? 0 : i) + dir, 0, ids.length - 1)] ?? null; paint(true);
       }
     }
+    // ↓/↑ from the filter with text: land on the first match (list: the tracks pane; grid: the first matching column, else the first matching row in the cursor's column), so one press is visible.
+    function enterAtFirstMatch(L, dir) {
+      if (view === 'list' && pane === 0) { move(dir); return; }   // the filter doesn't touch the tags in the list view
+      if (view === 'grid' && L.colActive && !L.rowActive) { onName = false; onHead = false; tagCur = L.navCols[0] ?? tagCur; trackCur = L.navRows[0]?.id ?? trackCur; }
+      else if (L.navRows.length) { trackCur = L.navRows[0].id; onHead = false; }
+      paint(true);
+    }
     function gridMove(dx, dy, L) {
       L = L || lists();
       const cols = [null, ...L.navCols], rows = [null, ...L.navRows.map(t => t.id)];
@@ -727,7 +734,7 @@
       if (!a) return;
       if (!nav.native(a)) e.preventDefault();
       switch (a) {
-        case 'next': case 'prev': { const wasField = zone === 'field'; zone = 'list'; if (wasField) paint(true); else move(a === 'next' ? 1 : -1); break; }
+        case 'next': case 'prev': { const wasField = zone === 'field'; zone = 'list'; if (wasField && q.value) enterAtFirstMatch(L, a === 'next' ? 1 : -1); else move(a === 'next' ? 1 : -1); break; }
         case 'left': sideways(-1); break;
         case 'right': sideways(1); break;
         case 'enter-list': zone = 'list'; paint(true); break;
