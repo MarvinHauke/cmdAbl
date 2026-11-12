@@ -17,7 +17,7 @@
     .row { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-height: 36px; padding: 4px 16px 4px 22px; cursor: default; }
     .row.cur { background: var(--bg-row); }
     .row.cur::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
-    .row .label { flex: 1 1 14ch; min-width: 12ch; overflow-wrap: break-word; }   /* words may wrap, a single word never breaks; the control drops below the label when there's no room */
+    .row .label { flex: 1 1 14ch; min-width: 12ch; overflow-wrap: break-word; }   /* words may wrap, a word only breaks when it is longer than the whole line; the control drops below the label when there's no room */
     .row.changed .label::after { content: ' •'; color: var(--accent); }   /* differs from what was saved */
 
     .ctl { flex: none; display: inline-flex; align-items: center; gap: 6px; margin-left: auto; max-width: 100%; }
