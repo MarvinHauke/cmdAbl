@@ -156,6 +156,9 @@ Older checks that were never reported; most can now run through MCP.
 
 ## Backlog (not ordered)
 
+- **Right-click menus** (user, 2026-11-12): context menus on page rows (rename, remove, …), one pattern for all
+  pages, keyboard equivalents stay. After 0.1.8.
+
 - **Track colors** (user, 2026-11-05): a `color` module to color tracks (e.g. `color #drums red`).
   To plan when there's time between tests; needs a plan (number 0022; 0021 is the setup page).
 
