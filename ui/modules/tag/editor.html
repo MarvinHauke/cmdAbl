@@ -201,6 +201,46 @@
     }
     const q = $('q'), main = $('main'), footer = $('footer');
 
+    // Name marquee (reusable: copy this block; the pick list and other pages can take it later).
+    // A name cut off with "…" scrolls to show its end while it is hovered or holds the cursor: starts after 400 ms, moves at a calm
+    // reading speed to the end, pauses 1 s, jumps back to the start, repeats. Only names that are really truncated (scrollWidth >
+    // clientWidth); the element's size never changes (it scrolls inside itself, overflow hidden). No scrolling under
+    // prefers-reduced-motion (the full name is in the help line). Usage: marquee.sync(setOfNameElements) whenever hover or cursor
+    // may have changed; elements not in the set stop and reset at once. Markup: any element with overflow:hidden; white-space:nowrap.
+    const marquee = (() => {
+      const run = new Map();   // element -> { timer, raf }
+      const SPEED = 45, START = 400, PAUSE = 1000;   // px per second, ms, ms
+      const reduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      function stop(n) {
+        const r = run.get(n); if (!r) return;
+        clearTimeout(r.timer); cancelAnimationFrame(r.raf); run.delete(n);
+        n.scrollLeft = 0; n.style.textOverflow = '';
+      }
+      function start(n) {
+        if (run.has(n) || reduced() || n.scrollWidth <= n.clientWidth) return;
+        const r = { timer: 0, raf: 0 }; run.set(n, r);
+        const wait = (ms, f) => { r.timer = setTimeout(f, ms); };
+        const go = () => {
+          const dist = n.scrollWidth - n.clientWidth;
+          if (dist <= 0) { stop(n); return; }
+          n.style.textOverflow = 'clip';
+          const t0 = performance.now();
+          const step = now => {
+            const x = Math.min(dist, (now - t0) / 1000 * SPEED);
+            n.scrollLeft = x;
+            if (x < dist) r.raf = requestAnimationFrame(step);
+            else wait(PAUSE, () => { n.scrollLeft = 0; n.style.textOverflow = ''; wait(START, go); });
+          };
+          r.raf = requestAnimationFrame(step);
+        };
+        wait(START, go);
+      }
+      return { sync(want) {
+        for (const n of [...run.keys()]) if (!want.has(n) || !n.isConnected) stop(n);
+        for (const n of want) start(n);
+      } };
+    })();
+
     // ── model ──────────────────────────────────────────────────────────────────────────────────
     // An entry is a tag: o = the tracks that had it in the request, c = the tracks that have it now (pending state), name = its
     // current name (renamed when it differs from orig), removed = marked for removal, existing = it was in the request.
@@ -434,8 +474,24 @@
         main._right.classList.toggle('focus', pane === 1);
       }
       if (scroll && cursorEl) cursorEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      syncNames();
       help.update();
     }
+
+    // The names that scroll: those of the hovered cell/row and of the cursor.
+    function syncNames() {
+      const want = new Set();
+      const add = host => host?.querySelectorAll('.nm').forEach(n => want.add(n));
+      for (const h of main.querySelectorAll('.row:hover, .gh:hover, .gn:hover')) add(h);
+      for (const x of els) {
+        if (!x.el.classList.contains('cur')) continue;
+        if (view === 'list' && ((x.k === 'trk' && pane !== 1) || ((x.k === 'tag' || x.k === 'new') && pane !== 0))) continue;
+        add(x.el);
+      }
+      marquee.sync(want);
+    }
+    document.addEventListener('mouseover', () => syncNames());
+    document.addEventListener('mouseout', () => setTimeout(syncNames, 0));
 
     function render(scroll) {
       const prev = grid => grid ? $('gscroll') : main._left?._plist;
