@@ -51,17 +51,7 @@
 
     /* footer: the help line (ui/help.js) and the buttons on one row; fixed height, so nothing jumps */
     #foot { flex: none; box-sizing: border-box; height: 86px; border-top: 1px solid var(--border); padding: 6px 16px 8px; font-size: 11px; line-height: 15px; color: var(--dim); }
-    #normal { display: block; }
     #help { height: 45px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* three lines at most: the "Default: X" end must not be cut */
-    #foot.confirming { background: hsla(31, 100%, 67%, 0.12); border-top-color: var(--accent); }
-    #confirm { display: flex; align-items: center; gap: 8px; }
-    #confirm[hidden] { display: none; }
-    #confirmText { flex: 1; color: var(--accent); font-weight: 700; }
-    #keep { border-color: var(--accent); color: var(--accent); }
-    #discard { border-color: hsl(0, 75%, 62%); color: hsl(0, 75%, 62%); }
-    #confirm button { min-height: 24px; }
-    #foot.confirming #confirm { height: 100%; }
-    #normal[hidden] { display: none; }
     #btns { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 2px; height: 24px; }
     #btns button { min-height: 24px; font-size: 12px; }
     #apply { min-width: 19ch; border-color: var(--accent); color: var(--accent); }   /* "Apply (99 changes)": the label's width stays fixed */
@@ -74,10 +64,10 @@
   <div id="scroll" tabindex="-1"></div>
   <div id="foot">
     <div id="normal"><div id="help"></div><div id="btns"><button id="apply" type="button" tabindex="-1" disabled data-help="Apply: save the changes and close (Enter)">Apply</button><button id="cancel" type="button" tabindex="-1" data-help="Cancel: close without saving (Esc)">Cancel</button></div></div>
-    <div id="confirm" hidden><span id="confirmText"></span><button id="keep" type="button" data-help="Keep editing: go back to the settings">Keep editing</button><button id="discard" type="button" data-help="Discard: close and drop the changes">Discard</button></div>
   </div>
 
   <script>/*HELP_JS_PLACEHOLDER*/</script>
+  <script>/*CONFIRM_JS_PLACEHOLDER*/</script>
 
   <script>
     // Injected by the extension: see the contract at the top.
@@ -94,14 +84,12 @@
     const helpOn = SETTINGS?.help !== false;
     const scrollEl = document.getElementById('scroll');
     const helpEl = document.getElementById('help');
-    const normalEl = document.getElementById('normal');
     const footEl = document.getElementById('foot');
-    const confirmEl = document.getElementById('confirm');
 
     // Rows in display order: { row, el, orig, value, set(), refresh() }
     const R = [];
     const applyEl = document.getElementById('apply');
-    let cur = 0, confirming = false;
+    let cur = 0;
 
     const same = (a, b) => a === b;
     const isLink = r => r.row.kind === 'link';
@@ -254,7 +242,7 @@
       const n = changedRows().length;
       applyEl.textContent = n ? 'Apply (' + n + ' change' + (n === 1 ? '' : 's') + ')' : 'Apply';
       applyEl.disabled = n === 0;
-      if (!confirming) help.update();
+      if (!confirmBar.isOpen()) help.update();
     }
 
     function changesObj() {
@@ -267,17 +255,9 @@
 
     function showConfirm() {
       const n = changedRows().length;
-      document.getElementById('confirmText').textContent = 'Discard ' + n + ' change' + (n === 1 ? '' : 's') + '?';
-      confirming = true;
-      footEl.classList.add('confirming');
-      normalEl.hidden = true; confirmEl.hidden = false;
-      document.getElementById('keep').focus();
+      confirmBar.open(footEl, { text: 'Discard ' + n + ' change' + (n === 1 ? '' : 's') + '?', onKeep: cancelConfirm, onDiscard: () => send('') });
     }
     function cancelConfirm() {
-      if (!confirming) return;
-      confirming = false;
-      footEl.classList.remove('confirming');
-      normalEl.hidden = false; confirmEl.hidden = true;
       scrollEl.focus({ preventScroll: true });
       updateFooter();
     }
@@ -285,21 +265,8 @@
       if (changedRows().length) showConfirm(); else send('');
     }
 
-    // While the discard bar is up, keys go to its two buttons only (Esc keep editing, Tab/←→ between, Enter = focused button).
     document.addEventListener('keydown', e => {
-      if (!confirming) return;
-      e.stopPropagation();
-      if (e.key === 'Escape') { e.preventDefault(); cancelConfirm(); }
-      else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        const b = [document.getElementById('keep'), document.getElementById('discard')];
-        b[document.activeElement === b[0] ? 1 : 0].focus();
-      }
-      else if (e.key !== 'Tab' && e.key !== 'Enter' && e.key !== ' ') e.preventDefault();   // nothing reaches the fields behind the bar
-    }, true);
-
-    document.addEventListener('keydown', e => {
-      if (confirming) return;   // handled in the capture listener above
+      if (confirmBar.isOpen()) return;   // confirm.js owns the keys
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const r = R[cur];
       if (e.key === 'Tab') {
@@ -336,8 +303,6 @@
       build();
       applyEl.addEventListener('click', () => { document.activeElement?.blur(); if (!applyEl.disabled) save(); });
       document.getElementById('cancel').addEventListener('click', requestClose);
-      document.getElementById('keep').addEventListener('click', cancelConfirm);
-      document.getElementById('discard').addEventListener('click', () => send(''));
       let start = 0;
       if (SETTINGS?.focus) { const i = R.findIndex(r => r.el.parentElement?.dataset.group === SETTINGS.focus); if (i >= 0) start = i; }
       moveTo(start, false);

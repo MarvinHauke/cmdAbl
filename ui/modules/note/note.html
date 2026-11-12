@@ -96,6 +96,7 @@
   </div>
 
   <script>/*LISTNAV_JS_PLACEHOLDER*/</script>
+  <script>/*CONFIRM_JS_PLACEHOLDER*/</script>
   <script>
     const NOTE = /*NOTE_PLACEHOLDER*/null;
     const LIVE = /*LIVE_PLACEHOLDER*/null;   // { base, token } when the page may read and run, else null
@@ -351,21 +352,11 @@
     }   // takes the text of the box over; an empty stamp is dropped
     async function save() { if (closing) return; closing = true; await settle(); keep(); await ended(); finish(); }   // saves and closes: no text is held only in the page
     async function back() { if (closing) return; if (st?.live) { closing = true; await settle(); closing = false; } keep(); if (st && !st.live) finish('view'); else leaveStamp(); }   // Esc / View in edit: keeps the text; a stamp page has no view of its own: it closes and the module reopens it in view
-    let sure = false;   // Discard asks once, here on the page: a second click does it
-    let sureTimer = 0;
-    function ask(on) {
-      sure = on; clearTimeout(sureTimer);
-      if (on) sureTimer = setTimeout(() => ask(false), 3000);   // the question lapses after about 3 s
-      b3.textContent = on ? 'Discard changes?' : 'Discard';
-      b3.style.borderColor = on ? 'var(--accent)' : ''; b3.style.color = on ? 'var(--accent)' : '';
-      if (on) { hint.replaceChildren(mk('span', 'stamp', 'click Discard again to throw this edit away · any key keeps it')); } else setHint();
-    }
     function discard() {
       if (closing) return;   // a stamp is ending (waiting for its heading)
-      if (dropEmptyStamp(edit.value) === base && !sure) { if (st && !st.live) { saved = base; finish('view'); } else back(); return; }   // nothing changed: nothing to ask
-      if (!sure) { ask(true); return; }
-      ask(false);
-      saved = base; if (st && !st.live) finish('view'); else if (st?.live || saved.trim()) leaveStamp(); else finish();   // an empty note has no view to return to
+      const go = () => { saved = base; if (st && !st.live) finish('view'); else if (st?.live || saved.trim()) leaveStamp(); else finish(); };   // an empty note has no view to return to
+      if (dropEmptyStamp(edit.value) === base) { if (st && !st.live) { saved = base; finish('view'); } else back(); return; }   // nothing changed: nothing to ask
+      confirmBar.open(document.getElementById('footer'), { text: 'Discard this edit?', onKeep: () => edit.focus(), onDiscard: go });   // asked here on the page (ui/confirm.js)
     }
     function esc() { if (mode === 'view') finish(); else back(); }
 
@@ -374,9 +365,7 @@
     b3.addEventListener('click', () => { if (mode === 'view') startStampKey(); else discard(); });
     edit.addEventListener('input', setHint);
 
-    document.addEventListener('mousedown', e => { if (sure && e.target !== b3) ask(false); });
     document.addEventListener('keydown', e => {
-      if (sure && !(e.target === b3 && (e.key === 'Enter' || e.key === ' '))) ask(false);   // Enter/Space on the button is the second click
       const bare = !e.metaKey && !e.ctrlKey && !e.altKey;
       const a = mode === 'view' && stamps.length && e.target.tagName !== 'BUTTON' ? nav.action(e, { zone: 'list' }) : null;   // only next / prev / take are used; typing in view moves nothing
       if (a === 'next' || a === 'prev') { e.preventDefault(); moveCursor(a === 'next' ? (cur + 1) % stamps.length : (cur < 1 ? stamps.length - 1 : cur - 1)); }

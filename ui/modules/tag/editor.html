@@ -147,9 +147,6 @@
     #footer { flex: none; border-top: 1px solid var(--border); padding: 6px 12px; display: flex; align-items: center; gap: 8px; min-height: 38px; }
     #hint { flex: 1; min-width: 0; color: var(--dim); font-size: 11px; line-height: 14px; height: 16px; }
     #hint[hidden] { display: none !important; }   /* beats .helpline.one (shared.css) */
-    #confirm { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
-    #confirmText { flex: 1; min-width: 0; color: var(--accent); font-size: 12px; line-height: 15px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }   /* wraps (the destructive part must stay readable), the footer grows */
-    #footer.confirming { background: hsla(31, 100%, 67%, 0.12); border-top-color: var(--accent); }
     #footer button { min-height: 24px; flex: none; white-space: nowrap; }
     #apply { min-width: 96px; }
     #apply:not(:disabled) { border-color: var(--accent); color: var(--accent); }
@@ -177,13 +174,13 @@
 
   <div id="footer">
     <span id="hint"></span>
-    <div id="confirm" hidden><span id="confirmText"></span><button id="keep" type="button">Keep editing</button><button id="discard" type="button">Discard</button></div>
     <button id="gear" type="button" hidden data-help="Settings: open the tag settings, then this editor again">Settings</button>
     <button id="apply" type="button" disabled></button>
     <button id="close" type="button" data-help="Close: leave without writing (Esc; asks first when changes are pending)">Close</button>
   </div>
 
   <script>/*HELP_JS_PLACEHOLDER*/</script>
+  <script>/*CONFIRM_JS_PLACEHOLDER*/</script>
   <script>/*LISTNAV_JS_PLACEHOLDER*/</script>
   <script>
     const D = /*TAG_EDITOR_PLACEHOLDER*/null;
@@ -238,7 +235,6 @@
     let onHead = false, onName = false;   // grid: the cursor is in the header row / in the track-name column
     let editing = null;       // { mode: 'rename' | 'new', entry?, input }
     let note = null, noteTimer = 0;       // a state line for the help line: { text, bad? }
-    let confirmThen = null;
 
     const nameOk = v => /^[a-z0-9_-]+$/.test(v);
     const normalize = v => v.trim().replace(/^#/, '').toLowerCase();
@@ -596,23 +592,15 @@
       }
       send(JSON.stringify({ apply: a }));
     }
-    function ask(text, yes, then) {
-      confirmThen = then;
-      $('confirmText').textContent = text; $('discard').textContent = yes;
-      footer.classList.add('confirming'); $('hint').hidden = true; $('confirm').hidden = false;
-      $('apply').hidden = true; $('close').hidden = true; $('gear').hidden = true;
-      $('keep').focus();
+    function ask(text, yes, then) {   // the shared bar of ui/confirm.js; the footer's other children are hidden by CSS and come back on their own
+      confirmBar.open(footer, { text, discard: yes, onKeep: () => { focusQ(); help.update(); }, onDiscard: then });
     }
     function askDiscard(what, then) {
       const n = pendingCount();
       if (!n || editing) { if (editing) endEdit(); if (!n) then(); return; }
       ask('Discard ' + n + ' pending change' + (n === 1 ? '' : 's') + what + '?', 'Discard', then);
     }
-    function closeConfirm() {
-      confirmThen = null; footer.classList.remove('confirming'); $('hint').hidden = false; $('confirm').hidden = true;
-      $('apply').hidden = false; $('close').hidden = false; $('gear').hidden = D?.gear !== true; focusQ(); help.update();
-    }
-    const confirmOpen = () => !$('confirm').hidden;
+    const confirmOpen = () => confirmBar.isOpen();
 
     function switchView(to) {
       if (editing) return;
@@ -679,7 +667,7 @@
     document.addEventListener('keydown', e => {
       if (e.isComposing || editing) return;   // the inline input handles its own keys
       const c = CmdListNav.chord(e);
-      if (confirmOpen()) { if (c === 'Escape') { e.preventDefault(); closeConfirm(); } return; }   // Tab/Enter/Space work natively on the two buttons
+      if (confirmOpen()) return;   // confirm.js owns the keys while the bar is up
       if (zone === 'buttons') {
         const a = nav.action(e, { zone: 'buttons' });
         if (a) { e.preventDefault(); inButtons(a); }
@@ -729,8 +717,6 @@
     $('vGrid').addEventListener('click', () => switchView('grid'));
     $('apply').addEventListener('click', apply);
     $('close').addEventListener('click', () => askDiscard('', () => send('')));
-    $('keep').addEventListener('click', closeConfirm);
-    $('discard').addEventListener('click', () => { const f = confirmThen; closeConfirm(); if (f) f(); });
     $('gear').hidden = D?.gear !== true;
     $('gear').addEventListener('click', () => askDiscard(' and open settings', () => send(JSON.stringify({ settings: true }))));
     // A button the mouse used gives the keyboard back to the field.

@@ -47,9 +47,16 @@ const listnavSource = (): string => {
   return source;
 };
 
+// The discard confirmation (user, 2026-11-12): ui/confirm.js defines the global `confirmBar`, inlined at `/*CONFIRM_JS_PLACEHOLDER*/`.
+const confirmSource = (): string => {
+  const source = fs.readFileSync("ui/confirm.js", "utf8");
+  if (/<\/script/i.test(source)) throw new Error('ui/confirm.js contains "</script": cannot be inlined into a page');
+  return source;
+};
+
 // esbuild inlines all ui/*.html files as strings (the `text` loader). Hook the
 // load so build-time placeholders are replaced before bundling:
-//   every .html     — shared CSS, the matcher where /*MATCH_PLACEHOLDER*/ stands, ui/help.js at /*HELP_JS_PLACEHOLDER*/, ui/listnav.js at /*LISTNAV_JS_PLACEHOLDER*/
+//   every .html     — shared CSS, the matcher where /*MATCH_PLACEHOLDER*/ stands, ui/help.js at /*HELP_JS_PLACEHOLDER*/, ui/listnav.js at /*LISTNAV_JS_PLACEHOLDER*/, ui/confirm.js at /*CONFIRM_JS_PLACEHOLDER*/
 const htmlInlinePlugin: esbuild.Plugin = {
   name: "html-inline",
   setup(build) {
@@ -58,6 +65,7 @@ const htmlInlinePlugin: esbuild.Plugin = {
       html = html.replace("/*MATCH_PLACEHOLDER*/", () => matchSource);
       if (html.includes("/*HELP_JS_PLACEHOLDER*/")) html = html.replace("/*HELP_JS_PLACEHOLDER*/", () => helpSource());
       if (html.includes("/*LISTNAV_JS_PLACEHOLDER*/")) html = html.replace("/*LISTNAV_JS_PLACEHOLDER*/", () => listnavSource());
+      if (html.includes("/*CONFIRM_JS_PLACEHOLDER*/")) html = html.replace("/*CONFIRM_JS_PLACEHOLDER*/", () => confirmSource());
       html = html.replace("/*SHARED_CSS_PLACEHOLDER*/", () => sharedCss);
       return { contents: html, loader: "text" };
     });

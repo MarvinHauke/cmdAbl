@@ -101,3 +101,12 @@ kbd {
 .helpline.two .l:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .helpline.two .l:not(:first-child) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .helpline.two .l.caps { display: block; line-height: 18px; height: 18px; overflow: visible; }   /* a key-cap line: the caps (13px + 3px border) fit whole */
+
+/* discard confirmation in a footer (ui/confirm.js): the bar fills the footer, whose other children are hidden, so its height stays */
+.confirming { background: hsla(31, 100%, 67%, 0.12); border-top-color: var(--accent) !important; }
+.confirming > :not(.cbar) { display: none !important; }
+.cbar { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 8px; }
+.cbar .ctext { flex: 1; min-width: 0; color: var(--accent); font-weight: 700; font-size: 12px; line-height: 15px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.cbar button { flex: none; min-height: 24px; white-space: nowrap; }
+.cbar .ckeep { border-color: var(--accent); color: var(--accent); }
+.cbar .cdiscard { border-color: hsl(0, 75%, 62%); color: hsl(0, 75%, 62%); }
