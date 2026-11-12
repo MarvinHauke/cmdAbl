@@ -93,15 +93,23 @@
     .inl.bad { border-color: var(--fail); box-shadow: 0 0 0 1px var(--fail); }
 
     /* ── main: grid view (header row and track column stick; both directions scroll) ── */
-    #gscroll { height: 100%; overflow: auto; background: var(--bg-row); scroll-padding: 56px 0 0 200px; }
-    .gtable { display: grid; width: max-content; min-width: 100%; }
+    #gscroll { height: 100%; overflow: auto; background: var(--bg); scroll-padding: 56px 0 0 200px; }
+    .gtable { display: grid; width: max-content; }
+    .gtable.nocols { min-width: 100%; }   /* no columns: the empty-state text gets the full width */   /* as wide as its columns: space to the right is the bare page */
     .gh, .gn, .gc, .gempty { border-bottom: 1px solid var(--border); }
     .gh { position: sticky; top: 0; z-index: 2; background: var(--bg-row); padding: 4px 4px 2px 8px; display: flex; flex-direction: column; min-width: 0;
           border-right: 1px solid var(--border); box-shadow: inset 0 -2px 0 var(--border); min-height: 56px; cursor: default; }
     .gh.corner { left: 0; z-index: 4; justify-content: center; color: var(--accent); min-height: 56px; padding-left: 10px; }
     .gh .nm { line-height: 20px; }
+    .gh.corner.editing { flex-direction: row; align-items: center; gap: 4px; }
+    .gh.corner.cur.editing { outline: none; }
+    .gh.corner.editing .inl { min-width: 0; }
+    .gh.corner.editing { flex-wrap: wrap; }
+    .gh.corner.editing .meta:not(.err) { display: none; }
+    .gh.corner.editing .err, .gh .row .err { flex-basis: 100%; }
     .gh .ghb { display: flex; align-items: center; gap: 2px; margin-left: -6px; }
-    .gh .meta { margin-left: auto; padding-right: 2px; }
+    .gh .ghb { min-width: 0; }
+    .gh .meta { margin-left: auto; padding-right: 2px; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .ib { min-width: 26px; height: 26px; padding: 0; font-size: 16px; line-height: 1; border-color: transparent; display: inline-flex; align-items: center; justify-content: center; }
     .ib:hover { border-color: var(--text); }
     .gh.colcur, .gn.cur { background: var(--bg-hi); }
@@ -109,12 +117,12 @@
     .gn { position: sticky; left: 0; z-index: 1; background: var(--bg-row); display: flex; align-items: center; gap: 8px; padding: 0 10px; min-height: 28px; min-width: 0;
           border-right: 1px solid var(--border); cursor: default; }
     .gn.cur { box-shadow: inset 2px 0 0 var(--accent); }
-    .gc { display: flex; align-items: center; justify-content: center; min-height: 28px; border-right: 1px solid var(--border); cursor: default; }
+    .gc { background: var(--bg-row); display: flex; align-items: center; justify-content: center; min-height: 28px; border-right: 1px solid var(--border); cursor: default; }
     .gc:hover { background: var(--bg-hi); }
     .gc.cur { outline: 2px solid var(--accent); outline-offset: -2px; }
     .gc.locked, .gc.nomatch { opacity: 0.6; }
     .gh.removed .nm { text-decoration: line-through; color: var(--dim); }
-    .gempty { grid-column: 1 / -1; padding: 12px 10px; color: var(--dim); font-size: 11px; position: sticky; left: 0; }
+    .gempty { background: var(--bg-row); grid-column: 1 / -1; padding: 12px 10px; color: var(--dim); font-size: 11px; position: sticky; left: 0; }
 
     /* ── footer ── */
     #footer { flex: none; border-top: 1px solid var(--border); padding: 6px 12px; display: flex; align-items: center; gap: 8px; min-height: 38px; }
@@ -253,7 +261,7 @@
       const m = el('span', 'meta'), add = addedOf(e), drop = droppedOf(e);
       m.textContent = metaText(e, sep);
       if (e.removed || add || drop || !e.existing || e.name !== e.orig) m.classList.add('chg');
-      m.title = e.removed ? 'marked for removal' : e.c.size + ' tracks' + (add ? ', ' + add + ' to add' : '') + (drop ? ', ' + drop + ' to remove' : '');
+      m.title = e.removed ? 'marked for removal' : (e.existing ? '' : 'new tag, ') + (live().some(x => x !== e && x.name === e.name) ? 'merges with another tag, ' : '') + e.c.size + (e.c.size === 1 ? ' track' : ' tracks') + (add ? ', ' + add + ' to add' : '') + (drop ? ', ' + drop + ' to remove' : '');
       return m;
     }
     function nameEl(e) {
@@ -334,10 +342,10 @@
     function renderGrid(L) {
       main.className = 'grid';
       const sc = el('div'); sc.id = 'gscroll';
-      const tbl = el('div', 'gtable');
-      tbl.style.gridTemplateColumns = 'minmax(170px, 240px) repeat(' + L.cols.length + ', minmax(116px, 1fr))';
+      const tbl = el('div', 'gtable' + (L.cols.length ? '' : ' nocols'));
+      tbl.style.gridTemplateColumns = 'minmax(170px, 240px) repeat(' + L.cols.length + ', 140px)';
       const corner = el('div', 'gh corner'); corner.dataset.help = 'New tag: name a tag, then check its tracks (Enter)';
-      if (editing?.mode === 'new') inlineInput(corner); else corner.append(el('span', 'nm', '+ New tag…'));
+      if (editing?.mode === 'new') { corner.classList.add('editing'); inlineInput(corner); } else corner.append(el('span', 'nm', '+ New tag…'));
       corner.addEventListener('click', () => { if (editing) return; onHead = true; onName = true; startEdit('new'); });
       tbl.append(reg(corner, 'corner'));
       for (const e of L.cols) {
@@ -428,7 +436,7 @@
       q.placeholder = view === 'grid' ? 'Filter tracks and tags…' : 'Filter tracks…';
       q.dataset.help = D?.filter === 'highlight' ? 'Filter: type to highlight matches; the arrows skip the rest. Esc clears' : 'Filter: type to hide what does not match. Esc clears';
       const t = L.s ? L.navRows.length + ' of ' + tracks.length + ' tracks' : tracks.length + ' track' + (tracks.length === 1 ? '' : 's');
-      $('fstat').textContent = view === 'grid' ? t + ' · ' + (L.s ? L.navCols.length + ' of ' : '') + entries.length + ' tags' : t;
+      $('fstat').textContent = view === 'grid' ? t + ' · ' + (L.s ? L.navCols.length + ' of ' : '') + entries.length + (entries.length === 1 ? ' tag' : ' tags') : t;
     }
 
     // ── help line ──────────────────────────────────────────────────────────────────────────────
