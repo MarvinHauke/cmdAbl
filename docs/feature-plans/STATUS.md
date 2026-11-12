@@ -71,7 +71,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     and grid marking, narrow columns, scrolling name. For the user: rename in both views, hover texts, note page.
     Clipped help-line text scrolls after 0.8 s (shared `marquee` in help.js, `faf3d62`); one shared discard
     bar for the tag editor, settings, defaults and note pages (`ui/confirm.js`, ←/→, Enter, Esc keeps; `fb3baa0`;
-    seen in Live on settings: arrows, Discard drops the change).
+    seen in Live on settings: arrows, Discard drops the change; accent ring and a focus re-assert for the
+    note page `3e03eff`, the cause of the lost focus there is a guess: the user checks a mouse-opened bar).
     Minor: the note page footer changes height between a 1- and 2-line error (checklist item 3).
   - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
   - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
