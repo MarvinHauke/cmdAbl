@@ -172,6 +172,12 @@ soloed or armed, so a toggle is not applied blindly. Commands without such a sta
   (`chainSwitches`); no script → no symbol for chains.
 - The symbol shows the state when the list opened and does not update.
 
+**Interactive `find` (user finding, 2026-11-12).** The user's question: since the `note` page sets the loop while
+it stays open, can `find` select each result in the Set while the list is open? Yes: page runs (0018, 0.1.7)
+let a live page run the command lines its module allows, which removes the blocker below (the dialog channel
+spike). Follow mode can be built as a live `find` page whose cursor runs `goto <path>`; needs its own small plan
+after 0.1.8.
+
 **Follow mode (draft, depends on the spike in 0006).** The active row is selected in Live while
 the pick list is open (a track or a device, through `selectNode`), for every pick list including
 multi-select.

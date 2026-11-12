@@ -51,6 +51,17 @@ tolerance window around the value. Relative encoders need no pickup.
 vs relative, value range) and picks the pickup default per type. The types would live in a controller
 profile (0018's open question: global profiles vs per-Set bindings).
 
+**Encoders and trigger lines (user finding, 2026-11-12; to grill with the rest of this section).**
+`map learn | jump +1` on a UC4 encoder fired once, then nothing: a bound line fires on a press (0 → >0), and an
+absolute encoder keeps sending values > 0 without a 0 in between. The user's idea: keep the previous, last and
+current value and read the direction from their order. It works inside 1–126; at the ends (0, 127, or a range
+set in the controller) the value repeats and the direction is lost, which is why controllers offer relative
+modes (the UC4: e.g. 63/65 or 1/127 per detent). Proposal: a control type **relative encoder** next to button
+and pot/fader; a trigger line bound to it runs once per detent, in the direction turned (`jump +1` forward,
+the opposite sign backward), and needs no pickup. Open: how a line names its backward action (the sign of
+`+N`, or an explicit second line), how the type is set (monitor buttons above, or detected), and other types
+(notes as keys, MPE).
+
 ## Live 13 spike results (2026-11-11)
 
 [research/live13-spikes.md](research/live13-spikes.md): Python writes from the Remote Script give one
