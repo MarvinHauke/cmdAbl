@@ -505,7 +505,7 @@ the change can be off. This is a known limit.
 
 ![The note window in view mode: three stamps, each a heading with the date and time and a line of text below it; two headings also hold the song position, such as @79.3.2. The footer says e edit, s stamp, Esc close, with Edit, Stamp and Close buttons](assets/images/note-view.png)
 
-![The same note in stamp edit: the Markdown source, with the newest stamp heading `### @82.1.2 · 2026-11-11 22:37` and the text typed below it. The footer says Cmd+S save and close, Esc done, Cancel drops this edit, with Save, Cancel and Done buttons](assets/images/note-edit.png)
+![The note in edit mode: the Markdown source with two stamp headings, such as `### @9.1.1 · 2026-11-13 10:12`, and a line of text under each. The footer says Cmd+S save and close, Esc back to view, Cancel drops this edit, with Save, Cancel and View buttons](assets/images/note-edit.png)
 
 Keys in the note window:
 
