@@ -74,6 +74,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     bar for the tag editor, settings, defaults and note pages (`ui/confirm.js`, ←/→, Enter, Esc keeps; `fb3baa0`;
     seen in Live on settings: arrows, Discard drops the change; accent ring and a focus re-assert for the
     note page `3e03eff`, the cause of the lost focus there is a guess: seen working by the user).
+    One footer button rule (0019 "Footer buttons"): note "Cancel" `7c7d755`, tag editor "Cancel" `5dd2e19`. History
+    records bare commands (`note`) `745f1f3`.
     Minor: the note page footer changes height between a 1- and 2-line error (checklist item 3).
   - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
   - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
