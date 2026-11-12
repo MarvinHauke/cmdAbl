@@ -132,7 +132,7 @@
       const label = mk('span', 'label', row.label);
       el.appendChild(label);
       const ctl = mk('span', 'ctl');
-      const reset = mk('button', 'reset', 'reset'); reset.type = 'button'; reset.tabIndex = -1; reset.title = 'Back to the default'; reset.dataset.help = 'Reset: back to the default';
+      const reset = mk('button', 'reset', 'reset'); reset.type = 'button'; reset.tabIndex = -1; reset.dataset.help = 'Reset: back to the default';
       const r = { row, el, orig: row.value, value: row.value, refresh() {} };
       r.set = v => { r.value = v; r.refresh(); updateFooter(); };
 

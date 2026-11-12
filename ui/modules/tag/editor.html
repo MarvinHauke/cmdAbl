@@ -107,9 +107,10 @@
           border-right: 1px solid var(--border); box-shadow: inset 0 -2px 0 var(--border); min-height: 56px; cursor: default; }
     .gh.corner { left: 0; z-index: 4; justify-content: center; color: var(--accent); min-height: 56px; padding-left: 10px; }
     .gh .nm { line-height: 20px; display: block; }
+    .gh.corner { min-width: 150px; }   /* room for "+ New tag…" and its input */
     .gh.corner.editing { flex-direction: row; align-items: center; gap: 4px; }
     .gh.corner.cur.editing { outline: none; }
-    .gh.corner.editing .inl { min-width: 0; }
+    .gh.corner.editing .inl { min-width: 0; flex: 1 1 0; width: 0; }
     .gh.corner.editing { flex-wrap: wrap; }
     .gh.corner.editing .meta:not(.err) { display: none; }
     .gh.corner.editing .err, .gh .line .err { flex-basis: 100%; }
@@ -138,7 +139,7 @@
     #hint { flex: 1; min-width: 0; color: var(--dim); font-size: 11px; line-height: 14px; height: 16px; }
     #hint[hidden] { display: none !important; }   /* beats .helpline.one (shared.css) */
     #confirm { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
-    #confirmText { flex: 1; min-width: 0; color: var(--accent); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #confirmText { flex: 1; min-width: 0; color: var(--accent); font-size: 12px; line-height: 15px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }   /* wraps (the destructive part must stay readable), the footer grows */
     #footer.confirming { background: hsla(31, 100%, 67%, 0.12); border-top-color: var(--accent); }
     #footer button { min-height: 24px; flex: none; white-space: nowrap; }
     #apply { min-width: 96px; }
@@ -283,20 +284,19 @@
       const m = el('span', 'meta'), add = addedOf(e), drop = droppedOf(e);
       m.textContent = metaText(e, sep);
       if (e.removed || add || drop || !e.existing || e.name !== e.orig) m.classList.add('chg');
-      m.title = e.removed ? 'marked for removal' : (e.existing ? '' : 'new tag, ') + (live().some(x => x !== e && x.name === e.name) ? 'merges with another tag, ' : '') + e.c.size + (e.c.size === 1 ? ' track' : ' tracks') + (add ? ', ' + add + ' to add' : '') + (drop ? ', ' + drop + ' to remove' : '');
+      m.dataset.help = e.removed ? 'marked for removal' : (e.existing ? '' : 'new tag, ') + (live().some(x => x !== e && x.name === e.name) ? 'merges with another tag, ' : '') + e.c.size + (e.c.size === 1 ? ' track' : ' tracks') + (add ? ', ' + add + ' to add' : '') + (drop ? ', ' + drop + ' to remove' : '');
       return m;
     }
     function nameEl(e, s) {
       const n = el('span', 'nm', '#'); hl(n, e.name, s);
       if (e.existing && e.name !== e.orig) { n.append(el('span', 'was', ' (was #' + e.orig + ')')); }
-      n.title = '#' + e.name + (e.existing && e.name !== e.orig ? ' (was #' + e.orig + ')' : '');
       return n;
     }
     function tagButtons(e) {
-      const pen = el('button', 'ib', '✎'); pen.type = 'button'; pen.title = 'Rename #' + e.name + ' (F2)'; pen.setAttribute('aria-label', 'Rename #' + e.name);
+      const pen = el('button', 'ib', '✎'); pen.type = 'button'; pen.dataset.help = 'Rename #' + e.name + ' (F2)'; pen.setAttribute('aria-label', 'Rename #' + e.name);
       pen.addEventListener('click', ev => { ev.stopPropagation(); if (editing) return; tagCur = e; onName = false; if (view === 'list') pane = 0; startEdit('rename', e); });
-      const x = el('button', 'ib', '×'); x.type = 'button'; x.title = (e.removed ? 'Unmark #' : 'Mark #') + e.name + (e.removed ? '' : ' for removal') + ' (Shift+Backspace)';
-      x.setAttribute('aria-label', x.title);
+      const x = el('button', 'ib', '×'); x.type = 'button'; x.dataset.help = (e.removed ? 'Unmark #' : 'Mark #') + e.name + (e.removed ? '' : ' for removal') + ' (Shift+Backspace)';
+      x.setAttribute('aria-label', x.dataset.help);
       x.addEventListener('click', ev => { ev.stopPropagation(); if (editing) return; tagCur = e; onName = false; if (view === 'list') pane = 0; toggleRemove(e); });
       for (const b of [pen, x]) b.tabIndex = -1;   // the field keeps the keyboard; F2 and Shift+Backspace are the keys
       return [pen, x];
@@ -341,17 +341,16 @@
         rl.append(el('div', 'empty', 'Pick a tag on the left to see its tracks, or press Enter on “+ New tag…” to name a new one.'));
       } else {
         const e = tagCur;
-        const t = el('span', 'pt', 'Tracks of #' + e.name); t.title = t.textContent;
+        const t = el('span', 'pt', 'Tracks of #' + e.name); t.dataset.help = t.textContent;
         rh.append(t, el('span', 'pn', e.c.size + ' tagged' + (addedOf(e) || droppedOf(e) ? ' · ' + [addedOf(e) && '+' + addedOf(e), droppedOf(e) && '−' + droppedOf(e)].filter(Boolean).join(' ') : '')));
         if (e.removed) rl.append(el('div', 'empty', '#' + e.name + ' is marked for removal: Shift+Backspace unmarks it, then its tracks can change.'));
         if (!tracks.length) rl.append(el('div', 'empty', 'This Set has no tracks.'));
         else if (!L.rows.length) rl.append(el('div', 'empty', 'No track matches “' + q.value.trim() + '”. Esc clears the filter.'));
         for (const tr of L.rows) {
           const r = el('div', 'row trk' + (e.removed ? ' locked' : '') + (L.rowActive ? (L.rowHit(tr) ? ' hit' : ' nomatch') : ''));
-          r.dataset.help = 'Track: Space or a click adds or removes #' + e.name;
+          r.dataset.help = (tr.group ? tr.group + ' / ' : '') + tr.name + ' · Space or a click adds or removes #' + e.name;
           r.append(cbEl(e, tr.id), hl(el('span', 'nm'), tr.name, L.rowActive ? L.s : ''));
           if (tr.group) r.append(hl(el('span', 'grp'), tr.group, L.rowActive ? L.s : ''));
-          r.title = (tr.group ? tr.group + ' / ' : '') + tr.name;
           r.addEventListener('click', () => { tagCur = e; trackCur = tr.id; pane = 1; toggleCell(e, tr.id); });
           rl.append(reg(r, 'trk', e, tr.id));
         }
@@ -374,7 +373,7 @@
       main.className = 'grid';
       const sc = el('div'); sc.id = 'gscroll';
       const tbl = el('div', 'gtable' + (L.cols.length ? '' : ' nocols'));
-      tbl.style.gridTemplateColumns = 'minmax(170px, 240px) ' + L.cols.map(e => editing?.mode === 'rename' && editing.entry === e && editing.w ? editing.w + 'px' : 'fit-content(220px)').join(' ');
+      tbl.style.gridTemplateColumns = 'fit-content(220px) ' + L.cols.map(e => editing?.mode === 'rename' && editing.entry === e && editing.w ? editing.w + 'px' : 'fit-content(220px)').join(' ');
       const corner = el('div', 'gh corner'); corner.dataset.help = 'New tag: name a tag, then check its tracks (Enter)';
       if (editing?.mode === 'new') { corner.classList.add('editing'); inlineInput(corner); } else corner.append(el('span', 'nm', '+ New tag…'));
       corner.addEventListener('click', () => { if (editing) return; onHead = true; onName = true; startEdit('new'); });
@@ -395,7 +394,7 @@
         const n = el('div', 'gn' + (hit ? '' : ' nomatch') + (L.rowActive && hit ? ' hit' : ''));
         n.append(hl(el('span', 'nm'), tr.name, L.rowActive ? L.s : ''));
         if (tr.group) n.append(hl(el('span', 'grp'), tr.group, L.rowActive ? L.s : ''));
-        n.title = (tr.group ? tr.group + ' / ' : '') + tr.name;
+        n.dataset.help = (tr.group ? tr.group + ' / ' : '') + tr.name;
         n.addEventListener('click', () => { trackCur = tr.id; onName = true; onHead = false; focusQ(); render(); });
         tbl.append(reg(n, 'gn', null, tr.id));
         for (const e of L.cols) {
@@ -514,7 +513,7 @@
       setNote(null); render();
     }
     function endEdit() { editing = null; setNote(null); zone = 'list'; render(true); focusQ(); }
-    function badName(msg, short) { editing.input.classList.remove('bad'); void editing.input.offsetWidth; editing.input.classList.add('bad', 'shake'); editing.err.textContent = short || 'not allowed'; editing.err.title = msg; setNote({ text: msg, bad: true }); }
+    function badName(msg, short) { editing.input.classList.remove('bad'); void editing.input.offsetWidth; editing.input.classList.add('bad', 'shake'); editing.err.textContent = short || 'not allowed'; editing.err.dataset.help = msg; setNote({ text: msg, bad: true }); }
 
     function commitEdit() {
       const v = normalize(editing.input.value);
@@ -562,7 +561,7 @@
     }
     function ask(text, yes, then) {
       confirmThen = then;
-      $('confirmText').textContent = text; $('confirmText').title = text; $('discard').textContent = yes;
+      $('confirmText').textContent = text; $('discard').textContent = yes;
       footer.classList.add('confirming'); $('hint').hidden = true; $('confirm').hidden = false;
       $('apply').hidden = true; $('close').hidden = true; $('gear').hidden = true;
       $('keep').focus();

@@ -92,8 +92,8 @@
       const idx = R.length;
       const el = mk('div', 'row');
       const input = mk('input'); input.type = 'text'; input.autocomplete = 'off'; input.spellcheck = false;
-      input.value = r.line || ''; input.placeholder = 'bare: ' + (r.bareBehaviour || ''); input.title = 'Bare word: ' + (r.bareBehaviour || ''); input.setAttribute('aria-label', 'Default for ' + r.command);
-      const reset = mk('button', 'reset', 'reset'); reset.type = 'button'; reset.tabIndex = -1; reset.title = 'Clear the line: the bare word does what it does without a default'; reset.dataset.help = 'Reset: clear the line, the bare word does what it does without a default';
+      input.value = r.line || ''; input.placeholder = 'bare: ' + (r.bareBehaviour || ''); input.setAttribute('aria-label', 'Default for ' + r.command);
+      const reset = mk('button', 'reset', 'reset'); reset.type = 'button'; reset.tabIndex = -1; reset.dataset.help = 'Reset: clear the line, the bare word does what it does without a default';
       const status = mk('span', 'status');
       const x = { r, el, input, orig: (r.saved ?? r.line ?? '').trim(), status, seq: 0, timer: 0 };
 
@@ -101,7 +101,6 @@
         status.className = 'status' + (kind ? ' ' + kind : '');
         status.textContent = text || '';
         if (typeof updateFooter === 'function' && R.includes(x)) updateFooter();
-        status.title = kind === 'bad' ? text : '';
       };
       x.refresh = () => {
         reset.classList.toggle('show', input.value.trim() !== '');
