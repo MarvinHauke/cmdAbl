@@ -25,8 +25,9 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
 ## Now
 
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and `gitleaks`).
-- **pakabl:** a review of the 25 candidates is in work (table for the user); stars in `pakabl list` go with
-  0.1.8 ([0003](0003-pakabl-extension-system.md)).
+- **pakabl:** **new candidates are reviewed on request** (user, 2026-11-12): when the daily index PR lists new
+  ones, the user asks and the architect reviews them read-only. Stars in `pakabl list` shipped with 0.1.8
+  ([0003](0003-pakabl-extension-system.md)); check after the first stats run.
 - **In work: 0.1.8** on `feat/0.1.8-tag-editor` (MIDI monitor status and auto-extend: cmdabl-modules, 2026-11-12):
   - **Done and tested in Live (2026-11-12):** the tag list (`tag -l`, Enter runs `tag.listEnter` as an inner run)
     and the tag editor (module page, list and grid view, Apply); the `board` surface is removed; inner runs
