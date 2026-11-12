@@ -7,7 +7,7 @@ const tracks: EditorTrack[] = [
   { id: "a", name: "Kick", group: "Drums", tags: ["drums", "fx"] },
   { id: "b", name: "Lead", tags: [] },
 ];
-const opts = { view: "list", filter: "compact" } as const;
+const opts = { view: "list", filter: "compact", gear: true } as const;
 
 test("buildEditor: tags sorted with their track ids, Set order kept, focus on the first tag or the one asked for", () => {
   const data = buildEditor(tracks, opts);

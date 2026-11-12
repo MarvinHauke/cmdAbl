@@ -107,6 +107,7 @@ export function activate(api: ModuleApi, tagEditorTemplate: string): void {
     const request = buildEditor(tracks, {
       view,
       filter,
+      gear: api.settings.gearAvailable(),
       ...(focus.tag !== undefined ? { focusTag: focus.tag } : {}),
       ...(focus.track ? { focusTrack: focus.track.handleId } : {}),
     });
@@ -117,7 +118,7 @@ export function activate(api: ModuleApi, tagEditorTemplate: string): void {
     } catch (e: unknown) {
       return fail(ExitCode.FAILURE, `tag: cannot build the editor page — ${e instanceof Error ? e.message : String(e)}`);
     }
-    const answer = await api.dialog(html, 760, 560, "tag editor", { gear: true });
+    const answer = await api.dialog(html, 760, 560, "tag editor", { gear: api.settings.gearAvailable() });
     const parsed = parseAnswer(answer, request);
     if (parsed.kind === "closed" || parsed.kind === "settings") return;
     if (parsed.kind === "error") return fail(ExitCode.USAGE, parsed.message);

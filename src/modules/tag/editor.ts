@@ -32,6 +32,8 @@ export const EDITOR_HELP = "Space toggles · F2 renames · Shift+Backspace remov
 export interface EditorOptions {
   view: EditView;
   filter: FilterMode;
+  /** Show the gear (`api.settings.gearAvailable()`). */
+  gear: boolean;
   /** Open on this tag (a new name is added as an empty tag), or on the first tag when absent. */
   focusTag?: string;
   /** Open with this track in focus (its id). */
@@ -51,7 +53,7 @@ export function buildEditor(tracks: EditorTrack[], options: EditorOptions): TagE
     view: options.view,
     filter: options.filter,
     help: EDITOR_HELP,
-    gear: true,
+    gear: options.gear,
     tracks: tracks.map((t) => ({ id: t.id, name: t.name, ...(t.group !== undefined ? { group: t.group } : {}) })),
     tags: names.map((name) => ({ name, tracks: tracks.filter((t) => t.tags.includes(name)).map((t) => t.id) })),
     ...(Object.keys(focus).length > 0 ? { focus } : {}),

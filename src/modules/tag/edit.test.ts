@@ -35,7 +35,7 @@ const requestOf = (fake: { dialogs: Array<{ html: string }> }): { tracks: Array<
 const answer = (apply: unknown): string => JSON.stringify({ apply });
 
 test("--edit <tag> opens the editor with regular and return tracks (never the main), the tags and the tag in focus", async () => {
-  const { fake, run } = setup({ Lead: ["fx"], Bass: ["synth"] }, { dialogAnswer: null });
+  const { fake, run } = setup({ Lead: ["fx"], Bass: ["synth"] }, { dialogAnswer: null, gearAvailable: true });
   assert.equal(await run({ edit: "fx" }), undefined);
   const req = requestOf(fake);
   assert.deepEqual(req.tracks.map((t) => t.name), ["Lead", "Bass", "A-Reverb"]);
@@ -43,6 +43,10 @@ test("--edit <tag> opens the editor with regular and return tracks (never the ma
   assert.deepEqual(req.focus, { tag: "fx" });
   assert.deepEqual([req.view, req.filter, req.gear], ["list", "compact", true]);
   assert.equal(fake.dialogs[0]!.gear, true);
+  const quiet = setup({});
+  await quiet.run({ edit: "#" }); // a map binding or a chain: no gear
+  assert.equal(requestOf(quiet.fake).gear, false);
+  assert.equal(quiet.fake.dialogs[0]!.gear, false);
 });
 
 test("the settings choose the view and the filter", async () => {
