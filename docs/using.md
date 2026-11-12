@@ -806,7 +806,7 @@ The Remote Script writes its own lines (`cmdAbl [script] …`). They are not in 
 
 ## History
 
-cmdAbl remembers the last 20 commands that worked and had arguments. They appear at the top of the empty palette,
+cmdAbl remembers the last 20 commands that worked. They appear at the top of the empty palette,
 newest first.
 
 - `↑` and `↓` choose a remembered line, and `Enter` runs it again.
