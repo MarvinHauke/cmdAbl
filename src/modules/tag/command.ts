@@ -193,7 +193,7 @@ export function activate(api: ModuleApi, tagEditorTemplate: string): void {
       "reaches every track tagged fx. With --list, a read-only list shows one row per tag with its track count and track names, " +
       "and the untagged tracks as a last row that cannot be picked; Enter on a tag runs the setting tag.listEnter with {} replaced by the tag " +
       "(default find #{}, so find next and find prev step through those tracks). With --edit (tag --edit fx), the tag editor opens: " +
-      "the tags with the tracks that carry them, check boxes to switch tags on and off, F2 to rename a tag (an existing name merges), " +
+      "the tags with the tracks that carry them, check boxes to switch tags on and off, Cmd+R (Ctrl+R) to rename a tag (an existing name merges), " +
       "Shift+Backspace to remove a tag from every track, and a new tag. Nothing is written until Apply; Esc closes without changes. " +
       "tag --edit without a tag opens on the first tag, a name that does not exist yet starts a new tag; the settings tag.editView (list or grid) and tag.filter " +
       "(compact or highlight) choose how it opens and filters. With a target and no names the editor opens with that track in focus. " +

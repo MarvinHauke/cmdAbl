@@ -21,7 +21,7 @@
        text matches). filter "compact" hides what doesn't match, "highlight" keeps everything and the arrows skip non-matches. Esc clears the
        filter first, then closes; with pending changes Esc asks in the footer. "+ New tag…" is pinned at the top of the tags (grid: the corner).
        Keys (zones as in listnav): ↑/↓ move · → deeper (list: into the tracks; grid: next column) · ← back · Space toggles the checkbox (a
-       pending change, not a mark) · F2 renames the current tag · Shift+Backspace marks it for removal (again: unmarks) · Ctrl+G switches
+       pending change, not a mark) · ⌘R (Ctrl+R) renames the current tag (F2 too) · Shift+Backspace marks it for removal (again: unmarks) · Ctrl+G switches
        the view · Enter applies (on "+ New tag…": names a new tag) · Ctrl/Cmd+Enter and Ctrl/Cmd+S apply from anywhere · Tab reaches the buttons.
        All user data (track and tag names) goes in with textContent. -->
   <style>
@@ -223,7 +223,8 @@
     const NEW = { newTag: true };   // the pinned "+ New tag…" row (list view)
 
     const keys = D?.keys || {};
-    const KEYMAP = { view: ['Ctrl+g'], rename: ['F2'], remove: ['Shift+Backspace'], apply: ['Ctrl+Enter', 'Cmd+Enter', 'Ctrl+s', 'Cmd+s'], ...keys };
+    const KEYMAP = { view: ['Ctrl+g'], rename: ['Cmd+r', 'Ctrl+r', 'F2'], remove: ['Shift+Backspace'], apply: ['Ctrl+Enter', 'Cmd+Enter', 'Ctrl+s', 'Cmd+s'], ...keys };
+    const RK = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '') ? '⌘R' : 'Ctrl+R';   // the rename key as shown
     const is = (c, name) => (KEYMAP[name] || []).includes(c);
     const nav = CmdListNav.create({ keys });
 
@@ -301,12 +302,12 @@
       return n;
     }
     function tagButtons(e) {
-      const pen = el('button', 'ib', '✎'); pen.type = 'button'; pen.dataset.help = 'Rename #' + e.name + ' (F2)'; pen.setAttribute('aria-label', 'Rename #' + e.name);
+      const pen = el('button', 'ib', '✎'); pen.type = 'button'; pen.dataset.help = 'Rename #' + e.name + ' (' + RK + ')'; pen.setAttribute('aria-label', 'Rename #' + e.name);
       pen.addEventListener('click', ev => { ev.stopPropagation(); if (!settleEdit()) return; tagCur = e; onName = false; if (view === 'list') pane = 0; startEdit('rename', e); });
       const x = el('button', 'ib', '×'); x.type = 'button'; x.dataset.help = (e.removed ? 'Unmark #' : 'Mark #') + e.name + (e.removed ? '' : ' for removal') + ' (Shift+Backspace)';
       x.setAttribute('aria-label', x.dataset.help);
       x.addEventListener('click', ev => { ev.stopPropagation(); if (!settleEdit()) return; tagCur = e; onName = false; if (view === 'list') pane = 0; toggleRemove(e); });
-      for (const b of [pen, x]) b.tabIndex = -1;   // the field keeps the keyboard; F2 and Shift+Backspace are the keys
+      for (const b of [pen, x]) b.tabIndex = -1;   // the field keeps the keyboard; ⌘R and Shift+Backspace are the keys
       return [pen, x];
     }
     function inlineInput(host) {
@@ -335,7 +336,7 @@
       const ll = el('div', 'plist');
       for (const e of entries) {
         const r = el('div', 'row tag' + (e.removed ? ' removed' : ''));
-        r.dataset.help = '#' + e.name + ' · → its tracks · ✎ or F2 renames · × or Shift+Backspace marks it for removal';
+        r.dataset.help = '#' + e.name + ' · → its tracks · ✎ or ' + RK + ' renames · × or Shift+Backspace marks it for removal';
         if (editing?.mode === 'rename' && editing.entry === e) inlineInput(r); else r.append(nameEl(e), ...tagButtons(e), metaEl(e, ' · '));
         r.addEventListener('click', () => { if (editing) return; tagCur = e; pane = 0; focusQ(); render(); });
         ll.append(reg(r, 'tag', e));
@@ -388,7 +389,7 @@
       tbl.append(reg(corner, 'corner'));
       for (const e of L.cols) {
         const h = el('div', 'gh' + (e.removed ? ' removed' : '') + (L.colActive && !L.colHit(e) ? ' nomatch' : ''));
-        h.dataset.help = '#' + e.name + ' · ✎ or F2 renames · × or Shift+Backspace marks it for removal, again unmarks';
+        h.dataset.help = '#' + e.name + ' · ✎ or ' + RK + ' renames · × or Shift+Backspace marks it for removal, again unmarks';
         if (editing?.mode === 'rename' && editing.entry === e) { const line = el('div', 'line'); inlineInput(line); h.append(line); }
         else h.append(nameEl(e, L.colActive ? L.s : ''));
         const b = el('div', 'ghb');
@@ -494,10 +495,10 @@
       const k = [];
       const esc = q.value ? ['Esc', 'clear filter'] : ['Esc', 'close'];
       const tail = [['Enter', 'apply'], esc];
-      if (view === 'grid') k.push(['Space', 'toggle'], 'orange = pending', ['←↑↓→', 'move'], ['F2', 'rename tag'], ['Shift+⌫', 'remove tag'], ['Ctrl+G', 'list view'], ...tail);
+      if (view === 'grid') k.push(['Space', 'toggle'], 'orange = pending', ['←↑↓→', 'move'], [RK, 'rename tag'], ['Shift+⌫', 'remove tag'], ['Ctrl+G', 'list view'], ...tail);
       else if (tagCur === NEW) k.push(['Enter', 'new tag'], ['↑↓', 'tags'], ['Ctrl+G', 'grid view'], ['Esc', q.value ? 'clear filter' : 'close']);
-      else if (pane === 0) k.push(['↑↓', 'tag'], ['→', 'its tracks'], ['F2', 'rename'], ['Shift+⌫', 'remove'], ['Ctrl+G', 'grid view'], ...tail);
-      else k.push(['Space', 'toggle'], 'orange = pending', ['↑↓', 'track'], ['←', 'tags'], ['F2', 'rename tag'], ['Shift+⌫', 'remove tag'], ['Ctrl+G', 'grid view'], ...tail);
+      else if (pane === 0) k.push(['↑↓', 'tag'], ['→', 'its tracks'], [RK, 'rename'], ['Shift+⌫', 'remove'], ['Ctrl+G', 'grid view'], ...tail);
+      else k.push(['Space', 'toggle'], 'orange = pending', ['↑↓', 'track'], ['←', 'tags'], [RK, 'rename tag'], ['Shift+⌫', 'remove tag'], ['Ctrl+G', 'grid view'], ...tail);
       return k;
     }
     function setNote(n, ms) {
@@ -575,7 +576,7 @@
       ev.stopPropagation();
       if (ev.isComposing) return;
       if (ev.key === 'Enter') { ev.preventDefault(); commitEdit(); }
-      else if (is(CmdListNav.chord(ev), 'rename') && !/^(Shift\+)?.$/.test(CmdListNav.chord(ev))) { ev.preventDefault(); if (settleEdit()) { render(true); focusQ(); } }   // F2 in the input = Enter (a printable key bound to rename still types)
+      else if (is(CmdListNav.chord(ev), 'rename') && !/^(Shift\+)?.$/.test(CmdListNav.chord(ev))) { ev.preventDefault(); if (settleEdit()) { render(true); focusQ(); } }   // ⌘R (or F2) in the input = Enter (a printable key bound to rename still types)
       else if (ev.key === 'Escape') { ev.preventDefault(); endEdit(); }
       else if (ev.key === 'Tab') ev.preventDefault();
     }
@@ -667,6 +668,7 @@
     document.addEventListener('keydown', e => {
       if (e.isComposing || editing) return;   // the inline input handles its own keys
       const c = CmdListNav.chord(e);
+      if (c === 'Cmd+r' || c === 'Ctrl+r') e.preventDefault();   // never reload the web view, whichever zone or bar is up
       if (confirmOpen()) return;   // confirm.js owns the keys while the bar is up
       if (zone === 'buttons') {
         const a = nav.action(e, { zone: 'buttons' });
@@ -683,7 +685,7 @@
         return;
       }
       const textHeld = zone === 'field' && q.value !== '';
-      if (is(c, 'rename') && !textHeld) { e.preventDefault(); const t = curTag(); if (t) startEdit('rename', t); return; }
+      if (is(c, 'rename') && (!textHeld || !/^(Shift\+)?.$/.test(c))) { e.preventDefault(); const t = curTag(); if (t) startEdit('rename', t); return; }
       if (is(c, 'remove') && !textHeld) { e.preventDefault(); const t = curTag(); if (t) toggleRemove(t); else if (tagCur !== NEW) flash('Move onto a tag first, then Shift+Backspace marks it for removal.'); return; }
 
       const L = lists();
