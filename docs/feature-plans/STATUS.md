@@ -27,15 +27,15 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
 - `main` is current and protected (ruleset "Protect main": PR required, checks `build` and `gitleaks`).
 - **pakabl:** a review of the 25 candidates is in work (table for the user); stars in `pakabl list` go with
   0.1.8 ([0003](0003-pakabl-extension-system.md)).
-- **In work: 0.1.8** on `feat/0.1.8-tag-editor`:
+- **In work: 0.1.8** on `feat/0.1.8-tag-editor` (MIDI monitor status and auto-extend: cmdabl-modules, 2026-11-12):
   - **Done and tested in Live (2026-11-12):** the tag list (`tag -l`, Enter runs `tag.listEnter` as an inner run)
     and the tag editor (module page, list and grid view, Apply); the `board` surface is removed; inner runs
     ([0028](0028-inner-runs.md), `api.commands.run`, one engine with page runs; AsyncLocalStorage works in
     Live's host); the gear on module pages; `cmdabl setup` sees a Karabiner rule imported under a timestamp
     name and a disabled rule (`enabled: false`).
   - **Open for 0.1.8:** the MIDI monitor status and auto-extend, pakabl stars; the docs
-    ("tag board" → tag list and tag editor, `runs` in the authoring guide is done); the user's hand checks
-    (gear in the editor, mouse, Cmd+Z after Apply, the grid after the fix).
+    ("tag board" → tag list and tag editor, `runs` in the authoring guide is done; waits for the user's
+    findings); the user's hand checks (release test list below).
   - Commits `2237c41` and `9685199` each carry another agent's staged work (shared index); since then the
     rule is `git commit -- <paths>` (CLAUDE.md).
   - **`jump.step` tested in Live (script 0.1.16, 2026-11-12):** steps follow Live's launch quantization at 1 Bar,
@@ -48,6 +48,17 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   - Small follow-ups: `jump`'s usage error lists `+2b`/`+3q` (modules); whether an argument may opt in to
     `-2b`-style values without `--` (`ArgDef.negative`, a parser question for the user; today `jump -- -2b`).
   - Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
+- **Release test list 0.1.8 (the user, by hand; everything else is tested through MCP):**
+  1. Tag editor (`tag -e`): the gear opens its settings; mouse clicks in list and grid view; the grid after
+     the fix; Apply, then Cmd+Z undoes the tag change in one step.
+  2. Tag list (`tag -l`): mouse and keys, Enter runs the row.
+  3. `jump config`: click a choice on the wrapped row with the mouse; Apply.
+  4. MIDI monitor (once built), with the controller: the page says it listens; still live after more than
+     40 s; a stop says why. `map learn` still catches a control after 40 s.
+  5. The installed `.ablx` of 0.1.8 (from the release build): `cmdabl setup` updates the Remote Script to
+     0.1.16, Live restarted, then `jump +1` and `tag -l` once.
+  6. After the merge: `pakabl list` shows stars and downloads.
+  Docs wait until the user's small findings are in (user, 2026-11-12).
 - **Decided, not built (2026-11-12):** MIDI monitor shows its status and extends its window by itself, plus
   an "all ins" spike (0018); `jump.step` from Live's global quantization (0027); the note page's help line
   keeps e/s/Esc when stamps exist; disabled stamp rows say why (partly done).
