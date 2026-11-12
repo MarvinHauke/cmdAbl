@@ -81,7 +81,7 @@ export function activate(activation: ActivationContext) {
   const settingsRegistry = createSettingsRegistry((text) => logger("settings").warn(text));
   const settingsStore = createSettingsStore({ base: dataFolder, registry: settingsRegistry, warn: (text) => logger("settings").warn(text) });
   // A page's gear (plan 0019): remembered here, taken by the run right after the board closed.
-  let pendingGear: { surface: "board" } | undefined;
+  let pendingGear: { surface: "board" | "page" } | undefined;
   // Live pages (plan 0018): a module's dialog may read from it through token-guarded routes of the trigger server.
   // Registered in release builds too; unavailable (data-page fallback) when the port is taken.
   let trigger: { listening(): boolean } | undefined;
@@ -191,6 +191,11 @@ export function activate(activation: ActivationContext) {
   let isOpen = false;
   /** The line the palette (or /show) is running now; the board's gear belongs to its command (plan 0019). */
   let activeLine: string | undefined;
+  /** A module page's gear (plan 0019) counts only for a command that has settings; otherwise the flag is dropped. */
+  function withGear<T extends { gear?: boolean }>(options: T | undefined): T | undefined {
+    if (options?.gear !== true || activeGroup() !== undefined) return options;
+    return { ...options, gear: false };
+  }
   /** The settings group of the running command: its first word, when that module declared settings. Not for `;` chains. */
   function activeGroup(): string | undefined {
     if (activeLine === undefined) return undefined;
@@ -321,7 +326,7 @@ export function activate(activation: ActivationContext) {
     files: createModuleFiles({ base: dataFolder, module: () => "module", warn: (text) => logger("module").warn(text) }),
     log: (line) => logger("module").info(line), // replaced per module below
     logger: logger("module") as ModuleApi["logger"],
-    dialog: (html, width, height, name = "module page") => ui.page(name, html, width, height),
+    dialog: (html, width, height, name = "module page", options) => ui.page(name, html, width, height, withGear(options)),
     commands: {
       add: (command) => void registry.add(command),
       roots: () => registry.roots(),
@@ -340,7 +345,7 @@ export function activate(activation: ActivationContext) {
     ui: {
       // The gear (plan 0019) is drawn only for a command that has settings: `tag --list` → the group `tag`.
       board: (request) => runBoard(ui, { ...request, ...(activeGroup() !== undefined ? { gear: true } : {}) }),
-      livePage: (name, html, width, height, routes, options) => ui.livePage(name, html, width, height, routes, options),
+      livePage: (name, html, width, height, routes, options) => ui.livePage(name, html, width, height, routes, options && withGear(options)),
     },
     pickRows: (title, rows, options) => pickRowIndex(ui, { title, rows, ...(options?.cursor !== undefined ? { cursor: options.cursor } : {}) }),
     pickTags: (title, rows, options) => pickTagNames(ui, { title, tags: rows, ...options, multi: options?.multi ?? true }),
@@ -533,9 +538,9 @@ export function activate(activation: ActivationContext) {
       } finally {
         activeLine = undefined;
       }
-      const gear = pendingGear as { surface: "board" } | undefined;
+      const gear = pendingGear as { surface: "board" | "page" } | undefined;
       pendingGear = undefined;
-      const group = gear?.surface === "board" ? rootCommandOf(line, registry.roots()) : undefined;
+      const group = gear !== undefined ? rootCommandOf(line, registry.roots()) : undefined;
       if (group === undefined || round >= 20 || !settingsFlow.has(group)) break;
       await openSettings({ group, only: true });
     }

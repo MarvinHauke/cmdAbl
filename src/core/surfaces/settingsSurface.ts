@@ -30,6 +30,18 @@ export function isGearAnswer(raw: string | null | undefined): boolean {
   }
 }
 
+/**
+ * A module page's close string (plan 0010 "Build"): where the page asked for the gear and answered `{ "settings": true }`,
+ * `onGear` runs and the page counts as closed (null); every other answer comes back as given, an empty one as null.
+ */
+export function takePageAnswer(raw: string | null | undefined, gear: boolean | undefined, onGear: () => void): string | null {
+  if (gear === true && isGearAnswer(raw)) {
+    onGear();
+    return null;
+  }
+  return raw || null;
+}
+
 /** The request for the given groups with the current `values`. `only` shows just that group (`tag config`); `focus` scrolls to a group. */
 export function buildSettingsRequest(
   groups: readonly SettingGroup[],

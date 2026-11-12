@@ -232,8 +232,14 @@ export interface ModuleApi {
    * string the page returns when it closes, or null if it was dismissed. Goes
    * through the platform's dialog queue like every other dialog. An empty
    * string counts as dismissed. `name` appears in the queue's log lines.
+   *
+   * `options.gear` (plan 0019, 0010 "Build"): the page draws a settings gear and answers `{"settings": true}` when it is
+   * pressed. Core then opens `<module> config` and runs the command line again (the same rules as the board's gear: the
+   * WHOLE line runs again, so only a command that reads first and writes after the page closed may use it). The module sees
+   * only a closed page (null). The flag counts only while a command with declared settings runs; otherwise it is ignored and
+   * the answer comes back as a plain string. Also on `ui.livePage` through its options.
    */
-  dialog(html: string, width: number, height: number, name?: string): Promise<string | null>;
+  dialog(html: string, width: number, height: number, name?: string, options?: { gear?: boolean }): Promise<string | null>;
   /**
    * Declare a command. The platform parses the line, resolves `path`
    * arguments to Live objects (asking the user to pick when ambiguous) and
@@ -322,7 +328,7 @@ export interface ModuleApi {
      * caught, NOT in the history, no dialogs. Its result is only logged.
      * Resolves with the string the page returns on close, or null if dismissed, like `dialog`.
      */
-    livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes, options?: { run?: string[]; onClose?: string }): Promise<string | null>;
+    livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes, options?: { run?: string[]; onClose?: string; gear?: boolean }): Promise<string | null>;
   };
   /**
    * Ask a yes/no question: a single-select list titled `message` with two

@@ -69,7 +69,7 @@ export function createUiGate(real: Ui): UiGate {
     defaults: (request, check) => (capture ? Promise.resolve(shut(`defaults "${request.title}"`)) : real.defaults(request, check)),
     settings: (request) => (capture ? Promise.resolve(shut(`settings "${request.title}"`)) : real.settings(request)),
     board: (request) => (capture ? Promise.resolve(shut(`board "${request.title}"`)) : real.board(request)),
-    page: (name, html, width, height) => (capture ? Promise.resolve(shut(`page "${name}"`)) : real.page(name, html, width, height)),
+    page: (name, html, width, height, options) => (capture ? Promise.resolve(shut(`page "${name}"`)) : real.page(name, html, width, height, options)),
     livePage: (name, html, width, height, routes, options) => (capture ? Promise.resolve(shut(`page "${name}"`)) : real.livePage(name, html, width, height, routes, options)),
   };
   return {

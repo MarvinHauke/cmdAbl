@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { buildSettingsRequest, capSettings, createSettingsFlow, isGearAnswer, parseSettingsAnswer, settingsSize, MAX_GROUPS, MAX_ROWS } from "./settingsSurface.js";
+import { buildSettingsRequest, capSettings, createSettingsFlow, isGearAnswer, takePageAnswer, parseSettingsAnswer, settingsSize, MAX_GROUPS, MAX_ROWS } from "./settingsSurface.js";
 import { createSettingsRegistry, createSettingsStore, SETTINGS_FILE, type SettingDef } from "../settings/settings.js";
 import type { SettingsAnswer, SettingsRequest } from "./ui.js";
 import { ExitCode } from "../types.js";
@@ -231,4 +231,18 @@ test("an opened page that fails keeps our save's log lines in its result", async
   assert.equal(out.code, ExitCode.FAILURE);
   assert.equal(out.message, "config defaults: boom");
   assert.equal(out.log?.[0], "1 setting saved");
+});
+
+test("takePageAnswer: the gear answer counts only where the page asked for it", () => {
+  let gears = 0;
+  const onGear = () => void gears++;
+  assert.equal(takePageAnswer('{"settings":true}', true, onGear), null);
+  assert.equal(gears, 1);
+  assert.equal(takePageAnswer('{"settings":true}', undefined, onGear), '{"settings":true}');
+  assert.equal(takePageAnswer('{"settings":true}', false, onGear), '{"settings":true}');
+  assert.equal(gears, 1);
+  assert.equal(takePageAnswer("done", true, onGear), "done");
+  assert.equal(takePageAnswer("", true, onGear), null);
+  assert.equal(takePageAnswer(null, true, onGear), null);
+  assert.equal(gears, 1);
 });

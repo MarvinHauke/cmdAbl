@@ -21,7 +21,7 @@ import boardTemplate from "../../../ui/board.html";
 import settingsTemplate from "../../../ui/settings.html";
 import defaultsTemplate from "../../../ui/defaults.html";
 import { parseNotifyAnswer } from "./pickResult.js";
-import { isGearAnswer, parseSettingsAnswer, settingsSize } from "./settingsSurface.js";
+import { isGearAnswer, parseSettingsAnswer, settingsSize, takePageAnswer } from "./settingsSurface.js";
 import { defaultsSize, parseDefaultsAnswer } from "./defaultsSurface.js";
 import { inlineJson } from "./inlineJson.js";
 
@@ -351,7 +351,7 @@ export interface Ui {
   /** The board editor: resolves with the validated answer, or null if closed or unreadable. */
   board(request: BoardRequest): Promise<BoardAnswer | null>;
   /** A module's own page: resolves with the string it returns on close, or null if dismissed (an empty string counts as dismissed). */
-  page(name: string, html: string, width: number, height: number): Promise<string | null>;
+  page(name: string, html: string, width: number, height: number, options?: PageOptions): Promise<string | null>;
   /**
    * A module's page that may READ from the module while it is open (plan 0018 "Live pages"; the read-only exception to
    * the dialog rule): `routes` are served under a one-time token at `http://localhost:27184/live/<name>/<route>`, and the
@@ -364,8 +364,17 @@ export interface Ui {
   livePage(name: string, html: string, width: number, height: number, routes: LiveRoutes, options?: LivePageOptions): Promise<string | null>;
 }
 
+/** What a module page may ask of core beyond its own content. */
+export interface PageOptions {
+  /**
+   * The page draws a gear (plan 0019) and answers `{ "settings": true }` when it is pressed. Core then counts the page as
+   * closed (null), opens `<module> config` and runs the command line again. Honoured only while a command with settings runs.
+   */
+  gear?: boolean;
+}
+
 /** What a module allows a live page beyond reading. */
-export interface LivePageOptions {
+export interface LivePageOptions extends PageOptions {
   /** Command paths the page may run while open, e.g. `["loop here", "loop back"]`. Options and arguments are free. */
   run?: string[];
   /**
@@ -392,7 +401,7 @@ export function createDefaultUi(
    * A page's gear (plan 0019): the board answered `{ "settings": true }`. Core opens the settings and
    * runs the page's command line again. The surface itself answers null (closed) for it.
    */
-  onGear?: (gear: { surface: "board" }) => void,
+  onGear?: (gear: { surface: "board" | "page" }) => void,
   /** Builds the page-run handler for an allowlist (`pageRun.ts`); absent: pages cannot run lines. */
   pageRun?: (allow: string[]) => LiveRun,
 ): Ui {
@@ -416,6 +425,9 @@ export function createDefaultUi(
         : notifySize(request.sections ? sectionsText(request.sections) : request.text);
     return [width, height];
   };
+
+  const gearOr = (raw: string | null, options?: PageOptions): string | null =>
+    takePageAnswer(raw, options?.gear, () => onGear?.({ surface: "page" }));
 
   const ui: Ui = {
     async prompt(request) {
@@ -491,13 +503,13 @@ export function createDefaultUi(
       return parseDefaultsAnswer(await ui.livePage("defaults", html, width, height, routes), request);
     },
 
-    async page(name, html, width, height) {
+    async page(name, html, width, height, options) {
       // The SDK resolves an empty string on dismissal: both count as dismissed.
-      return (await show(name, html, width, height)) || null;
+      return gearOr(await show(name, html, width, height), options);
     },
 
-    livePage: (name, html, width, height, routes, options) =>
-      runLivePage({
+    livePage: async (name, html, width, height, routes, options) =>
+      gearOr(await runLivePage({
         name,
         run: options?.run,
         onClose: options?.onClose,
@@ -507,7 +519,7 @@ export function createDefaultUi(
         showData: () => show(name, html, width, height),
         // Through the same queue: only one dialog is ever open. A failure is logged by the queue and counts as dismissed.
         showLive: (session) => queue.run(name, () => context.ui.showModalDialog(session.url, width, height)).catch(() => null),
-      }),
+      }), options),
   };
   return ui;
 }

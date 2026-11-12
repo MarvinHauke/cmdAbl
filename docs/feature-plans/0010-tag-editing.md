@@ -253,7 +253,11 @@ Tags section, reference, images: "board" leaves the docs).
   when a second module needs one (rule above).
 - **Gear on module pages** (cmdabl-core, a small `ModuleApi` addition): a module page opened with a gear flag
   that answers `{"settings": true}` gets what the board gets today: core opens `<module> config` and runs
-  the line again. The exact shape (an options argument on `dialog`) is core's, reviewed.
+  the line again. **Shape (built):** an options argument, `api.dialog(html, w, h, name?, { gear: true })` and
+  `gear: true` in the options of `api.ui.livePage`. The page draws the gear itself and answers `{"settings": true}`;
+  core (`takePageAnswer`) then hands the module `null` (closed), opens the settings and runs the line again. The flag
+  counts only while a command with declared settings runs; otherwise it is dropped and the answer arrives as a plain
+  string. Same rule as the board: the WHOLE line runs again, so only a command that writes after the page closed may use it.
 - **Page data** (`TAG_EDITOR`, owned by the tag module):
   `{ view: "list"|"grid", filter: "compact"|"highlight", help, gear: true,
      tracks: [{ id, name, group? }], tags: [{ name, tracks: [id] }], focus?: { tag? , track? } }`.
