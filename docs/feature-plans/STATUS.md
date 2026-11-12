@@ -38,6 +38,10 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     (gear in the editor, mouse, Cmd+Z after Apply, the grid after the fix).
   - Commits `2237c41` and `9685199` each carry another agent's staged work (shared index); since then the
     rule is `git commit -- <paths>` (CLAUDE.md).
+  - **`jump.step` Live test (script 0.1.16 installed, 2026-11-12):** passed at "1 Bar": `+1`, `+2`, `+3q`,
+    `-- -2b` (counts from the current step's start), `-3q` exit 2, `-40` clamps. Still to run: launch quantization
+    1/4, 1/4T and None in Live's toolbar (the user switches it), `jump config` with 1/2.
+  - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
   - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
     Live's default 1 Bar); `+4b` is the old meaning. Remote Script 0.1.16 (`transport` reports the quantization).
   - Small follow-ups: `jump`'s usage error lists `+2b`/`+3q` (modules); whether an argument may opt in to
