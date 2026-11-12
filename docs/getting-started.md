@@ -76,20 +76,24 @@ Karabiner-Elements turns the `:` key into "open cmdAbl", and only while Live is 
 brings the rule with it. You add it once.
 
 1. In the setup page, click **Add rule** in the Keyboard trigger row. Karabiner's import window opens and asks to
-   import the rule. Click **Import**. Then find the group **cmdAbl** and click **Enable** next to "Open cmdAbl command palette with ':' when Ableton Live is focused".
+   import the rule. Click **Import**.
 
-    ![Karabiner-Elements' import window, scrolled to the group cmdAbl, with one rule, Open cmdAbl command palette with ':' when Ableton Live is focused, and its Enable button](assets/images/karabiner-import.png)
+    ![Karabiner-Elements' import window: Import file from http://127.0.0.1:27184/karabiner/cmdabl.json, the group cmdAbl with one rule, Open cmdAbl command palette with ':' when Ableton Live is focused, and the buttons Cancel and Import](assets/images/karabiner-import-dialog.png)
 
-2. Check the result in Karabiner's settings under **Complex Modifications**. The rule is in the list and its switch is on.
+2. Find the group **cmdAbl** and click **Enable** next to "Open cmdAbl command palette with ':' when Ableton Live is focused".
 
-    ![Karabiner-Elements Settings, Complex Modifications: the first rule, Open cmdAbl command palette with ':' when Ableton Live is focused, is outlined and its switch is on; the other rules are covered](assets/images/karabiner-rules.png)
+    ![Karabiner-Elements' window after the import, scrolled to the group cmdAbl, with one rule and its Enable button](assets/images/karabiner-import.png)
 
-3. Switch to Live and press `:`. The palette opens.
+3. Check the result in Karabiner's settings under **Complex Modifications**. The rule is in the list and its switch is on.
+
+    ![Karabiner-Elements Settings, Complex Modifications: the rule Open cmdAbl command palette with ':' when Ableton Live is focused is in the list and its switch is on](assets/images/karabiner-rules.png)
+
+4. Switch to Live and press `:`. The palette opens.
 
 If Karabiner asks for permissions the first time, allow them in macOS **System Settings → Privacy & Security**.
 
 !!! info "Advanced: use another key"
-    The key is part of the rule. In **Complex Modifications**, click **Edit** on the cmdAbl rule to see its JSON.
+    The key is part of the rule. In **Complex Modifications**, open the rule's JSON (**Edit**, or the imported file in `~/.config/karabiner/assets/complex_modifications/`).
     The key is in `from`: `"key_code": "period"` with `"mandatory": ["left_shift"]`, which is `:` on a German
     keyboard. Change `key_code` and `mandatory` to the key you want. Leave `to` and `conditions` as they are.
     The same rule is in the file `karabiner/cmdabl.json` of the
