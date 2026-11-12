@@ -137,7 +137,7 @@ export function registerNote(api: ModuleApi, template: string, now: () => Date =
         description:
           "Opens the note to read; -e opens it to edit, and so does a Set that has no note yet. " +
           "In the page, e switches to editing, s adds a stamp (see note stamp), Cmd+S saves and closes; Esc in edit goes back to reading and keeps the text, " +
-          "and Esc while reading saves and closes (Discard asks once). A saved note shows nothing; the log has one line.",
+          "and Esc while reading saves and closes (Cancel asks once). A saved note shows nothing; the log has one line.",
         examples: [
           { line: "note", note: "read the note of this Set" },
           { line: "note -e", note: "open the note to edit" },

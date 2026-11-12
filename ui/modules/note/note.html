@@ -6,7 +6,7 @@
   <title>note</title>
   <!-- Module page of `note` (plan 0013), a LIVE page (plan 0018 "Page runs"). In: LIVE_PLACEHOLDER = null | { base, token }: with it `s` in view
        GETs `${base}/heading` (Authorization: Bearer token; answer { heading, hint?, loop } = the stamp's heading as below), POSTs `${base}/run` { line: "loop here" | "loop back" | "jump <bar.beat.sixteenth>" } (allowlist)
-       (answer { code, text }; a run error shows in the footer, writing goes on). The page runs `loop here` only when loop is true (also at the start of a page opened in stamp mode by `note stamp`: it asks /heading once and uses only `loop`), and `loop back` when the stamp ends, only if it ran `loop here` for that stamp (⌘S / Save wait for that run before closing; on other ways out the module's onClose `loop back` is the safety net). Without LIVE the page does not loop at all. `s` switches to stamp edit at once with a placeholder heading, both requests run in parallel, the real heading replaces the placeholder when it arrives (typed text and caret stay; if the read fails, or Esc / ⌘S wait up to 0.5 s for it, then: a date-only heading dated at `s`, hint "no song position"); Esc / Done / Discard in that stamp
+       (answer { code, text }; a run error shows in the footer, writing goes on). The page runs `loop here` only when loop is true (also at the start of a page opened in stamp mode by `note stamp`: it asks /heading once and uses only `loop`), and `loop back` when the stamp ends, only if it ran `loop here` for that stamp (⌘S / Save wait for that run before closing; on other ways out the module's onClose `loop back` is the safety net). Without LIVE the page does not loop at all. `s` switches to stamp edit at once with a placeholder heading, both requests run in parallel, the real heading replaces the placeholder when it arrives (typed text and caret stay; if the read fails, or Esc / ⌘S wait up to 0.5 s for it, then: a date-only heading dated at `s`, hint "no song position"); Esc / Done / Cancel in that stamp
        return to view in place. The text still leaves only when the page closes. If LIVE is null,
        `s` closes with then "stamp" as before (the module reopens the page). NOTE_PLACEHOLDER = { text: string, mode: "view" | "edit" | "stamp", setName?: string, changed?: boolean, stamp?: { heading: string, hint?: string } }
        (changed: the text is not saved yet, e.g. after a failed save, so Cmd+S / Save / Esc send it even when unedited.
@@ -21,8 +21,8 @@
        In view with LIVE, stamp headings that have a position (`### @12.3.1 · date`; date-only ones are skipped) are a list: ↑/↓ (listnav `next`/`prev`) move a
        cursor between them, Enter or a click runs the page run `jump 12.3.1` (allowlist; the page stays open, an error shows in the footer). Without LIVE they are plain headings.
        Keys: e (view) edit · s (view) stamp: in place with LIVE, else close and ask for a stamp · Esc in view closes and saves · Esc in edit returns
-       to view and keeps the text · Cmd/Ctrl+S (or Save) saves and closes (then null) · Discard throws the changes of this edit away.
-       In a stamp page (mode "stamp") with LIVE, Esc / Done / Discard go to view in place; without LIVE there is no view: Esc / Done closes with then "view" (saves the stamp and reopens in view); Discard (after its confirm, or at once when nothing was typed) closes with then "view" and the text as it opened (the pending text when NOTE.changed: the module retries that save). -->
+       to view and keeps the text · Cmd/Ctrl+S (or Save) saves and closes (then null) · Cancel throws the changes of this edit away (it asks first when there are changes).
+       In a stamp page (mode "stamp") with LIVE, Esc / Done / Cancel go to view in place; without LIVE there is no view: Esc / Done closes with then "view" (saves the stamp and reopens in view); Cancel (after its confirm, or at once when nothing was typed) closes with then "view" and the text as it opened (the pending text when NOTE.changed: the module retries that save). -->
   <style>
     /*SHARED_CSS_PLACEHOLDER*/
 
@@ -216,7 +216,7 @@
     // The new entry: after a blank line, its heading, a blank line; the caret goes below it.
     const newStamp = (before, s, live) => ({ hint: s.hint, base: before, live, head: (before.trim() ? before.replace(/\s+$/, '') + '\n\n' : '') + s.heading });
     let st = NOTE?.mode === 'stamp' && typeof NOTE?.stamp?.heading === 'string' ? newStamp(orig, NOTE.stamp, !!(LIVE?.base && LIVE?.token)) : null;
-    let saved = orig, base = orig, mode = 'view', startStamp = !!st;   // saved: the text so far; base: the text when this edit began (Discard returns to it)
+    let saved = orig, base = orig, mode = 'view', startStamp = !!st;   // saved: the text so far; base: the text when this edit began (Cancel returns to it)
     const dropEmptyStamp = v => (st && v.startsWith(st.head) && !v.slice(st.head.length).trim() ? st.base : v);   // nothing typed below the heading: no entry
 
     // ── runs (LIVE only) ──
@@ -282,7 +282,7 @@
           : ['e edit · s stamp · Esc close'];
         const t = document.createTextNode(lines[0]); hint.append(t);
         for (const l of lines) { t.data = l; if (hint.scrollWidth <= hint.clientWidth) break; }
-      } else hint.append(document.createTextNode('⌘S save and close · Esc ' + (st ? 'done' : 'back to view') + ' · Discard drops this edit'));
+      } else hint.append(document.createTextNode('⌘S save and close · Esc ' + (st ? 'done' : 'back to view') + ' · Cancel drops this edit'));
     }
     window.addEventListener('resize', () => { if (mode === 'view' && !flash) setHint(); });
 
@@ -319,14 +319,14 @@
         if (saved.trim()) render(saved, view); else view.append(mk('p', 'empty', 'empty note — press e to write, s to stamp'));
         markStamps();
         b1.textContent = 'Edit'; b1.style.cssText = '';
-        b3.textContent = 'Stamp'; b3.hidden = false;
+        b3.textContent = 'Stamp'; delete b3.dataset.help; b3.hidden = false;
         b2.textContent = 'Close';
         view.scrollTop = 0; view.focus();
       } else {
         base = saved;
         if (startStamp && st) { edit.value = st.head + '\n\n'; startStamp = false; } else edit.value = saved;
         b1.textContent = 'Save'; b1.style.borderColor = 'var(--accent)'; b1.style.color = 'var(--accent)';
-        b3.textContent = 'Discard'; b3.hidden = false;
+        b3.textContent = 'Cancel'; b3.dataset.help = 'Cancel: drop this edit (asks first when there are changes)'; b3.hidden = false;
         b2.textContent = st ? 'Done' : 'View';
         edit.focus(); edit.setSelectionRange(edit.value.length, edit.value.length);
         edit.scrollTop = edit.scrollHeight;
