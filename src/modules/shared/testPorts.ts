@@ -74,7 +74,7 @@ export interface FakeApi {
   tagLists: Array<{ title: string; rows: TagRow[]; allowNew?: boolean }>;
   /** Tags by node `handleId`; `api.tags.write` replaces the entry (empty removes it). */
   tagStore: Map<string, string[]>;
-  dialogs: Array<{ html: string; width: number; height: number }>;
+  dialogs: Array<{ html: string; width: number; height: number; name?: string; gear?: boolean }>;
   /** The live pages `api.ui.livePage` was asked to show, with their route functions (call them to test the data a page would poll). */
   livePages: Array<{ name: string; html: string; width: number; height: number; routes: LiveRoutes; run?: string[]; onClose?: string }>;
   /** Track state by handle id; writes land here. */
@@ -277,8 +277,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       warn: (text) => void fake.logged.push({ level: "warn", text }),
       error: (text) => void fake.logged.push({ level: "error", text }),
     },
-    dialog: async (html, width, height) => {
-      fake.dialogs.push({ html, width, height });
+    dialog: async (html, width, height, name, dialogOptions) => {
+      fake.dialogs.push({ html, width, height, ...(name !== undefined ? { name } : {}), ...(dialogOptions?.gear !== undefined ? { gear: dialogOptions.gear } : {}) });
       return options.dialogAnswer || null;
     },
     commands: {

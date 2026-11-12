@@ -4,7 +4,8 @@ import { ExitCode } from "../../core/types.js";
 import type { ObjectNode } from "../../ableton/objectTree.js";
 import { fail } from "../../ableton/bridgeProtocol.js";
 import { createFakeApi } from "../shared/testPorts.js";
-import { activate, changeLines } from "./index.js";
+import { PAGE } from "./page.testkit.js";
+import { activate, changeLines } from "./command.js";
 
 const track = (name: string, i: number) =>
   ({ name, path: `/${name}`, kind: "track", scope: "regular", route: [i], handleId: name }) as unknown as ObjectNode;
@@ -17,7 +18,7 @@ const logOf = (r: { log?: string[] }) => (r.log ?? []).join("\n");
 type Opts = Parameters<typeof createFakeApi>[0];
 function setup(tags: Record<string, string[]>, extra: Opts = {}) {
   const fake = createFakeApi({ nodes: [lead, bass, drums], tags, ...extra });
-  activate(fake.api);
+  activate(fake.api, PAGE);
   const run = (options: Record<string, string | true>, targets: ObjectNode[], names: string[]) =>
     fake.commands[0]!.run!({ path: ["tag"], options, args: [targets, names] } as never, undefined as never) as Promise<
       { code: number; message?: string; log?: string[]; details?: Array<{ ok: boolean; message?: string }> } | undefined
@@ -84,65 +85,9 @@ test("an unmarked write is still exit 0 and says to save the Set", async () => {
   assert.doesNotMatch(logOf(r), /save the Set/);
 });
 
-test("a target without names opens the tag list with the target's tags lit and applies the marked ones", async () => {
-  const { run, fake } = setup({ Lead: ["synth"], Bass: ["synth", "fx"] }, { pickTagsAnswer: () => ["fx"] });
-  const r = (await run({}, [lead], []))!;
-  assert.deepEqual(fake.tagLists[0]!.rows, [
-    { name: "fx", count: 1, on: false },
-    { name: "synth", count: 2, on: true },
-  ]);
-  assert.match(fake.tagLists[0]!.title, /\/Lead/);
-  assert.equal(r.message, undefined);
-  assert.equal(logOf(r).startsWith("/Lead: +fx"), true);
-  assert.deepEqual(fake.tagStore.get("Lead"), ["synth", "fx"]);
-});
-
-test("a cancelled list changes nothing; a Set without tags still opens the list, with only the create row", async () => {
-  const { run, fake } = setup({ Bass: ["fx"] }, { pickTagsAnswer: () => null });
-  assert.equal(await run({}, [lead], []), undefined);
-  assert.equal(fake.tagStore.has("Lead"), false);
-  assert.equal(fake.tagLists[0]!.allowNew, true);
-  const none = setup({}, { pickTagsAnswer: () => null });
-  assert.equal(await none.run({}, [lead], []), undefined);
-  assert.deepEqual(none.fake.tagLists[0]!.rows, []);
-});
-
-test("a created name is added to every target like an unlit row, with its undo line", async () => {
-  const { run, fake } = setup({ Lead: ["fx"], Bass: ["fx"] }, { pickTagsAnswer: () => ["fx", "Perc"] });
-  const r = (await run({}, [lead, bass], []))!;
-  assert.equal(r.code, ExitCode.OK);
-  assert.deepEqual(fake.tagStore.get("Lead"), ["perc"]); // fx was lit on both: removed; perc created
-  assert.deepEqual(fake.tagStore.get("Bass"), ["perc"]);
-  assert.match(logOf(r), /\/Lead: \+perc -fx/);
-  assert.match(logOf(r), /undo: tag --set 0 \/Lead perc/);
-});
-
-test("a created name that is already a row follows that row; an invalid one is exit 2 and writes nothing", async () => {
-  const same = setup({ Lead: ["fx"] }, { pickTagsAnswer: () => ["FX"] });
-  const sr = await same.run({}, [lead], []);
-  assert.equal(sr?.message, undefined);
-  assert.equal(logOf(sr!), "/Lead: -fx (now no tags)\n  undo: tag --set 1 /Lead fx");
-  const bad = setup({}, { pickTagsAnswer: () => ["FX!"] });
-  const r = (await bad.run({}, [lead], []))!;
-  assert.equal(r.code, ExitCode.USAGE);
-  assert.equal(bad.fake.tagStore.has("Lead"), false);
-});
-
 test("changeLines quotes a path with spaces in the undo command", () => {
   const c = { before: [], after: ["fx"], added: ["fx"], removed: [] };
   assert.deepEqual(changeLines("/1 Audio", c), ["/1 Audio: +fx (now #fx)", '  undo: tag --set 0 "/1 Audio" fx']);
-});
-
-test("a pick with mixed targets applies each row uniformly, as the list promised", async () => {
-  // fx: Lead has it, Bass not -> the row is off, so Enter adds it to both. drum: both have it -> lit, so it goes from both.
-  const { run, fake } = setup({ Lead: ["fx", "drum"], Bass: ["drum"] }, { pickTagsAnswer: () => ["fx", "drum"] });
-  const r = (await run({}, [lead, bass], []))!;
-  assert.deepEqual(fake.tagLists[0]!.rows.map((x) => [x.name, x.on]), [["drum", true], ["fx", false]]);
-  assert.equal(r.code, ExitCode.OK);
-  assert.deepEqual(fake.tagStore.get("Lead"), ["fx"]);
-  assert.deepEqual(fake.tagStore.get("Bass"), ["fx"]);
-  assert.match(logOf(r), /^\/Lead: -drum \(now #fx\)/); // Lead already had fx
-  assert.match(logOf(r), /\/Bass: \+fx -drum/);
 });
 
 test("--list takes no target, names or --set (exit 2); a bare tag is a usage error with the usage text", async () => {
@@ -162,4 +107,20 @@ test("a write that changes nothing says so; a mix of changed and unchanged stays
   assert.equal((await run({ set: "0" }, [drums], ["fx"]))!.message, "/Drums has no #fx");
   assert.equal((await run({ set: "1" }, [lead, bass], ["fx"]))!.message, "nothing changed");
   assert.equal((await run({ set: "1" }, [lead, drums], ["fx"]))!.message, undefined);
+});
+
+test("--list: one read-only row per tag, untagged last and disabled; Enter on a tag asks the platform to run tag.listEnter", async () => {
+  const { run, fake } = setup({ Lead: ["fx", "drums"], Bass: ["fx"] }, { pickRowsAnswer: (rows) => rows.findIndex((r) => r.label === "#fx") });
+  const r = (await run({ list: true }, [], []))! as { code: number; run?: string };
+  assert.deepEqual(fake.rowLists[0]!.rows, [
+    { label: "#drums", detail: "1 \u00b7 Lead", disabled: false },
+    { label: "#fx", detail: "2 \u00b7 Lead, Bass", disabled: false },
+    { label: "untagged", detail: "1 \u00b7 Drums", disabled: true },
+  ]);
+  assert.equal(r.code, ExitCode.OK);
+  assert.equal(r.run, "find #fx");
+  const custom = setup({ Lead: ["fx"] }, { pickRowsAnswer: () => 0, settings: { "tag.listEnter": "tag -e {}" } });
+  assert.equal(((await custom.run({ list: true }, [], []))! as { run?: string }).run, "tag -e fx");
+  const none = setup({ Lead: ["fx"] }, { pickRowsAnswer: () => null });
+  assert.equal(await none.run({ list: true }, [], []), undefined);
 });

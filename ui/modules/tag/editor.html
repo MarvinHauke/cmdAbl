@@ -1,0 +1,14 @@
+<!doctype html>
+<!-- Placeholder: cmdabl-ui builds the tag editor here (plan 0010 "Build (0.1.8)"). It only closes. -->
+<html><head><meta charset="utf-8"><title>tag editor</title></head>
+<body>
+<script>
+  const TAG_EDITOR = /*TAG_EDITOR_PLACEHOLDER*/null;
+  function done(value) {
+    const m = { method: 'close_and_send', params: [value] };
+    if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
+    else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
+  }
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') done(''); });
+</script>
+</body></html>

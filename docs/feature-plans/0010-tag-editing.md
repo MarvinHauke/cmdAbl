@@ -267,6 +267,25 @@ Tags section, reference, images: "board" leaves the docs).
   Order: renames (an existing name merges), then removes, then `set` with the tags' **final** names. The
   module validates every name and id against the request and writes with `planTags`/`tags_set`, one write
   per track (open question below); the result lists the changes and `undo:` lines as today.
+- **Built in the module (0.1.8):** `src/modules/tag/` — `command.ts` (commands; takes the page template so tests don't import
+  html), `editor.ts` (page data, `parseAnswer`, `finalTags`), `list.ts` (`tag -l` rows). The page fills its
+  `/*TAG_EDITOR_PLACEHOLDER*/null` slot (`fillTemplate`). The page answer is validated against the request: unknown tag or
+  track, invalid name or wrong shape is exit 2 and nothing is written; `{"settings":true}` (the gear where core ignores it) counts as
+  closed. Apply writes per track and says `N tracks changed (one undo step per track)`; a merge is named first. Settings:
+  `tag.listEnter` (an enum of presets until settings have a text kind), `tag.editView`, `tag.filter`; `tag.foldAfter` is gone.
+- **Running a line from a module: `api.commands.run(line, { allow })`** (user, 2026-11-12: "an api
+  command with a restriction", since richer module UIs will need it more often; it replaces the proposed
+  `CommandResult.next`). Core parses the line and runs it through the normal command path, the same one
+  page runs use (0018): log, undo, errors caught, its dialogs through the queue. It resolves with that
+  line's `CommandResult`. Restrictions:
+  - only lines whose commands are in `allow` (command words, as the page-run allowlist); others give exit 2 and are not run;
+  - no nesting: a line run this way cannot call `api.commands.run` itself;
+  - only while the calling command runs; it is not kept for later;
+  - in headless runs (map bindings, page runs, chains) the line runs headless as well, and any dialog in it counts as cancelled.
+  First user: `tag -l` Enter → `tag.listEnter`, allow `find`, `tag`, `mute`, `solo` (an enum of those four
+  presets until settings have a text kind).
+- **Gear only where it works:** `api.settings.gearAvailable()` (core) tells whether the current run has a
+  settings round (a palette line); the page hides the gear otherwise.
 - Sizes: the page fits Live's dialog limits; the grid scrolls both ways with the tag header and the
   track column sticky.
 
