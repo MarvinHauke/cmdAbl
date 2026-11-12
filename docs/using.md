@@ -3,7 +3,7 @@
 This page is for daily use, after [Getting started](getting-started.md). It covers the palette, how to name the
 objects of your Set, the pick list, tags, several commands in one line, MIDI mapping, the log and the history. The exact usage of every command is in the
 [command reference](reference/commands.md). In the palette, `<command> --help` shows a short usage line and
-`man <command>` shows the full page.
+`man <command>` shows the full page. To install more Live extensions, see [pakabl](pakabl.md).
 
 ## The palette
 

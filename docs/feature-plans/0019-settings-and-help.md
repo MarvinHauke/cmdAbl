@@ -1,6 +1,6 @@
 # Settings and help pattern
 
-**Status:** Released in 0.1.6 (2026-11-11): phases 1–3 and §6 (built as [0021](0021-installation-and-setup-page.md)). Open: phase 4 (`listnav.js`), 6 (with 0013), 7 (shortcuts). The 0.1.6 theme. User findings from 2026-11-04 (tag-1, tag-4, prompt-1,
+**Status:** Released in 0.1.6 (2026-11-11): phases 1–3 and §6 (built as [0021](0021-installation-and-setup-page.md)). Phase 4 (`listnav.js`) and 6 (stamp settings) released in 0.1.7 (PR #32). Open: 7 (shortcuts). The 0.1.6 theme. User findings from 2026-11-04 (tag-1, tag-4, prompt-1,
 prompt-2, note-1's option), the settings page wish (user, 2026-10-22) and the setup status page
 (user, 2026-11-05).
 

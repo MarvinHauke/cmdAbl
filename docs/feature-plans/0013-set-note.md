@@ -1,7 +1,7 @@
 # `note`: one Markdown note per Set
 
-**Status:** Released in 0.1.3 (2026-10-22, PR #17). Live-tested, including Save As and Collect All
-and Save. Next: stamps (timestamped entries, note-1), decided 2026-11-11.
+**Status:** Released in 0.1.3 (2026-10-22, PR #17; Live-tested, including Save As and Collect All and Save). Stamps
+(note-1) released in 0.1.7 (2026-11-12, PR #32). Open: session stamps, copies of a Set share one note.
 Trigger: the user wants a note per Set for general reminders, written in Markdown.
 
 **Parent:** [0004](0004-command-platform.md)

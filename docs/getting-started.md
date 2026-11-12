@@ -47,7 +47,7 @@ What each row does:
 
 - **Keyboard trigger.** Without Karabiner-Elements, `:` does not open cmdAbl. If it is not installed, **Get
   Karabiner** opens its download page; install it and run `cmdabl setup` again. If it is installed, **Add rule**
-  opens Karabiner's own import dialog. Click **Import**, then **Enable**. The rule opens the palette with `:`
+  opens Karabiner's own import dialog. Click **Import**, then **Enable** (see [Set a hotkey for cmdAbl](#set-a-hotkey-for-cmdabl)). The rule opens the palette with `:`
   (Shift+period, which types `:` on German (QWERTZ) keyboards) while Ableton Live is focused. If the row says the
   rule is added but not enabled, **Open Karabiner** opens Karabiner's settings; enable the rule under **Complex Modifications**.
 - **Remote Script.** **Copy** copies the companion Remote Script into Live's User Library, in
@@ -70,6 +70,35 @@ Two commands do the same as the buttons, in case you prefer to type:
 - `cmdabl setup karabiner` links cmdAbl's Karabiner rule into Karabiner-Elements without the import dialog. In
   Karabiner, open **Complex Modifications → Add predefined rule**, choose **cmdAbl** and click **Enable**.
 
+## Set a hotkey for cmdAbl
+
+Karabiner-Elements turns the `:` key into "open cmdAbl", and only while Live is the front application. cmdAbl
+brings the rule with it. You add it once.
+
+1. In the setup page, click **Add rule** in the Keyboard trigger row. Karabiner's import window opens and asks to
+   import the rule. Click **Import**.
+
+    ![Karabiner-Elements' import window: Import file from http://127.0.0.1:27184/karabiner/cmdabl.json, the group cmdAbl with one rule, Open cmdAbl command palette with ':' when Ableton Live is focused, and the buttons Cancel and Import](assets/images/karabiner-import-dialog.png)
+
+2. Find the group **cmdAbl** and click **Enable** next to "Open cmdAbl command palette with ':' when Ableton Live is focused".
+
+    ![Karabiner-Elements' window after the import, scrolled to the group cmdAbl, with one rule and its Enable button](assets/images/karabiner-import.png)
+
+3. Check the result in Karabiner's settings under **Complex Modifications**. The rule is in the list and its switch is on.
+
+    ![Karabiner-Elements Settings, Complex Modifications: the rule Open cmdAbl command palette with ':' when Ableton Live is focused is in the list and its switch is on](assets/images/karabiner-rules.png)
+
+4. Switch to Live and press `:`. The palette opens.
+
+If Karabiner asks for permissions the first time, allow them in macOS **System Settings → Privacy & Security**.
+
+!!! info "Advanced: use another key"
+    The key is part of the rule. In **Complex Modifications**, open the rule's JSON (**Edit**, or the imported file in `~/.config/karabiner/assets/complex_modifications/`).
+    The key is in `from`: `"key_code": "period"` with `"mandatory": ["left_shift"]`, which is `:` on a German
+    keyboard. Change `key_code` and `mandatory` to the key you want. Leave `to` and `conditions` as they are.
+    The same rule is in the file `karabiner/cmdabl.json` of the
+    [repository](https://github.com/MarvinHauke/cmdAbl).
+
 ## 3. Turn on the Remote Script in Live
 
 After you copy the script, the setup page shows "Restart Live once to load Remote Script …". The copied script does not
@@ -78,6 +107,9 @@ appear in Live's Control Surface list until Live restarts. Do both steps:
 1. **Restart Live.** After the restart, cmdAbl appears in the Control Surface list.
 2. Open **Settings → Tempo & MIDI → MIDI**. Under **Control Surface**, choose **cmdAbl**. Leave Input and Output
    set to *None*. Choosing it starts the script; you do not need to restart Live again.
+
+!!! warning "Restart Live after a Remote Script update"
+    A new copy of the Remote Script is loaded only when Live starts. After an **Update**, restart Live once.
 
 When it works, `cmdabl setup` shows "cmdAbl answers in Live." with a ✓.
 
@@ -155,27 +187,13 @@ is unavailable. Return, main and group tracks cannot be armed at all.
 
 ## Install more extensions with pakabl
 
-pakabl installs Ableton Live extensions (`.ablx` files) from cmdAbl's curated list of community repositories.
-Run `pakabl update` once to fetch the list. Then `pakabl list` shows the extensions, with buttons to install, update
-or remove each one. Restart Live after a change.
-
-- Update appears only when the list holds a newer version than the installed one.
-- If the installed version is newer than the list's, the row says so, and cmdAbl never downgrades it.
-- To install the list's version anyway, even an older one, use `pakabl upgrade <id>@<version>` with exactly the
-  version the list shows.
-
-![The pakabl extension index window: a scrollable list of extensions, each with its name, version and id, and an Install and a Repo button for each, with a Close button at the bottom](assets/images/pakabl-list.png)
-
-*Install installs the extension. Repo opens its GitHub page.*
-
-pakabl writes into Live's Extensions folder, which works today. Ableton has announced a stricter sandbox for
-extensions. If it arrives, installing through pakabl may be blocked in a later version of Live, and pakabl as a
-whole may then stop working. See [Known limits](limits.md).
+`pakabl` installs Ableton Live extensions from cmdAbl's curated list. Run `pakabl update`, then `pakabl list`.
+See [pakabl](pakabl.md).
 
 ## Next steps
 
 - [Using cmdAbl](using.md) explains names, the pick list, tags, `find`, the log and the history.
 - [Remote Script](remote-script.md) explains updating, checking and the messages.
 - [Commands](reference/commands.md) lists every command.
-- Write extensions? [List your extension in pakabl](pakabl-listing.md). Want to change cmdAbl? See
+- Write extensions? [Add your extension to pakabl](develop-pakabl.md). Want to change cmdAbl? See
   [Develop](develop.md).
