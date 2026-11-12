@@ -391,3 +391,18 @@ ships when phases 1–3 are in. 4–6 may follow as 0.1.7 if they take longer.
   with the control surface off shows a ✗ row and its button.
 - **By hand (user):** the look of the settings page and the help line, hover behaviour, the palette's
   help view while typing, and whether the gear round-trip feels right.
+
+## Later: a "command line" setting kind (user, 2026-11-12; planned, after 0.1.8)
+
+Trigger: `tag.listEnter` is an enum of four presets (`find #{}`, `tag -e {}`, `mute #{}`, `solo #{}`) because the
+settings page has no text kind, and inner runs (0028) only run the commands a module declares in `runs`. The
+user wants any line there. Not a recursion risk: inner runs are depth 1 (0028 Q4).
+
+- A row kind `command` on the settings page: the checked input of the defaults page (`cmdabl config
+  defaults`: completion, the `/check` route, `{}` placeholder) instead of a segmented switch; presets stay as
+  suggestions.
+- A module may declare "the line in setting X" as a `runs` entry; it still runs at depth 1 through the normal
+  command path (undo, log, errors caught).
+- Contract changes (the user decides when it is built): `SettingsRequest` row kinds and `ModuleApi` `runs`.
+- First user: `tag.listEnter`; candidates later: other "what Enter does" settings.
+
