@@ -42,6 +42,13 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     1/4, 1/4T (⅔ beat, no float drift) and None (1 bar); `jump config` 1/2 overrides it (0→2→4→2); `+Nb`/`+Nq`,
     `--` for negatives, clamping. The settings page wraps long enums (`013614c`, seen in Live; the label was
     squeezed to one letter per line before).
+  - **MIDI monitor renewal tested in Live (2026-11-12, `cec8ebb`, `3e63926`):** "Listening…" stays through 45 s idle
+    and through 50 s with messages; close ends the window, no warn. Not built: after two failed renewals it never
+    retries (a script that comes back still says stopped until reopened). For the user: renewal rebuilds the
+    script's MIDI map every 20 s, so turn a knob for 60 s across the 20 s marks and look for stutter or a
+    flickering "Taken in Live"; if it stutters, a script-side "extend only" (protocol change, architect).
+  - **Bug in work (cmdabl-core):** the first live page after an `npm start` restart can open as an empty
+    window (seen twice, `midi monitor`; the next open loads). Suspect the page server's one-time load token.
   - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
   - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
     Live's default 1 Bar); `+4b` is the old meaning. Remote Script 0.1.16 (`transport` reports the quantization).
@@ -53,8 +60,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
      the fix; Apply, then Cmd+Z undoes the tag change in one step.
   2. Tag list (`tag -l`): mouse and keys, Enter runs the row.
   3. `jump config`: click a choice on the wrapped row with the mouse; Apply.
-  4. MIDI monitor (once built), with the controller: the page says it listens; still live after more than
-     40 s; a stop says why. `map learn` still catches a control after 40 s.
+  4. MIDI monitor, with the controller: turn a knob for 60 s across the 20 s marks (no stutter, no flicker of
+     "Taken in Live"); `map learn` still catches a control after 40 s.
   5. The installed `.ablx` of 0.1.8 (from the release build): `cmdabl setup` updates the Remote Script to
      0.1.16, Live restarted, then `jump +1` and `tag -l` once.
   6. After the merge: `pakabl list` shows stars and downloads.
