@@ -102,7 +102,7 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   5. The installed `.ablx` of 0.1.8 (from the release build): `cmdabl setup` updates the Remote Script to
      0.1.16, Live restarted, then `jump +1` and `tag -l` once.
   6. After the merge: `pakabl list` shows stars and downloads.
-  Docs wait until the user's small findings are in (user, 2026-11-12).
+  Docs pass started 2026-11-12 (cmdabl-docs): text first, images after the user opens a clean demo Set.
 - **Decided, not built (2026-11-12):** MIDI monitor shows its status and extends its window by itself, plus
   an "all ins" spike (0018); `jump.step` from Live's global quantization (0027); the note page's help line
   keeps e/s/Esc when stamps exist; disabled stamp rows say why (partly done).
