@@ -57,6 +57,7 @@ export function pakablCommand(h: PakablHandlers): Command {
           "Fetches the current curated list of extensions. Needed once before install, upgrade and list, " +
           "and again whenever you want to see new versions.",
         examples: [{ line: "pakabl update", note: "fetch the list" }],
+        outside: true, // uses the network (plan 0028 decision 4)
         run: () => h.update(),
       },
       {
