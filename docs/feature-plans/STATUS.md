@@ -62,7 +62,7 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   - **User findings on the tag editor (2026-11-12), built:** matched characters marked (accent + underline, the
     user's choice), grid rename input fixed, ✎ × on list rows, content-sized grid columns and track column,
     truncated names scroll on hover/cursor (`marquee` in editor.html, off under reduced motion) (`184e696`,
-    `e3fc070`, `8b93bb8`); no browser tooltips left in `ui/` (`b655395`, `6605d80`, help.js). Seen in Live: list
+    `e3fc070`, `8b93bb8`, row spacing `903398b`: `#name … ✎ × count`, counts in one column); no browser tooltips left in `ui/` (`b655395`, `6605d80`, help.js). Seen in Live: list
     and grid marking, narrow columns, scrolling name. For the user: rename in both views, hover texts, note page.
     Minor: the note page footer changes height between a 1- and 2-line error (checklist item 3).
   - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
