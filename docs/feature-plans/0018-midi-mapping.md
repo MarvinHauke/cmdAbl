@@ -136,7 +136,8 @@ Decisions:
   accepted only from 127.0.0.1:27185; a note-on with velocity 0 counts as note_off. A command runs
   75–110 ms after the press.
 - **Only bound controls are forwarded.** `midi_listen {controls, monitor, seconds}` forwards everything
-  for learn and the monitor (default 30 s, max 120), then ends by itself; while it is open, track
+  for learn and the monitor (default 30 s, max 120), then ends by itself (since 0.1.8 the module renews
+  it every 20 s while the monitor or learn page is open, and the page says when it stopped); while it is open, track
   input and Cmd+M on that port pause. The last 50 messages are kept in a ring (`midi_last`). Every
   reply carries a `boot` id, so the extension re-sends the last listen after a script restart.
 - **Press means value > 0, release means 0.** The UC4's buttons send 10 on press (not 127). **The
