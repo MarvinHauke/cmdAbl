@@ -98,7 +98,8 @@ test("Apply: renames, then removals, then the set with final names; the result s
   assert.equal(r.code, ExitCode.OK);
   assert.deepEqual(fake.tagStore.get("Lead"), ["new"]);
   assert.deepEqual(fake.tagStore.get("Bass"), ["new"]);
-  assert.equal(r.message, "2 tracks changed. Cmd+Z can't undo tag changes; cmdabl log --undo lists the commands that put them back.");
+  assert.equal(r.message, undefined);
+  assert.match(logOf(r), /2 tracks changed; Cmd\+Z can't undo tag changes, cmdabl log --undo lists the revert commands/);
   assert.match(logOf(r), /\/Lead: \+new -fx -old/);
   assert.match(logOf(r), /undo: tag --set 0 \/Lead new/);
 });
@@ -107,9 +108,13 @@ test("Apply: a rename onto an existing tag merges and says so; an Apply that cha
   const merge = setup({ Lead: ["a", "b"] }, { dialogAnswer: answer({ rename: [{ from: "a", to: "b" }] }) });
   const r = (await merge.run({ edit: "a" }))!;
   assert.deepEqual(merge.fake.tagStore.get("Lead"), ["b"]);
-  assert.match(r.message ?? "", /^merged #a into #b\n1 track changed\. Cmd\+Z can't undo tag changes; cmdabl log --undo lists the commands that put them back\.$/);
+  assert.equal(r.message, undefined);
+  assert.match(logOf(r), /merged #a into #b\n.*1 track changed; Cmd\+Z/s);
   const none = setup({ Lead: ["a"] }, { dialogAnswer: answer({ set: [{ tag: "a", track: "Lead", on: true }] }) });
-  assert.equal((await none.run({ edit: "a" }))?.message, "nothing changed");
+  const nr = (await none.run({ edit: "a" }))!;
+  assert.equal(nr.message, undefined);
+  assert.match(logOf(nr), /nothing changed/);
+  assert.doesNotMatch(logOf(nr), /0 tracks changed/);
 });
 
 test("Apply: an answer that does not fit the request is exit 2 and writes nothing", async () => {

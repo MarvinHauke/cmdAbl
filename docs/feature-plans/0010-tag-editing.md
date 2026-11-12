@@ -147,7 +147,7 @@ null when closed. Only real differences are sent; a created section only matters
 - One section per tag, with every track as an item.
 - Apply → group the changes per track → `planTags` / `tags_set` (one write per track) → a quiet
   result; the change and `undo:` lines go to `log` (0011).
-- After Apply the board stays closed and the result is shown (decision 4).
+- After Apply the board stays closed and shows no message; the summary line ("N tracks changed; Cmd+Z can't undo tag changes, cmdabl log --undo lists the revert commands") is in the log, and the Apply button's help text carries the warning beforehand (decision 4).
 - A failed write shows the ✓/× result. The script being down gives exit 5, as today.
 
 ### Keyboard path: `tag --edit <tag>` (`-e`)
@@ -271,7 +271,7 @@ Tags section, reference, images: "board" leaves the docs).
   html), `editor.ts` (page data, `parseAnswer`, `finalTags`), `list.ts` (`tag -l` rows). The page fills its
   `/*TAG_EDITOR_PLACEHOLDER*/null` slot (`fillTemplate`). The page answer is validated against the request: unknown tag or
   track, invalid name or wrong shape is exit 2 and nothing is written; `{"settings":true}` (the gear where core ignores it) counts as
-  closed. Apply writes per track and says `N tracks changed. Cmd+Z can't undo tag changes; cmdabl log --undo lists the commands that put them back.`; a merge is named first. Settings:
+  closed. Apply writes per track and is quiet: the log gets the changes, the `undo:` lines, a merge (`merged #a into #b`) and `N tracks changed; Cmd+Z can't undo tag changes, cmdabl log --undo lists the revert commands`; the warning is also in the Apply button's help text. Settings:
   `tag.listEnter` (an enum of presets until settings have a text kind), `tag.editView`, `tag.filter`; `tag.foldAfter` is gone.
 - **Running a line from a module:** `api.commands.run`, decided in [0028](0028-inner-runs.md). First user:
   `tag -l` Enter → `tag.listEnter` (four presets: `find #{}`, `tag -e {}`, `mute #{}`, `solo #{}`).

@@ -521,7 +521,7 @@
       const n = pendingCount();
       $('apply').textContent = n ? 'Apply (' + n + ')' : 'Apply';
       $('apply').disabled = n === 0;
-      $('apply').dataset.help = n ? 'Apply: write the ' + n + ' pending change' + (n === 1 ? '' : 's') + ' and close (Enter)' : 'Apply: nothing to write yet';
+      $('apply').dataset.help = n ? 'Apply: write the ' + n + ' pending change' + (n === 1 ? '' : 's') + ' and close (Enter). Cmd+Z can\'t undo them; cmdabl log --undo lists the revert commands.' : 'Apply: nothing to write yet';
       $('vList').setAttribute('aria-pressed', String(view === 'list'));
       $('vGrid').setAttribute('aria-pressed', String(view === 'grid'));
       q.placeholder = view === 'grid' ? 'Filter tracks and tags…' : 'Filter tracks…';

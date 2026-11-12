@@ -60,11 +60,13 @@ export function activate(api: ModuleApi, tagEditorTemplate: string): void {
     // Quiet writes (plan 0011): the change and undo lines go to the log; a result dialog opens only for a
     // failure (it lists the failed tracks) or for the one thing the user has to act on, the save hint.
     const log = lines;
+    if (summary && writes > 0) log.push(...summary(writes));
     const failed = outcomes.filter((o) => !o.ok);
-    // Nothing written at all would look like it worked: say so (a mix of changed and unchanged stays quiet).
+    // Nothing written at all would look like it worked: say so (the editor: log only; a mix of changed and unchanged stays quiet).
+    if (failed.length === 0 && writes === 0 && summary) return { ...ok(), log: [...log, "nothing changed"] };
     if (failed.length === 0 && writes === 0) return { ...ok(targets.length === 1 && unchanged ? unchanged : "nothing changed"), log };
     if (failed.length === 0) {
-      const text = [...(summary?.(writes) ?? []), ...(unmarked ? [SAVE_HINT] : [])].join("\n");
+      const text = (unmarked ? [SAVE_HINT] : []).join("\n");
       return { ...ok(text || undefined), log };
     }
     const code =
@@ -130,11 +132,11 @@ export function activate(api: ModuleApi, tagEditorTemplate: string): void {
       const d = diffTags(before, after(n, before));
       return d.added.length + d.removed.length > 0;
     });
-    if (targets.length === 0) return ok("nothing changed");
+    if (targets.length === 0) return { ...ok(), log: ["nothing changed"] };
     const merges = mergesOf(tracks, edits).map(([from, to]) => `merged #${from} into #${to}`);
     return applyPlans(targets, (node, before) => diffTags(before, after(node, before)), true, undefined, (writes) => [
       ...merges,
-      `${writes} ${writes === 1 ? "track" : "tracks"} changed. Cmd+Z can't undo tag changes; cmdabl log --undo lists the commands that put them back.`,
+      `${writes} ${writes === 1 ? "track" : "tracks"} changed; Cmd+Z can't undo tag changes, cmdabl log --undo lists the revert commands`,
     ]);
   };
 
@@ -200,7 +202,7 @@ export function activate(api: ModuleApi, tagEditorTemplate: string): void {
       "With names, switches each tag on for a target that lacks it and off for one that has it; --set 1 makes sure the tags are on, --set 0 that they are off. " +
       "Tags are lowercase letters, digits, - and _. They are stored in the Live Set by the cmdAbl Remote Script, " +
       "so the script has to run, and they are saved with the Set. Cmd+Z does not undo them. A quiet write shows nothing: the changes and the undo commands go to the log, " +
-      "and cmdabl log --undo lists the undo commands; the editor's Apply says how many tracks changed. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or " +
+      "and cmdabl log --undo lists the undo commands; the editor's Apply shows nothing either (its last log line counts the tracks), so its Apply button says up front that Cmd+Z cannot undo it. Each track written leaves one invisible step in Live's undo list, so Cmd+Z may need several presses to get past them. The target is one word (quote a name with spaces), a path, or " +
       "a tag such as #drum; !#drum means every regular track without that tag, untagged ones included (never the main track).",
     examples: [
       { line: "tag --rename fx effects", note: "every track tagged fx is tagged effects instead; an existing effects tag merges" },
