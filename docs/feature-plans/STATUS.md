@@ -40,7 +40,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     rule is `git commit -- <paths>` (CLAUDE.md).
   - **`jump.step` Live test (script 0.1.16 installed, 2026-11-12):** passed at "1 Bar": `+1`, `+2`, `+3q`,
     `-- -2b` (counts from the current step's start), `-3q` exit 2, `-40` clamps; at "1/4": `+1` 0→1, `+2` 1→3,
-    `+1b` 3→4, `-1` 4→3 beats. Still to run: 1/4T and None (the user switches it), `jump config` with 1/2.
+    `+1b` 3→4, `-1` 4→3 beats; at "1/4T": steps of 2/3 beat (0→⅔→2, back to 4/3; 4→14/3→16/3→6, no float
+    drift), `+1b` → 4. Still to run: None (the user switches it), `jump config` with 1/2.
   - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
   - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
     Live's default 1 Bar); `+4b` is the old meaning. Remote Script 0.1.16 (`transport` reports the quantization).
@@ -76,13 +77,15 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   (`clip_trigger_quantization`, signature, loop, metronome) plus a read-back; script command and server tool
   together. To use it: Claude Code's `AbletonMCP` entry runs the checkout (`uv run --directory …`) instead of
   `uvx ableton-mcp`, the fork's script goes into `Remote Scripts/AbletonMCP`, and Live is restarted (user).
-  Builder: cmdabl-bridge, with only that repo's files. Not part of cmdAbl's plans or contracts.
+  Builder: cmdabl-bridge, with only that repo's files. Where a test tool sits (fork, cmdabl MCP or a
+  cmdAbl command): [0016 §7](0016-test-mcp.md), proposed, to confirm on the second case.
 
 ## Small items
 
 - The startup line "keyboard trigger not configured" reads a stored setup flag, not the Karabiner check of
   `cmdabl setup`, so the two can disagree (2026-11-12). Core: derive the line from the same fact.
 
+- `jump`'s log line prints raw floats on triplet steps (`0.6666666666666666 beats`); round for display (modules).
 - `beatsToPosition` could floor a float remainder a sixteenth low (7/8); add an epsilon (0027).
 - `note stamp prev` exit-3 text counts stamps after the playhead.
 
