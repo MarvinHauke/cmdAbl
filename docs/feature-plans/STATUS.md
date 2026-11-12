@@ -33,16 +33,15 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     ([0028](0028-inner-runs.md), `api.commands.run`, one engine with page runs; AsyncLocalStorage works in
     Live's host); the gear on module pages; `cmdabl setup` sees a Karabiner rule imported under a timestamp
     name and a disabled rule (`enabled: false`).
-  - **Open for 0.1.8:** `jump.step`, the MIDI monitor status and auto-extend, pakabl stars; the docs
+  - **Open for 0.1.8:** the MIDI monitor status and auto-extend, pakabl stars; the docs
     ("tag board" → tag list and tag editor, `runs` in the authoring guide is done); the user's hand checks
     (gear in the editor, mouse, Cmd+Z after Apply, the grid after the fix).
   - Commits `2237c41` and `9685199` each carry another agent's staged work (shared index); since then the
     rule is `git commit -- <paths>` (CLAUDE.md).
-  - **`jump.step` Live test (script 0.1.16 installed, 2026-11-12):** passed at "1 Bar": `+1`, `+2`, `+3q`,
-    `-- -2b` (counts from the current step's start), `-3q` exit 2, `-40` clamps; at "1/4": `+1` 0→1, `+2` 1→3,
-    `+1b` 3→4, `-1` 4→3 beats; at "1/4T": steps of 2/3 beat (0→⅔→2, back to 4/3; 4→14/3→16/3→6, no float
-    drift), `+1b` → 4; at "None": a step is 1 bar (0→4→12, `+1q` →13, `-1` →8). Still to run: `jump config` with
-    1/2 (a page, the user).
+  - **`jump.step` tested in Live (script 0.1.16, 2026-11-12):** steps follow Live's launch quantization at 1 Bar,
+    1/4, 1/4T (⅔ beat, no float drift) and None (1 bar); `jump config` 1/2 overrides it (0→2→4→2); `+Nb`/`+Nq`,
+    `--` for negatives, clamping. The settings page wraps long enums (`013614c`, seen in Live; the label was
+    squeezed to one letter per line before).
   - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
   - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
     Live's default 1 Bar); `+4b` is the old meaning. Remote Script 0.1.16 (`transport` reports the quantization).
