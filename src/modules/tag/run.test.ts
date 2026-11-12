@@ -117,11 +117,13 @@ test("--list: one read-only row per tag, untagged last and disabled; Enter on a 
     { label: "#fx", detail: "2 \u00b7 Lead, Bass", disabled: false },
     { label: "untagged", detail: "1 \u00b7 Drums", disabled: true },
   ]);
+  assert.equal(fake.rowLists[0]!.title, "Tags · Enter runs find #<tag>");
   assert.equal(r.code, ExitCode.OK);
   assert.deepEqual(fake.commandRuns, [{ line: "find #fx" }]);
   const custom = setup({ Lead: ["fx"] }, { pickRowsAnswer: () => 0, settings: { "tag.listEnter": "tag -e {}" } });
   await custom.run({ list: true }, [], []);
   assert.deepEqual(custom.fake.commandRuns, [{ line: "tag -e fx" }]);
+  assert.equal(custom.fake.rowLists[0]!.title, "Tags · Enter runs tag -e <tag>");
   const none = setup({ Lead: ["fx"] }, { pickRowsAnswer: () => null });
   assert.equal(await none.run({ list: true }, [], []), undefined);
   assert.deepEqual(none.fake.commandRuns, []);

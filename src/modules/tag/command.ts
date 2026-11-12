@@ -82,10 +82,10 @@ export function activate(api: ModuleApi, tagEditorTemplate: string): void {
     if (tracks.length === 0) return ok("tag: the Set has no tracks");
     const tracksOf = tracks.map((t) => ({ name: t.name, path: t.path, tags: api.tags.of(t) }));
     const rows = listRows(tracksOf);
-    const index = await api.pickRows("tag --list", rows.map((r) => ({ label: r.label, detail: r.detail, disabled: r.tag === undefined })));
+    const template = await api.settings.get<string>("listEnter");
+    const index = await api.pickRows(`Tags · Enter runs ${listEnterLine(template, "<tag>")}`, rows.map((r) => ({ label: r.label, detail: r.detail, disabled: r.tag === undefined })));
     const row = index === null ? undefined : rows[index];
     if (!row || row.tag === undefined) return;
-    const template = await api.settings.get<string>("listEnter");
     return api.commands.run(listEnterLine(template, row.tag));
   };
 
