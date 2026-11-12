@@ -45,8 +45,11 @@ All releases were tested in Live, including the installed `.ablx`.
     (Enter jumps) in review, ui pick.html cursor/disabled open. Live-tested: jump op (applied next tick; past the
     song length refused with Live's text), `jump 5.3.2`/`+2`/`end`/`start`, `1.9.1` → exit 2, `note stamp prev`
     at bar 1 → exit 3, `note stamp next` to a stamp behind the song end → exit 1 with Live's text (correct).
-    Left: ui commits, docs pass (jump, note stamp list/next/prev, note.stampWrap, page arrows), test of
-    next/prev with stamps inside the song, `note stamp list` dialog by hand, then the PR. 0.1.8 = the
+    ui `bbcfd35` (note page ↑/↓ + Enter jumps), `b4e4ec3` (pick list cursor/disabled); docs `6f4bcb0`.
+    Left: Live test of next/prev and `note stamp list` with stamps inside the song (needs a test Set's
+    note), then the PR. PR notes add: `jump`, `note stamp list/next/prev`, `note.stampWrap`, `api.pickRows`;
+    Remote Script 0.1.15 carries transport, loop_set and jump (unreleased, no bump).
+    Idea (ui): disabled stamp rows could say "no song position" in their detail. 0.1.8 = the
     tag list rework (0010, tag-0).
   - **Design question (later):** copies of a Set (Save As, a copied file) share one note, because its id
     lives in the Set (0013, intended). Editing the note in the copy changes the original's note. Idea: a
