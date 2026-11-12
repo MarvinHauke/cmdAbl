@@ -12,7 +12,7 @@ shows as help. Type a command in the palette; `<command> --help` prints the same
 - Mix: `mute`, `solo`, `arm`, `vol`
 - Control: `map`, `midi`
 - Tags: `tag`
-- Look things up: `help`, `man`, `lom`, `note`, `loop`
+- Look things up: `help`, `man`, `lom`, `note`, `loop`, `jump`
 - Recent commands: `history`
 - Extensions: `pakabl`
 - cmdAbl itself: `cmdabl`
@@ -763,7 +763,7 @@ note stamp adds a stamp to this Set's note (see note; the stamps live in the not
 
 **Usage:** `note stamp [<command>]`
 
-**Subcommands:** `add`
+**Subcommands:** `add`, `list`, `next`, `prev`
 
 #### `note stamp add`
 
@@ -782,6 +782,60 @@ note stamp
 ```
 
 add a stamp at the song position and write below it
+
+#### `note stamp list`
+
+pick a stamp from the note and jump to it
+
+Shows the stamps of this Set's note as a list (heading and the first words below it); the cursor starts on the next stamp after the playhead. Enter moves the playhead there (playing stays playing). Stamps made while stopped have no position: they are shown but cannot be chosen.
+
+**Usage:** `note stamp list`
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+note stamp list
+```
+
+choose a stamp to jump to
+
+#### `note stamp next`
+
+jump to the next stamp after the playhead
+
+Moves the playhead to the next stamp (by song position) after it. Stamps without a position are skipped. At the end it is exit 3 "no stamp after bar N", or with setting note.stampWrap it wraps to the first stamp.
+
+**Usage:** `note stamp next`
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+note stamp next
+```
+
+jump to the next stamp
+
+#### `note stamp prev`
+
+jump to the previous stamp before the playhead
+
+Moves the playhead to the previous stamp (by song position) before it. Stamps without a position are skipped. At the start it is exit 3 "no stamp before bar N", or with setting note.stampWrap it wraps to the last stamp.
+
+**Usage:** `note stamp prev`
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+note stamp prev
+```
+
+jump to the previous stamp
 
 ### `loop`
 
@@ -892,6 +946,46 @@ loop back
 ```
 
 restore the loop from before loop here
+
+### `jump`
+
+move the playhead to a position
+
+Moves the Arrangement playhead (playing stays playing). jump 12.3.1 goes to bar 12, beat 3, sixteenth 1; jump 12 to the start of bar 12; jump +4 or jump -4 moves by bars from the start of the current bar (not before the start); jump start goes to the beginning, jump end to the length Live reports for the Set (Live counts the loop end in it). Positions use the Set's current time signature, so they are off in Sets whose signature changes. Needs the cmdAbl Remote Script.
+
+**Usage:** `jump <position>`
+
+| Argument | Kind | Required | Description |
+| --- | --- | --- | --- |
+| `<position>` | text | yes | 12.3.1, 12, +4, -4, start or end |
+
+- Needs the Remote Script (reports "not running" / "outdated" otherwise).
+
+**Examples**
+
+```
+jump 12.3.1
+```
+
+to bar 12, beat 3, sixteenth 1
+
+```
+jump 12
+```
+
+to the start of bar 12
+
+```
+jump +4
+```
+
+four bars on
+
+```
+jump start
+```
+
+back to the beginning
 
 ## Recent commands
 

@@ -505,6 +505,24 @@ to restore, `loop back` does nothing.
 Bars follow the Set's current time signature. The loop write leaves no undo step, and Live counts the Set as changed, so
 it asks you to save.
 
+## Move the playhead: `jump`
+
+`jump` moves the Arrangement playhead to a position. It needs the [Remote Script](remote-script.md); without it the
+command stops with exit code 5. Playback keeps running: if the song plays, it plays on from the new position.
+
+| You type | The playhead goes to |
+| -------- | -------------------- |
+| `jump 12.3.1` | bar 12, beat 3, sixteenth 1 |
+| `jump 12.3` | bar 12, beat 3 |
+| `jump 12` | the start of bar 12 |
+| `jump +4` or `jump -4` | four bars on or back, counted from the start of the current bar. Going back stops at the beginning of the song. |
+| `jump start` | the beginning of the song |
+| `jump end` | the end of the song: the length Live reports for the Set (it counts the loop end in it) |
+
+Bars and beats follow the Set's current time signature. If the signature changes inside the song, positions after
+the change can be off. This is a known limit. If the position is behind the song's end, Live refuses; cmdAbl shows
+Live's reason (exit code 1).
+
 ## A note per Set: `note`
 
 `note` opens a note that belongs to the current Live Set, for things like a to-do list or a mix plan. It needs the
@@ -512,7 +530,7 @@ it asks you to save.
 
 - `note` shows the note, rendered: headings, lists, checkboxes, tables, code, bold and italic. Links show as text.
 - `note -e` (long form `--edit`) opens it for editing. A Set without a note opens in edit mode on an empty page.
-- `note stamp` adds a stamp to the note. See [Stamps](#stamps-a-timestamped-entry).
+- `note stamp` adds a stamp to the note. See [Stamps](#stamps-a-timestamped-entry). `note stamp list`, `next` and `prev` jump to stamps; see [Find and jump to stamps](#find-and-jump-to-stamps).
 
 ![The note window in view mode: three stamps, each a heading with the date and time and a line of text below it; two headings also hold the song position, such as @79.3.2. The footer says e edit, s stamp, Esc close, with Edit, Stamp and Close buttons](assets/images/note-view.png)
 
@@ -560,6 +578,31 @@ The loop is set only during Arrangement playback, never while a Session clip pla
 
 `note stamp` from a chain or a MIDI mapping loops the same way. To loop even with `note.stampLoop` off, or outside
 Arrangement playback, set the loop yourself: `loop here 8; note stamp; loop back`, with `note.stampLoop` off.
+
+### Find and jump to stamps
+
+A stamp that was written during playback holds a song position, such as `@12.3.1`. Three commands use it. They need
+the [Remote Script](remote-script.md).
+
+- `note stamp list` shows the stamps of the note as a pick list: the heading and the first words below it. The cursor
+  starts on the next stamp after the playhead. A stamp without a position is shown dimmed and cannot be picked.
+  `Enter` jumps to the chosen stamp.
+- `note stamp next` jumps to the next stamp after the playhead, by song position.
+- `note stamp prev` jumps to the previous stamp before the playhead.
+
+Stamps without a position are skipped by `next` and `prev`. At the last stamp, `note stamp next` stops with
+"no stamp after bar N" (exit code 3). With the setting `note.stampWrap` on, it goes on to the first stamp instead,
+and `prev` goes from the first stamp to the last.
+
+| Setting | Default | What it does |
+| ------- | ------- | ------------ |
+| `note.stampWrap` | off | `note stamp next` and `prev` wrap around at the last or first stamp. |
+
+**In the note window.** When the note window is connected (as for looping while you stamp), the stamp headings with a position are a list in view: `↑` and `↓` move between them, and
+`Enter` or a click on a heading jumps there, as [`jump`](#move-the-playhead-jump) does. The window stays open. If the
+jump fails, the footer shows why.
+
+A stamp behind the song's end cannot be jumped to; Live refuses and cmdAbl shows Live's reason.
 
 **Where the note lives.** The note is plain Markdown. It is stored as a file in cmdAbl's data folder (the Extensions
 Data folder in Ableton's Application Support) and linked to the Set by an id that is saved inside the Set. Viewing
