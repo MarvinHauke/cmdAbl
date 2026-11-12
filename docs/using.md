@@ -305,6 +305,8 @@ tracks.
 `tag -l` (or `tag --list`) opens a list of the tags in the Set. It is read-only: it changes nothing. Each row shows one
 tag with its number of tracks and their names (the first eight, then `+N`). If some tracks have no tag, the last row, **untagged**, shows them. You cannot choose that row.
 
+![The tag list: four tags, bass, drums, fx and synth, each with its number of tracks and their names. The title says Enter runs tag -e <tag>](assets/images/tag-list.png)
+
 `Enter` on a tag runs a command line for that tag. The title of the list shows which one: `Tags · Enter runs find #<tag>`.
 The default is `find #<tag>`, so `find next` and `find prev` then step through those tracks. Change it with the setting
 **Enter in the tag list** (`tag.listEnter`) on the [settings page](#settings). The choices are `find #{}`, `tag -e {}`,
@@ -319,6 +321,8 @@ The tag editor changes tags on many tracks at once. Open it with:
 - `tag /Lead`, with the track Lead in focus. This is `tag` with a target and no tag names.
 
 The editor lists regular and return tracks. Nothing changes in Live until you press **Apply**.
+
+![The tag editor in list view with the filter e typed: the tags bass, drums, fx and synth on the left, the tracks that match on the right with the matched letters underlined. Lead is ticked in orange and Perc is crossed in orange, so the Apply button reads Apply (2)](assets/images/tag-editor.png)
 
 It has two views. Switch between them with the **List** and **Grid** buttons, or with `Ctrl+G`. Both views share the
 same pending changes and one **Apply**. The setting **Tag editor view** (`tag.editView`) decides which view opens.
@@ -372,6 +376,8 @@ editor back when you close them.
 succeeds, unless Live has to be told to save the Set (see [After a write](#after-a-write)). **Cancel** (or `Esc`) leaves without writing. If changes are pending, the footer asks "Discard N pending
 changes?" with **Keep editing** and **Discard**. Move between the two with `←` and `→`, press `Enter` to choose, and
 `Esc` keeps editing.
+
+![The tag editor with two pending changes: the footer bar asks Discard 2 pending changes? with the buttons Keep editing and Discard](assets/images/tag-discard-bar.png)
 
 **Cmd+Z does not undo tag changes.** Hold the mouse over **Apply** and the help line says so. The changes and their
 undo commands go to the log: see [After a write](#after-a-write) and `cmdabl log --undo`. The [known limits](limits.md)
@@ -674,6 +680,8 @@ Live, or use another control. After you remove it, cmdAbl receives the control a
 number and value. A control you move for the first time is added on top, and its value updates in place. The row of the control that moved last is marked. A section **Taken in Live** lists controls that Live kept for
 itself during that time. The page says "Listening…" and keeps listening for as long as it is open. `Enter` or `Esc` closes the page. Live's status bar can show the values too: see `midi.statusBar` in the [settings](#settings). While it is open, bound controls do not run their lines.
 If the page cannot show live values, it shows the newest messages as a list when you press `Enter`.
+
+![The MIDI monitor before any control moves: the title Move some controls, a green dot with Listening… at the top right, and the text Waiting for MIDI…](assets/images/midi-monitor.png)
 
 ## Settings
 
