@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test, mock, after } from "node:test";
 import assert from "node:assert/strict";
 import { validateTree } from "../../core/command/commandTree.js";
 import { createFakeApi } from "../shared/testPorts.js";
@@ -184,5 +184,84 @@ test("the route answer carries the controls Live refused to forward (null = unkn
   } finally {
     release("go");
     await done;
+  }
+});
+
+after(() => mock.timers.reset());
+
+// ── renewal of the listening window while the page is open ──────────────────────────────────────────
+/** Open the monitor with a page that stays open until `close()`; the timers are fake. Returns helpers. */
+async function openPending(fail?: (n: number) => boolean) {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  const fake = createFakeApi({});
+  activate(fake.api);
+  let close: (answer: string | null) => void = () => {};
+  fake.api.ui.livePage = (async (name: string, html: string, width: number, height: number, routes: never) => {
+    fake.livePages.push({ name, html, width, height, routes });
+    return new Promise<string | null>((resolve) => (close = resolve));
+  }) as never;
+  let listens = 0;
+  const realListen = fake.api.midi.listen;
+  fake.api.midi.listen = (async (controls: never, options: never) => {
+    const n = listens++;
+    if (n > 0 && (options as { monitor?: boolean } | undefined)?.monitor && fail?.(n)) return { ok: false, code: 5, text: "Remote Script did not answer" };
+    return (realListen as never as (c: unknown, o: unknown) => Promise<unknown>)(controls, options);
+  }) as never;
+  const done = run(fake);
+  const flush = async () => { for (let i = 0; i < 20; i++) await new Promise((r) => setImmediate(r)); };
+  await flush();
+  const tick = async (ms: number) => { mock.timers.tick(ms); await flush(); };
+  const status = async () => ((await ask(fake.livePages[0]!.routes)) as { status: { listening: boolean; stoppedReason?: string } }).status;
+  return { fake, close: async (a: string | null) => { close(a); await flush(); return done; }, tick, status, monitorListens: () => fake.midiListens.filter((l) => l.monitor).length };
+}
+
+test("monitor window is renewed every 20 s while the page is open and ends when it closes", async () => {
+  const t = await openPending();
+  try {
+    assert.equal(t.monitorListens(), 1);
+    assert.equal((await t.status()).listening, true);
+    await t.tick(20_000);
+    assert.equal(t.monitorListens(), 2);
+    await t.tick(20_000);
+    assert.equal(t.monitorListens(), 3);
+    const r = await t.close("go");
+    assert.equal(r.code, 0);
+    assert.equal(t.fake.midiListens.at(-1)!.controls, "none");
+    const after = t.monitorListens();
+    await t.tick(60_000);
+    assert.equal(t.monitorListens(), after, "no renewals after close");
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test("a failed renewal is retried once; a second failure says stopped, logs one warning and stops renewing", async () => {
+  const t = await openPending((n) => n >= 1);
+  try {
+    await t.tick(20_000);
+    assert.equal((await t.status()).listening, true, "still retrying");
+    await t.tick(1_000);
+    const status = await t.status();
+    assert.equal(status.listening, false);
+    assert.match(status.stoppedReason!, /Listening stopped: Remote Script did not answer/);
+    assert.equal(t.fake.logged.filter((l) => l.level === "warn").length, 1);
+    const count = t.monitorListens();
+    await t.tick(60_000);
+    assert.equal(t.monitorListens(), count, "no more renewals once stopped");
+    await t.close("go");
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test("a renewal that fails once and then works keeps listening", async () => {
+  const t = await openPending((n) => n === 1);
+  try {
+    await t.tick(21_000);
+    assert.equal((await t.status()).listening, true);
+    assert.equal(t.fake.logged.filter((l) => l.level === "warn").length, 0);
+    await t.close("go");
+  } finally {
+    mock.timers.reset();
   }
 });
