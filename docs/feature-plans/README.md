@@ -28,7 +28,7 @@ Progress across all plans is tracked in [`STATUS.md`](STATUS.md): what is on whi
 waits for a Live test, and known issues. This page is the map: what exists, and what comes next in
 which order.
 
-## Where each plan stands (2026-11-11, after 0.1.6)
+## Where each plan stands (2026-11-12, after 0.1.7)
 
 ### Released
 
@@ -42,7 +42,7 @@ which order.
 | [0010](0010-tag-editing.md) | Tag editing | 0.1.2, 0.1.5 | Tag board, `tag -e`, `tag -r`; rename and remove tags, click to assign, file-tree keys (0.1.5). |
 | [0011](0011-logging.md) | Logging | 0.1.2 | Core logger, `cmdabl log`, quiet writes with undo lines. |
 | [0012](0012-vol-and-dca.md) | `vol` and `dca` | 0.1.3 (`vol`) | `vol` relative and `--set`, `stop`/`--clip` at limits. `dca` is a draft. |
-| [0013](0013-set-note.md) | Set note | 0.1.3 | `note`, `note -e`; the Set id in the Set; `api.files`. |
+| [0013](0013-set-note.md) | Set note | 0.1.3, 0.1.7 | `note`, `note -e`; the Set id in the Set; `api.files`; stamps (`note stamp`, key `s`, in place, loop while writing). |
 | [0016](0016-test-mcp.md) | Test access for agents | 0.1.3 (dev builds) | `/run`, `/show`, `/log`; MCP tools to run, screenshot and record. |
 | [0006](0006-completion-engine.md) | Completion engine | 0.1.4 (steps 1–2) | Argument completion at every position, completers for modules, the palette switch Off · Hints · Options; the silent-tag row (0.1.5). Open: paths level by level (step 3), ghost text for the best word (step 4), the server variant. |
 | [0017](0017-scripts-and-triggers.md) | Scripts and triggers | 0.1.5 (`;` chains) | Several commands in one line, one undo step per part; `|` reserved. Open: script files (`run`), clip and scene triggers. |
@@ -50,6 +50,8 @@ which order.
 | [0019](0019-settings-and-help.md) | Settings and help | 0.1.6 (phases 1–3) | `cmdabl config`, `<command> config`, declared settings, default commands and the defaults page, the help line, the palette footer. Open: one keyboard model (`listnav.js`), note timestamps with 0013, shortcuts (`Cmd+,`). |
 | [0021](0021-installation-and-setup-page.md) | Setup page | 0.1.6 | `cmdabl setup` status rows, Copy/Update, `setup.autoScript`, Karabiner import link, Open Karabiner, Restart Live (macOS). |
 | [0023](0023-codebase-layout.md) | Codebase layout | 0.1.6 | `src/core/` in area folders, `modules/shared/`. |
+| [0026](0026-loop.md) | `loop` | 0.1.7 | `loop`, `loop here [bars]`, `loop on/off`, `loop back`; used by the note page. |
+| [0027](0027-jump.md) | `jump` | 0.1.7 | `jump` forms, `note stamp list/next/prev`, `note.stampWrap`, `api.pickRows`. Open: `jump.step`. |
 
 [0001](0001-path-addressed-objects-and-commands.md) (path-addressed objects) and
 [0004](0004-command-platform.md) (the platform umbrella) are mostly built through the plans above.
@@ -58,34 +60,26 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
 ### Next, in dependency order
 
 ```
-0019 phase 4 one keyboard model (listnav) ──> 0019 phase 7 shortcuts ──> 0006 keymap
-0017 phase 1 script files (run) ──> 0017 phase 2 clip/scene triggers (uses 0018's UDP push)
+0010 tag list and tag editor (tag-0, on listnav + pickRows) ──> 0019 phase 7 shortcuts ──> 0006 keymap
+0017 phase 1 script module (global first) ──> 0017 phase 2 clip/scene triggers (uses 0018's UDP push)
 0018 value mode ──┬─> 0015 link ──┬─> pan / send
                   │               └─> 0012 dca
-                  └─> 0024 param ──> 0025 morph (after the undo/speed spikes in Live 13)
-0019 phase 4 (listnav) ──> 0010 tag list and tag editor (tag-0)
-0019 §7 default commands (built) ──> 0020 aliases ──> 0017 phase 3 (&&, $1)
+                  └─> 0024 param ──> 0025 morph
+0019 §7 default commands (built) ──> 0020 aliases ──> 0017 phase 3 (&&, $1, substitution)
 0006 step 3 paths level by level ──> device on/off (`bypass`)
 ```
 
-1. **Live 13 compatibility:** done 2026-11-11 (0.1.6 runs on Live 13; spikes in
-   [research/live13-spikes.md](research/live13-spikes.md)). `minimumApiVersion` and the SDK version move
-   when a release needs them. **Stamps** ([0013](0013-set-note.md)) are built with item 2 as 0.1.7.
-2. **0.1.7 (in work):** `listnav.js`, stamps ([0013](0013-set-note.md)), `loop` ([0026](0026-loop.md)), `jump` ([0027](0027-jump.md)), page runs, runnable groups.
-   0.1.8: the tag list and tag editor ([0010](0010-tag-editing.md), tag-0).
-   Then **one keyboard model for lists** ([0019](0019-settings-and-help.md) phase 4), then the **tag list and
-   tag editor** ([0010](0010-tag-editing.md), tag-0) as its first page, then shortcuts (phase 7).
-3. **Script files** ([0017](0017-scripts-and-triggers.md) phase 1): `.cmdabl` files run with `run`;
-   then clips and scenes run them on launch (phase 2), on 0018's push channel.
-4. **MIDI value mode** ([0018](0018-midi-mapping.md)): `map learn | vol #synth`; bindings that open a
-   page; per-control thresholds. Then **`param`** ([0024](0024-param.md), draft) and the **morph**
-   ([0025](0025-morph.md), draft; pickup and control types still to discuss).
-5. **Aliases** ([0020](0020-aliases.md), draft; from [0008](0008-tags-and-aliases.md) and
-   [0009](0009-ideas-from-clyphx.md)): an `alias` module on 0019's expansion step; syntax and the
-   default rule still open.
+1. **0.1.8: the tag list and tag editor** ([0010](0010-tag-editing.md), tag-0), the first page on `listnav.js`
+   and `api.pickRows`. Small items with it: `jump.step` ([0027](0027-jump.md)), the MIDI monitor's status and
+   auto-extend ([0018](0018-midi-mapping.md)).
+2. **0.1.9: the `script` module** ([0017](0017-scripts-and-triggers.md) phase 1): global scripts first, `script
+   <name>`; then clips and scenes run them (phase 2).
+3. **Shortcuts** ([0019](0019-settings-and-help.md) phase 7), then 0006's keymap.
+4. **MIDI value mode** ([0018](0018-midi-mapping.md)): `map learn | vol #synth`; then **`param`**
+   ([0024](0024-param.md), draft) and the **morph** ([0025](0025-morph.md), draft; pickup and control types open).
+5. **Aliases** ([0020](0020-aliases.md), draft): an `alias` module on 0019's expansion step.
 6. **Paths level by level** ([0006](0006-completion-engine.md) step 3); then `bypass` (alias `bp`).
 7. **`link`** ([0015](0015-link.md)), then `pan`/`send` and **`dca`** ([0012](0012-vol-and-dca.md)).
-   Number 0014 is unused (the MIDI plan was private under it until 2026-11-03).
 8. **Track colors** (a `color` module, plan 0022 to write; STATUS backlog).
 
 ### Later and ideas

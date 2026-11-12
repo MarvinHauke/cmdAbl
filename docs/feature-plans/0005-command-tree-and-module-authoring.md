@@ -3,7 +3,7 @@
 **Parent:** [0004](0004-command-platform.md)
 **Depends on:** [0002](0002-command-feedback-pattern.md) Phase A (`CommandResult`).
 
-**Status:** In Progress — rollout steps 1–2 and resolve-before-handler shipped (2026-10-11); drafted 2026-10-08 — defines how commands, subcommands and their arguments are
+**Status:** Runnable groups (`bare` fallback, the `git stash` rule) released in 0.1.7 (PR #32). In Progress — rollout steps 1–2 and resolve-before-handler shipped (2026-10-11); drafted 2026-10-08 — defines how commands, subcommands and their arguments are
 declared, so parsing, help and completion all derive from one structure.
 
 ## Context
