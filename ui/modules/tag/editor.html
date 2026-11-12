@@ -27,7 +27,7 @@
   <style>
     /*SHARED_CSS_PLACEHOLDER*/
 
-    :root { --bg-hi: color-mix(in srgb, var(--text) 12%, var(--bg-row)); }
+    :root { --bg-hi: color-mix(in srgb, var(--text) 12%, var(--bg-row)); --match: #8fc9ff; }   /* matched filter characters: light blue, not the accent (orange = pending) */
     html, body { height: 100%; overflow: hidden; }
     body { display: flex; flex-direction: column; }
     [hidden] { display: none !important; }
@@ -78,6 +78,12 @@
     .removed .meta { color: var(--accent); }
     .nomatch .nm { color: var(--dim); }
     .hit .nm { font-weight: 700; }
+    .mk { color: var(--match); }   /* the characters the filter matched */
+    .meta.err:empty { display: none; }
+    .row.tag .ib { visibility: hidden; }   /* reserved, so nothing jumps; shown on the cursor row and on hover */
+    .row.tag:hover .ib, .row.tag.cur .ib { visibility: visible; }
+    .row.tag .meta { margin-right: 2px; }
+    .row.tag.removed .nm { flex: 0 1 auto; }
     .empty { padding: 12px 10px; color: var(--dim); font-size: 11px; line-height: 1.5; }
     .cb { flex: none; width: 14px; height: 14px; border: 1px solid var(--dim); border-radius: 2px; display: inline-flex; align-items: center;
           justify-content: center; font-size: 11px; line-height: 1; color: var(--bg); font-weight: 700; }
@@ -100,13 +106,16 @@
     .gh { position: sticky; top: 0; z-index: 2; background: var(--bg-row); padding: 4px 4px 2px 8px; display: flex; flex-direction: column; min-width: 0;
           border-right: 1px solid var(--border); box-shadow: inset 0 -2px 0 var(--border); min-height: 56px; cursor: default; }
     .gh.corner { left: 0; z-index: 4; justify-content: center; color: var(--accent); min-height: 56px; padding-left: 10px; }
-    .gh .nm { line-height: 20px; }
+    .gh .nm { line-height: 20px; display: block; }
     .gh.corner.editing { flex-direction: row; align-items: center; gap: 4px; }
     .gh.corner.cur.editing { outline: none; }
     .gh.corner.editing .inl { min-width: 0; }
     .gh.corner.editing { flex-wrap: wrap; }
     .gh.corner.editing .meta:not(.err) { display: none; }
-    .gh.corner.editing .err, .gh .row .err { flex-basis: 100%; }
+    .gh.corner.editing .err, .gh .line .err { flex-basis: 100%; }
+    .gh .line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 24px; min-width: 0; }
+    .gh .line .inl { flex: 1 1 0; min-width: 0; width: 0; }
+    .gh { min-width: 112px; }
     .gh .ghb { display: flex; align-items: center; gap: 2px; margin-left: -6px; }
     .gh .ghb { min-width: 0; }
     .gh .meta { margin-left: auto; padding-right: 2px; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -176,6 +185,19 @@
     }
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };   // user data: textContent only
     const $ = id => document.getElementById(id);
+    // text into parent, the characters that match s (already lowercase) wrapped in .mk spans; text nodes only, never innerHTML
+    function hl(parent, text, s) {
+      const low = text.toLowerCase();
+      if (!s || low.length !== text.length) { parent.append(text); return parent; }
+      let i = 0, at;
+      while ((at = low.indexOf(s, i)) >= 0) {
+        if (at > i) parent.append(text.slice(i, at));
+        parent.append(el('span', 'mk', text.slice(at, at + s.length)));
+        i = at + s.length;
+      }
+      if (i < text.length) parent.append(text.slice(i));
+      return parent;
+    }
     const q = $('q'), main = $('main'), footer = $('footer');
 
     // ── model ──────────────────────────────────────────────────────────────────────────────────
@@ -264,11 +286,20 @@
       m.title = e.removed ? 'marked for removal' : (e.existing ? '' : 'new tag, ') + (live().some(x => x !== e && x.name === e.name) ? 'merges with another tag, ' : '') + e.c.size + (e.c.size === 1 ? ' track' : ' tracks') + (add ? ', ' + add + ' to add' : '') + (drop ? ', ' + drop + ' to remove' : '');
       return m;
     }
-    function nameEl(e) {
-      const n = el('span', 'nm', '#' + e.name);
+    function nameEl(e, s) {
+      const n = el('span', 'nm', '#'); hl(n, e.name, s);
       if (e.existing && e.name !== e.orig) { n.append(el('span', 'was', ' (was #' + e.orig + ')')); }
       n.title = '#' + e.name + (e.existing && e.name !== e.orig ? ' (was #' + e.orig + ')' : '');
       return n;
+    }
+    function tagButtons(e) {
+      const pen = el('button', 'ib', '✎'); pen.type = 'button'; pen.title = 'Rename #' + e.name + ' (F2)'; pen.setAttribute('aria-label', 'Rename #' + e.name);
+      pen.addEventListener('click', ev => { ev.stopPropagation(); if (editing) return; tagCur = e; onName = false; if (view === 'list') pane = 0; startEdit('rename', e); });
+      const x = el('button', 'ib', '×'); x.type = 'button'; x.title = (e.removed ? 'Unmark #' : 'Mark #') + e.name + (e.removed ? '' : ' for removal') + ' (Shift+Backspace)';
+      x.setAttribute('aria-label', x.title);
+      x.addEventListener('click', ev => { ev.stopPropagation(); if (editing) return; tagCur = e; onName = false; if (view === 'list') pane = 0; toggleRemove(e); });
+      for (const b of [pen, x]) b.tabIndex = -1;   // the field keeps the keyboard; F2 and Shift+Backspace are the keys
+      return [pen, x];
     }
     function inlineInput(host) {
       const wrap = editing.mode === 'rename' ? editing.entry.name : '';
@@ -296,8 +327,8 @@
       const ll = el('div', 'plist');
       for (const e of entries) {
         const r = el('div', 'row tag' + (e.removed ? ' removed' : ''));
-        r.dataset.help = 'Tag: its tracks are on the right (→) · F2 renames · Shift+Backspace marks it for removal';
-        if (editing?.mode === 'rename' && editing.entry === e) inlineInput(r); else r.append(nameEl(e), metaEl(e, ' · '));
+        r.dataset.help = '#' + e.name + ' · → its tracks · ✎ or F2 renames · × or Shift+Backspace marks it for removal';
+        if (editing?.mode === 'rename' && editing.entry === e) inlineInput(r); else r.append(nameEl(e), metaEl(e, ' · '), ...tagButtons(e));
         r.addEventListener('click', () => { if (editing) return; tagCur = e; pane = 0; focusQ(); render(); });
         ll.append(reg(r, 'tag', e));
       }
@@ -318,8 +349,8 @@
         for (const tr of L.rows) {
           const r = el('div', 'row trk' + (e.removed ? ' locked' : '') + (L.rowActive ? (L.rowHit(tr) ? ' hit' : ' nomatch') : ''));
           r.dataset.help = 'Track: Space or a click adds or removes #' + e.name;
-          r.append(cbEl(e, tr.id), el('span', 'nm', tr.name));
-          if (tr.group) r.append(el('span', 'grp', tr.group));
+          r.append(cbEl(e, tr.id), hl(el('span', 'nm'), tr.name, L.rowActive ? L.s : ''));
+          if (tr.group) r.append(hl(el('span', 'grp'), tr.group, L.rowActive ? L.s : ''));
           r.title = (tr.group ? tr.group + ' / ' : '') + tr.name;
           r.addEventListener('click', () => { tagCur = e; trackCur = tr.id; pane = 1; toggleCell(e, tr.id); });
           rl.append(reg(r, 'trk', e, tr.id));
@@ -343,23 +374,18 @@
       main.className = 'grid';
       const sc = el('div'); sc.id = 'gscroll';
       const tbl = el('div', 'gtable' + (L.cols.length ? '' : ' nocols'));
-      tbl.style.gridTemplateColumns = 'minmax(170px, 240px) repeat(' + L.cols.length + ', 140px)';
+      tbl.style.gridTemplateColumns = 'minmax(170px, 240px) ' + L.cols.map(e => editing?.mode === 'rename' && editing.entry === e && editing.w ? editing.w + 'px' : 'fit-content(220px)').join(' ');
       const corner = el('div', 'gh corner'); corner.dataset.help = 'New tag: name a tag, then check its tracks (Enter)';
       if (editing?.mode === 'new') { corner.classList.add('editing'); inlineInput(corner); } else corner.append(el('span', 'nm', '+ New tag…'));
       corner.addEventListener('click', () => { if (editing) return; onHead = true; onName = true; startEdit('new'); });
       tbl.append(reg(corner, 'corner'));
       for (const e of L.cols) {
         const h = el('div', 'gh' + (e.removed ? ' removed' : '') + (L.colActive && !L.colHit(e) ? ' nomatch' : ''));
-        h.dataset.help = 'Tag: ✎ renames (F2) · × marks it for removal, again unmarks (Shift+Backspace)';
-        if (editing?.mode === 'rename' && editing.entry === e) { const line = el('div', 'row'); line.style.padding = '0'; line.style.minHeight = '24px'; inlineInput(line); h.append(line); }
-        else h.append(nameEl(e));
+        h.dataset.help = '#' + e.name + ' · ✎ or F2 renames · × or Shift+Backspace marks it for removal, again unmarks';
+        if (editing?.mode === 'rename' && editing.entry === e) { const line = el('div', 'line'); inlineInput(line); h.append(line); }
+        else h.append(nameEl(e, L.colActive ? L.s : ''));
         const b = el('div', 'ghb');
-        const pen = el('button', 'ib', '✎'); pen.type = 'button'; pen.title = 'Rename #' + e.name + ' (F2)'; pen.setAttribute('aria-label', 'Rename #' + e.name);
-        pen.addEventListener('click', ev => { ev.stopPropagation(); tagCur = e; onName = false; startEdit('rename', e); });
-        const x = el('button', 'ib', '×'); x.type = 'button'; x.title = (e.removed ? 'Unmark #' : 'Mark #') + e.name + (e.removed ? '' : ' for removal') + ' (Shift+Backspace)';
-        x.setAttribute('aria-label', x.title);
-        x.addEventListener('click', ev => { ev.stopPropagation(); tagCur = e; onName = false; toggleRemove(e); });
-        b.append(pen, x, metaEl(e, ' '));
+        b.append(...tagButtons(e), metaEl(e, ' '));
         h.append(b);
         h.addEventListener('click', () => { if (editing) return; tagCur = e; onName = false; onHead = true; focusQ(); render(); });
         tbl.append(reg(h, 'gh', e));
@@ -367,8 +393,8 @@
       for (const tr of L.rows) {
         const hit = !L.rowActive || L.rowHit(tr);
         const n = el('div', 'gn' + (hit ? '' : ' nomatch') + (L.rowActive && hit ? ' hit' : ''));
-        n.append(el('span', 'nm', tr.name));
-        if (tr.group) n.append(el('span', 'grp', tr.group));
+        n.append(hl(el('span', 'nm'), tr.name, L.rowActive ? L.s : ''));
+        if (tr.group) n.append(hl(el('span', 'grp'), tr.group, L.rowActive ? L.s : ''));
         n.title = (tr.group ? tr.group + ' / ' : '') + tr.name;
         n.addEventListener('click', () => { trackCur = tr.id; onName = true; onHead = false; focusQ(); render(); });
         tbl.append(reg(n, 'gn', null, tr.id));
@@ -483,7 +509,8 @@
     function startEdit(mode, entry) {
       if (mode === 'rename' && (!entry || entry === NEW)) return;
       if (mode === 'rename' && entry.removed) { flash('#' + entry.name + ' is marked for removal: Shift+Backspace unmarks it first.'); return; }
-      editing = { mode, entry, input: null, value: undefined, touched: false };
+      editing = { mode, entry, input: null, value: undefined, touched: false, w: 0 };
+      if (mode === 'rename' && view === 'grid') editing.w = els.find(x => x.k === 'gh' && x.e === entry)?.el.offsetWidth ?? 0;   // the column keeps its width while renaming
       setNote(null); render();
     }
     function endEdit() { editing = null; setNote(null); zone = 'list'; render(true); focusQ(); }
