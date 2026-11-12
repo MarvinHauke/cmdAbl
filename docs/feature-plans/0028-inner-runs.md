@@ -69,5 +69,8 @@ live page through the normal command path. This plan makes that one engine, reac
   returns), so `api.commands.run` needs no argument for its caller and a late call is refused.
 - `api.commands.run(line, { allow? })` and page runs both end in `innerRun`. From a palette line the inner line has real
   dialogs through the queue; inside a headless run, and always for pages, it runs headless. A throw never escapes.
-- Inside an inner run `api.settings.gearAvailable()` is false (the gear would re-run the outer line). To be confirmed.
-- Page runs keep working for commands that declare no `runs` (the page's own list stands); `api.commands.run` always needs `runs`.
+- Inside an inner run `api.settings.gearAvailable()` is false (the gear would re-run the outer line).  (user, Q10)
+- **Temporary:** page runs keep working for commands that declare no `runs` (the page's own list stands) until cmdabl-modules declares `runs` on the note command; then core removes this exception (decisions 2 and 10). `api.commands.run` always needs `runs`.
+- Default commands are expanded BEFORE the allowlist check and the expanded line is what runs (without a second expansion), so a default such as `mute` → `mute; pakabl install x` cannot smuggle in a part that was not allowed. The log shows `typed ⇒ ran (default)`.
+- Esc on a pick inside an inner line gives exit 0 without text (quiet, like the palette).
+- A startup warning appears if async context does not survive an `await` in the host (`callStoreWorks`).

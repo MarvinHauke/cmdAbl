@@ -45,6 +45,7 @@ import { midiBlocked, midiLast, midiListen, onBlocked, onMidiEvent } from "./abl
 import { createMidiEngine } from "./core/midi/midiEngine.js";
 import { createSetWatch } from "./core/host/setWatch.js";
 import { createLivePages } from "./core/surfaces/livePage.js";
+import { callStore, callStoreWorks, innerRun, sanitizeRuns } from "./core/command/innerRun.js";
 import { createPageRun } from "./core/surfaces/pageRun.js";
 import { createMidiPort } from "./core/midi/midiPort.js";
 import { createMidiListenRoute, logMidiEvent } from "./ableton/midiEvents.js";
@@ -95,13 +96,8 @@ export function activate(activation: ActivationContext) {
           pendingGear = gear;
         },
         // Page runs (plan 0018): a live page runs the lines its module allowed, headless, nested in the opener's wait.
-        (allow) => createPageRun({
-          roots: () => registry.roots(),
-          run: async (line) => {
-            const outcome = await runHeadless(line, runBase, gate);
-            return { code: outcome.code, text: outcome.message };
-          },
-        })(allow),
+        // Since plan 0028 an inner run whose caller is the page (the same engine as `api.commands.run`).
+        (allow, pageName) => createPageRun({ roots: () => registry.roots(), exec: innerExec, defaults: () => defaultsStore.get() })(allow, pageName),
       ),
       async () => (await settingsStore.get())["ui.helpLine"],
     ),
@@ -188,6 +184,34 @@ export function activate(activation: ActivationContext) {
     return answer;
   }
   let isOpen = false;
+  /** What one inner line needs (plan 0028): the registry, how to run a line, the log. */
+  const innerDeps = () => ({
+    roots: () => registry.roots(),
+    exec: innerExec,
+    defaults: () => defaultsStore.get(),
+    log: (line: string) => appLog.record(line),
+    warn: (text: string) => logger("run").warn(text),
+  });
+  /**
+   * Runs one allowed inner line the normal way: headless when asked (a page's run) or when a headless run is going (map
+   * binding, chain, page run: a part that would ask gives exit 4); otherwise from a palette line with real dialogs through
+   * the queue. Never throws.
+   */
+  async function innerExec(line: string, headless: boolean): Promise<CommandResult> {
+    if (headless || gate.active()) {
+      const outcome = await runHeadless(line, { ...runBase, defaults: undefined }, gate); // defaults were expanded before the check
+      return outcome.code === ExitCode.OK ? ok(outcome.message || undefined) : fail(outcome.code as Exclude<CommandResult["code"], 0>, outcome.message);
+    }
+    const outcome = await runLine(line, {
+      ...runBase,
+      defaults: undefined, // expanded before the check
+      takeFill: () => undefined,
+      pick: ({ title, candidates, multi, nodes, preview, details, state }) => pick(title, candidates, multi, { nodes, preview, details, state, fill: false }),
+      pickTags: (request) => pickTagNames(ui, request),
+    });
+    // Esc on a pick inside the inner line stays quiet, as in the palette (the caller gets exit 0 and no text).
+    return outcome.cancelled ? ok() : outcome.result;
+  }
   /** The line the palette (or /show) is running now; a page's gear belongs to its command (plan 0019). */
   let activeLine: string | undefined;
   /** A module page's gear (plan 0019) counts only for a command that has settings; otherwise the flag is dropped. */
@@ -196,7 +220,7 @@ export function activate(activation: ActivationContext) {
   }
   /** Whether a gear works now: a palette line of a command with settings runs, and no headless run is going. */
   function gearAvailable(): boolean {
-    return !gate.active() && activeGroup() !== undefined;
+    return !gate.active() && callStore.getStore()?.inner !== true && activeGroup() !== undefined;
   }
   /** The settings group of the running command: its first word, when that module declared settings. Not for `;` chains. */
   function activeGroup(): string | undefined {
@@ -336,6 +360,9 @@ export function activate(activation: ActivationContext) {
       usage: (path) => usageForPath(registry.roots(), path),
       completer: (key, source) => registry.completer(key, source),
       defaults: () => defaultsStore.peek(),
+      // Inner runs (plan 0028): the caller is the command that is running now (async context), its `runs` the allowlist.
+      run: (line, options) =>
+        innerRun(line, { ctx: callStore.getStore(), narrow: Array.isArray(options?.allow) ? options.allow : undefined }, innerDeps()),
     },
     pick: (title, candidates, multi, options) => pick(title, candidates, multi, { fill: options?.fill, state: options?.state }),
     confirm: (message, confirmLabel) => confirm(ui, message, confirmLabel),
@@ -414,6 +441,11 @@ export function activate(activation: ActivationContext) {
     groups: () => settingsRegistry.groups().map((g) => g.id),
     warn: (text) => logger("settings").warn(text),
   });
+  // Every `runs` list is checked once all commands exist (plan 0028): entries with options, unknown paths and `outside` commands are dropped.
+  void callStoreWorks().then((works) => {
+    if (!works) logger("host").warn("async context (AsyncLocalStorage) does not survive an await in this host: api.commands.run and page runs will be refused");
+  });
+  sanitizeRuns(registry.roots(), (text) => logger("registry").warn(text));
   void defaultsStore.get().catch(() => {}); // primes `api.commands.defaults()`
   // A command that names a completer nobody registered would complete nothing: say so once, at startup.
   for (const problem of registry.unknownCompleters()) logger("host").warn(problem);

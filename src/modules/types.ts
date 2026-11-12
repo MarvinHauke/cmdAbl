@@ -8,7 +8,7 @@
 import type { Command } from "../core/command/commandRegistry.js";
 import type { ObjectNode } from "../ableton/objectTree.js";
 import type { Bridge } from "../ableton/bridgeClient.js";
-import type { Provider } from "../core/types.js";
+import type { CommandResult, Provider } from "../core/types.js";
 import type { Completer } from "../core/complete/complete.js";
 import type { LiveRoutes } from "../core/surfaces/livePage.js";
 export type { LiveRoutes } from "../core/surfaces/livePage.js";
@@ -260,6 +260,18 @@ export interface ModuleApi {
     help(path: string[]): string | undefined;
     /** Exactly what `<command> --help` prints (usage, sections, and `more: man …` when `man` exists); undefined when unknown. For a handler that answers exit 2 with the usage. */
     usage(path: string[]): string | undefined;
+    /**
+     * Run a command line through the normal command path (plan 0028): parse, resolve, errors caught, the log, its own
+     * undo steps, never the history. Resolves with that line's `CommandResult` (return it or merge it into your own; core
+     * shows nothing on its own). The line may run only while the calling command runs (not kept for later), and only if
+     * every `;` part is a command path in the CALLING command's declared `runs` (`Command.runs`, checked at activation:
+     * plain command paths, no options; `outside` commands such as `pakabl install` or `cmdabl setup` are never allowed).
+     * `options.allow` can only narrow that list. Anything else is exit 2 (a warn line in the log) and nothing runs.
+     * Depth 1: a line run this way cannot run further lines. From a palette line its dialogs go through the queue; inside a
+     * headless run (map binding, chain, page run) it runs headless too (a part that would ask gives exit 4). The log marks
+     * the caller: `run: find #drums -> 0 (from tag -l)`. Never throws.
+     */
+    run(line: string, options?: { allow?: string[] }): Promise<CommandResult>;
     /**
      * Register a source of completion candidates under `key`; commands name it in `ArgDef.complete`
      * or `OptionDef.complete` (`tag --rename` -> the Set's tags). The palette calls it ONCE when it

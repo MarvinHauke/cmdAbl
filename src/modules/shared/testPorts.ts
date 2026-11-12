@@ -8,7 +8,7 @@ import { formatControl, validateBinding } from "../../core/midi/midi.js";
 import type { MidiBinding } from "../../core/midi/midiEngine.js";
 import type { MidiControl } from "../../core/midi/midi.js";
 import type { MidiMessage as StoredMidiMessage } from "../../ableton/bridgeOps.js";
-import type { Provider } from "../../core/types.js";
+import { ok, type CommandResult, type Provider } from "../../core/types.js";
 import type { StateChange } from "../../core/surfaces/ui.js";
 import { MAX_FILE_BYTES, validFileName } from "../../core/settings/files.js";
 import type { Loop, ModuleApi, PickRow, SettingDef, TagRow, TrackHandle, Transport } from "../types.js";
@@ -24,6 +24,8 @@ export interface FakeApiOptions {
   dialogAnswer?: string | null;
   /** What `api.settings.gearAvailable()` answers (default false). */
   gearAvailable?: boolean;
+  /** What `api.commands.run` answers (default `ok()`); the call is recorded in `fake.commandRuns`. */
+  runResult?: (line: string) => CommandResult;
   /** What `api.pick` answers (default: cancelled). Registered `onPick` listeners are notified like the platform does. */
   pickAnswer?: (candidates: ObjectNode[], multi: boolean) => ObjectNode[] | null;
   /** What `api.confirm` answers (default: false, i.e. cancelled). */
@@ -55,6 +57,8 @@ export interface FakeApiOptions {
 export interface FakeApi {
   api: ModuleApi;
   bridge: FakeBridge;
+  /** The lines `api.commands.run` was asked to run, with the call's `allow` if given. */
+  commandRuns: Array<{ line: string; allow?: string[] }>;
   /** Commands the module declared, in order. */
   commands: Command[];
   providers: Provider[];
@@ -130,6 +134,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   const fake: FakeApi = {
     api: undefined as unknown as ModuleApi,
     bridge,
+    commandRuns: [],
     commands: [],
     providers: [],
     logs: [],
@@ -284,6 +289,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       roots: () => fake.commands,
       help: (path) => helpForPath(fake.commands, path),
       usage: (path) => usageForPath(fake.commands, path),
+      run: async (line, runOptions) => {
+        fake.commandRuns.push({ line, ...(runOptions?.allow ? { allow: runOptions.allow } : {}) });
+        return options.runResult?.(line) ?? ok();
+      },
       completer: (key, source) => void (fake.completers.has(key) ? undefined : fake.completers.set(key, source)),
       defaults: () => ({ ...(options.defaults ?? {}) }),
     },

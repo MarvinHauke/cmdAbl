@@ -321,7 +321,7 @@ export function createDefaultUi(
    */
   onGear?: (gear: { surface: "page" }) => void,
   /** Builds the page-run handler for an allowlist (`pageRun.ts`); absent: pages cannot run lines. */
-  pageRun?: (allow: string[]) => LiveRun,
+  pageRun?: (allow: string[], pageName: string) => LiveRun,
 ): Ui {
   const show = (name: string, html: string, width: number, height: number): Promise<string | null> =>
     // A failure is already logged by the queue; here it only counts as dismissed.

@@ -1,10 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createPageRun, refusal, trackRuns } from "./pageRun.js";
+import { callStore, type CallCtx } from "../command/innerRun.js";
 import { createUiGate } from "../host/headless.js";
 import type { CommandNode } from "../command/commandTree.js";
 import type { Ui } from "./ui.js";
-import { ExitCode } from "../types.js";
+import { ExitCode, ok } from "../types.js";
 
 const run = () => undefined;
 const roots: CommandNode<any, any>[] = [
@@ -13,6 +14,7 @@ const roots: CommandNode<any, any>[] = [
   { name: "map", summary: "map", args: [{ name: "line", kind: "text", raw: true, required: false }], run },
 ];
 const ALLOW = ["stamp loop", "stamp unloop"];
+const ctx = (): CallCtx => ({ path: "x", line: "x", inner: false, live: { on: true } });
 
 test("refusal: listed command paths pass, options and arguments are free", () => {
   assert.equal(refusal("stamp loop", ALLOW, roots), null);
@@ -34,7 +36,7 @@ test("refusal: unlisted paths, partly unlisted chains, bare | and junk are refus
 test("createPageRun: an allowed line runs, a refusal answers exit 2 and logs a warn line without running", async () => {
   const ran: string[] = [];
   const warned: string[] = [];
-  const handler = createPageRun({ roots: () => roots, run: async (line) => (ran.push(line), { code: 0, text: "ok" }), warn: (t) => warned.push(t) })(ALLOW);
+  const handler = callStore.run(ctx(), () => createPageRun({ roots: () => roots, exec: async (line) => (ran.push(line), ok("ok")), warn: (t) => warned.push(t) })(ALLOW, "p"));
   assert.deepEqual(await handler("stamp loop"), { code: 0, text: "ok" });
   const refused = await handler("mute #a");
   assert.equal(refused.code, ExitCode.USAGE);
@@ -44,7 +46,7 @@ test("createPageRun: an allowed line runs, a refusal answers exit 2 and logs a w
 });
 
 test("createPageRun: a throwing run becomes a failure", async () => {
-  const handler = createPageRun({ roots: () => roots, run: async () => { throw new Error("boom"); }, warn: () => {} })(ALLOW);
+  const handler = callStore.run(ctx(), () => createPageRun({ roots: () => roots, exec: async () => { throw new Error("boom"); }, warn: () => {} })(ALLOW, "p"));
   assert.equal((await handler("stamp loop")).code, ExitCode.FAILURE);
 });
 
