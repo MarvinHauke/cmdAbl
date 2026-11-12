@@ -46,7 +46,7 @@ in a team (see `CLAUDE.md`, "Agent team"):
 
 ## Workflow per task
 
-1. Implement with tests. Run `npm test` and `npm run build`. Fix errors.
+1. Implement with tests. Run `npm test`, `npm run build` and, for a Remote Script change, `python3 -B -m unittest discover -s tests/remote-script` (CI's `script-tests`; not part of `npm test`). Fix errors.
 2. Send `cmdabl-reviewer` the task in one line, the changed files, anything you left out.
 3. Fix its must-fix findings. After its OK, commit on the task's branch, commit your own files by path
    (`git commit -- <files>`; never a bare `git commit` after staging, the index is shared). End the message with the Co-Authored-By line from the session.
