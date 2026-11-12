@@ -102,7 +102,7 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   5. The installed `.ablx` of 0.1.8 (from the release build): `cmdabl setup` updates the Remote Script to
      0.1.16, Live restarted, then `jump +1` and `tag -l` once.
   6. After the merge: `pakabl list` shows stars and downloads.
-  Docs pass started 2026-11-12 (cmdabl-docs): text first, images after the user opens a clean demo Set.
+  Docs pass started 2026-11-12 (cmdabl-docs): text done and reviewed (`434f54e..cc45f51`, tag-pick flow gone, reference regenerated); images after the user opens a clean demo Set (shot list with cmdabl-docs).
 - **Decided, not built (2026-11-12):** MIDI monitor shows its status and extends its window by itself, plus
   an "all ins" spike (0018); `jump.step` from Live's global quantization (0027); the note page's help line
   keeps e/s/Esc when stamps exist; disabled stamp rows say why (partly done).
@@ -140,6 +140,7 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
 - The startup line "keyboard trigger not configured" reads a stored setup flag, not the Karabiner check of
   `cmdabl setup`, so the two can disagree (2026-11-12). Core: derive the line from the same fact.
 
+- `src/core/settings/settings.ts:53` still names `tag.foldAfter` in a comment (gone since 0.1.8; core).
 - `jump`'s log line prints raw floats on triplet steps (`0.6666666666666666 beats`); round for display (modules).
 - `beatsToPosition` could floor a float remainder a sixteenth low (7/8); add an epsilon (0027).
 - `note stamp prev` exit-3 text counts stamps after the playhead.
