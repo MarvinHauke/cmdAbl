@@ -72,6 +72,7 @@
     #footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 6px 12px; display: flex; align-items: center; gap: 8px; }
     #hint { flex: 1; min-width: 0; color: var(--dim); font-size: 11px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #hint .stamp { color: var(--accent); }
+    #hint.wrap { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }   /* an error wraps (2 lines) instead of being cut off */
     #footer button { min-height: 24px; flex: none; white-space: nowrap; }
   </style>
 </head>
@@ -116,7 +117,7 @@
         if (m.index) parent.append(document.createTextNode(src.slice(0, m.index)));
         if (m[1] != null) parent.append(document.createTextNode(m[1]));
         else if (m[2] != null) parent.append(mk('code', '', m[2]));
-        else if (m[3] != null) { const a = mk('span', 'link'); a.title = m[4]; inline(m[3], a); parent.append(a); }
+        else if (m[3] != null) { const a = mk('span', 'link'); a.dataset.help = 'Link: ' + m[4]; inline(m[3], a); parent.append(a); }
         else {
           const kind = m[5] != null ? ['strong', m[5]] : m[6] != null ? ['strong', m[6]] : m[7] != null ? ['s', m[7]] : ['em', m[8] ?? m[9]];
           const e = mk(kind[0]); inline(kind[1], e); parent.append(e);
@@ -263,9 +264,14 @@
     function startStampKey() { if (LIVE?.base && LIVE?.token) liveStamp(); else finish('stamp'); }
     function leaveStamp() { if (st?.looped) runLine('loop back'); st = null; show('view'); }   // back to view in place
 
+    // The footer shows the data-help of the hovered element (a link's URL, a stamp's jump), instead of a native tooltip.
+    let hoverHelp = '';
+    document.addEventListener('mouseover', e => { const h = e.target.closest?.('[data-help]')?.dataset.help || ''; if (h !== hoverHelp) { hoverHelp = h; setHint(); } });
+    document.addEventListener('mouseout', e => { if (!e.relatedTarget && hoverHelp) { hoverHelp = ''; setHint(); } });
     function setHint() {
       hint.replaceChildren();
-      hint.title = flash;   // a cut-off error stays readable
+      hint.classList.toggle('wrap', !!flash && !hoverHelp);
+      if (hoverHelp) { hint.append(document.createTextNode(hoverHelp)); return; }   // the hovered element's help (no tooltips)
       if (flash) hint.append(mk('span', 'stamp', flash), document.createTextNode(' · '));
       if (mode === 'edit' && st?.hint && edit.value.startsWith(st.head)) hint.append(mk('span', 'stamp', st.hint), document.createTextNode(' · '));
       if (mode === 'view') {   // one row: the longest line that fits, else shorter ones (the hint ends in … only as a last resort)
@@ -289,7 +295,7 @@
       if (!LIVE?.base || !LIVE?.token) return;
       for (const h of view.querySelectorAll('h3')) {
         const m = STAMP.exec(h.textContent);
-        if (m) { h.classList.add('jump'); h.dataset.pos = m[1]; h.title = 'Enter or click: jump to ' + m[1]; stamps.push(h); }
+        if (m) { h.classList.add('jump'); h.dataset.pos = m[1]; h.dataset.help = 'Enter or click: jump to ' + m[1]; stamps.push(h); }
       }
     }
     function moveCursor(i) {
