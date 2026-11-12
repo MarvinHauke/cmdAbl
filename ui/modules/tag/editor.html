@@ -1,14 +1,668 @@
-<!doctype html>
-<!-- Placeholder: cmdabl-ui builds the tag editor here (plan 0010 "Build (0.1.8)"). It only closes. -->
-<html><head><meta charset="utf-8"><title>tag editor</title></head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="color-scheme" content="dark" />
+  <title>tag editor</title>
+  <!-- Module page of `tag` (plan 0010 "Tag list and tag editor", "Build (0.1.8)"): the tag editor, opened by `tag -e` through api.ui.dialog.
+       In: TAG_EDITOR_PLACEHOLDER = { view: "list"|"grid", filter: "compact"|"highlight", help: string|boolean (any non-empty value
+       turns the help line's hover texts on; the page builds the key line itself), gear: boolean (true: a Settings button),
+       tracks: [{ id, name, group? }]  (Set order; group = the parent group's name, shown dim),
+       tags: [{ name, tracks: [id] }]  (the order shown; names without the #),
+       focus?: { tag?, track? }        (open on that tag / that track; a track alone keeps the first tag),
+       keys?: { action: [chord] }      (remapping, named actions: view rename remove apply, and the ui/listnav.js ones: next prev left right take mark ...) }.
+       Out (close_and_send): "" = closed, nothing to write · {"settings": true} · {"apply": { "rename": [{from, to}], "remove": [tag], "set": [{tag, track, on}] }}.
+       Order for the module: renames (a name that exists merges), then removes (original names of tags that are not renamed), then `set`
+       with the tags' FINAL names; `set` lists only (tag, track) pairs whose state differs from the request, grouped by final name, so a merge
+       is one group. Names are checked here (a-z 0-9 - _, lowercase) and again by the module.
+       Two views share the same pending changes and one Apply: the list view (tags left with the track count and pending changes, the current
+       tag's tracks with a checkbox right) and the grid view (tracks as rows, tags as columns). A page never writes: Apply closes with the changes.
+       Filter: the field is the resting place of the keyboard focus. Typing filters the tracks (the grid: also the tag columns, whichever the
+       text matches). filter "compact" hides what doesn't match, "highlight" keeps everything and the arrows skip non-matches. Esc clears the
+       filter first, then closes; with pending changes Esc asks in the footer. "+ New tag…" is pinned at the top of the tags (grid: the corner).
+       Keys (zones as in listnav): ↑/↓ move · → deeper (list: into the tracks; grid: next column) · ← back · Space toggles the checkbox (a
+       pending change, not a mark) · F2 renames the current tag · Shift+Backspace marks it for removal (again: unmarks) · Ctrl+G switches
+       the view · Enter applies (on "+ New tag…": names a new tag) · Ctrl/Cmd+Enter and Ctrl/Cmd+S apply from anywhere · Tab reaches the buttons.
+       All user data (track and tag names) goes in with textContent. -->
+  <style>
+    /*SHARED_CSS_PLACEHOLDER*/
+
+    :root { --bg-hi: color-mix(in srgb, var(--text) 12%, var(--bg-row)); }
+    html, body { height: 100%; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
+    [hidden] { display: none !important; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    /* ── header ── */
+    #bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex: none; }
+    #colon { color: var(--accent); font-size: 15px; font-weight: 700; user-select: none; }
+    #title { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #bar .sp { flex: 1; }
+    #views { display: flex; flex: none; }
+    #views button { border-radius: 0; min-height: 24px; min-width: 52px; }
+    #views button:first-child { border-radius: 2px 0 0 2px; }
+    #views button:last-child { border-radius: 0 2px 2px 0; margin-left: -1px; }
+    #views button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--bg-row); position: relative; }
+    
+    /* ── filter ── */
+    #tools { display: flex; align-items: center; gap: 10px; padding: 8px 12px; flex: none; }
+    #q, .inl { height: 28px; background: var(--bg-row); border: 1px solid var(--dim); border-radius: 2px; color: var(--text);
+               font: inherit; padding: 0 8px; caret-color: var(--accent); outline: none; }
+    #q { flex: 1; min-width: 0; }
+    #q::placeholder { color: var(--text); opacity: 0.55; }
+    #q:focus, .inl:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    #fstat { flex: none; min-width: 170px; text-align: right; color: var(--dim); font-size: 11px; white-space: nowrap; }
+
+    /* ── main: list view ── */
+    #main { flex: 1; min-height: 0; padding: 0 12px 8px; }
+    #main.list { display: grid; grid-template-columns: minmax(190px, 38%) minmax(0, 1fr); gap: 8px; }
+    .pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--bg-row); box-shadow: inset 0 2px 0 var(--border); }
+    .pane.focus { box-shadow: inset 0 2px 0 var(--accent); }
+    .phead { display: flex; align-items: baseline; gap: 8px; padding: 7px 10px 6px; font-size: 11px; color: var(--dim); border-bottom: 1px solid var(--border); flex: none; min-height: 28px; }
+    .pane.focus .phead { color: var(--accent); }
+    .phead .pt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .phead .pn { margin-left: auto; flex: none; white-space: nowrap; }
+    .plist { flex: 1; min-height: 0; overflow-y: auto; }
+    .row { display: flex; align-items: center; gap: 8px; min-height: 26px; padding: 0 10px; cursor: default; box-shadow: inset 2px 0 0 transparent; }
+    .row:hover { background: var(--bg-hi); }
+    .row.cur { background: var(--bg-hi); box-shadow: inset 2px 0 0 var(--dim); }
+    .pane.focus .row.cur { box-shadow: inset 2px 0 0 var(--accent); }
+    .pane:not(.focus) .row.trk.cur { background: transparent; box-shadow: inset 2px 0 0 transparent; }
+    .row.new { color: var(--accent); border-bottom: 1px solid var(--border); flex: none; }
+    .nm { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nm .was { color: var(--dim); font-size: 11px; }
+    .grp { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); font-size: 11px; }
+    .meta { margin-left: auto; flex: none; color: var(--dim); font-size: 11px; white-space: nowrap; }
+    .meta .chg { color: var(--accent); }
+    .removed .nm { text-decoration: line-through; color: var(--dim); }
+    .removed .meta { color: var(--accent); }
+    .nomatch .nm { color: var(--dim); }
+    .hit .nm { font-weight: 700; }
+    .empty { padding: 12px 10px; color: var(--dim); font-size: 11px; line-height: 1.5; }
+    .cb { flex: none; width: 14px; height: 14px; border: 1px solid var(--dim); border-radius: 2px; display: inline-flex; align-items: center;
+          justify-content: center; font-size: 11px; line-height: 1; color: var(--bg); font-weight: 700; }
+    .cb.on { background: var(--text); border-color: var(--text); }
+    .cb.on::after { content: "✓"; }
+    .cb.chg { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .cb.on.chg { background: var(--accent); }
+    .locked .cb { opacity: 0.45; }
+    .hash { color: var(--dim); flex: none; }
+    .inl { flex: 1; min-width: 0; height: 22px; padding: 0 6px; background: var(--bg); border-color: var(--accent); }
+    .meta.err { color: var(--fail); }
+    .inl.bad { border-color: var(--fail); box-shadow: 0 0 0 1px var(--fail); }
+
+    /* ── main: grid view (header row and track column stick; both directions scroll) ── */
+    #gscroll { height: 100%; overflow: auto; background: var(--bg-row); scroll-padding: 56px 0 0 200px; }
+    .gtable { display: grid; width: max-content; min-width: 100%; }
+    .gh, .gn, .gc, .gempty { border-bottom: 1px solid var(--border); }
+    .gh { position: sticky; top: 0; z-index: 2; background: var(--bg-row); padding: 4px 4px 2px 8px; display: flex; flex-direction: column; min-width: 0;
+          border-right: 1px solid var(--border); box-shadow: inset 0 -2px 0 var(--border); min-height: 56px; cursor: default; }
+    .gh.corner { left: 0; z-index: 4; justify-content: center; color: var(--accent); min-height: 56px; padding-left: 10px; }
+    .gh .nm { line-height: 20px; }
+    .gh .ghb { display: flex; align-items: center; gap: 2px; margin-left: -6px; }
+    .gh .meta { margin-left: auto; padding-right: 2px; }
+    .ib { min-width: 24px; height: 24px; padding: 0; font-size: 13px; line-height: 1; border-color: transparent; display: inline-flex; align-items: center; justify-content: center; }
+    .ib:hover { border-color: var(--text); }
+    .gh.colcur, .gn.cur { background: var(--bg-hi); }
+    .gh.cur, .gh.corner.cur { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .gn { position: sticky; left: 0; z-index: 1; background: var(--bg-row); display: flex; align-items: center; gap: 8px; padding: 0 10px; min-height: 28px; min-width: 0;
+          border-right: 1px solid var(--border); cursor: default; }
+    .gn.cur { box-shadow: inset 2px 0 0 var(--accent); }
+    .gc { display: flex; align-items: center; justify-content: center; min-height: 28px; border-right: 1px solid var(--border); cursor: default; }
+    .gc:hover { background: var(--bg-hi); }
+    .gc.cur { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .gc.locked, .gc.nomatch { opacity: 0.6; }
+    .gh.removed .nm { text-decoration: line-through; color: var(--dim); }
+    .gempty { grid-column: 1 / -1; padding: 12px 10px; color: var(--dim); font-size: 11px; position: sticky; left: 0; }
+
+    /* ── footer ── */
+    #footer { flex: none; border-top: 1px solid var(--border); padding: 6px 12px; display: flex; align-items: center; gap: 8px; min-height: 38px; }
+    #hint { flex: 1; min-width: 0; color: var(--dim); font-size: 11px; line-height: 14px; height: 16px; }
+    #hint[hidden] { display: none !important; }   /* beats .helpline.one (shared.css) */
+    #confirm { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+    #confirmText { flex: 1; min-width: 0; color: var(--accent); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #footer.confirming { background: hsla(31, 100%, 67%, 0.12); border-top-color: var(--accent); }
+    #footer button { min-height: 24px; flex: none; white-space: nowrap; }
+    #apply { min-width: 96px; }
+    #apply:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    #apply:disabled { opacity: 0.5; cursor: default; }
+  </style>
+</head>
 <body>
-<script>
-  const TAG_EDITOR = /*TAG_EDITOR_PLACEHOLDER*/null;
-  function done(value) {
-    const m = { method: 'close_and_send', params: [value] };
-    if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
-    else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
-  }
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') done(''); });
-</script>
-</body></html>
+
+  <div id="bar">
+    <span id="colon">:</span>
+    <span id="title">tag editor</span>
+    <span class="sp"></span>
+    <div id="views" role="group" aria-label="View">
+      <button id="vList" type="button" data-help="List view: the tags on the left, the current tag's tracks on the right (Ctrl+G switches)">List</button>
+      <button id="vGrid" type="button" data-help="Grid view: tracks as rows, tags as columns (Ctrl+G switches)">Grid</button>
+    </div>
+  </div>
+
+  <div id="tools">
+    <input id="q" type="text" spellcheck="false" autocomplete="off" />
+    <span id="fstat" data-help="Filter: how many tracks (and tags) show"></span>
+  </div>
+
+  <div id="main"></div>
+
+  <div id="footer">
+    <span id="hint"></span>
+    <div id="confirm" hidden><span id="confirmText"></span><button id="keep" type="button">Keep editing</button><button id="discard" type="button">Discard</button></div>
+    <button id="gear" type="button" hidden data-help="Settings: open the tag settings, then this editor again">Settings</button>
+    <button id="apply" type="button" disabled></button>
+    <button id="close" type="button" data-help="Close: leave without writing (Esc; asks first when changes are pending)">Close</button>
+  </div>
+
+  <script>/*HELP_JS_PLACEHOLDER*/</script>
+  <script>/*LISTNAV_JS_PLACEHOLDER*/</script>
+  <script>
+    const D = /*TAG_EDITOR_PLACEHOLDER*/null;
+
+    function send(value) {
+      const m = { method: 'close_and_send', params: [value] };
+      if (window.webkit?.messageHandlers?.live) window.webkit.messageHandlers.live.postMessage(m);
+      else if (window.chrome?.webview) window.chrome.webview.postMessage(m);
+    }
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };   // user data: textContent only
+    const $ = id => document.getElementById(id);
+    const q = $('q'), main = $('main'), footer = $('footer');
+
+    // ── model ──────────────────────────────────────────────────────────────────────────────────
+    // An entry is a tag: o = the tracks that had it in the request, c = the tracks that have it now (pending state), name = its
+    // current name (renamed when it differs from orig), removed = marked for removal, existing = it was in the request.
+    const tracks = (D?.tracks ?? []).map(t => ({ id: String(t.id), name: String(t.name), group: t.group ? String(t.group) : '',
+      hay: ((t.group ? t.group + ' / ' : '') + t.name).toLowerCase() }));
+    const byId = new Map(tracks.map(t => [t.id, t]));
+    const entries = (D?.tags ?? []).map(t => {
+      const ids = (t.tracks ?? []).map(String).filter(id => byId.has(id));
+      return { orig: String(t.name), name: String(t.name), existing: true, removed: false, o: new Set(ids), c: new Set(ids) };
+    });
+    const NEW = { newTag: true };   // the pinned "+ New tag…" row (list view)
+
+    const keys = D?.keys || {};
+    const KEYMAP = { view: ['Ctrl+g'], rename: ['F2'], remove: ['Shift+Backspace'], apply: ['Ctrl+Enter', 'Cmd+Enter', 'Ctrl+s', 'Cmd+s'], ...keys };
+    const is = (c, name) => (KEYMAP[name] || []).includes(c);
+    const nav = CmdListNav.create({ keys });
+
+    let view = D?.view === 'grid' ? 'grid' : 'list';
+    let zone = 'list';        // listnav zone: 'list' (arrows and Space act) | 'field' (typing) | 'buttons'
+    let pane = 0;             // list view: 0 = tags, 1 = tracks
+    let tagCur = entries[0] ?? NEW;
+    let trackCur = null;      // a track id
+    let onHead = false, onName = false;   // grid: the cursor is in the header row / in the track-name column
+    let editing = null;       // { mode: 'rename' | 'new', entry?, input }
+    let note = null, noteTimer = 0;       // a state line for the help line: { text, bad? }
+    let confirmThen = null;
+
+    const nameOk = v => /^[a-z0-9_-]+$/.test(v);
+    const normalize = v => v.trim().replace(/^#/, '').toLowerCase();
+    const query = () => normalize(q.value);
+    const live = () => entries.filter(e => !e.removed);
+
+    // What differs from the request: the answer, and the number of pending changes.
+    function buildApply() {
+      const rename = [], remove = [], set = [];
+      for (const e of entries) {
+        if (e.removed) { if (e.existing) remove.push(e.orig); }
+        else if (e.existing && e.name !== e.orig) rename.push({ from: e.orig, to: e.name });
+      }
+      const groups = new Map();   // final name -> { o, c }: entries that end up with one name are one tag (a merge)
+      for (const e of live()) {
+        const g = groups.get(e.name) ?? { o: new Set(), c: new Set() };
+        e.o.forEach(id => g.o.add(id)); e.c.forEach(id => g.c.add(id));
+        groups.set(e.name, g);
+      }
+      for (const [tag, g] of groups) for (const t of tracks) { const was = g.o.has(t.id), now = g.c.has(t.id); if (was !== now) set.push({ tag, track: t.id, on: now }); }
+      return { rename, remove, set };
+    }
+    const pendingCount = () => { const a = buildApply(); return a.rename.length + a.remove.length + a.set.length; };
+    const addedOf = e => [...e.c].filter(id => !e.o.has(id)).length;
+    const droppedOf = e => [...e.o].filter(id => !e.c.has(id)).length;
+
+    // ── what the filter shows ──────────────────────────────────────────────────────────────────
+    function lists() {
+      const s = query(), grid = view === 'grid', compact = D?.filter !== 'highlight';
+      const tm = tracks.filter(t => !s || t.hay.includes(s));
+      const cm = entries.filter(e => !s || e.name.includes(s));
+      // In the grid the text filters whichever dimension it matches: only tag names match → all tracks stay, and the reverse.
+      const rowActive = !!s && (!grid || tm.length > 0 || cm.length === 0);
+      const colActive = grid && !!s && (cm.length > 0 || tm.length === 0);
+      const rowHit = t => !rowActive || t.hay.includes(s);
+      const colHit = e => !colActive || e.name.includes(s);
+      const rows = rowActive && compact ? tm : tracks;
+      const cols = colActive && compact ? cm : entries;
+      return { s, rows, cols, rowHit, colHit, navRows: rows.filter(rowHit), navCols: cols.filter(colHit), rowActive, colActive };
+    }
+    function snap(L) {
+      if (!L.navRows.some(t => t.id === trackCur)) trackCur = L.navRows[0]?.id ?? null;
+      if (view === 'grid' && tagCur !== NEW && !onName && !L.navCols.includes(tagCur)) { tagCur = L.navCols[0] ?? tagCur; if (!L.navCols.length) onName = true; }
+    }
+
+    // ── render ─────────────────────────────────────────────────────────────────────────────────
+    const metaText = (e, sep) => {
+      if (e.removed) return '× removed';
+      const add = addedOf(e), drop = droppedOf(e);
+      const pend = [add && '+' + add, drop && '×' + drop].filter(Boolean).join(' ');
+      const dup = live().some(x => x !== e && x.name === e.name);
+      return (e.existing ? '' : 'new' + sep) + e.c.size + (pend ? sep + pend : '') + (dup ? sep + 'merges' : '');
+    };
+    function metaEl(e, sep) {
+      const m = el('span', 'meta'), add = addedOf(e), drop = droppedOf(e);
+      m.textContent = metaText(e, sep);
+      if (e.removed || add || drop || !e.existing || e.name !== e.orig) m.classList.add('chg');
+      m.title = e.removed ? 'marked for removal' : e.c.size + ' tracks' + (add ? ', ' + add + ' to add' : '') + (drop ? ', ' + drop + ' to remove' : '');
+      return m;
+    }
+    function nameEl(e) {
+      const n = el('span', 'nm', '#' + e.name);
+      if (e.existing && e.name !== e.orig) { n.append(el('span', 'was', ' (was #' + e.orig + ')')); }
+      n.title = '#' + e.name + (e.existing && e.name !== e.orig ? ' (was #' + e.orig + ')' : '');
+      return n;
+    }
+    function inlineInput(host) {
+      const wrap = editing.mode === 'rename' ? editing.entry.name : '';
+      const input = el('input', 'inl'); input.type = 'text'; input.spellcheck = false; input.value = editing.value ?? wrap;
+      input.placeholder = editing.mode === 'new' ? 'name, e.g. drums' : 'new name';
+      input.setAttribute('aria-label', editing.mode === 'new' ? 'Name of the new tag' : 'New name of the tag');
+      input.addEventListener('keydown', onInlineKey);
+      const err = el('span', 'meta err');
+      input.addEventListener('input', () => { input.classList.remove('bad'); err.textContent = ''; setNote(null); editing.value = input.value; });
+      editing.input = input; editing.err = err;
+      host.append(el('span', 'hash', '#'), input, err);
+    }
+
+    const els = [];   // every cell/row with a cursor state: { el, k, e?, t? }
+    const reg = (elm, k, e, t) => { els.push({ el: elm, k, e, t }); return elm; };
+
+    function renderList(L) {
+      main.className = 'list';
+      const left = el('section', 'pane'), right = el('section', 'pane');
+      const lh = el('div', 'phead'); lh.append(el('span', 'pt', 'Tags'), el('span', 'pn', String(entries.length)));
+      const nr = el('div', 'row new'); nr.dataset.help = 'New tag: name a tag, then check its tracks (Enter)';
+      if (editing?.mode === 'new') inlineInput(nr); else nr.append(el('span', 'nm', '+ New tag…'));
+      nr.addEventListener('click', () => { if (editing) return; tagCur = NEW; pane = 0; startEdit('new'); });
+      reg(nr, 'new');
+      const ll = el('div', 'plist');
+      for (const e of entries) {
+        const r = el('div', 'row tag' + (e.removed ? ' removed' : ''));
+        r.dataset.help = 'Tag: its tracks are on the right (→) · F2 renames · Shift+Backspace marks it for removal';
+        if (editing?.mode === 'rename' && editing.entry === e) inlineInput(r); else r.append(nameEl(e), metaEl(e, ' · '));
+        r.addEventListener('click', () => { if (editing) return; tagCur = e; pane = 0; focusQ(); render(); });
+        ll.append(reg(r, 'tag', e));
+      }
+      if (!entries.length) ll.append(el('div', 'empty', 'No tags in this Set yet. “+ New tag…” above makes the first one.'));
+      left.append(lh, nr, ll);
+
+      const rh = el('div', 'phead'), rl = el('div', 'plist');
+      if (tagCur === NEW || !tagCur) {
+        rh.append(el('span', 'pt', 'Tracks'));
+        rl.append(el('div', 'empty', 'Pick a tag on the left to see its tracks, or press Enter on “+ New tag…” to name a new one.'));
+      } else {
+        const e = tagCur;
+        const t = el('span', 'pt', 'Tracks of #' + e.name); t.title = t.textContent;
+        rh.append(t, el('span', 'pn', e.c.size + ' tagged' + (addedOf(e) || droppedOf(e) ? ' · ' + [addedOf(e) && '+' + addedOf(e), droppedOf(e) && '×' + droppedOf(e)].filter(Boolean).join(' ') : '')));
+        if (e.removed) rl.append(el('div', 'empty', '#' + e.name + ' is marked for removal: Shift+Backspace unmarks it, then its tracks can change.'));
+        if (!tracks.length) rl.append(el('div', 'empty', 'This Set has no tracks.'));
+        else if (!L.rows.length) rl.append(el('div', 'empty', 'No track matches “' + q.value.trim() + '”. Esc clears the filter.'));
+        for (const tr of L.rows) {
+          const r = el('div', 'row trk' + (e.removed ? ' locked' : '') + (L.rowActive ? (L.rowHit(tr) ? ' hit' : ' nomatch') : ''));
+          r.dataset.help = 'Track: Space or a click adds or removes #' + e.name;
+          r.append(cbEl(e, tr.id), el('span', 'nm', tr.name));
+          if (tr.group) r.append(el('span', 'grp', tr.group));
+          r.title = (tr.group ? tr.group + ' / ' : '') + tr.name;
+          r.addEventListener('click', () => { tagCur = e; trackCur = tr.id; pane = 1; toggleCell(e, tr.id); });
+          rl.append(reg(r, 'trk', e, tr.id));
+        }
+      }
+      right.append(rh, rl);
+      main.append(left, right);
+      left._plist = ll; right._plist = rl; main._left = left; main._right = right;
+    }
+
+    // Entries that share a name are one tag (a merge): a checkbox shows and changes them together.
+    const sameName = e => (e.removed ? [e] : live().filter(x => x.name === e.name));
+    function cbEl(e, id) {
+      const g = sameName(e), on = g.some(x => x.c.has(id)), was = g.some(x => x.o.has(id));
+      const c = el('span', 'cb' + (on ? ' on' : '') + (on !== was ? ' chg' : ''));
+      c.setAttribute('role', 'checkbox'); c.setAttribute('aria-checked', String(on));
+      return c;
+    }
+
+    function renderGrid(L) {
+      main.className = 'grid';
+      const sc = el('div'); sc.id = 'gscroll';
+      const tbl = el('div', 'gtable');
+      tbl.style.gridTemplateColumns = 'minmax(170px, 240px) repeat(' + L.cols.length + ', 116px)';
+      const corner = el('div', 'gh corner'); corner.dataset.help = 'New tag: name a tag, then check its tracks (Enter)';
+      if (editing?.mode === 'new') inlineInput(corner); else corner.append(el('span', 'nm', '+ New tag…'));
+      corner.addEventListener('click', () => { if (editing) return; onHead = true; onName = true; startEdit('new'); });
+      tbl.append(reg(corner, 'corner'));
+      for (const e of L.cols) {
+        const h = el('div', 'gh' + (e.removed ? ' removed' : '') + (L.colActive && !L.colHit(e) ? ' nomatch' : ''));
+        h.dataset.help = 'Tag: ✎ renames (F2) · × marks it for removal, again unmarks (Shift+Backspace)';
+        if (editing?.mode === 'rename' && editing.entry === e) { const line = el('div', 'row'); line.style.padding = '0'; line.style.minHeight = '24px'; inlineInput(line); h.append(line); }
+        else h.append(nameEl(e));
+        const b = el('div', 'ghb');
+        const pen = el('button', 'ib', '✎'); pen.type = 'button'; pen.title = 'Rename #' + e.name + ' (F2)'; pen.setAttribute('aria-label', 'Rename #' + e.name);
+        pen.addEventListener('click', ev => { ev.stopPropagation(); tagCur = e; onName = false; startEdit('rename', e); });
+        const x = el('button', 'ib', '×'); x.type = 'button'; x.title = (e.removed ? 'Unmark #' : 'Mark #') + e.name + (e.removed ? '' : ' for removal') + ' (Shift+Backspace)';
+        x.setAttribute('aria-label', x.title);
+        x.addEventListener('click', ev => { ev.stopPropagation(); tagCur = e; onName = false; toggleRemove(e); });
+        b.append(pen, x, metaEl(e, ' '));
+        h.append(b);
+        h.addEventListener('click', () => { if (editing) return; tagCur = e; onName = false; onHead = true; focusQ(); render(); });
+        tbl.append(reg(h, 'gh', e));
+      }
+      for (const tr of L.rows) {
+        const hit = !L.rowActive || L.rowHit(tr);
+        const n = el('div', 'gn' + (hit ? '' : ' nomatch') + (L.rowActive && hit ? ' hit' : ''));
+        n.append(el('span', 'nm', tr.name));
+        if (tr.group) n.append(el('span', 'grp', tr.group));
+        n.title = (tr.group ? tr.group + ' / ' : '') + tr.name;
+        n.addEventListener('click', () => { trackCur = tr.id; onName = true; onHead = false; focusQ(); render(); });
+        tbl.append(reg(n, 'gn', null, tr.id));
+        for (const e of L.cols) {
+          const c = el('div', 'gc' + (e.removed ? ' locked' : '') + (hit && (!L.colActive || L.colHit(e)) ? '' : ' nomatch'));
+          c.dataset.help = 'Cell: Space or a click adds or removes #' + e.name + ' on ' + tr.name;
+          c.append(cbEl(e, tr.id));
+          c.addEventListener('click', () => { tagCur = e; trackCur = tr.id; onName = false; onHead = false; toggleCell(e, tr.id); });
+          tbl.append(reg(c, 'gc', e, tr.id));
+        }
+      }
+      if (!L.cols.length && !entries.length) tbl.append(el('div', 'gempty', 'No tags in this Set yet. “+ New tag…” makes the first one; its column appears here.'));
+      else if (!tracks.length) tbl.append(el('div', 'gempty', 'This Set has no tracks.'));
+      else if (!L.rows.length) tbl.append(el('div', 'gempty', 'No track or tag matches “' + q.value.trim() + '”. Esc clears the filter.'));
+      sc.append(tbl); main.append(sc);
+    }
+
+    // The cursor, the focused pane, the pending marks; cheap, so every move calls it.
+    function paint(scroll) {
+      const grid = view === 'grid';
+      let cursorEl = null;
+      for (const x of els) {
+        let cur = false;
+        switch (x.k) {
+          case 'new': cur = tagCur === NEW; if (cur && pane === 0) cursorEl = x.el; break;
+          case 'tag': cur = tagCur === x.e; if (cur && pane === 0) cursorEl = x.el; break;
+          case 'trk': cur = trackCur === x.t; if (cur && pane === 1) cursorEl = x.el; break;
+          case 'corner': cur = onHead && onName; break;
+          case 'gh': cur = onHead && !onName && tagCur === x.e; x.el.classList.toggle('colcur', !onName && tagCur === x.e && !onHead); break;
+          case 'gn': cur = onName && !onHead && trackCur === x.t; break;
+          case 'gc': cur = !onName && !onHead && tagCur === x.e && trackCur === x.t; break;
+        }
+        x.el.classList.toggle('cur', cur);
+        if (grid && cur) cursorEl = x.el;
+      }
+      if (!grid && main._left) {
+        main._left.classList.toggle('focus', pane === 0);
+        main._right.classList.toggle('focus', pane === 1);
+      }
+      if (scroll && cursorEl) cursorEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      help.update();
+    }
+
+    function render(scroll) {
+      const prev = grid => grid ? $('gscroll') : main._left?._plist;
+      const saved = [prev(view === 'grid')?.scrollTop ?? 0, $('gscroll')?.scrollLeft ?? 0, main._right?._plist?.scrollTop ?? 0];
+      const L = lists(); snap(L);
+      els.length = 0; main.textContent = '';
+      if (view === 'grid') renderGrid(L); else renderList(L);
+      const a = view === 'grid' ? $('gscroll') : main._left._plist;
+      if (a) { a.scrollTop = saved[0]; if (view === 'grid') a.scrollLeft = saved[1]; }
+      if (view === 'list' && main._right._plist) main._right._plist.scrollTop = saved[2];
+      chrome(L);
+      paint(scroll);
+      if (editing) { editing.input.focus(); if (!editing.touched) { editing.input.select(); editing.touched = true; } }
+    }
+
+    function chrome(L) {
+      const n = pendingCount();
+      $('apply').textContent = n ? 'Apply (' + n + ')' : 'Apply';
+      $('apply').disabled = n === 0;
+      $('apply').dataset.help = n ? 'Apply: write the ' + n + ' pending change' + (n === 1 ? '' : 's') + ' and close (Enter)' : 'Apply: nothing to write yet';
+      $('vList').setAttribute('aria-pressed', String(view === 'list'));
+      $('vGrid').setAttribute('aria-pressed', String(view === 'grid'));
+      q.placeholder = view === 'grid' ? 'Filter tracks and tags…' : 'Filter tracks…';
+      q.dataset.help = D?.filter === 'highlight' ? 'Filter: type to highlight matches; the arrows skip the rest. Esc clears' : 'Filter: type to hide what does not match. Esc clears';
+      const t = L.s ? L.navRows.length + ' of ' + tracks.length + ' tracks' : tracks.length + ' track' + (tracks.length === 1 ? '' : 's');
+      $('fstat').textContent = view === 'grid' ? t + ' · ' + (L.s ? L.navCols.length + ' of ' : '') + entries.length + ' tags' : t;
+    }
+
+    // ── help line ──────────────────────────────────────────────────────────────────────────────
+    function idle() {
+      const k = [];
+      const esc = q.value ? ['Esc', 'clear filter'] : ['Esc', 'close'];
+      const tail = [['Enter', 'apply'], esc];
+      if (view === 'grid') k.push(['Space', 'toggle'], ['←↑↓→', 'move'], ['F2', 'rename tag'], ['Shift+⌫', 'remove tag'], ['Ctrl+G', 'list view'], ...tail);
+      else if (tagCur === NEW) k.push(['Enter', 'new tag'], ['↑↓', 'tags'], ['Ctrl+G', 'grid view'], ['Esc', q.value ? 'clear filter' : 'close']);
+      else if (pane === 0) k.push(['↑↓', 'tag'], ['→', 'its tracks'], ['F2', 'rename'], ['Shift+⌫', 'remove'], ['Ctrl+G', 'grid view'], ...tail);
+      else k.push(['Space', 'toggle'], ['↑↓', 'track'], ['←', 'tags'], ['F2', 'rename tag'], ['Shift+⌫', 'remove tag'], ['Ctrl+G', 'grid view'], ...tail);
+      return k;
+    }
+    function setNote(n, ms) {
+      clearTimeout(noteTimer); note = n;
+      if (n && ms) noteTimer = setTimeout(() => { note = null; help.update(); }, ms);
+      help.update();
+    }
+    help.init($('hint'), { oneRow: true, enabled: !!D?.help, idle, override: () => (note ? { text: note.text, bad: note.bad, warn: !note.bad } : null) });
+
+    // ── actions ────────────────────────────────────────────────────────────────────────────────
+    const focusQ = () => { if (!editing) q.focus({ preventScroll: true }); };
+    function flash(text) { setNote({ text, bad: true }, 3500); }
+
+    function toggleCell(e, id) {
+      focusQ();
+      if (e.removed) { flash('#' + e.name + ' is marked for removal: Shift+Backspace unmarks it first.'); render(); return; }
+      const g = sameName(e), on = !g.some(x => x.c.has(id));
+      for (const x of g) { if (on && x === e) x.c.add(id); else if (!on) x.c.delete(id); }
+      render();
+    }
+    function curTag() { return tagCur && tagCur !== NEW && !(view === 'grid' && onName) ? tagCur : null; }
+
+    function toggleRemove(e) {
+      focusQ();
+      if (!e.removed && live().some(x => x !== e && (x.name === e.name || x.name === e.orig))) {
+        flash('#' + e.name + ' can’t be removed: another tag is renamed to it.'); return;
+      }
+      e.removed = !e.removed; setNote(null); render();
+    }
+    const renamedAway = v => entries.find(x => x.existing && !x.removed && x.orig === v && x.name !== v);
+    const reservedByRemoved = (v, self) => entries.some(x => x !== self && x.removed && (x.name === v || x.orig === v));
+
+    function startEdit(mode, entry) {
+      if (mode === 'rename' && (!entry || entry === NEW)) return;
+      if (mode === 'rename' && entry.removed) { flash('#' + entry.name + ' is marked for removal: Shift+Backspace unmarks it first.'); return; }
+      editing = { mode, entry, input: null, value: undefined, touched: false };
+      setNote(null); render();
+    }
+    function endEdit() { editing = null; setNote(null); zone = 'list'; render(true); focusQ(); }
+    function badName(msg, short) { editing.input.classList.remove('bad'); void editing.input.offsetWidth; editing.input.classList.add('bad', 'shake'); editing.err.textContent = short || 'not allowed'; editing.err.title = msg; setNote({ text: msg, bad: true }); }
+
+    function commitEdit() {
+      const v = normalize(editing.input.value);
+      if (!v) { endEdit(); return; }
+      if (!nameOk(v)) { badName('Tag names use lowercase a–z, 0–9, - and _ (no spaces).', 'a–z 0–9 - _'); return; }
+      if (editing.mode === 'rename') {
+        const e = editing.entry;
+        if (v !== e.name && reservedByRemoved(v, e)) { badName('#' + v + ' is marked for removal: unmark it first.', 'marked for removal'); return; }
+        e.name = v;
+        editing = null; setNote(null); zone = 'list'; render(true); focusQ();
+        if (live().some(x => x !== e && x.name === v)) flash('#' + v + ' exists: the two tags merge when you apply.');
+        return;
+      }
+      const same = live().find(x => x.name === v);
+      if (same) { tagCur = same; pane = 1; onName = false; onHead = false; editing = null; zone = 'list'; render(true); focusQ(); flash('#' + v + ' already exists: here it is.'); return; }
+      if (reservedByRemoved(v, null)) { badName('#' + v + ' is marked for removal: unmark it first.', 'marked for removal'); return; }
+      const away = renamedAway(v);
+      if (away) { badName('#' + v + ' is being renamed to #' + away.name + ': choose another name.', 'being renamed'); return; }
+      const e = { orig: null, name: v, existing: false, removed: false, o: new Set(), c: new Set() };
+      const at = entries.findIndex(x => x.name.localeCompare(v) > 0);
+      entries.splice(at < 0 ? entries.length : at, 0, e);
+      tagCur = e; pane = 1; onName = false; onHead = false;
+      const first = lists().navRows[0]; trackCur = first ? first.id : null;
+      editing = null; zone = 'list'; setNote(null); render(true); focusQ();
+    }
+    function onInlineKey(ev) {
+      ev.stopPropagation();
+      if (ev.isComposing) return;
+      if (ev.key === 'Enter') { ev.preventDefault(); commitEdit(); }
+      else if (ev.key === 'Escape') { ev.preventDefault(); endEdit(); }
+      else if (ev.key === 'Tab') ev.preventDefault();
+    }
+
+    function apply() {
+      if (editing || pendingCount() === 0) return;
+      const a = buildApply();
+      if (a.remove.length) {   // removing a whole tag is confirmed here, in the page, before anything is written
+        const gone = entries.filter(e => e.removed && e.existing);
+        const n = new Set(gone.flatMap(e => [...e.o])).size;
+        const names = gone.map(e => '#' + e.orig).join(' ');
+        ask('Remove ' + names + ' from ' + n + ' track' + (n === 1 ? '' : 's') + (a.rename.length + a.set.length ? ' and apply the other changes' : '') + '?', 'Remove', () => send(JSON.stringify({ apply: a })));
+        return;
+      }
+      send(JSON.stringify({ apply: a }));
+    }
+    function ask(text, yes, then) {
+      confirmThen = then;
+      $('confirmText').textContent = text; $('confirmText').title = text; $('discard').textContent = yes;
+      footer.classList.add('confirming'); $('hint').hidden = true; $('confirm').hidden = false;
+      $('apply').hidden = true; $('close').hidden = true; $('gear').hidden = true;
+      $('keep').focus();
+    }
+    function askDiscard(what, then) {
+      const n = pendingCount();
+      if (!n || editing) { if (editing) endEdit(); if (!n) then(); return; }
+      ask('Discard ' + n + ' pending change' + (n === 1 ? '' : 's') + what + '?', 'Discard', then);
+    }
+    function closeConfirm() {
+      confirmThen = null; footer.classList.remove('confirming'); $('hint').hidden = false; $('confirm').hidden = true;
+      $('apply').hidden = false; $('close').hidden = false; $('gear').hidden = D?.gear !== true; focusQ(); help.update();
+    }
+    const confirmOpen = () => !$('confirm').hidden;
+
+    function switchView(to) {
+      if (editing) return;
+      to = to || (view === 'grid' ? 'list' : 'grid');
+      if (to === view) { focusQ(); return; }
+      view = to;
+      if (view === 'grid') { onName = tagCur === NEW; onHead = false; if (tagCur === NEW && entries[0]) { tagCur = entries[0]; onName = true; } }
+      else { pane = 0; if (onName && entries.length && tagCur === NEW) tagCur = entries[0]; }
+      zone = 'list'; focusQ(); render(true);
+    }
+
+    function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+    function move(dir) {   // dir: +1 next / -1 prev (rows)
+      const L = lists();
+      if (view === 'grid') { gridMove(0, dir, L); return; }
+      if (pane === 0) {
+        const items = [NEW, ...entries], i = items.indexOf(tagCur);
+        const to = items[clamp((i < 0 ? 0 : i) + dir, 0, items.length - 1)];
+        if (to !== tagCur) { tagCur = to; render(true); }
+      } else {
+        const ids = L.navRows.map(t => t.id), i = ids.indexOf(trackCur);
+        trackCur = ids[clamp((i < 0 ? 0 : i) + dir, 0, ids.length - 1)] ?? null; paint(true);
+      }
+    }
+    function gridMove(dx, dy, L) {
+      L = L || lists();
+      const cols = [null, ...L.navCols], rows = [null, ...L.navRows.map(t => t.id)];
+      let x = onName ? 0 : Math.max(0, cols.indexOf(tagCur)), y = onHead ? 0 : Math.max(0, rows.indexOf(trackCur));
+      x = clamp(x + dx, 0, cols.length - 1); y = clamp(y + dy, 0, rows.length - 1);
+      onName = x === 0; if (!onName) tagCur = cols[x];
+      onHead = y === 0; if (!onHead) trackCur = rows[y];
+      paint(true);
+    }
+    function sideways(dir) {
+      if (view === 'grid') { gridMove(dir, 0); return; }
+      if (dir > 0 && tagCur !== NEW && tagCur) { if (pane !== 1) { pane = 1; if (!lists().navRows.some(t => t.id === trackCur)) trackCur = lists().navRows[0]?.id ?? null; paint(true); } }
+      else if (dir < 0 && pane === 1) { pane = 0; paint(true); }
+    }
+    function toggleCurrent() {
+      if (view === 'grid') { if (!onName && !onHead && tagCur !== NEW && trackCur) toggleCell(tagCur, trackCur); return; }
+      if (pane === 1 && tagCur !== NEW && trackCur) toggleCell(tagCur, trackCur);
+      else if (pane === 0) flash('Space toggles a checkbox: press → to go to the tracks first.');
+    }
+
+    // ── buttons zone (Tab / Shift+Tab) ─────────────────────────────────────────────────────────
+    const buttons = () => ['vList', 'vGrid', 'gear', 'apply', 'close'].map($).filter(b => !b.hidden && !b.disabled);
+    function focusButton(i) { const bs = buttons(); if (bs.length) bs[(i + bs.length) % bs.length].focus(); }
+    function inButtons(a) {
+      const bs = buttons(), i = bs.indexOf(document.activeElement);
+      if (a === 'leave') { zone = 'list'; focusQ(); }
+      else if (a === 'next-button') focusButton(i + 1);
+      else if (a === 'prev-button') focusButton(i - 1);
+      else if (a === 'press') document.activeElement?.click();
+    }
+
+    // ── keys ───────────────────────────────────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.isComposing || editing) return;   // the inline input handles its own keys
+      const c = CmdListNav.chord(e);
+      if (confirmOpen()) { if (c === 'Escape') { e.preventDefault(); closeConfirm(); } return; }   // Tab/Enter/Space work natively on the two buttons
+      if (zone === 'buttons') {
+        const a = nav.action(e, { zone: 'buttons' });
+        if (a) { e.preventDefault(); inButtons(a); }
+        return;
+      }
+      if (note) setNote(null);
+      if (is(c, 'view')) { e.preventDefault(); switchView(); return; }
+      if (is(c, 'apply')) { e.preventDefault(); apply(); return; }
+      if (c === 'Escape') {
+        e.preventDefault();
+        if (q.value) { q.value = ''; zone = 'list'; render(true); }
+        else askDiscard('', () => send(''));
+        return;
+      }
+      const textHeld = zone === 'field' && q.value !== '';
+      if (is(c, 'rename') && !textHeld) { e.preventDefault(); const t = curTag(); if (t) startEdit('rename', t); return; }
+      if (is(c, 'remove') && !textHeld) { e.preventDefault(); const t = curTag(); if (t) toggleRemove(t); else if (tagCur !== NEW) flash('Move onto a tag first, then Shift+Backspace marks it for removal.'); return; }
+
+      const L = lists();
+      const col = view === 'grid' ? (onName ? 0 : Math.max(0, L.navCols.indexOf(tagCur)) + 1) : pane;
+      const cols = view === 'grid' ? L.navCols.length + 1 : (tagCur === NEW ? 1 : 2);
+      const a = nav.action(e, { zone, multi: true, hasButtons: true, hasText: q.value !== '', col, cols, caretAtEnd: q.selectionStart === q.value.length && q.selectionEnd === q.value.length });
+      if (!a) return;
+      if (!nav.native(a)) e.preventDefault();
+      switch (a) {
+        case 'next': case 'prev': { const wasField = zone === 'field'; zone = 'list'; if (wasField) paint(true); else move(a === 'next' ? 1 : -1); break; }
+        case 'left': sideways(-1); break;
+        case 'right': sideways(1); break;
+        case 'enter-list': zone = 'list'; paint(true); break;
+        case 'to-field': zone = 'field'; break;
+        case 'take': if (view === 'grid' ? onHead && onName : pane === 0 && tagCur === NEW) startEdit('new'); else if (q.value.trim()) flash('Esc clears the filter, then Enter applies.'); else apply(); break;
+        case 'mark': toggleCurrent(); break;
+        case 'buttons': zone = 'buttons'; focusButton(buttons().indexOf($('apply')) >= 0 ? buttons().indexOf($('apply')) : 0); break;
+        default: break;
+      }
+    });
+
+    q.addEventListener('input', () => {
+      zone = 'field';
+      if (view === 'list' && tagCur !== NEW && q.value) pane = 1;   // typing filters the tracks: the tracks pane is where the matches are
+      render(true);
+    });
+    // The field keeps the keyboard unless an inline input or a button has it: a click on a row or cell must not take the focus.
+    main.addEventListener('mousedown', e => { if (!(e.target instanceof HTMLInputElement)) e.preventDefault(); });
+    $('vList').addEventListener('click', () => switchView('list'));
+    $('vGrid').addEventListener('click', () => switchView('grid'));
+    $('apply').addEventListener('click', apply);
+    $('close').addEventListener('click', () => askDiscard('', () => send('')));
+    $('keep').addEventListener('click', closeConfirm);
+    $('discard').addEventListener('click', () => { const f = confirmThen; closeConfirm(); if (f) f(); });
+    $('gear').hidden = D?.gear !== true;
+    $('gear').addEventListener('click', () => askDiscard(' and open settings', () => send(JSON.stringify({ settings: true }))));
+    // A button the mouse used gives the keyboard back to the field.
+    for (const id of ['vList', 'vGrid', 'gear']) $(id).addEventListener('mouseup', () => setTimeout(() => { if (!confirmOpen()) { zone = 'list'; focusQ(); } }, 0));
+    document.addEventListener('focusin', e => { if (e.target === q) { if (zone === 'buttons') zone = 'list'; } });
+
+    // ── start ──────────────────────────────────────────────────────────────────────────────────
+    if (D?.focus?.tag != null) { const f = entries.find(e => e.orig === D.focus.tag); if (f) tagCur = f; }
+    if (D?.focus?.track != null && byId.has(String(D.focus.track))) { trackCur = String(D.focus.track); if (D?.focus?.tag != null) pane = 1; }
+    if (view === 'grid') onName = tagCur === NEW;
+    render(true);
+    q.focus({ preventScroll: true });
+  </script>
+</body>
+</html>
