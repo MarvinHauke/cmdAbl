@@ -41,7 +41,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
   - **`jump.step` Live test (script 0.1.16 installed, 2026-11-12):** passed at "1 Bar": `+1`, `+2`, `+3q`,
     `-- -2b` (counts from the current step's start), `-3q` exit 2, `-40` clamps; at "1/4": `+1` 0→1, `+2` 1→3,
     `+1b` 3→4, `-1` 4→3 beats; at "1/4T": steps of 2/3 beat (0→⅔→2, back to 4/3; 4→14/3→16/3→6, no float
-    drift), `+1b` → 4. Still to run: None (the user switches it), `jump config` with 1/2.
+    drift), `+1b` → 4; at "None": a step is 1 bar (0→4→12, `+1q` →13, `-1` →8). Still to run: `jump config` with
+    1/2 (a page, the user).
   - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
   - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
     Live's default 1 Bar); `+4b` is the old meaning. Remote Script 0.1.16 (`transport` reports the quantization).
