@@ -75,8 +75,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
     `-2b`-style values without `--` (`ArgDef.negative`, a parser question for the user; today `jump -- -2b`).
   - Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
 - **Release test list 0.1.8 (the user, by hand; everything else is tested through MCP):**
-  1. Tag editor (`tag -e`): the gear opens its settings; mouse clicks in list and grid view; the grid after
-     the fix; Apply, then Cmd+Z undoes the tag change in one step.
+  1. ~~Tag editor gear~~ (done). Tag editor: Cmd+Z can't undo tags (Live limit, docs/limits.md); after Apply the
+     message says so and `cmdabl log --undo` lists the revert lines (message fixed by cmdabl-modules).
   2. Tag list (`tag -l`): mouse and keys, Enter runs the row.
   3. `jump config`: click a choice on the wrapped row with the mouse; Apply.
   4. MIDI monitor, with the controller: turn a knob for 60 s across the 20 s marks (no stutter, no flicker of
@@ -163,6 +163,10 @@ Older checks that were never reported; most can now run through MCP.
   learned: …" (undecided).
 
 ## Backlog (not ordered)
+
+- **Undo for tag changes** (user test, 2026-11-12): Live doesn't undo `Track.set_data`, so the tag editor's Apply
+  can't be taken back with Cmd+Z. Idea: an "Undo last apply" in the tag editor or `tag --undo` that runs the
+  `undo:` lines of the last change (`cmdabl log --undo` lists them today).
 
 - **Right-click menus** (user, 2026-11-12): context menus on page rows (rename, remove, …), one pattern for all
   pages, keyboard equivalents stay. After 0.1.8.
