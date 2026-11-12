@@ -245,7 +245,7 @@
     const metaText = (e, sep) => {
       if (e.removed) return '× removed';
       const add = addedOf(e), drop = droppedOf(e);
-      const pend = [add && '+' + add, drop && '×' + drop].filter(Boolean).join(' ');
+      const pend = [add && '+' + add, drop && '−' + drop].filter(Boolean).join(' ');
       const dup = live().some(x => x !== e && x.name === e.name);
       return (e.existing ? '' : 'new' + sep) + e.c.size + (pend ? sep + pend : '') + (dup ? sep + 'merges' : '');
     };
@@ -303,7 +303,7 @@
       } else {
         const e = tagCur;
         const t = el('span', 'pt', 'Tracks of #' + e.name); t.title = t.textContent;
-        rh.append(t, el('span', 'pn', e.c.size + ' tagged' + (addedOf(e) || droppedOf(e) ? ' · ' + [addedOf(e) && '+' + addedOf(e), droppedOf(e) && '×' + droppedOf(e)].filter(Boolean).join(' ') : '')));
+        rh.append(t, el('span', 'pn', e.c.size + ' tagged' + (addedOf(e) || droppedOf(e) ? ' · ' + [addedOf(e) && '+' + addedOf(e), droppedOf(e) && '−' + droppedOf(e)].filter(Boolean).join(' ') : '')));
         if (e.removed) rl.append(el('div', 'empty', '#' + e.name + ' is marked for removal: Shift+Backspace unmarks it, then its tracks can change.'));
         if (!tracks.length) rl.append(el('div', 'empty', 'This Set has no tracks.'));
         else if (!L.rows.length) rl.append(el('div', 'empty', 'No track matches “' + q.value.trim() + '”. Esc clears the filter.'));
