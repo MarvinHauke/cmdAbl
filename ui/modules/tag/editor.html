@@ -27,7 +27,7 @@
   <style>
     /*SHARED_CSS_PLACEHOLDER*/
 
-    :root { --bg-hi: color-mix(in srgb, var(--text) 12%, var(--bg-row)); --match: #8fc9ff; }   /* matched filter characters: light blue, not the accent (orange = pending) */
+    :root { --bg-hi: color-mix(in srgb, var(--text) 12%, var(--bg-row)); }
     html, body { height: 100%; overflow: hidden; }
     body { display: flex; flex-direction: column; }
     [hidden] { display: none !important; }
@@ -78,7 +78,7 @@
     .removed .meta { color: var(--accent); }
     .nomatch .nm { color: var(--dim); }
     .hit .nm { font-weight: 700; }
-    .mk { color: var(--match); }   /* the characters the filter matched */
+    .mk { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }   /* the characters the filter matched */   /* the characters the filter matched */
     .meta.err:empty { display: none; }
     .row.tag .ib { visibility: hidden; }   /* reserved, so nothing jumps; shown on the cursor row and on hover */
     .row.tag:hover .ib, .row.tag.cur .ib { visibility: visible; }
