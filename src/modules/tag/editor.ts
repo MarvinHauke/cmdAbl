@@ -19,15 +19,13 @@ export type FilterMode = "compact" | "highlight";
 export interface TagEditorData {
   view: EditView;
   filter: FilterMode;
-  help: string;
+  /** Turns the page's hover help on; the page builds its own key line. */
+  help: boolean;
   gear: boolean;
   tracks: Array<{ id: string; name: string; group?: string }>;
   tags: Array<{ name: string; tracks: string[] }>;
   focus?: { tag?: string; track?: string };
 }
-
-/** The page's help line. */
-export const EDITOR_HELP = "Space toggles · F2 renames · Shift+Backspace removes a tag · Ctrl+G switches view · Enter applies · Esc closes";
 
 export interface EditorOptions {
   view: EditView;
@@ -52,7 +50,7 @@ export function buildEditor(tracks: EditorTrack[], options: EditorOptions): TagE
   return {
     view: options.view,
     filter: options.filter,
-    help: EDITOR_HELP,
+    help: true,
     gear: options.gear,
     tracks: tracks.map((t) => ({ id: t.id, name: t.name, ...(t.group !== undefined ? { group: t.group } : {}) })),
     tags: names.map((name) => ({ name, tracks: tracks.filter((t) => t.tags.includes(name)).map((t) => t.id) })),
