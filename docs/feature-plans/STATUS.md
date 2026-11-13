@@ -39,6 +39,11 @@ All releases were tested in Live, including the installed `.ablx` (0.1.8: the in
   - `jump`: the usage error should list `+2b`/`+3q` (modules); whether an argument may opt in to `-2b` without
     `--` (`ArgDef.negative`, parser question for the user).
   - Note page footer changes height between a 1- and 2-line error (UX checklist item 3).
+  - **pakabl stars and downloads don't show in the installed 0.1.8** (user, 2026-11-13): the stats cache write was an
+    in-process `fs` write into `Extensions/.pakabl`, which the sandbox refuses. Fixed (`fix(pakabl)`, curl straight into
+    the cache, reviewed) on this branch; ships with 0.1.9 (user: not urgent). User test in the installed build:
+    `pakabl update`, `pakabl list` shows ★/↓, no "stats.json not saved" line. Optional (reviewer): download to tmp,
+    validate, then move, for the index and stats both.
 - **Next: 0.1.9** (index "Next"): the setup page shows the installed cmdAbl version, not only the Remote Script's
   ([0021](0021-installation-and-setup-page.md) open questions; maybe through pakabl); then the `script` module
   ([0017](0017-scripts-and-triggers.md) phase 1). Open decision: scattered matching ([0006](0006-completion-engine.md))
