@@ -1,6 +1,6 @@
 # Inner runs: modules and pages run command lines
 
-**Status:** Decided (user, 2026-11-12, grilling Q1–Q9); to build in 0.1.8. First user: `tag -l` Enter
+**Status:** Released in 0.1.8 (2026-11-12, PR #36; decided by the user 2026-11-12, grilling Q1–Q9). First user: `tag -l` Enter
 (`tag.listEnter`, [0010](0010-tag-editing.md)). Unifies the page runs of [0018](0018-midi-mapping.md).
 
 **Parent:** [0004](0004-command-platform.md)

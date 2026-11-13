@@ -5,7 +5,7 @@ known issues. Maintained by the architect. The order of the next features and ho
 each other is in the [plan index](README.md#next-in-dependency-order); design decisions live in the
 numbered plans. Finished work is in the git history, not here.
 
-_Last updated: 2026-11-12 (0.1.8: tag list and tag editor tested in Live)._
+_Last updated: 2026-11-13 (0.1.8 released; plans cleaned up)._
 
 ## Released
 
@@ -19,8 +19,9 @@ _Last updated: 2026-11-12 (0.1.8: tag list and tag editor tested in Live)._
 | 0.1.5 | 2026-11-05 | MIDI mapping (`map`, `midi monitor`), `;` chains, tag board editing, live pages; script 0.1.14 | #27 |
 | 0.1.6 | 2026-11-11 | Setup page, settings and default commands, help line; last Live 12 release (tag `live12-last`) | #29 |
 | 0.1.7 | 2026-11-12 | Stamps (`note stamp`, key `s`, list/next/prev), `loop`, `jump`, `listnav.js`, page runs, runnable groups, `find next/prev`; first Live 13 release; script 0.1.15 | #32 |
+| 0.1.8 | 2026-11-12 | Tag list and tag editor, inner runs, `jump.step` from launch quantization, MIDI monitor status and renewal, shared discard bar, footer button rule; script 0.1.16 | #36 |
 
-All releases were tested in Live, including the installed `.ablx` (0.1.7: dev build through MCP; the installed `.ablx` check is the user's).
+All releases were tested in Live, including the installed `.ablx` (0.1.8: the installed `.ablx` checked by the user).
 
 ## Now
 
@@ -28,91 +29,26 @@ All releases were tested in Live, including the installed `.ablx` (0.1.7: dev bu
 - **pakabl:** **new candidates are reviewed on request** (user, 2026-11-12): when the daily index PR lists new
   ones, the user asks and the architect reviews them read-only. Stars in `pakabl list` shipped with 0.1.8
   ([0003](0003-pakabl-extension-system.md)); check after the first stats run.
-- **In work: 0.1.8** on `feat/0.1.8-tag-editor` (MIDI monitor status and auto-extend: cmdabl-modules, 2026-11-12):
-  - **Done and tested in Live (2026-11-12):** the tag list (`tag -l`, Enter runs `tag.listEnter` as an inner run)
-    and the tag editor (module page, list and grid view, Apply); the `board` surface is removed; inner runs
-    ([0028](0028-inner-runs.md), `api.commands.run`, one engine with page runs; AsyncLocalStorage works in
-    Live's host); the gear on module pages; `cmdabl setup` sees a Karabiner rule imported under a timestamp
-    name and a disabled rule (`enabled: false`).
-  - **Open for 0.1.8:** the MIDI monitor status and auto-extend, pakabl stars; the docs
-    ("tag board" → tag list and tag editor, `runs` in the authoring guide is done; waits for the user's
-    findings); the user's hand checks (release test list below). **Docs pass also gets (user, 2026-11-12):** a
-    short section in the MIDI mapping page on encoders: absolute vs relative in two sentences, then a link to
-    Ableton's manual for the modes (https://www.ableton.com/en/live-manual/12/midi-and-key-remote-control/#mapping-to-relative-midi-controllers)
-    instead of explaining each one; and what cmdAbl does today: a bound line fires on a press (0 → >0), so an
-    absolute encoder fires once and then only after a 0; for trigger lines use a button; relative encoders are
-    planned (0025). Also: docs/using.md ~557 (note page) still says "click Discard again to confirm… goes away
-    after a few seconds"; since 0.1.8 every page with pending changes asks in the shared footer bar (Keep
-    editing / Discard, ←/→, Enter, Esc keeps); the note page's footer button is now "Cancel". **Images to redo** (the docs agent shoots them with
-    `cmdabl_capture`/`cmdabl_record` in a clean demo Set, not the user's test Set with #bla/#bli and the long track
-    name): `tags.gif` and `tag-board.png` (the board is gone → tag editor list view and grid view, with a filter
-    and its marked characters), `tag-list.png` (now `tag -l`), `tag-pick.png` (check the flow still exists),
-    `note-edit.png` (footer Save · Cancel · View), `settings-page.png` (the jump group with the wrapped step
-    row); new and optional: the shared discard bar, the MIDI monitor with "Listening…". docs/using.md:852 "the last 20 commands that worked and had
-    arguments" → drop "and had arguments" (bare commands enter the history since 0.1.8, e.g. `note`).
-  - Commits `2237c41` and `9685199` each carry another agent's staged work (shared index); since then the
-    rule is `git commit -- <paths>` (CLAUDE.md).
-  - **`jump.step` tested in Live (script 0.1.16, 2026-11-12):** steps follow Live's launch quantization at 1 Bar,
-    1/4, 1/4T (⅔ beat, no float drift) and None (1 bar); `jump config` 1/2 overrides it (0→2→4→2); `+Nb`/`+Nq`,
-    `--` for negatives, clamping. The settings page wraps long enums (`013614c`, seen in Live; the label was
-    squeezed to one letter per line before).
-  - **MIDI monitor renewal tested in Live (2026-11-12, `cec8ebb`, `3e63926`):** "Listening…" stays through 45 s idle
-    and through 50 s with messages; close ends the window, no warn. Not built: after two failed renewals it never
-    retries (a script that comes back still says stopped until reopened). For the user: renewal rebuilds the
-    script's MIDI map every 20 s, so turn a knob for 60 s across the 20 s marks and look for stutter or a
-    flickering "Taken in Live"; if it stutters, a script-side "extend only" (protocol change, architect).
-  - **Watching: blank live page.** The first live page after an `npm start` restart opened as an empty window
-    twice (`midi monitor`; the next open loaded). Not reproduced in 3 restarts after `2fd8cf6`, which logs every
-    page load at info (`cmdAbl [live] info: live load <page>: serving, N ms after open` / `delivered`), keeps a
-    load token when the client drops before delivery, and answers a refused load with a visible "This page has
-    expired" page. Next blank: read those lines. No line at all → the dialog never reached the server (core's
-    hint: the dialog uses `localhost`, the server also binds `[::1]`; check `src/httpTrigger.ts`). Once found,
-    "serving"/"delivered" go back to debug.
-  - **User findings on the tag editor (2026-11-12), built:** matched characters marked (accent + underline, the
-    user's choice), grid rename input fixed, ✎ × on list rows, content-sized grid columns and track column,
-    truncated names scroll on hover/cursor (`marquee` in editor.html, off under reduced motion) (`184e696`,
-    `e3fc070`, `8b93bb8`, row spacing `903398b`: `#name … ✎ × count`, counts in one column; starting an edit settles the open one, no
-    sideways scroll when the columns fit `d4bcf43`; one ↓/↑ from the filter lands on the first match, without text
-    it moves one row `acbd1d5`, seen in Live; ↑ also lands on the first match, by design; while
-    typing in the filter the list cursor is drawn passive, so the first ↓ shows `084a58c`, seen in Live); no browser tooltips left in `ui/` (`b655395`, `6605d80`, help.js). Seen in Live: list
-    and grid marking, narrow columns, scrolling name. For the user: rename in both views, hover texts, note page.
-    Clipped help-line text scrolls after 0.8 s (shared `marquee` in help.js, `faf3d62`); one shared discard
-    bar for the tag editor, settings, defaults and note pages (`ui/confirm.js`, ←/→, Enter, Esc keeps; `fb3baa0`;
-    seen in Live on settings: arrows, Discard drops the change; accent ring and a focus re-assert for the
-    note page `3e03eff`, the cause of the lost focus there is a guess: seen working by the user).
-    One footer button rule (0019 "Footer buttons"): note "Cancel" `7c7d755`, tag editor "Cancel" `5dd2e19`. History
-    records bare commands (`note`) `745f1f3`. Tag rename on ⌘R like Live (Ctrl+R, F2 kept hidden) `51743b9`; key line seen
-    on one row; whether Live lets ⌘R reach the page is the user's check.
-    Minor: the note page footer changes height between a 1- and 2-line error (checklist item 3).
-  - **pakabl stats:** only testable after merge (the workflow on `main` creates `pakabl-data`).
-  - **Release notes 0.1.8 (breaking-ish):** `jump +4` now counts launch-quantization steps (same as before at
-    Live's default 1 Bar); `+4b` is the old meaning. Remote Script 0.1.16 (`transport` reports the quantization).
-  - Small follow-ups: `jump`'s usage error lists `+2b`/`+3q` (modules); whether an argument may opt in to
-    `-2b`-style values without `--` (`ArgDef.negative`, a parser question for the user; today `jump -- -2b`).
-  - Also for 0.1.9 (user, 2026-11-13): the setup page shows the installed cmdAbl version, not only the Remote
-    Script's ([0021](0021-installation-and-setup-page.md) open questions; maybe through pakabl).
-  - Then 0.1.9 the `script` module ([0017](0017-scripts-and-triggers.md) phase 1).
-- **Release test list 0.1.8 (the user, by hand; everything else is tested through MCP).** User, 2026-11-12: the
-  checks so far passed (incl. today's tag editor, note Cancel, history, ⌘R); still to report: MIDI monitor knob
-  test and `map learn` if not done, then items 5–6 after the release.
-  1. ~~Tag editor gear~~ (done). Tag editor Apply (`4c5ad61`): shows nothing; hovering Apply shows the Cmd+Z
-     warning (Live can't undo tags, docs/limits.md); `cmdabl log` shows "N tracks changed…" and the `undo:` lines,
-     `cmdabl log --undo` lists them; the palette history lists the run.
-  2. Tag list (`tag -l`): mouse and keys, Enter runs the row.
-  3. `jump config`: click a choice on the wrapped row with the mouse; Apply.
-  4. ✓ (2026-11-13) MIDI monitor, with the controller: turn a knob for 60 s across the 20 s marks (no stutter, no flicker of
-     "Taken in Live"); `map learn` still catches a control after 40 s.
-  5. The installed `.ablx` of 0.1.8 (local `npm run package`, 2026-11-13): installed; `cmdabl setup` offered no
-     update because 0.1.16 was already in place (correct); `jump +1` and `tag -l` work.
-  6. After the merge: `pakabl list` shows stars and downloads.
-  Docs pass done 2026-11-13 (`434f54e..228ea06`, reviewed; tag-pick flow gone, reference regenerated; images retaken in a demo Set, tags.gif dropped).
-- **Decided, not built (2026-11-12):** MIDI monitor shows its status and extends its window by itself, plus
-  an "all ins" spike (0018); `jump.step` from Live's global quantization (0027); the note page's help line
-  keeps e/s/Esc when stamps exist; disabled stamp rows say why (partly done).
+- **Open after 0.1.8:**
+  - **Watching: blank live page.** The first live page after an `npm start` restart opened empty twice (not
+    reproduced since `2fd8cf6`). Next time read the `cmdAbl [live] info: live load <page>: serving/delivered` lines;
+    no line at all → the dialog never reached the server (core's hint: `localhost` vs the `[::1]` bind,
+    `src/httpTrigger.ts`). Once found, those lines go back to debug.
+  - MIDI monitor: after two failed renewals it never retries (a script that comes back still says stopped until
+    reopened). If renewal ever stutters a knob, a script-side "extend only" (protocol change, architect).
+  - `jump`: the usage error should list `+2b`/`+3q` (modules); whether an argument may opt in to `-2b` without
+    `--` (`ArgDef.negative`, parser question for the user).
+  - Note page footer changes height between a 1- and 2-line error (UX checklist item 3).
+- **Next: 0.1.9** (index "Next"): the setup page shows the installed cmdAbl version, not only the Remote Script's
+  ([0021](0021-installation-and-setup-page.md) open questions; maybe through pakabl); then the `script` module
+  ([0017](0017-scripts-and-triggers.md) phase 1). Open decision: scattered matching ([0006](0006-completion-engine.md))
+  before or after it.
+- **Decided, not built (2026-11-12):** an "all ins" MIDI spike (0018); the note page's help line keeps e/s/Esc
+  when stamps exist; disabled stamp rows say why (partly done).
 - **Open design:** copies of a Set share one note (0013); follow mode is now possible with page runs (0007);
   `./name` for scripts (0017); pick vs mark naming (GLOSSARY); morph pickup and control types (0025);
   the option review of all modules (0010).
-- **For the user (by hand, 0.1.7):** the installed `.ablx`; settings page (`note.stampLoop` off, `loop.bars`
+- **For the user (by hand, 0.1.7, not reported):** settings page (`note.stampLoop` off, `loop.bars`
   8); Discard; Ctrl+n/p; "save changes?" and the undo history after a stamp; a copied Set file sharing the note.
 - **Live 13:** Developer Mode and `.env`'s `EXTENSION_HOST_PATH` for dev; a Remote Script change needs a
   Live restart. Live facts from 0.1.7: `loop` and `current_song_time` apply on the next tick; Live's song
@@ -180,9 +116,7 @@ Older checks that were never reported; most can now run through MCP.
 - `pakabl install` without an id; plain `history clear` (the question).
 - The dialog-hang diagnostics: after the next real hang, before restarting, `POST /reset`, then `:`,
   and the log from the last `run start:` line.
-- Optional: a board section taller than the view; 64 tracks with `vol`.
-- The board with every track tagged: removing a track's only tag shows the untagged section with its
-  card (`431164d`; checked in a browser, not yet in Live).
+- Optional: 64 tracks with `vol` and in the tag editor.
 - `map learn` on a control taken in Live: an offered text "Controls taken in Live (Cmd+M) can't be
   learned: …" (undecided).
 
@@ -193,7 +127,7 @@ Older checks that were never reported; most can now run through MCP.
   `undo:` lines of the last change (`cmdabl log --undo` lists them today).
 
 - **Right-click menus** (user, 2026-11-12): context menus on page rows (rename, remove, …), one pattern for all
-  pages, keyboard equivalents stay. After 0.1.8.
+  pages, keyboard equivalents stay.
 
 - **Track colors** (user, 2026-11-05): a `color` module to color tracks (e.g. `color #drums red`).
   To plan when there's time between tests; needs a plan (number 0022; 0021 is the setup page).
@@ -222,23 +156,6 @@ Older checks that were never reported; most can now run through MCP.
   that opens a page such as `note` or `tag -l`, like the palette would. Needs a decision in 0018: an
   opt-in per binding (e.g. an `open` operator or a per-command "may open a dialog" flag), at most one
   dialog at a time, never during a running dialog.
-
-- **Simpler installation and a clear `cmdabl setup` result**: planned as [0021](0021-installation-and-setup-page.md), in work for 0.1.6.
-
-- **0.1.6: settings and help pattern** (user findings, 2026-11-04; plan [0019](0019-settings-and-help.md), draft):
-  - a settings page per window (gear button, `<module> config`: `tag config`, MIDI, note) plus a
-    `cmdabl config` page (user, 2026-10-22) over `settings.json`; it takes the palette's
-    Off/Hints/Options switch, the board's fold threshold and `midi.statusBar`;
-  - one help pattern: a quiet help line that follows the mouse and focus (like Live's Info View, can
-    be switched off), used by the board footer and the palette's hint panel (0006). No browser
-    tooltips: the footer text changes on hover instead (user, 2026-11-05; tooltips removed in 0.1.5);
-  - note: timestamped entries with view and edit modes (0013).
-  - one keyboard model for every selection list (user, 2026-11-05): the palette rows, the pick list,
-    the board's suggestions and chips. → from the end of a field enters the list, ←/→ (and ↑/↓ by
-    row) move in it, ← on the leftmost item returns to the field, typing returns to the field and
-    types; file-tree rules (↑↓ between sections, → into, ← out) where a page has sections. The board
-    (0010) is the first page built this way.
-  A new UI surface, so the contract part needs the user's approval.
 
 - Ideas from ClyphX (2026-10-20): plan 0009 — `;` action lists with aliases (0.1.3); `.`,
   index, range and `all` targets, `vol`/`pan`/`send` (0.1.x); snapshots (0.2.x); triggers from

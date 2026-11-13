@@ -1,6 +1,6 @@
 # `map` and `midi`: MIDI controls run cmdAbl commands, toward a mapping matrix
 
-**Status:** Page runs (live pages may run allowed command lines, `onClose`) released in 0.1.7 (PR #32). Trigger mode released in 0.1.5 (2026-11-05, PR #27; Remote Script 0.1.14): `map`, `map learn`,
+**Status:** The MIDI monitor's status ("Listening…" / why it stopped) and window renewal released in 0.1.8 (PR #36). Page runs (live pages may run allowed command lines, `onClose`) released in 0.1.7 (PR #32). Trigger mode released in 0.1.5 (2026-11-05, PR #27; Remote Script 0.1.14): `map`, `map learn`,
 `midi monitor`, the operators `press`/`release`/`hold`/`toggle`, live pages. Value mode, bindings that
 open a page, per-control thresholds and the matrix are open. Public since 2026-11-03 (kept private as
 0014 until then).
