@@ -45,11 +45,10 @@ All releases were tested in Live, including the installed `.ablx` (0.1.8: the in
     `pakabl update`, `pakabl list` shows ★/↓, no "stats.json not saved" line. Optional (reviewer): download to tmp,
     validate, then move, for the index and stats both.
 - **Spike queued: MIDI outside Live** (user, 2026-11-13): receivemidi, sendmidi and routemidi as an optional user
-  install (0018 "Spike: MIDI outside Live"); order relative to 0.1.9 not decided yet.
+  install (0018 "Spike: MIDI outside Live"); after 0.1.9 (user, 2026-11-13).
 - **Next: 0.1.9** (index "Next"): the setup page shows the installed cmdAbl version, not only the Remote Script's
   ([0021](0021-installation-and-setup-page.md) open questions; maybe through pakabl); then the `script` module
-  ([0017](0017-scripts-and-triggers.md) phase 1). Open decision: scattered matching ([0006](0006-completion-engine.md))
-  before or after it.
+  ([0017](0017-scripts-and-triggers.md) phase 1). Scattered matching ([0006](0006-completion-engine.md)) comes after it (user, 2026-11-13).
 - **Decided, not built (2026-11-12):** an "all ins" MIDI spike (0018); the note page's help line keeps e/s/Esc
   when stamps exist; disabled stamp rows say why (partly done).
 - **Open design:** copies of a Set share one note (0013); follow mode is now possible with page runs (0007);
