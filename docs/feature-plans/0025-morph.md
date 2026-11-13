@@ -64,6 +64,8 @@ the opposite sign backward), and needs no pickup. Open: how a line names its bac
 Relative Signed Bit, Signed Bit 2, BinOffset, 2's Comp., each relative one also as "lin.", i.e. without
 acceleration; user screenshot 2026-11-12); a relative-encoder type takes the same names.
 
+Option (2026-11-13): RouteMIDI could convert relative encoders before they reach cmdAbl or Live; see 0018 "Spike: MIDI outside Live".
+
 ## Live 13 spike results (2026-11-11)
 
 [research/live13-spikes.md](research/live13-spikes.md): Python writes from the Remote Script give one

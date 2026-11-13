@@ -72,13 +72,15 @@ Still open in 0001: `rm`, a general `select`, `-d`/`-c` flags.
 
 1. **0.1.9: the setup page shows cmdAbl's own version** ([0021](0021-installation-and-setup-page.md)), then **the `script` module** ([0017](0017-scripts-and-triggers.md) phase 1): global scripts first, `script
    <name>`; then clips and scenes run them (phase 2).
-2. **Shortcuts** ([0019](0019-settings-and-help.md) phase 7), then 0006's keymap.
-3. **MIDI value mode** ([0018](0018-midi-mapping.md)): `map learn | vol #synth`; then **`param`**
+2. **Spike: MIDI outside Live** ([0018](0018-midi-mapping.md)): receivemidi, sendmidi and routemidi (Cmd+M controls,
+   relative encoders, LEDs); feeds value mode, 0025.
+3. **Shortcuts** ([0019](0019-settings-and-help.md) phase 7), then 0006's keymap.
+4. **MIDI value mode** ([0018](0018-midi-mapping.md)): `map learn | vol #synth`; then **`param`**
    ([0024](0024-param.md), draft) and the **morph** ([0025](0025-morph.md), draft; pickup and control types open).
-4. **Aliases** ([0020](0020-aliases.md), draft): an `alias` module on 0019's expansion step.
-5. **Paths level by level** ([0006](0006-completion-engine.md) step 3); then `bypass` (alias `bp`).
-6. **`link`** ([0015](0015-link.md)), then `pan`/`send` and **`dca`** ([0012](0012-vol-and-dca.md)).
-7. **Track colors** (a `color` module, plan 0022 to write; STATUS backlog).
+5. **Aliases** ([0020](0020-aliases.md), draft): an `alias` module on 0019's expansion step.
+6. **Paths level by level** ([0006](0006-completion-engine.md) step 3); then `bypass` (alias `bp`).
+7. **`link`** ([0015](0015-link.md)), then `pan`/`send` and **`dca`** ([0012](0012-vol-and-dca.md)).
+8. **Track colors** (a `color` module, plan 0022 to write; STATUS backlog).
 
 ### Later and ideas
 

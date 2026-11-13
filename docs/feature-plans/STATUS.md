@@ -44,6 +44,8 @@ All releases were tested in Live, including the installed `.ablx` (0.1.8: the in
     the cache, reviewed) on this branch; ships with 0.1.9 (user: not urgent). User test in the installed build:
     `pakabl update`, `pakabl list` shows ★/↓, no "stats.json not saved" line. Optional (reviewer): download to tmp,
     validate, then move, for the index and stats both.
+- **Spike queued: MIDI outside Live** (user, 2026-11-13): receivemidi, sendmidi and routemidi as an optional user
+  install (0018 "Spike: MIDI outside Live"); order relative to 0.1.9 not decided yet.
 - **Next: 0.1.9** (index "Next"): the setup page shows the installed cmdAbl version, not only the Remote Script's
   ([0021](0021-installation-and-setup-page.md) open questions; maybe through pakabl); then the `script` module
   ([0017](0017-scripts-and-triggers.md) phase 1). Open decision: scattered matching ([0006](0006-completion-engine.md))
