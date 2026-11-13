@@ -1,6 +1,6 @@
 # `map` and `midi`: MIDI controls run cmdAbl commands, toward a mapping matrix
 
-**Status:** Page runs (live pages may run allowed command lines, `onClose`) released in 0.1.7 (PR #32). Trigger mode released in 0.1.5 (2026-11-05, PR #27; Remote Script 0.1.14): `map`, `map learn`,
+**Status:** The MIDI monitor's status ("Listening…" / why it stopped) and window renewal released in 0.1.8 (PR #36). Page runs (live pages may run allowed command lines, `onClose`) released in 0.1.7 (PR #32). Trigger mode released in 0.1.5 (2026-11-05, PR #27; Remote Script 0.1.14): `map`, `map learn`,
 `midi monitor`, the operators `press`/`release`/`hold`/`toggle`, live pages. Value mode, bindings that
 open a page, per-control thresholds and the matrix are open. Public since 2026-11-03 (kept private as
 0014 until then).
@@ -438,6 +438,34 @@ So `map` stays thin: a control plus a pipeline of these same commands and steps.
     Spike first: (1) can the Remote Script read other ports, (2) Web MIDI in Live's dialog web view (the
     NerdSEQ editor used Web MIDI in Chrome; WebKit has none), (3) a native MIDI module in the Extension
     Host (sandbox?). Without one of them the monitor names its Input and where to change it.
+
+## Spike: MIDI outside Live (user, 2026-11-13; not started)
+
+Geert Bevin's command-line tools, GPL-3.0, macOS/Windows/Linux, `brew install gbevin/tools/<name>`:
+[ReceiveMIDI](https://github.com/gbevin/ReceiveMIDI), [SendMIDI](https://github.com/gbevin/SendMIDI) and
+[RouteMIDI](https://github.com/gbevin/RouteMIDI) (filters, transforms, CC↔14-bit/NRPN, JS per message, virtual
+ports; macOS/Linux only for virtual ports). The installed host may start child processes (as with `curl`).
+
+**Gaps they could close:**
+- Input independent of Live: controls taken in Live (Cmd+M), and the "all inputs" idea.
+- Relative encoders ([0025](0025-morph.md)): decode them ourselves, or let RouteMIDI convert them.
+- 14-bit and NRPN for value mode.
+- MIDI out: LEDs and feedback (`sendmidi`).
+- A virtual port into Live: driving Live's own MIDI mappings.
+
+**Spike checks** (installed `.ablx`, the user's UC4):
+1. `receivemidi dev <name>` started from the installed host: does it start, what latency, does it stop
+   cleanly on deactivate (today nothing is released on deactivate, STATUS)?
+2. A control mapped with Cmd+M arrives through `receivemidi` while Live still gets it (two CoreMIDI clients).
+3. `routemidi`: a relative encoder converted to absolute, both into cmdAbl and into a virtual port Live listens to.
+4. `sendmidi` lights a pad or button LED on the controller.
+
+**Decided:**
+- The tools are an optional feature the user installs; nothing GPL goes into the `.ablx`.
+- `cmdabl setup` gets a row for them, like Karabiner.
+
+Result goes to `research/`, then into this plan and 0025. The `midi monitor` page stays as it is (user,
+2026-11-13: ShowMIDI's layout not wanted).
 
 ## Open questions
 

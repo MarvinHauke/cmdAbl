@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import { createIdRows } from "./idRows.js";
 import type { ModuleApi } from "../types.js";
-import { EXTENSIONS_DIR, fileExists, fileStamp, downloadFile, unzipInto, readJsonFile, openUrl, removeDir, writeTextFile } from "./platform.js";
+import { EXTENSIONS_DIR, fileExists, fileStamp, downloadFile, unzipInto, readJsonFile, openUrl, removeDir } from "./platform.js";
 import { buildListPage } from "./listPage.js";
 import { indexRelation, installedRelation, type IndexRelation } from "./version.js";
 import { pakablCommand } from "./command.js";
@@ -222,17 +222,19 @@ async function list(api: ModuleApi): Promise<CommandResult | void> {
   return outcome;
 }
 
-/** Fetch stats.json, keep only the valid part. Returns a one-line note when it could not be used. */
+/**
+ * Fetch stats.json straight into the cache (curl runs as a child process; the host itself may not
+ * write there). A file that turns out unusable is removed. Returns a one-line note when it could not be used.
+ */
 function refreshStats(ids: ReadonlySet<string>): string | undefined {
-  const tmp = path.join(DATA_DIR, "tmp", "stats.json");
-  const dl = downloadFile(STATS_URL, tmp);
+  const dl = downloadFile(STATS_URL, STATS_CACHE_PATH);
   if (!dl.ok) return "pakabl: no stars and downloads (stats.json not available)";
-  const raw = readJsonFile<unknown>(tmp);
-  removeDir(tmp);
-  const stats = parseStats(raw, ids);
-  if (!statsFresh(raw, new Date()) || stats.size === 0) return "pakabl: no stars and downloads (stats.json empty or malformed)";
-  const err = writeTextFile(STATS_CACHE_PATH, JSON.stringify({ updated: (raw as { updated: string }).updated, stats: Object.fromEntries(stats) }));
-  return err ? `pakabl: stats.json not saved — ${err}` : undefined;
+  const raw = readJsonFile<unknown>(STATS_CACHE_PATH);
+  if (!statsFresh(raw, new Date()) || parseStats(raw, ids).size === 0) {
+    removeDir(STATS_CACHE_PATH);
+    return "pakabl: no stars and downloads (stats.json empty or malformed)";
+  }
+  return undefined;
 }
 
 async function update(api: ModuleApi): Promise<CommandResult | void> {

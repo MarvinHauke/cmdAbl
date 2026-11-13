@@ -291,7 +291,7 @@ WarpMode           Beats=0 | Tones=1 | Texture=2 | Repitch=3 | Complex=4 | Compl
 - **The installed extension runs sandboxed (measured 2026-10-19, Live 12.4.15b6, cmdAbl 97b4e27).** The Extension
   Host uses Node's permission model. It may read only `~/Library/Application Support/Ableton/Extensions`,
   `~/Library/Application Support/Ableton/Extensions Data` and `$TMPDIR/Ableton Extensions`. It may write only the
-  Extensions Data folder and that temp folder. Child processes are allowed. A path outside those trees fails with
+  Extensions Data folder and that temp folder. Child processes are allowed, and they are not bound by these limits: `curl -o` into `Extensions/.pakabl` works where an in-process `fs.writeFileSync` there fails with "Access to this API has been restricted" (0.1.8, pakabl's stats cache). A path outside those trees fails with
   `ERR_ACCESS_DENIED`, also for `stat` and `realpath`. `npm start` is presumed to run unsandboxed, so reads outside
   the trees work in development and fail when installed. Test the installed `.ablx` as well (not measured for
   `npm start`).

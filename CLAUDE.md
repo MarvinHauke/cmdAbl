@@ -91,3 +91,17 @@ gets a short list of the core features to try by hand, plus what only they can c
 - `npm test` (unit tests), `npm run build` (type-check + production bundle), `npm start` (run in
   Live — user only), `npm run package` (build the `.ablx`).
 - Releasing, the pakabl index and CI are described in `docs/guides/`.
+
+## Agent skills
+
+### Issue tracker
+
+Work lives in the feature plans and STATUS, not GitHub issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default roles, written as a tag on a STATUS item. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `docs/feature-plans/GLOSSARY.md`; the numbered plans are the decision records. See `docs/agents/domain.md`.

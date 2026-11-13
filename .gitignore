@@ -38,3 +38,6 @@ ExampleProjects/
 *.mov
 captures/
 pakabl/stats.json
+
+# wayfinder scratch files (docs/agents/issue-tracker.md)
+.scratch/

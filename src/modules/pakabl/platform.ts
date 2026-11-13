@@ -91,7 +91,7 @@ export function removeDir(dirPath: string): { ok: boolean; output: string } {
 // ── plain-text file read ─────────────────────────────────────────────────────
 // Used for the cached curated index and for reading an installed extension's
 // manifest.json. Shelled out (not node:fs) to stay consistent with setup.ts's
-// established pattern. Writing the index is handled by `downloadFile` itself
+// established pattern. Writing the index and stats.json is handled by `downloadFile` itself
 // (curl/Invoke-WebRequest write straight to the destination path).
 
 function readTextFile(filePath: string): string | undefined {
@@ -127,16 +127,5 @@ export function fileExists(filePath: string): boolean {
     return fs.existsSync(filePath);
   } catch {
     return false;
-  }
-}
-
-/** Write a text file, creating its folder; undefined on success, the error text otherwise. */
-export function writeTextFile(filePath: string, text: string): string | undefined {
-  try {
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, text);
-    return undefined;
-  } catch (e: unknown) {
-    return e instanceof Error ? e.message : String(e);
   }
 }

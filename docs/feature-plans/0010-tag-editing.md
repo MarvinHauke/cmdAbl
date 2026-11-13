@@ -4,10 +4,10 @@
 **Depends on:** [0008](0008-tags-and-aliases.md) (tags on tracks, `tag -l`),
 [0007](0007-ui-surfaces.md) (a new surface `board`).
 
-**Status:** Released in 0.1.2 (board, `tag -e`, `tag -r`); board editing released in 0.1.5 (2026-11-05,
-PR #27): rename and remove whole tags, click to assign, the file-tree keys. Open: the 0.1.6 settings
-and help pattern (gear button, `tag config`, footer help on hover; released in 0.1.6). In work for 0.1.8 (branch
-`feat/0.1.8-tag-editor`): the tag list and tag editor (tag-0, below; "Build" for the contract).
+**Status:** Released in 0.1.8 (2026-11-12, PR #36): the tag list (`tag -l`, Enter runs `tag.listEnter`) and the
+tag editor (module page, list and grid view, filter with marked characters, ⌘R rename, × remove, Apply · Cancel,
+the shared discard bar); the `board` surface is gone. Earlier: 0.1.2 (board, `tag -e`, `tag -r`), 0.1.5 (board
+editing). Open: undo for tag changes (Live doesn't undo `Track.set_data`; STATUS backlog), right-click menus.
 
 ## Context
 
@@ -288,13 +288,8 @@ Tags section, reference, images: "board" leaves the docs).
 
 ## Phased rollout
 
-1. cmdabl-core: the `board` contract, `api.ui.board`, the presenter caps and tests; the
-   0007 §1 row.
-2. cmdabl-ui: `ui/board.html` (chips with ×, an `add…` input with ghost text and suggestions,
-   new tag…, a live count on Apply, keyboard), checked in the browser.
-3. cmdabl-modules: `tag -l` on `board` (changes, created tags); `tag --edit` if kept.
-4. cmdabl-core: move `pakabl-list.html` to `ui/modules/pakabl/list.html`, architecture rule.
-5. cmdabl-docs: the Tags section of using.md and the reference.
+- 0.1.2: board, `tag -e`, `tag -r`. 0.1.5: board editing. 0.1.6: gear and `tag config`.
+- 0.1.8: tag-0, the tag list and tag editor on `listnav.js`, `api.pickRows` and inner runs (0028); docs and images.
 
 ## Verification
 
