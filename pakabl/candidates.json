@@ -1,44 +1,8 @@
 [
   {
-    "repo": "madisonrickert/ablevsep",
-    "description": "Separate any audio clip into stems with any of MVSEP's 100+ models, right inside Ableton Live",
-    "stars": 60,
-    "pushed": "2026-07-13",
-    "ablx": [
-      "AbleVSEP-1.2.0.ablx"
-    ]
-  },
-  {
-    "repo": "madisonrickert/ableton-sheet-music-extension",
-    "description": "View an Ableton Live MIDI clip as sheet music, transpose it for any instrument, and export MusicXML / PDF / PNG.",
-    "stars": 46,
-    "pushed": "2026-07-13",
-    "ablx": [
-      "Sheet-Music-1.2.0.ablx"
-    ]
-  },
-  {
-    "repo": "madisonrickert/abletab",
-    "description": "AbleTab: view any Ableton Live MIDI clip as guitar tablature, pick a tuning, and export PDF or ASCII tab",
-    "stars": 19,
-    "pushed": "2026-07-13",
-    "ablx": [
-      "AbleTab-1.1.0.ablx"
-    ]
-  },
-  {
-    "repo": "dnvsfn/ableton-midnight-tools",
-    "description": "An Ableton Live 12 extension: right-click MIDI chord-rhythm transforms + a diatonic chord generator with per-chord editing, built on the official Extensions SDK.",
-    "stars": 16,
-    "pushed": "2026-07-09",
-    "ablx": [
-      "Midnight-Tools-0.2.0.ablx"
-    ]
-  },
-  {
     "repo": "ntworm/rc-surface",
     "description": "Source-available Ableton Live extension that turns any phone into a wireless MIDI + multi-sensor controller. PolyForm Noncommercial.",
-    "stars": 15,
+    "stars": 16,
     "pushed": "2026-11-10",
     "ablx": [
       "RC-Surface-2.1.0.ablx"
@@ -54,39 +18,12 @@
     ]
   },
   {
-    "repo": "fortymileswest/clip-tool",
-    "description": "Free Ableton Live 12 extension: edit a clip's audio on its waveform. Trim, fade, clean up, fold to mono, pitch and loop-safe time-stretch, then replace, copy or send to Simpler. Original sample never altered.",
-    "stars": 12,
-    "pushed": "2026-10-10",
-    "ablx": [
-      "clip-tool.ablx"
-    ]
-  },
-  {
-    "repo": "bencodec/Ableton-MIDI-Key-Detector-Extension",
-    "description": "An Ableton Live extension that detects the most likely musical key and scale of your MIDI material, available as a Detect Key right-click action throughout Live.",
-    "stars": 11,
-    "pushed": "2026-06-02",
-    "ablx": [
-      "Key-Detector-1.0.0.ablx"
-    ]
-  },
-  {
     "repo": "SamKuler/live-smith",
     "description": "An AI agent for Ableton Live",
     "stars": 11,
     "pushed": "2026-11-09",
     "ablx": [
       "Live-Smith-0.4.0.ablx"
-    ]
-  },
-  {
-    "repo": "dnvsfn/ableton-breakdowns",
-    "description": "An Ableton Live 12 extension: right-click drum-fill / breakdown generator with accelerating rolls, build-up velocity curves, and humanized flams/ghosts, built on the official Extensions SDK.",
-    "stars": 7,
-    "pushed": "2026-07-09",
-    "ablx": [
-      "Breakdowns-0.1.0.ablx"
     ]
   },
   {
@@ -99,21 +36,21 @@
     ]
   },
   {
+    "repo": "ntworm/rc-setlist",
+    "description": "Source-available setlist extension for Ableton Live.",
+    "stars": 6,
+    "pushed": "2026-11-10",
+    "ablx": [
+      "RC-Setlist-1.1.0.ablx"
+    ]
+  },
+  {
     "repo": "bfollington/strudelton",
     "description": "Author Strudel patterns and bake them into Ableton Live MIDI clips, as a Live Extension (Extensions SDK). AGPL-3.0.",
     "stars": 5,
     "pushed": "2026-06-09",
     "ablx": [
       "strudelton-0.2.0.ablx"
-    ]
-  },
-  {
-    "repo": "ntworm/rc-setlist",
-    "description": "Source-available setlist extension for Ableton Live.",
-    "stars": 5,
-    "pushed": "2026-11-10",
-    "ablx": [
-      "RC-Setlist-1.1.0.ablx"
     ]
   },
   {
@@ -132,15 +69,6 @@
     "pushed": "2026-06-17",
     "ablx": [
       "Soulreaktive-DriftRandomizer-1.1.0.ablx"
-    ]
-  },
-  {
-    "repo": "NachtgeistW/drum-rack-separation",
-    "description": "An Ableton Live extension that splits a MIDI track containing a Drum Rack into one duplicated track per used drum pitch in Arrangement View.",
-    "stars": 3,
-    "pushed": "2026-07-09",
-    "ablx": [
-      "Drum-Rack-Separation-0.1.0.ablx"
     ]
   },
   {
