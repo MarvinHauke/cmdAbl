@@ -2,8 +2,8 @@
   {
     "repo": "ntworm/rc-surface",
     "description": "Source-available Ableton Live extension that turns any phone into a wireless MIDI + multi-sensor controller. PolyForm Noncommercial.",
-    "stars": 16,
-    "pushed": "2026-11-10",
+    "stars": 17,
+    "pushed": "2026-11-20",
     "ablx": [
       "RC-Surface-2.1.0.ablx"
     ]
@@ -39,9 +39,9 @@
     "repo": "ntworm/rc-setlist",
     "description": "Source-available setlist extension for Ableton Live.",
     "stars": 6,
-    "pushed": "2026-11-10",
+    "pushed": "2026-11-20",
     "ablx": [
-      "RC-Setlist-1.1.0.ablx"
+      "RC-Setlist-1.2.0.ablx"
     ]
   },
   {
@@ -144,6 +144,15 @@
     "pushed": "2026-06-17",
     "ablx": [
       "Soulreaktive-AnalogRandomizer-1.0.0.ablx"
+    ]
+  },
+  {
+    "repo": "tlsrudtn13/Tab-Editor-for-Ableton-Live",
+    "description": "View and edit any MIDI clip as staff, TAB and drum notation inside Ableton Live, then write it back.",
+    "stars": 0,
+    "pushed": "2026-11-21",
+    "ablx": [
+      "Tab-Editor-1.0.0.ablx"
     ]
   },
   {
