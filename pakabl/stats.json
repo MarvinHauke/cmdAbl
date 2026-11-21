@@ -1,0 +1,105 @@
+{
+  "updated": "2026-11-21",
+  "stats": {
+    "alex-walsh.device-manager": {
+      "stars": 14,
+      "downloads": 696
+    },
+    "ben-casey.bbencut": {
+      "stars": 90,
+      "downloads": 4152
+    },
+    "ben.key-detector": {
+      "stars": 12,
+      "downloads": 721
+    },
+    "danny-wincott.clip-tool": {
+      "stars": 12,
+      "downloads": 271
+    },
+    "e-t-carter.breakdowns": {
+      "stars": 7,
+      "downloads": 90
+    },
+    "e-t-carter.midnight-tools": {
+      "stars": 16,
+      "downloads": 843
+    },
+    "federico-pepe.arrangement-helper": {
+      "stars": 168,
+      "downloads": null
+    },
+    "federico-pepe.basic-pitch": {
+      "stars": 168,
+      "downloads": null
+    },
+    "federico-pepe.bird-game": {
+      "stars": 168,
+      "downloads": null
+    },
+    "federico-pepe.chord-progression-helper": {
+      "stars": 168,
+      "downloads": null
+    },
+    "federico-pepe.chord-voicing-helper": {
+      "stars": 168,
+      "downloads": null
+    },
+    "federico-pepe.chromaflux": {
+      "stars": 168,
+      "downloads": null
+    },
+    "federico-pepe.duplicate-track": {
+      "stars": 168,
+      "downloads": null
+    },
+    "federico-pepe.freesound-sampler": {
+      "stars": 168,
+      "downloads": null
+    },
+    "federico-pepe.session-to-arrangement-bridge": {
+      "stars": 168,
+      "downloads": null
+    },
+    "federico-pepe.snake": {
+      "stars": 168,
+      "downloads": null
+    },
+    "federico-pepe.track-creator": {
+      "stars": 168,
+      "downloads": null
+    },
+    "federico-pepe.transpose-clips": {
+      "stars": 168,
+      "downloads": null
+    },
+    "federico.doom": {
+      "stars": 168,
+      "downloads": null
+    },
+    "madison-rickert.abletab": {
+      "stars": 19,
+      "downloads": 300
+    },
+    "madison-rickert.ablevsep": {
+      "stars": 62,
+      "downloads": 996
+    },
+    "madison-rickert.sheet-music": {
+      "stars": 47,
+      "downloads": 608
+    },
+    "marvinhauke.cmdabl": {
+      "stars": 3,
+      "downloads": 100
+    },
+    "nachtgeistw.drum-rack-separation": {
+      "stars": 3,
+      "downloads": 45
+    },
+    "swwallowws.session-notes": {
+      "stars": 4,
+      "downloads": 356
+    }
+  }
+}
